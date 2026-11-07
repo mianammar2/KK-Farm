@@ -138,7 +138,7 @@ class GoatRegistrationTest extends TestCase
     {
         $this->actingAs($this->user('manager'))->post('/goats', $this->payload())->assertSessionHasNoErrors();
 
-        $this->assertMatchesRegularExpression('/^DEMO-\d{4}$/', Animal::firstOrFail()->farm_number);
+        $this->assertMatchesRegularExpression('/^KK-\d{4}$/', Animal::firstOrFail()->farm_number);
     }
 
     public function test_a_tag_id_or_a_tag_already_in_use_is_refused_and_no_goat_is_created(): void

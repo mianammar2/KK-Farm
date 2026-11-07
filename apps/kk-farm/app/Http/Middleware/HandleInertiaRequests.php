@@ -23,6 +23,7 @@ class HandleInertiaRequests extends Middleware
                 'gates' => array_keys(array_filter(config('kkfarm.gates'), fn ($roles) => in_array($user->role, $roles, true))),
             ] : null,
             'roles' => config('kkfarm.roles'),
+            'demo' => (bool) config('kkfarm.demo'),
             'flash' => fn () => $request->session()->get('success'),
         ];
     }

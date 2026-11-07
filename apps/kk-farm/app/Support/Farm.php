@@ -17,7 +17,7 @@ class Farm
     /** Issues the next farm number from a forward-only sequence. Numbers are never reused. */
     public static function nextFarmNumber(): string
     {
-        return sprintf('DEMO-%04d', DB::selectOne("select nextval('animal_number_seq') as number")->number);
+        return sprintf('%s-%04d', config('kkfarm.farm_number_prefix', 'KK'), DB::selectOne("select nextval('animal_number_seq') as number")->number);
     }
 
     public static function log(User $user, string $action, ?string $url = null, string $audience = 'farm'): void

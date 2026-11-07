@@ -7,6 +7,12 @@ return [
     // Superusers bypass RLS, so leave this set everywhere except one-off CLI work (migrations, seeding).
     'tenancy' => ['db_role' => env('TENANCY_DB_ROLE', 'kkfarm_app')],
 
+    // Prefix for farm numbers issued when a goat is registered without an ear tag number.
+    'farm_number_prefix' => env('FARM_NUMBER_PREFIX', 'KK'),
+
+    // Shows the "synthetic demo data" badge. Set true only when the DemoSeeder data is loaded.
+    'demo' => (bool) env('KKFARM_DEMO', false),
+
     // Candidate roles from the project brief. Actual responsibilities are confirmed after the farm visit.
     'roles' => [
         'ceo' => 'CEO / Owner',
