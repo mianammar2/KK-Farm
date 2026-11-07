@@ -1,4 +1,4 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Download, LayoutGrid, List, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import GoatPortrait from '../../components/GoatPortrait';
@@ -55,7 +55,7 @@ export default function GoatsIndex({ goats, breeds, pens }: Props) {
                 actions={
                     <>
                         <a href="/goats/export"><Button variant="secondary"><Download size={16} aria-hidden /> Export CSV</Button></a>
-                        <Button onClick={() => setAdding(!adding)}><Plus size={16} aria-hidden /> Register goat</Button>
+                        <Button onClick={() => router.visit('/goats/register')}><Plus size={16} aria-hidden /> Register goat</Button>
                     </>
                 }
             />

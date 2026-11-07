@@ -37,12 +37,12 @@ export default function Scan({ result, samples, goats }: Props) {
     return (
         <>
             <Head title="RFID Scan" />
-            <PageHeader title="RFID scan" description="Scan a tag to open the goat. This is a simulator: no real reader is connected." />
+            <PageHeader title="RFID scan" description="Scan a tag to open the goat. A tag with no goat starts the goat register. This is a simulator: no real reader is connected." />
             <div className="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
                 <div className="space-y-4">
                     <Panel title="Simulated reader">
                         <form onSubmit={(e) => { e.preventDefault(); scan(code); }} className="space-y-2">
-                            <Field label="Tag code"><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="SIM-982-…" className="field" autoFocus /></Field>
+                            <Field label="Tag code"><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Scan or type a tag code" className="field" autoFocus /></Field>
                             <Button type="submit" className="w-full" disabled={scanning}><ScanLine size={17} aria-hidden /> {scanning ? 'Reading' : 'Scan tag'}</Button>
                         </form>
                     </Panel>
@@ -51,6 +51,10 @@ export default function Scan({ result, samples, goats }: Props) {
                             {sample('On a goat', samples.assigned)}
                             {sample('Released by a goat that left', samples.free)}
                             {sample('New, never used', samples.new)}
+                            <div>
+                                <div className="mb-1 text-sm text-ink-soft">Tag the farm has never seen</div>
+                                <button type="button" onClick={() => scan(Array.from({ length: 24 }, () => '0123456789ABCDEF'[Math.floor(Math.random() * 16)]).join(''))} className="min-h-9 rounded-[4px] border border-rule bg-tile px-2 text-sm hover:border-turq-600">Scan a brand-new tag</button>
+                            </div>
                         </div>
                     </Panel>
                 </div>

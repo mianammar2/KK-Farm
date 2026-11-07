@@ -11,7 +11,7 @@ class Animal extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'birth_date_is_estimate' => 'boolean'];
+    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
 
     public function breed()
     {

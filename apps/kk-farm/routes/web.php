@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BreedingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\FieldController;
 use App\Http\Controllers\FeedingController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\GoatController;
@@ -30,6 +31,7 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:goats')->group(function (): void {
         Route::get('/goats', [GoatController::class, 'index']);
         Route::get('/goats/export', [GoatController::class, 'export']);
+        Route::get('/goats/register', [GoatController::class, 'register']);
         Route::post('/goats', [GoatController::class, 'store']);
         Route::get('/goats/{animal}', [GoatController::class, 'show']);
         Route::post('/goats/{animal}/photos', [GoatController::class, 'addPhoto']);
@@ -96,5 +98,8 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:settings')->group(function (): void {
         Route::get('/settings', [SettingsController::class, 'index']);
         Route::post('/settings/breeds', [SettingsController::class, 'addBreed']);
+        Route::get('/settings/fields', [FieldController::class, 'index']);
+        Route::post('/settings/fields', [FieldController::class, 'store']);
+        Route::post('/settings/fields/{field}', [FieldController::class, 'update']);
     });
 });

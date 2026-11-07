@@ -11,7 +11,10 @@ use App\Models\LedgerEntry;
 use App\Models\Mating;
 use App\Models\Pen;
 use App\Models\RfidAssignment;
+use App\Models\FieldDefinition;
+use App\Support\FieldCatalog;
 use App\Support\Farm;
+use App\Support\GoatRegistration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,27 +37,39 @@ class GoatController extends Controller
         ]);
     }
 
+    /**
+     * The Goat Register form (D-040). Opened from an RFID scan with the scanned code, or by hand.
+     * The fields, their order and their dropdown options come from the organization's field definitions.
+     */
+    public function register(Request $request): Response
+    {
+        $epc = GoatRegistration::normaliseCode($request->query('epc'));
+
+        return Inertia::render('Goats/Register', [
+            'epc' => $epc !== '' ? $epc : null,
+            'fields' => FieldCatalog::forAnimal()->map(fn (FieldDefinition $f) => [
+                'key' => $f->key, 'label' => $f->label, 'type' => $f->type, 'section' => $f->section, 'help' => $f->help, 'builtin' => $f->builtin,
+                'required' => $f->required || in_array($f->key, FieldCatalog::STRUCTURAL, true), 'options' => $f->type === 'select' ? $f->options : null,
+            ])->values(),
+            'lookups' => [
+                'breed_id' => Breed::orderBy('name')->get(['id', 'name'])->map(fn ($b) => ['value' => $b->id, 'label' => $b->name]),
+                'pen_id' => Pen::with('shed')->orderBy('name')->get()->map(fn (Pen $p) => ['value' => $p->id, 'label' => trim(($p->shed?->name ?? '').' / '.$p->name.($p->purpose ? " · {$p->purpose}" : ''), ' /')]),
+                'sire_id' => Animal::where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : '')]),
+                'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : '')]),
+            ],
+            'canAssignTags' => $request->user()->passes('assign_tags'),
+            'untagged' => Animal::active()->whereDoesntHave('openAssignment')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'name' => ['nullable', 'string', 'max:60'],
-            'sex' => ['required', Rule::in(['male', 'female'])],
-            'breed_id' => ['required', 'exists:breeds,id'],
-            'pen_id' => ['required', 'exists:pens,id'],
-            'birth_date' => ['required', 'date', 'before_or_equal:today'],
-            'birth_date_is_estimate' => ['boolean'],
-            'origin' => ['required', Rule::in(['born_on_farm', 'purchased'])],
-        ]);
+        $data = $request->validate(GoatRegistration::rules(FieldCatalog::forAnimal()));
 
-        $animal = DB::transaction(function () use ($data, $request) {
-            $animal = Animal::create($data + ['farm_number' => Farm::nextFarmNumber(), 'coat' => 'brown']);
-            Farm::event($animal, 'origin', $data['origin'] === 'purchased' ? 'Purchased and registered' : 'Born on the farm', $request->user()->name);
+        $animal = GoatRegistration::register($data, $request->user(), $request->boolean('from_scan') ? 'scan' : 'manual');
+        $tag = $animal->openAssignment()->with('tag')->first()?->tag?->tag_code;
 
-            return $animal;
-        });
-        Farm::log($request->user(), "Registered goat {$animal->farm_number}", "/goats/{$animal->id}");
-
-        return redirect("/goats/{$animal->id}")->with('success', "{$animal->farm_number} registered. Assign an RFID tag from the scan screen.");
+        return redirect("/goats/{$animal->id}")->with('success', $tag ? "{$animal->farm_number} registered with tag $tag." : "{$animal->farm_number} registered. Assign an RFID tag from the scan screen.");
     }
 
     public function show(Request $request, Animal $animal): Response

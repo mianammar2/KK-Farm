@@ -1,4 +1,4 @@
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';
 import { Button, Field, Note, PageHeader, Panel } from '../components/ui';
 import type { SharedProps } from '../types';
@@ -25,6 +25,10 @@ export default function Settings({ breeds, matrix, gates, environment }: Props) 
                             <div className="flex-1"><Field label="Add a breed" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} /></Field></div>
                             <Button type="submit" disabled={form.processing}>Add</Button>
                         </form>
+                    </Panel>
+                    <Panel title="Goat register fields" description="The registration form, from the KK Farms workbook">
+                        <p className="mb-3 text-sm text-ink-soft">Rename fields, edit dropdown options, or add your own fields.</p>
+                        <Link href="/settings/fields"><Button variant="secondary">Edit register fields</Button></Link>
                     </Panel>
                     <Panel title="This preview">
                         <dl className="space-y-1 text-sm">

@@ -6,6 +6,7 @@ use App\Models\Animal;
 use App\Models\RfidAssignment;
 use App\Models\RfidTag;
 use App\Support\Farm;
+use App\Support\GoatRegistration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,15 +16,21 @@ use Inertia\Response;
 /** Simulated reader. It looks up the current assignment; the tag code is never the goat's identity. */
 class ScanController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
-        $code = trim((string) $request->query('tag', ''));
+        $code = GoatRegistration::normaliseCode($request->query('tag', ''));
         $result = null;
 
         if ($code !== '') {
             $tag = RfidTag::where('tag_code', $code)->first();
             $open = $tag ? RfidAssignment::with('animal.breed', 'animal.pen', 'animal.latestWeight', 'animal.photos')->where('rfid_tag_id', $tag->id)->whereNull('valid_to')->first() : null;
             $past = $tag && ! $open ? RfidAssignment::with('animal')->where('rfid_tag_id', $tag->id)->orderByDesc('valid_to')->get() : collect();
+
+            // The scan starts the goat register when there is nothing to show (D-040): a tag the farm has never seen,
+            // or one that was never used on any goat.
+            if (! $tag || (! $open && $past->isEmpty() && $tag->status !== 'lost')) {
+                return redirect('/goats/register?epc='.urlencode($code));
+            }
 
             $result = [
                 'code' => $code,
@@ -49,10 +56,12 @@ class ScanController extends Controller
     public function assign(Request $request): RedirectResponse
     {
         abort_unless($request->user()->passes('assign_tags'), 403);
-        $data = $request->validate(['tag' => ['required', 'exists:rfid_tags,tag_code'], 'animal_id' => ['required', 'exists:animals,id'], 'reason' => ['required', Rule::in(['initial', 'replacement', 'reassigned'])]]);
+        $request->merge(['tag' => GoatRegistration::normaliseCode($request->input('tag'))]);
+        $data = $request->validate(['tag' => ['required', 'string', 'max:64', 'regex:/^[A-Z0-9._:-]+$/'], 'animal_id' => ['required', 'exists:animals,id'], 'reason' => ['required', Rule::in(['initial', 'replacement', 'reassigned'])]]);
 
         $animal = Animal::findOrFail($data['animal_id']);
-        Farm::assignTag($animal, RfidTag::where('tag_code', $data['tag'])->firstOrFail(), $data['reason'], $request->user());
+        // A tag the farm has never seen is added to the tag register here, then assigned (D-040).
+        Farm::assignTag($animal, RfidTag::firstOrCreate(['tag_code' => $data['tag']], ['status' => 'in_stock']), $data['reason'], $request->user());
         Farm::log($request->user(), "Assigned tag {$data['tag']} to {$animal->farm_number}", "/goats/{$animal->id}");
 
         return redirect('/scan?tag='.urlencode($data['tag']))->with('success', "Tag assigned to {$animal->farm_number}.");
