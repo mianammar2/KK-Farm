@@ -5,6 +5,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
+import { ScanCapture } from '../lib/scanner';
 import type { SharedProps } from '../types';
 
 const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; module: string; icon: typeof Beef }> }> = [
@@ -174,6 +175,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
     return (
         <div className="min-h-dvh bg-glaze lg:pl-60">
+            {/* The Scan page and the register page have their own scan field. */}
+            <ScanCapture disabled={path === '/scan' || path === '/goats/register'} />
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-cobalt-900 pt-4 lg:flex">
                 <Brand />
                 <NavList path={path} modules={auth.modules} />

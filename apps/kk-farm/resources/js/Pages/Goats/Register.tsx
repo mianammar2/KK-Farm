@@ -37,7 +37,7 @@ export default function Register({ epc, fields, lookups, canAssignTags, untagged
             case 'scan':
                 return (
                     <div className="flex items-center gap-2">
-                        <input className="field font-mono" value={v} onChange={(e) => set(f, e.target.value.toUpperCase())} placeholder="Scan a tag, or type the code" disabled={!canAssignTags} autoComplete="off" spellCheck={false} />
+                        <input className="field font-mono" value={v} onChange={(e) => set(f, e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); } }} placeholder="Scan a tag, or type the code" disabled={!canAssignTags} autoComplete="off" spellCheck={false} />
                         {epc && v === epc ? <Chip className="bg-turq-100 text-turq-800">Scanned</Chip> : null}
                     </div>
                 );

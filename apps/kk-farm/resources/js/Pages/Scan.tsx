@@ -1,7 +1,8 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Radio, ScanLine } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useScannerDevice } from '../lib/scanner';
 import GoatPortrait from '../components/GoatPortrait';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
 import type { GoatCard, Option } from '../types';
@@ -46,6 +47,7 @@ export default function Scan({ result, samples, goats }: Props) {
                             <Button type="submit" className="w-full" disabled={scanning}><ScanLine size={17} aria-hidden /> {scanning ? 'Reading' : 'Scan tag'}</Button>
                         </form>
                     </Panel>
+                    <ReaderSetup />
                     <Panel title="Try a demo tag">
                         <div className="space-y-3">
                             {sample('On a goat', samples.assigned)}
@@ -131,6 +133,56 @@ function Unassigned({ result, goats }: { result: Result; goats: Option[] }) {
                 </Field>
                 <Button type="submit" disabled={form.processing}>Assign tag</Button>
             </form>
+        </Panel>
+    );
+}
+
+/** For the hardware spike: mark this device as a scanner, and see exactly what the gun sends to the browser. */
+function ReaderSetup() {
+    const [device, setDevice] = useScannerDevice();
+    const [log, setLog] = useState<string[]>([]);
+    const [open, setOpen] = useState(false);
+    const last = useRef(0);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+        const note = (line: string) => {
+            const now = performance.now();
+            const gap = last.current ? Math.round(now - last.current) : 0;
+            last.current = now;
+            setLog((l) => [`+${gap}ms ${line}`, ...l].slice(0, 40));
+        };
+        const key = (e: KeyboardEvent) => note(`${e.type} key=${JSON.stringify(e.key)} code=${e.code} keyCode=${e.keyCode}`);
+        const input = (e: Event) => {
+            const ie = e as InputEvent;
+            note(`input type=${ie.inputType} data=${JSON.stringify(ie.data)}`);
+        };
+        window.addEventListener('keydown', key, true);
+        window.addEventListener('keyup', key, true);
+        window.addEventListener('input', input, true);
+        return () => {
+            window.removeEventListener('keydown', key, true);
+            window.removeEventListener('keyup', key, true);
+            window.removeEventListener('input', input, true);
+        };
+    }, [open]);
+
+    return (
+        <Panel title="RFID gun">
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+                <input type="checkbox" className="size-5" checked={device} onChange={(e) => setDevice(e.target.checked)} />
+                This device is an RFID gun: scanning works from any screen
+            </label>
+            <button type="button" className="mt-2 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setOpen(!open)}>{open ? 'Hide' : 'Show'} reader diagnostics</button>
+            {open ? (
+                <div className="mt-2">
+                    <p className="mb-1 text-sm text-ink-soft">Pull the trigger. Every key and input event the browser receives is listed, newest first.</p>
+                    <pre className="max-h-64 overflow-auto rounded-[4px] bg-cobalt-950 p-2 text-xs leading-5 text-white">{log.join('\n') || 'Waiting for events…'}</pre>
+                    <Button variant="secondary" className="mt-2" onClick={() => setLog([])}>Clear</Button>
+                </div>
+            ) : null}
         </Panel>
     );
 }
