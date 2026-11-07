@@ -3,13 +3,13 @@ import { Check } from 'lucide-react';
 import { Button, Field, Note, PageHeader, Panel } from '../components/ui';
 import type { SharedProps } from '../types';
 
-type Props = { breeds: Array<{ id: number; name: string; gestation: number | null; goats: number }>; matrix: Record<string, string[]>; gates: Record<string, string[]>; environment: Record<string, string> };
+type Props = { breeds: Array<{ id: number; name: string; code: string; next: string; gestation: number | null; goats: number }>; matrix: Record<string, string[]>; gates: Record<string, string[]>; environment: Record<string, string> };
 
 const GATE_LABEL: Record<string, string> = { clinical: 'Diagnose and treat', approve_feeding_plan: 'Approve feeding plans', exit_animal: 'Record goat exits', assign_tags: 'Assign RFID tags' };
 
 export default function Settings({ breeds, matrix, gates, environment }: Props) {
     const { roles } = usePage<SharedProps>().props;
-    const form = useForm({ name: '' });
+    const form = useForm({ name: '', code: '' });
     const roleKeys = Object.keys(roles);
     const cells = (allowed: string[]) => roleKeys.map((r) => <td key={r} className="text-center">{allowed.includes(r) ? <Check size={15} className="mx-auto text-turq-700" aria-label="Allowed" /> : <span className="text-ink-faint" aria-label="Not allowed">–</span>}</td>);
 
@@ -20,9 +20,10 @@ export default function Settings({ breeds, matrix, gates, environment }: Props) 
             <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
                 <div className="space-y-4">
                     <Panel title="Breeds" flush>
-                        <ul className="divide-y divide-rule text-sm">{breeds.map((b) => <li key={b.id} className="flex justify-between px-4 py-2"><span className="font-medium">{b.name}</span><span className="text-ink-soft">{b.goats} goats</span></li>)}</ul>
+                        <ul className="divide-y divide-rule text-sm">{breeds.map((b) => <li key={b.id} className="flex items-center justify-between gap-2 px-4 py-2"><span className="font-medium">{b.name} <span className="ml-1 rounded-[4px] bg-cobalt-100 px-1.5 py-0.5 font-mono text-xs text-cobalt-800">{b.code}</span></span><span className="text-right text-sm text-ink-soft">{b.goats} goats · next {b.next}</span></li>)}</ul>
                         <form onSubmit={(e) => { e.preventDefault(); form.post('/settings/breeds', { preserveScroll: true, onSuccess: () => form.reset() }); }} className="flex items-end gap-2 border-t border-rule p-4">
                             <div className="flex-1"><Field label="Add a breed" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} /></Field></div>
+                            <div className="w-24"><Field label="Tag code" error={form.errors.code}><input className="field font-mono uppercase" maxLength={8} value={form.data.code} onChange={(e) => form.setData('code', e.target.value.toUpperCase())} placeholder="Auto" /></Field></div>
                             <Button type="submit" disabled={form.processing}>Add</Button>
                         </form>
                     </Panel>

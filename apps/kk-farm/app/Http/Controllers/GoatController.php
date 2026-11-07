@@ -52,7 +52,7 @@ class GoatController extends Controller
                 'required' => $f->required || in_array($f->key, FieldCatalog::STRUCTURAL, true), 'options' => $f->type === 'select' ? $f->options : null,
             ])->values(),
             'lookups' => [
-                'breed_id' => Breed::orderBy('name')->get(['id', 'name'])->map(fn ($b) => ['value' => $b->id, 'label' => $b->name]),
+                'breed_id' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['value' => $b->id, 'label' => $b->name, 'next' => $b->nextTagId()]),
                 'pen_id' => Pen::with('shed')->orderBy('name')->get()->map(fn (Pen $p) => ['value' => $p->id, 'label' => trim(($p->shed?->name ?? '').' / '.$p->name.($p->purpose ? " · {$p->purpose}" : ''), ' /')]),
                 'sire_id' => Animal::where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : '')]),
                 'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : '')]),
@@ -64,6 +64,10 @@ class GoatController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // Tag IDs are stored upper-case, the same as generated ones (BT-0001), so duplicates are caught either way.
+        if ($request->filled('tag_id')) {
+            $request->merge(['tag_id' => strtoupper(trim((string) $request->input('tag_id')))]);
+        }
         $data = $request->validate(GoatRegistration::rules(FieldCatalog::forAnimal()));
 
         $animal = GoatRegistration::register($data, $request->user(), $request->boolean('from_scan') ? 'scan' : 'manual');

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
 
-type Choice = { value: string | number; label: string };
+type Choice = { value: string | number; label: string; next?: string };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; canAssignTags: boolean; untagged: Option[] };
 
@@ -54,6 +54,16 @@ export default function Register({ epc, fields, lookups, canAssignTags, untagged
             case 'lookup':
                 return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{(lookups[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
             default:
+                if (f.key === 'tag_id') {
+                    // D-041: the Tag ID follows from the breed. Show what it will be; typing overrides it.
+                    const next = (lookups.breed_id ?? []).find((b) => String(b.value) === String(form.data.breed_id ?? ''))?.next;
+                    return (
+                        <div>
+                            <input className="field font-mono" value={v} onChange={(e) => set(f, e.target.value.toUpperCase())} placeholder={next ? `${next} (automatic)` : 'Choose a breed first'} autoComplete="off" />
+                            {next && !v ? <span className="mt-1 inline-flex"><Chip className="bg-turq-100 text-turq-800">Will be {next}</Chip></span> : null}
+                        </div>
+                    );
+                }
                 return <input className="field" value={v} onChange={(e) => set(f, e.target.value)} />;
         }
     };

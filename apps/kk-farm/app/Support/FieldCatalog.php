@@ -34,9 +34,9 @@ final class FieldCatalog
     {
         return [
             ['key' => 'rfid_epc', 'label' => 'RFID EPC', 'type' => 'scan', 'section' => 'Identity', 'help' => 'Filled by the scanner. Scan a tag, or type the code.'],
-            ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Identity', 'help' => 'The ear tag number. Leave empty to issue the next farm number.'],
-            ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Identity'],
             ['key' => 'breed_id', 'label' => 'Breed', 'type' => 'lookup', 'section' => 'Identity', 'required' => true],
+            ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Identity', 'help' => 'Set automatically from the breed when you save (for example BT-0001). Type a number only to use a different one.'],
+            ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Identity'],
             ['key' => 'sex', 'label' => 'Sex', 'type' => 'select', 'section' => 'Identity', 'required' => true],
             ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth and origin', 'required' => true],
             ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth and origin'],

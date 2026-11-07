@@ -94,7 +94,7 @@ class GoatRegistrationTest extends TestCase
     {
         $this->actingAs($this->user('caretaker'))->get('/goats/register?epc='.self::EPC)->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 22)
-                ->where('fields.0.key', 'rfid_epc')->where('fields.1.key', 'tag_id')->where('fields.2.key', 'name')
+                ->where('fields.0.key', 'rfid_epc')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'tag_id')
                 ->where('fields', function ($fields) {
                     $by = collect($fields)->keyBy('key');
                     $labels = fn (string $key) => collect($by[$key]['options'])->pluck('label')->all();
@@ -134,11 +134,49 @@ class GoatRegistrationTest extends TestCase
         $this->assertTrue($goat->events()->where('summary', 'like', '%RFID scan%')->exists());
     }
 
-    public function test_a_blank_tag_id_gets_the_next_farm_number(): void
+    public function test_a_blank_tag_id_is_generated_from_the_breed_with_a_counter_per_breed(): void
     {
-        $this->actingAs($this->user('manager'))->post('/goats', $this->payload())->assertSessionHasNoErrors();
+        $manager = $this->user('manager');
+        $teddy = Breed::create(['name' => 'Teddy', 'default_gestation_days' => 150]);
+        $boer = Breed::create(['name' => 'Kalahari Red', 'default_gestation_days' => 150]);
 
-        $this->assertMatchesRegularExpression('/^KK-\d{4}$/', Animal::firstOrFail()->farm_number);
+        foreach ([$this->breed, $this->breed, $teddy, $this->breed, $boer] as $breed) {
+            $this->actingAs($manager)->post('/goats', $this->payload(['breed_id' => $breed->id]))->assertSessionHasNoErrors();
+        }
+
+        $this->assertSame(['BT-0001', 'BT-0002', 'BT-0003', 'KR-0001', 'TD-0001'], Animal::orderBy('farm_number')->pluck('farm_number')->all());
+        $this->assertSame('BT-0004', $this->breed->fresh()->nextTagId());
+    }
+
+    public function test_a_typed_tag_id_is_kept_and_generated_ids_skip_numbers_already_in_use(): void
+    {
+        $manager = $this->user('manager');
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'bt-0001']))->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/goats', $this->payload())->assertSessionHasNoErrors();
+
+        $this->assertSame(['BT-0001', 'BT-0002'], Animal::orderBy('farm_number')->pluck('farm_number')->all(), 'BT-0001 was typed by hand, so the generator skips it');
+    }
+
+    public function test_breed_codes_come_from_the_workbook_or_initials_and_never_repeat(): void
+    {
+        $this->assertSame('BT', $this->breed->code);
+        $this->assertSame('DDP', Breed::create(['name' => 'Dera Din Panah', 'default_gestation_days' => 150])->code);
+        $this->assertSame('BA', Breed::create(['name' => 'Barbari', 'default_gestation_days' => 150])->code);
+        $this->assertSame('BA2', Breed::create(['name' => 'Bannu', 'default_gestation_days' => 150])->code, 'BA is taken, so the next free code is used');
+    }
+
+    public function test_the_register_page_shows_the_tag_id_each_breed_will_give(): void
+    {
+        $this->actingAs($this->user('caretaker'))->get('/goats/register')
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('lookups.breed_id.0.label', 'Beetal')->where('lookups.breed_id.0.next', 'BT-0001'));
+    }
+
+    public function test_the_owner_can_add_a_breed_with_its_own_tag_code(): void
+    {
+        $this->actingAs($this->user('ceo'))->post('/settings/breeds', ['name' => 'Kamori Pure', 'code' => 'kp'])->assertSessionHasNoErrors();
+        $this->assertSame('KP', Breed::where('name', 'Kamori Pure')->value('code'));
+
+        $this->actingAs($this->user('ceo'))->post('/settings/breeds', ['name' => 'Another', 'code' => 'BT'])->assertSessionHasErrors(['code']);
     }
 
     public function test_a_tag_id_or_a_tag_already_in_use_is_refused_and_no_goat_is_created(): void
