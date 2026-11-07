@@ -44,6 +44,10 @@ class MainActivity : Activity() {
 
     private lateinit var web: WebView
     private val prefs by lazy { getSharedPreferences("kkfarm", Context.MODE_PRIVATE) }
+    private var isVisible = false
+    private var pendingChoice: List<String>? = null
+    private var pendingUrl: String? = null
+    private var pendingAt = 0L
     private var lastCode = ""
     private var lastAt = 0L
 
@@ -70,6 +74,11 @@ class MainActivity : Activity() {
      */
     private fun chooseTag(codes: List<String>) {
         if (isFinishing) return
+        if (!isVisible) {
+            pendingChoice = codes // shown when the app is back in front
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            return
+        }
         Log.i(TAG, "multiple tags ${codes.joinToString()}")
         AlertDialog.Builder(this)
             .setTitle("${codes.size} tags read. Which goat?")
@@ -119,16 +128,35 @@ class MainActivity : Activity() {
         } else {
             web.loadUrl(intent?.dataString ?: "$server/scan")
         }
+        // Listen for the whole life of the app, not only while it is on screen: a worker who pressed Home
+        // still expects the trigger to work. A scan brings the app back to the front (see onScan).
+        registerScanReceiver()
     }
 
     override fun onResume() {
         super.onResume()
-        registerScanReceiver()
+        isVisible = true
+        pendingChoice?.let { pendingChoice = null; chooseTag(it) }
+        pendingUrl?.let { url ->
+            pendingUrl = null
+            if (System.currentTimeMillis() - pendingAt < PENDING_SCAN_MS) web.loadUrl(url)
+        }
     }
 
     override fun onPause() {
-        runCatching { unregisterReceiver(receiver) }
+        isVisible = false
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(receiver) }
+        super.onDestroy()
+    }
+
+    /** A scan that arrived while the app was in the background relaunches it with the scan address. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.dataString?.let { web.loadUrl(it) }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -182,7 +210,16 @@ class MainActivity : Activity() {
         lastCode = code
         lastAt = now
         Log.i(TAG, "scan $code via $via")
-        runOnUiThread { web.loadUrl("$server/scan?tag=" + URLEncoder.encode(code, "UTF-8")) }
+        val url = "$server/scan?tag=" + URLEncoder.encode(code, "UTF-8")
+        if (isVisible) {
+            runOnUiThread { web.loadUrl(url) }
+        } else {
+            // Android 10+ refuses to let a background app bring itself to the front, so remember the scan and
+            // open it as soon as KK Farm is opened again. (Set KK Farm as the Home app to avoid this entirely.)
+            pendingUrl = url
+            pendingAt = now
+            runCatching { startActivity(Intent(this, MainActivity::class.java).setData(Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)) }
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -238,6 +275,7 @@ class MainActivity : Activity() {
 
     companion object {
         const val TAG = "KKFarm"
+        private const val PENDING_SCAN_MS = 120_000L
         private const val KEY_SERVER = "server"
         private const val KEY_ACTION = "action"
         private const val KEY_EXTRA = "extra"
@@ -256,5 +294,5 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.1.2"
+    const val NAME = "0.1.4"
 }
