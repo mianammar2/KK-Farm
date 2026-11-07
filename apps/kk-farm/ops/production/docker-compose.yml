@@ -1,0 +1,47 @@
+# KK Farm production stack (D-045). Lives on the server in /srv/kkfarm next to the .env file.
+name: kkfarm
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kkfarm
+      POSTGRES_DB: kkfarm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kkfarm -d kkfarm"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published: only the app container can reach the database.
+
+  app:
+    build:
+      context: ./app
+    image: kkfarm-app:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME missing in .env}
+      DB_HOST: db
+      DB_PORT: 5432
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - storage:/app/storage/app      # goat photos and other uploads
+      - caddy_data:/data              # HTTPS certificates
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  storage:
+  caddy_data:
+  caddy_config:
