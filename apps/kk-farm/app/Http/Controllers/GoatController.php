@@ -12,6 +12,7 @@ use App\Models\Mating;
 use App\Models\Pen;
 use App\Models\RfidAssignment;
 use App\Models\FieldDefinition;
+use App\Support\Classification;
 use App\Support\FieldCatalog;
 use App\Support\Farm;
 use App\Support\GoatRegistration;
@@ -57,7 +58,12 @@ class GoatController extends Controller
                 'sire_id' => Animal::where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
                 'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
             ],
-            'classSex' => GoatRegistration::CLASS_SEX,
+            'classSex' => GoatRegistration::classSex(),
+            'classification' => [
+                'categories' => array_map(fn (array $c) => $c[0], Classification::CATEGORIES),
+                'statuses' => Classification::FEMALE_STATUSES, 'purposes' => Classification::PURPOSES, 'kidStages' => Classification::KID_STAGES,
+                'growerFrom' => Classification::GROWER_FROM_MONTHS, 'adultFrom' => Classification::ADULT_FROM_MONTHS,
+            ],
             // D-042: for each doe, the latest mating a kid could come from, so choosing the dam fills in the sire.
             'damMatings' => Mating::with('sire')->whereIn('status', ['open', 'pregnant', 'kidded'])->where('mated_on', '>=', now()->subDays(GoatRegistration::GESTATION_WINDOW[1] + 30))
                 ->orderByRaw("CASE status WHEN 'pregnant' THEN 0 WHEN 'kidded' THEN 1 ELSE 2 END")->orderByDesc('mated_on')->get()->unique('dam_id')
@@ -65,7 +71,7 @@ class GoatController extends Controller
                     'sireId' => $m->sire_id, 'sire' => $m->sire?->farm_number, 'sireBreed' => $m->sire?->breed_id, 'status' => $m->status,
                     'matedOn' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('Y-m-d'), 'expectedLabel' => $m->expected_kidding_on?->format('j M Y'),
                 ]]),
-            'mixedBreedId' => Breed::where('name', 'Mixed')->value('id'),
+            'mixedBreedId' => Breed::whereIn('name', ['Crossbreed', 'Mixed'])->value('id'),
             'canAssignTags' => $request->user()->passes('assign_tags'),
             'untagged' => Animal::active()->whereDoesntHave('openAssignment')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
         ]);
@@ -100,6 +106,7 @@ class GoatController extends Controller
                 'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('j M Y'), 'adg' => Farm::adg($weights),
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
                 'identity' => $animal->id,
+                'classification' => $animal->classification(),
                 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null),
                 'dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null),
             ],

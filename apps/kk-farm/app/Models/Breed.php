@@ -15,8 +15,9 @@ class Breed extends Model
 
     /** Codes for the KK Farms workbook breeds. Other breeds get initials (Dera Din Panah → DDP) or two letters. */
     public const CODES = [
-        'Beetal' => 'BT', 'Teddy' => 'TD', 'Makhi Cheeni' => 'MC', 'Kamori' => 'KM', 'Nachi' => 'NC',
-        'Dera Din Panah' => 'DDP', 'Mixed' => 'MX', 'Other' => 'OT', 'Crossbred' => 'CB', 'Boer' => 'BR',
+        'Beetal' => 'BT', 'Teddy' => 'TD', 'Makhi Cheeni' => 'MC', 'Makhi Cheeni (Beetal Variety)' => 'MC', 'Kamori' => 'KM', 'Nachi' => 'NC',
+        'Dera Din Panah' => 'DDP', 'Dera Din Panah (DDP)' => 'DDP', 'Mixed' => 'MX', 'Crossbreed' => 'MX', 'Other' => 'OT',
+        'Gulabi' => 'GB', 'Barbari' => 'BB', 'Crossbred' => 'CB', 'Boer' => 'BR',
     ];
 
     protected static function booted(): void

@@ -16,18 +16,26 @@ final class FieldCatalog
     /** Fields the registration cannot work without. They cannot be switched off or made optional. */
     public const STRUCTURAL = ['sex', 'breed_id', 'pen_id', 'origin', 'birth_date'];
 
-    public const BREEDS = ['Beetal', 'Teddy', 'Makhi Cheeni', 'Kamori', 'Nachi', 'Dera Din Panah', 'Mixed', 'Other'];
+    /** Pakistani breeds with the KK Farms ERP labels (D-046). Farms add more in Settings. */
+    public const BREEDS = ['Beetal', 'Makhi Cheeni (Beetal Variety)', 'Teddy', 'Nachi', 'Dera Din Panah (DDP)', 'Kamori', 'Gulabi', 'Barbari', 'Crossbreed', 'Other'];
 
-    /** Dropdown option lists straight from the workbook's data validation. */
-    private const OPTIONS = [
-        'sex' => ['female' => 'Female', 'male' => 'Male'],
-        'origin' => ['born_on_farm' => 'Farm Born', 'purchased' => 'Purchased', 'transferred_in' => 'Transferred In'],
-        'animal_class' => ['kid' => 'Kid', 'replacement_doe' => 'Replacement Doe', 'breeding_doe' => 'Breeding Doe', 'breeding_buck' => 'Breeding Buck', 'wether' => 'Wether', 'other' => 'Other'],
-        'repro_status' => ['na' => 'N/A', 'open' => 'Open', 'in_heat' => 'In Heat', 'bred' => 'Bred', 'pregnant' => 'Pregnant', 'lactating' => 'Lactating', 'dry' => 'Dry', 'postpartum' => 'Postpartum'],
-        'lifecycle_status' => ['active' => 'Active', 'sold' => 'Sold', 'dead' => 'Dead', 'culled' => 'Culled', 'transferred' => 'Transferred'],
-        'health_flag' => ['healthy' => 'Healthy', 'monitor' => 'Monitor', 'sick' => 'Sick', 'quarantine' => 'Quarantine', 'recovering' => 'Recovering'],
-        'ownership' => ['kk_farms' => 'KK Farms', 'partner' => 'Partner', 'consignment' => 'Consignment', 'other' => 'Other'],
-    ];
+    /** Dropdown option lists: the workbook's data validation, and the KK Farms classification (D-046). */
+    public static function options(): array
+    {
+        return [
+            'sex' => ['female' => 'Female', 'male' => 'Male'],
+            'origin' => ['born_on_farm' => 'Farm Born', 'purchased' => 'Purchased', 'transferred_in' => 'Transferred In'],
+            'animal_class' => Classification::categoryOptions(),
+            'repro_status' => Classification::FEMALE_STATUSES,
+            'age_category' => Classification::AGE_CATEGORIES,
+            'animal_purpose' => Classification::PURPOSES,
+            'kid_stage' => Classification::KID_STAGES,
+            'breed_purity' => Classification::PURITY,
+            'lifecycle_status' => ['active' => 'Active', 'sold' => 'Sold', 'dead' => 'Dead', 'culled' => 'Culled', 'transferred' => 'Transferred'],
+            'health_flag' => ['healthy' => 'Healthy', 'monitor' => 'Monitor', 'sick' => 'Sick', 'quarantine' => 'Quarantine', 'recovering' => 'Recovering'],
+            'ownership' => ['kk_farms' => 'KK Farms', 'partner' => 'Partner', 'consignment' => 'Consignment', 'other' => 'Other'],
+        ];
+    }
 
     /** @return list<array{key: string, label: string, type: string, section: string, required?: bool, help?: string}> */
     public static function defaults(): array
@@ -37,7 +45,7 @@ final class FieldCatalog
             ['key' => 'breed_id', 'label' => 'Breed', 'type' => 'lookup', 'section' => 'Identity', 'required' => true],
             ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Identity', 'help' => 'Set automatically from the breed when you save (for example BT-0001). Type a number only to use a different one.'],
             ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Identity'],
-            ['key' => 'sex', 'label' => 'Sex', 'type' => 'select', 'section' => 'Identity', 'required' => true],
+            ['key' => 'sex', 'label' => 'Gender', 'type' => 'select', 'section' => 'Identity', 'required' => true],
             ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth and origin', 'required' => true],
             ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth and origin'],
             ['key' => 'birth_weight_kg', 'label' => 'Birth Weight Kg', 'type' => 'number', 'section' => 'Birth and origin'],
@@ -46,8 +54,13 @@ final class FieldCatalog
             ['key' => 'source_farm', 'label' => 'Source Farm', 'type' => 'text', 'section' => 'Birth and origin'],
             ['key' => 'sire_id', 'label' => 'Sire Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'dam_id', 'label' => 'Dam Tag', 'type' => 'lookup', 'section' => 'Parentage'],
-            ['key' => 'animal_class', 'label' => 'Animal Class', 'type' => 'select', 'section' => 'Status'],
-            ['key' => 'repro_status', 'label' => 'Repro Status', 'type' => 'select', 'section' => 'Status'],
+            ['key' => 'breed_purity', 'label' => 'Breed Purity', 'type' => 'select', 'section' => 'Parentage', 'help' => 'Set automatically when both parents are known.'],
+            ['key' => 'cross_breeds', 'label' => 'Cross Details', 'type' => 'text', 'section' => 'Parentage', 'help' => 'For a crossbreed, for example Beetal × Teddy.'],
+            ['key' => 'age_category', 'label' => 'Age Category', 'type' => 'select', 'section' => 'Classification', 'help' => 'Worked out from the birth date if left empty.'],
+            ['key' => 'animal_purpose', 'label' => 'Animal Purpose', 'type' => 'select', 'section' => 'Classification'],
+            ['key' => 'animal_class', 'label' => 'Goat Category', 'type' => 'select', 'section' => 'Classification', 'help' => 'Suggested from gender, age and purpose if left empty.'],
+            ['key' => 'repro_status', 'label' => 'Female Status', 'type' => 'select', 'section' => 'Classification', 'help' => 'Reproductive status. Female goats only.'],
+            ['key' => 'kid_stage', 'label' => 'Kid Stage', 'type' => 'select', 'section' => 'Classification'],
             ['key' => 'lifecycle_status', 'label' => 'Lifecycle Status', 'type' => 'select', 'section' => 'Status'],
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],
             ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing and weight', 'required' => true],
@@ -62,7 +75,7 @@ final class FieldCatalog
     public static function seed(string $orgId): void
     {
         foreach (self::defaults() as $i => $d) {
-            $options = self::OPTIONS[$d['key']] ?? null;
+            $options = self::options()[$d['key']] ?? null;
             DB::table('field_definitions')->insertOrIgnore([
                 'id' => (string) Str::uuid(), 'org_id' => $orgId, 'entity' => 'animal', 'key' => $d['key'], 'label' => $d['label'], 'type' => $d['type'],
                 'options' => $options ? json_encode(collect($options)->map(fn ($label, $value) => ['value' => $value, 'label' => $label])->values()) : null,

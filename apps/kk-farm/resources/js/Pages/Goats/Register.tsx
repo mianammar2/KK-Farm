@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ScanLine, Tag } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Copy, ScanLine, Sparkles, Tag } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useState, type ReactNode } from 'react';
 import PhotoPicker from '../../components/PhotoPicker';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
@@ -8,11 +9,12 @@ import type { Option } from '../../types';
 type Choice = { value: string | number; label: string; next?: string; breed?: number | null; code?: string };
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
-type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[] };
+type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
+type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[] };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-export default function Register({ epc, fields, lookups, classSex, damMatings, mixedBreedId, canAssignTags, untagged }: Props) {
+export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, canAssignTags, untagged }: Props) {
     const form = useForm<Record<string, any>>({
         rfid_epc: epc ?? '',
         birth_date_is_estimate: false,
@@ -29,13 +31,30 @@ export default function Register({ epc, fields, lookups, classSex, damMatings, m
         return acc;
     }, []);
 
+    // D-046: Female Status only for females, Kid Stage only for kids.
+    const isKid = form.data.age_category === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
+    const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid);
+    const age = form.data.age_category || ageCategory(form.data.birth_date, classification);
+    const suggested = suggestCategory(form.data.sex, age, form.data.animal_purpose);
+    const category = form.data.animal_class || suggested;
+    const breedName = (lookups.breed_id ?? []).find((b) => String(b.value) === String(form.data.breed_id ?? ''))?.label;
+    const summary = [
+        category ? (isKid && form.data.kid_stage ? `${classification.kidStages[form.data.kid_stage]} ${classification.categories[category]}` : classification.categories[category]) : null,
+        breedName,
+        classification.purposes[form.data.animal_purpose],
+        form.data.sex === 'female' ? classification.statuses[form.data.repro_status] : null,
+    ].filter(Boolean).join(' · ');
     const value = (f: FieldDef) => (f.builtin ? form.data[f.key] : form.data.custom_fields[f.key]) ?? (f.type === 'yes_no' ? false : '');
     const set = (f: FieldDef, v: any) => {
         if (!f.builtin) {
             return form.setData('custom_fields', { ...form.data.custom_fields, [f.key]: v });
         }
-        if (f.key === 'sex' && classSex[form.data.animal_class] && classSex[form.data.animal_class] !== v) {
-            return form.setData((d: Record<string, any>) => ({ ...d, sex: v, animal_class: '' }));
+        if (f.key === 'sex') {
+            return form.setData((d: Record<string, any>) => ({
+                ...d, sex: v,
+                animal_class: classSex[d.animal_class] && classSex[d.animal_class] !== v ? '' : d.animal_class,
+                repro_status: v === 'female' ? d.repro_status : '',
+            }));
         }
         if (f.key === 'dam_id') {
             return form.setData((d: Record<string, any>) => ({ ...d, ...kidDefaults(d, v) }));
@@ -55,7 +74,9 @@ export default function Register({ epc, fields, lookups, classSex, damMatings, m
             return next;
         }
         next.origin = 'born_on_farm';
-        if (!d.animal_class) next.animal_class = 'kid';
+        if (!d.age_category) next.age_category = 'kid';
+        if (!d.kid_stage) next.kid_stage = 'newborn';
+        if (!d.animal_class && d.sex) next.animal_class = d.sex === 'male' ? 'male_kid' : 'female_kid';
         if (!mating) return next;
         if (!d.sire_id && mating.sireId) next.sire_id = mating.sireId;
         if (!d.birth_date) next.birth_date = mating.expected && mating.expected < TODAY ? mating.expected : TODAY;
@@ -171,12 +192,17 @@ export default function Register({ epc, fields, lookups, classSex, damMatings, m
                             <div className="mb-3"><Note>No mating is recorded for this doe in the last months. Choose the sire yourself.</Note></div>
                         ) : null}
                         <div className="grid gap-x-4 gap-y-3 md:grid-cols-2">
-                            {section.fields.map((f) => (
+                            {section.fields.filter((f) => !hidden(f)).map((f) => (
                                 <div key={f.key} className={f.type === 'long_text' ? 'md:col-span-2' : undefined}>
-                                    <Field label={`${f.label}${f.required ? ' *' : ''}`} error={error(f)} hint={f.help ?? undefined}>{control(f)}</Field>
+                                    <Field
+                                        label={`${f.label}${f.required ? ' *' : ''}`}
+                                        error={error(f)}
+                                        hint={f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
+                                    >{control(f)}</Field>
                                 </div>
                             ))}
                         </div>
+                        {section.name === 'Classification' ? <GeneratedClassification text={summary} /> : null}
                     </Panel>
                 ))}
                 <div className="flex flex-wrap items-center gap-2">
@@ -200,5 +226,42 @@ export default function Register({ epc, fields, lookups, classSex, damMatings, m
                 </Panel>
             ) : null}
         </>
+    );
+}
+
+/** Same rules as App\Support\Classification::ageCategory (months from the birth date). */
+function ageCategory(birth: string | undefined, c: { growerFrom: number; adultFrom: number }): string | null {
+    if (!birth) return null;
+    const b = new Date(birth);
+    const now = new Date();
+    const months = (now.getFullYear() - b.getFullYear()) * 12 + (now.getMonth() - b.getMonth()) - (now.getDate() < b.getDate() ? 1 : 0);
+    return months < c.growerFrom ? 'kid' : months < c.adultFrom ? 'grower' : 'adult';
+}
+
+/** Same rules as App\Support\Classification::suggestCategory. */
+function suggestCategory(sex: string | undefined, age: string | null, purpose: string | undefined): string | null {
+    if ((sex !== 'male' && sex !== 'female') || !age) return null;
+    const m = sex === 'male';
+    if (age === 'kid') return m ? 'male_kid' : 'female_kid';
+    if (purpose === 'fattening' && m) return 'fattening_male';
+    if (age === 'grower') return purpose === 'breeding' || purpose === 'replacement' ? (m ? 'replacement_male' : 'replacement_female') : m ? 'growing_male' : 'growing_female';
+    if (purpose === 'replacement') return m ? 'replacement_male' : 'replacement_female';
+    if (!purpose || purpose === 'breeding' || purpose === 'milk') return m ? 'breeding_male' : 'breeding_female';
+    return m ? 'growing_male' : 'growing_female';
+}
+
+function GeneratedClassification({ text }: { text: string }) {
+    const [copied, setCopied] = useState(false);
+    if (!text) return null;
+    return (
+        <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-2xl bg-cobalt-900 p-4 text-white">
+            <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-turq-400 uppercase"><Sparkles size={14} aria-hidden /> Generated classification</div>
+            <AnimatePresence mode="wait">
+                <motion.p key={text} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }} className="mt-1 text-lg font-bold leading-snug">{text}</motion.p>
+            </AnimatePresence>
+            <button type="button" onClick={() => { void navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold active:scale-95">
+                <Copy size={14} aria-hidden /> {copied ? 'Copied' : 'Copy classification'}
+            </button>
+        </motion.div>
     );
 }

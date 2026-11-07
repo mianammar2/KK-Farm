@@ -2,10 +2,11 @@ import { Head, Link, usePage, usePoll } from '@inertiajs/react';
 import { useMemo } from 'react';
 import Chart, { axis } from '../components/Chart';
 import HerdWall, { type WallPen } from '../components/HerdWall';
+import { motion } from 'motion/react';
 import { Empty, GoatLabel, HealthChip, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 
-type Props = {
+type Props = { herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
     wall: WallPen[];
     attention: Array<{ id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: Health; title: string; on: string }>;
@@ -16,7 +17,7 @@ type Props = {
     finance: Array<{ month: string; in: number; out: number }> | null;
 };
 
-export default function Dashboard({ stats, wall, attention, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ stats, herd, wall, attention, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     usePoll(10000, { only: ['stats', 'wall', 'attention', 'activity'] });
 
@@ -62,6 +63,22 @@ export default function Dashboard({ stats, wall, attention, kiddings, activity, 
                 <Stat label="Care overdue" value={stats.overdueCare} note="Vaccine or deworming" tone={stats.overdueCare ? 'alert' : undefined} />
                 <Stat label="Tasks today" value={`${stats.tasksDone}/${stats.tasksTotal}`} note={`Feeding ${stats.feedingDone}/${stats.feedingTotal}`} />
             </StatRow>
+
+            {/* CEO categories (D-046). Tiles animate in one after another. */}
+            <Panel title="Herd by category" className="mt-4">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                    {herd.map((h, i) => (
+                        <motion.div
+                            key={h.key}
+                            initial={{ opacity: 0, y: 10, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: i * 0.03, type: 'spring', stiffness: 380, damping: 28 }}
+                            className={`rounded-2xl p-3 ${h.key === 'total' ? 'bg-cobalt-900 text-white' : (h.key === 'sick' || h.key === 'treatment') && h.value ? 'bg-crit-100' : 'bg-glaze'}`}
+                        >
+                            <div className={`text-2xl font-bold tabular-nums ${h.key === 'total' ? 'text-white' : 'text-cobalt-900'}`}>{h.value}</div>
+                            <div className={`text-xs font-semibold leading-tight ${h.key === 'total' ? 'text-cobalt-200' : 'text-ink-soft'}`}>{h.label}</div>
+                        </motion.div>
+                    ))}
+                </div>
+            </Panel>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
                 <Panel title="Herd wall" description="All goats on the farm, by pen">

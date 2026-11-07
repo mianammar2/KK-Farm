@@ -98,15 +98,21 @@ class GoatRegistrationTest extends TestCase
     public function test_the_register_form_has_the_workbook_fields_in_order_with_their_dropdown_options(): void
     {
         $this->actingAs($this->user('caretaker'))->get('/goats/register?epc='.self::EPC)->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 22)
+            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 27)
                 ->where('fields.0.key', 'rfid_epc')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'tag_id')
                 ->where('fields', function ($fields) {
                     $by = collect($fields)->keyBy('key');
                     $labels = fn (string $key) => collect($by[$key]['options'])->pluck('label')->all();
                     $this->assertSame(['Female', 'Male'], $labels('sex'));
                     $this->assertSame(['Farm Born', 'Purchased', 'Transferred In'], $labels('origin'));
-                    $this->assertSame(['Kid', 'Replacement Doe', 'Breeding Doe', 'Breeding Buck', 'Wether', 'Other'], $labels('animal_class'));
-                    $this->assertSame(['N/A', 'Open', 'In Heat', 'Bred', 'Pregnant', 'Lactating', 'Dry', 'Postpartum'], $labels('repro_status'));
+                    $this->assertSame([
+                        'Breeding Male (Buck) (Nasli Bakra)', 'Breeding Female (Doe) (Nasli Bakri)', 'Replacement Breeding Male (Future Breeder Bakra)',
+                        'Replacement Breeding Female (Future Breeder Bakri)', 'Male Kid (Nar Bacha)', 'Female Kid (Mada Bachi)', 'Growing Male Goat (Growing Bakra)',
+                        'Growing Female Goat (Growing Bakri)', 'Fattening Male Goat (Qurbani / Fattening Bakra)', 'Castrated Male (Wether) (Khassi Bakra)', 'Cull Goat (Sale / Rejected Goat)',
+                    ], $labels('animal_class'));
+                    $this->assertCount(14, $labels('repro_status'));
+                    $this->assertSame(['Kid', 'Grower', 'Adult'], $labels('age_category'));
+                    $this->assertSame(['Newborn', 'Suckling', 'Weaned', 'Breeding Selected', 'Sale Selected', 'Orphan'], $labels('kid_stage'));
                     $this->assertSame(['Active', 'Sold', 'Dead', 'Culled', 'Transferred'], $labels('lifecycle_status'));
                     $this->assertSame(['Healthy', 'Monitor', 'Sick', 'Quarantine', 'Recovering'], $labels('health_flag'));
                     $this->assertSame(['KK Farms', 'Partner', 'Consignment', 'Other'], $labels('ownership'));
@@ -122,14 +128,14 @@ class GoatRegistrationTest extends TestCase
         $sire = $this->goat('SIRE-1', 'male');
 
         $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload([
-            'rfid_epc' => strtolower(self::EPC), 'from_scan' => true, 'tag_id' => 'KK-501', 'name' => 'Noor', 'animal_class' => 'replacement_doe',
+            'rfid_epc' => strtolower(self::EPC), 'from_scan' => true, 'tag_id' => 'KK-501', 'name' => 'Noor', 'animal_class' => 'replacement_female',
             'repro_status' => 'pregnant', 'health_flag' => 'monitor', 'ownership' => 'partner', 'source_farm' => 'Cholistan Farm', 'acquired_on' => now()->subMonth()->toDateString(),
             'sire_id' => $sire->id, 'dam_id' => $dam->id, 'birth_weight_kg' => 3.2, 'latest_weight_kg' => 31.5, 'purchase_cost_pkr' => 18500, 'notes' => 'Calm.',
         ]))->assertSessionHasNoErrors()->assertRedirect();
 
         $goat = Animal::where('farm_number', 'KK-501')->firstOrFail();
         $this->assertSame('Noor', $goat->name);
-        $this->assertSame(['replacement_doe', 'pregnant', 'monitor', 'partner', 'Cholistan Farm'], [$goat->animal_class, $goat->repro_status, $goat->health_flag, $goat->ownership, $goat->source_farm]);
+        $this->assertSame(['replacement_female', 'pregnant', 'monitor', 'partner', 'Cholistan Farm'], [$goat->animal_class, $goat->repro_status, $goat->health_flag, $goat->ownership, $goat->source_farm]);
         $this->assertSame('watch', $goat->health_status, 'Monitor maps to the existing watch state');
         $this->assertSame('pregnant', $goat->repro_state);
         $this->assertSame(1850000, $goat->purchase_cost_minor, 'Money is stored in paisa');
@@ -166,7 +172,8 @@ class GoatRegistrationTest extends TestCase
     {
         $this->assertSame('BT', $this->breed->code);
         $this->assertSame('DDP', Breed::create(['name' => 'Dera Din Panah', 'default_gestation_days' => 150])->code);
-        $this->assertSame('BA', Breed::create(['name' => 'Barbari', 'default_gestation_days' => 150])->code);
+        $this->assertSame('BB', Breed::create(['name' => 'Barbari', 'default_gestation_days' => 150])->code);
+        $this->assertSame('BA', Breed::create(['name' => 'Balochi', 'default_gestation_days' => 150])->code);
         $this->assertSame('BA2', Breed::create(['name' => 'Bannu', 'default_gestation_days' => 150])->code, 'BA is taken, so the next free code is used');
     }
 
@@ -221,13 +228,12 @@ class GoatRegistrationTest extends TestCase
     {
         $caretaker = $this->user('caretaker');
 
-        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'male', 'animal_class' => 'breeding_doe']))->assertSessionHasErrors(['animal_class']);
-        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'male', 'animal_class' => 'replacement_doe']))->assertSessionHasErrors(['animal_class']);
-        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'female', 'animal_class' => 'wether']))->assertSessionHasErrors(['animal_class']);
-        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'female', 'animal_class' => 'breeding_buck']))->assertSessionHasErrors(['animal_class']);
+        foreach ([['male', 'breeding_female'], ['male', 'replacement_female'], ['male', 'female_kid'], ['female', 'wether'], ['female', 'breeding_male'], ['female', 'fattening_male']] as [$sex, $class]) {
+            $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => $sex, 'animal_class' => $class]))->assertSessionHasErrors(['animal_class']);
+        }
         $this->assertSame(0, Animal::count());
 
-        foreach ([['male', 'breeding_buck'], ['male', 'wether'], ['male', 'kid'], ['female', 'breeding_doe'], ['female', 'kid'], ['female', 'other']] as [$sex, $class]) {
+        foreach ([['male', 'breeding_male'], ['male', 'wether'], ['male', 'male_kid'], ['female', 'breeding_female'], ['female', 'female_kid'], ['female', 'cull']] as [$sex, $class]) {
             $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => $sex, 'animal_class' => $class]))->assertSessionHasNoErrors();
         }
         $this->assertSame(6, Animal::count());
@@ -247,9 +253,9 @@ class GoatRegistrationTest extends TestCase
         $sire = $this->goat('SIRE-1', 'male');
         $mating = $this->mating($dam, $sire, 150);
 
-        $kid = ['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'birth_date' => now()->toDateString(), 'animal_class' => 'kid'];
+        $kid = ['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'birth_date' => now()->toDateString(), 'animal_class' => 'female_kid'];
         $this->actingAs($caretaker)->post('/goats', $this->payload($kid))->assertSessionHasNoErrors();
-        $this->actingAs($caretaker)->post('/goats', $this->payload($kid + ['sex' => 'male']))->assertSessionHasNoErrors();
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'male', 'animal_class' => 'male_kid'] + $kid))->assertSessionHasNoErrors();
 
         $kids = Animal::whereNotNull('birth_kidding_id')->get();
         $this->assertCount(2, $kids);
@@ -362,6 +368,74 @@ class GoatRegistrationTest extends TestCase
             ->where('goat.dam.id', null)->where('goat.dam.number', 'DAM-9'));
     }
 
+    public function test_age_and_goat_category_follow_from_birth_date_gender_and_purpose_when_left_empty(): void
+    {
+        $manager = $this->user('manager');
+        $cases = [
+            ['KID-M', 'male', now()->subMonths(2), null, 'kid', 'male_kid'],
+            ['GRW-F', 'female', now()->subMonths(8), 'replacement', 'grower', 'replacement_female'],
+            ['ADL-F', 'female', now()->subYears(2), 'breeding', 'adult', 'breeding_female'],
+            ['FAT-M', 'male', now()->subMonths(9), 'fattening', 'grower', 'fattening_male'],
+        ];
+        foreach ($cases as [$tag, $sex, $born, $purpose]) {
+            $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => $tag, 'sex' => $sex, 'birth_date' => $born->toDateString(), 'animal_purpose' => $purpose]))->assertSessionHasNoErrors();
+        }
+        foreach ($cases as [$tag, , , , $age, $category]) {
+            $goat = Animal::where('farm_number', $tag)->sole();
+            $this->assertSame([$age, $category], [$goat->age_category, $goat->animal_class], $tag);
+        }
+    }
+
+    public function test_female_status_is_only_for_female_goats(): void
+    {
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['sex' => 'male', 'repro_status' => 'pregnant']))->assertSessionHasErrors(['repro_status']);
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['sex' => 'female', 'repro_status' => 'pregnant']))->assertSessionHasNoErrors();
+        $this->assertSame('pregnant', Animal::sole()->repro_state, 'the older pregnancy field stays in step');
+    }
+
+    public function test_the_goat_page_shows_the_generated_classification(): void
+    {
+        $manager = $this->user('manager');
+        $mc = Breed::create(['name' => 'Makhi Cheeni (Beetal Variety)', 'default_gestation_days' => 150]);
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'MC-1', 'breed_id' => $mc->id, 'animal_purpose' => 'breeding', 'animal_class' => 'breeding_female', 'repro_status' => 'pregnant']));
+        $goat = Animal::where('farm_number', 'MC-1')->sole();
+
+        $this->actingAs($manager)->get("/goats/{$goat->id}")->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('goat.classification', 'Breeding Female (Doe) · Makhi Cheeni (Beetal Variety) · Breeding · Pregnant'));
+    }
+
+    public function test_breed_purity_is_set_from_the_parents_breeds(): void
+    {
+        $manager = $this->user('manager');
+        $teddy = Breed::create(['name' => 'Teddy', 'default_gestation_days' => 150]);
+        $sire = $this->goat('SIRE-1', 'male');
+        $dam = Animal::create(['farm_number' => 'DAM-1', 'sex' => 'female', 'breed_id' => $teddy->id, 'birth_date' => now()->subYears(2), 'origin' => 'purchased', 'pen_id' => $this->pen->id]);
+        $pureDam = $this->goat('DAM-2', 'female');
+
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'X-1', 'sire_id' => $sire->id, 'dam_id' => $dam->id]))->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'P-1', 'sire_id' => $sire->id, 'dam_id' => $pureDam->id]))->assertSessionHasNoErrors();
+
+        $cross = Animal::where('farm_number', 'X-1')->sole();
+        $this->assertSame(['first_cross', 'Beetal × Teddy'], [$cross->breed_purity, $cross->cross_breeds]);
+        $this->assertSame('pure', Animal::where('farm_number', 'P-1')->value('breed_purity'));
+    }
+
+    public function test_the_dashboard_counts_the_herd_by_ceo_category(): void
+    {
+        $manager = $this->user('ceo');
+        foreach ([['B-1', 'male', 'breeding_male', null], ['B-2', 'female', 'breeding_female', 'pregnant'], ['B-3', 'female', 'breeding_female', 'ready'], ['K-1', 'male', 'male_kid', null]] as [$tag, $sex, $class, $status]) {
+            $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => $tag, 'sex' => $sex, 'animal_class' => $class, 'repro_status' => $status]))->assertSessionHasNoErrors();
+        }
+
+        $this->actingAs($manager)->get('/')->assertInertia(fn (AssertableInertia $page) => $page->where('herd', function ($herd) {
+            $v = collect($herd)->pluck('value', 'key');
+            $this->assertSame([4, 1, 2, 1, 1, 1], [$v['total'], $v['breeding_males'], $v['breeding_females'], $v['pregnant'], $v['ready'], $v['male_kids']]);
+            $this->assertCount(12, $herd);
+
+            return true;
+        }));
+    }
+
     public function test_the_owner_can_add_a_custom_field_and_it_is_used_on_the_form_and_saved_with_the_goat(): void
     {
         $owner = $this->user('ceo');
@@ -371,7 +445,7 @@ class GoatRegistrationTest extends TestCase
         $this->assertFalse($field->builtin);
         $this->assertSame(['horned', 'polled'], array_column($field->options, 'value'));
 
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 23)->where('fields.22.key', 'horn_status')->where('fields.22.required', true));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 28)->where('fields.27.key', 'horn_status')->where('fields.27.required', true));
 
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasErrors(['custom_fields.horn_status']);
         $this->actingAs($owner)->post('/goats', $this->payload(['custom_fields' => ['horn_status' => 'bogus']]))->assertSessionHasErrors(['custom_fields.horn_status']);
@@ -390,7 +464,7 @@ class GoatRegistrationTest extends TestCase
 
         $class->refresh();
         $this->assertSame('Class', $class->label);
-        $this->assertSame(['kid', 'replacement_doe', 'breeding_doe', 'breeding_buck', 'wether', 'other', 'weaner'], array_column($class->options, 'value'));
+        $this->assertSame([...array_keys(\App\Support\Classification::CATEGORIES), 'weaner'], array_column($class->options, 'value'));
     }
 
     public function test_the_fields_needed_to_register_a_goat_cannot_be_switched_off_and_custom_fields_can(): void
@@ -404,7 +478,7 @@ class GoatRegistrationTest extends TestCase
         $this->actingAs($owner)->post("/settings/fields/{$note->id}", ['label' => 'Coat note', 'active' => false, 'required' => true])->assertSessionHasNoErrors();
 
         // Switched off means hidden and no longer required.
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 22));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 27));
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasNoErrors();
     }
 
@@ -421,7 +495,7 @@ class GoatRegistrationTest extends TestCase
         $other = Organization::create(['name' => 'Other Farm', 'slug' => 'other-farm']);
         $outsider = $this->user('ceo', $other);
 
-        $this->assertSame(22, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
-        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 22)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
+        $this->assertSame(27, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
+        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 27)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
     }
 }

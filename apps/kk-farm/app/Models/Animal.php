@@ -13,6 +13,12 @@ class Animal extends Model
 
     protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
 
+    /** "Breeding Female (Doe) · Makhi Cheeni (Beetal Variety) · Breeding · Pregnant" (D-046) */
+    public function classification(): string
+    {
+        return \App\Support\Classification::summary($this->animal_class, $this->breed?->name, $this->animal_purpose, $this->repro_status, $this->kid_stage, $this->sex);
+    }
+
     public function breed()
     {
         return $this->belongsTo(Breed::class);

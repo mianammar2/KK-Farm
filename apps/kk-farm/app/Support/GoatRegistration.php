@@ -117,6 +117,11 @@ final class GoatRegistration
         }
         self::assertParents($data);
 
+        // D-046: what is not chosen follows from what is known.
+        $data['age_category'] = ($data['age_category'] ?? null) ?: Classification::ageCategory($data['birth_date'] ?? null);
+        $data['animal_class'] = ($data['animal_class'] ?? null) ?: Classification::suggestCategory($data['sex'] ?? null, $data['age_category'], $data['animal_purpose'] ?? null);
+        [$data['breed_purity'], $data['cross_breeds']] = self::purity($data);
+
         return DB::transaction(function () use ($data, $user, $epc, $via, $mating) {
             $lifecycle = $data['lifecycle_status'] ?? 'active';
             [$status, $exitReason] = self::LIFECYCLE[$lifecycle] ?? ['active', null];
@@ -139,8 +144,13 @@ final class GoatRegistration
                 'acquired_on' => $data['acquired_on'] ?? null,
                 'source_farm' => $data['source_farm'] ?? null,
                 'animal_class' => $data['animal_class'] ?? null,
+                'age_category' => $data['age_category'] ?? null,
+                'animal_purpose' => $data['animal_purpose'] ?? null,
+                'kid_stage' => $data['kid_stage'] ?? null,
+                'breed_purity' => $data['breed_purity'] ?? null,
+                'cross_breeds' => $data['cross_breeds'] ?? null,
                 'repro_status' => $repro,
-                'repro_state' => in_array($repro, ['pregnant', 'lactating'], true) ? $repro : null,
+                'repro_state' => Classification::LEGACY_REPRO[$repro] ?? null,
                 'health_flag' => $data['health_flag'] ?? null,
                 'health_status' => self::HEALTH[$data['health_flag'] ?? 'healthy'] ?? 'healthy',
                 'ownership' => $data['ownership'] ?? null,
@@ -181,6 +191,32 @@ final class GoatRegistration
 
             return $animal;
         });
+    }
+
+    /**
+     * Breed purity from the parents' breeds when both are registered: same breed is Purebred, different breeds
+     * a first cross ("Beetal × Teddy"). Whatever the user chose is kept.
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    private static function purity(array $data): array
+    {
+        $purity = $data['breed_purity'] ?? null;
+        $cross = $data['cross_breeds'] ?? null;
+        if (empty($data['sire_id']) || empty($data['dam_id'])) {
+            return [$purity, $cross];
+        }
+        $breeds = Animal::with('breed')->whereIn('id', [$data['sire_id'], $data['dam_id']])->get()->keyBy('id');
+        $sire = $breeds[$data['sire_id']]->breed ?? null;
+        $dam = $breeds[$data['dam_id']]->breed ?? null;
+        if (! $sire || ! $dam) {
+            return [$purity, $cross];
+        }
+        if ($sire->id === $dam->id) {
+            return [$purity ?: 'pure', $cross];
+        }
+
+        return [$purity ?: 'first_cross', $cross ?: "{$sire->name} × {$dam->name}"];
     }
 
     /** @return array{0: ?string, 1: ?string} [registered parent id, unregistered parent tag] */
@@ -270,16 +306,21 @@ final class GoatRegistration
         }
     }
 
-    /** Animal classes that only fit one sex. Kid and Other fit both; classes a farm adds are not restricted. */
-    public const CLASS_SEX = ['replacement_doe' => 'female', 'breeding_doe' => 'female', 'breeding_buck' => 'male', 'wether' => 'male'];
+    /** Goat categories that only fit one sex (D-046). Cull fits both; categories a farm adds are not restricted. */
+    public static function classSex(): array
+    {
+        return Classification::categorySex();
+    }
 
     private static function assertParents(array $data): void
     {
-        $needs = self::CLASS_SEX[$data['animal_class'] ?? ''] ?? null;
+        $needs = self::classSex()[$data['animal_class'] ?? ''] ?? null;
         if ($needs && $needs !== ($data['sex'] ?? null)) {
-            throw ValidationException::withMessages(['animal_class' => $needs === 'female'
-                ? 'A doe class is only for female goats. For a male, choose Breeding Buck, Wether or Kid.'
-                : 'Breeding Buck and Wether are only for male goats. For a female, choose Replacement Doe, Breeding Doe or Kid.']);
+            $label = Classification::CATEGORIES[$data['animal_class']][0];
+            throw ValidationException::withMessages(['animal_class' => "$label is only for ".($needs === 'female' ? 'female' : 'male').' goats.']);
+        }
+        if (! empty($data['repro_status']) && ($data['sex'] ?? null) === 'male') {
+            throw ValidationException::withMessages(['repro_status' => 'Female Status is only recorded for female goats.']);
         }
 
         if (! empty($data['sire_id']) && Animal::whereKey($data['sire_id'])->value('sex') !== 'male') {
