@@ -13,10 +13,22 @@ class Animal extends Model
 
     protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
 
+    /** Age category: chosen by hand, or worked out from the birth date today (D-047). */
+    public function effectiveAge(): ?string
+    {
+        return $this->age_category ?: \App\Support\Classification::ageCategory($this->birth_date);
+    }
+
+    /** Goat category: chosen by hand, or suggested from gender, age today and purpose (D-047). */
+    public function effectiveCategory(): ?string
+    {
+        return $this->animal_class ?: \App\Support\Classification::suggestCategory($this->sex, $this->effectiveAge(), $this->animal_purpose);
+    }
+
     /** "Breeding Female (Doe) · Makhi Cheeni (Beetal Variety) · Breeding · Pregnant" (D-046) */
     public function classification(): string
     {
-        return \App\Support\Classification::summary($this->animal_class, $this->breed?->name, $this->animal_purpose, $this->repro_status, $this->kid_stage, $this->sex);
+        return \App\Support\Classification::summary($this->effectiveCategory(), $this->breed?->name, $this->animal_purpose, $this->repro_status, $this->kid_stage, $this->sex);
     }
 
     public function breed()

@@ -79,27 +79,33 @@ class DashboardController extends Controller
      */
     private function herdCategories(): array
     {
-        $r = DB::table('animals')->where('status', 'active')->selectRaw(<<<'SQL'
-            count(*) AS total,
-            count(*) FILTER (WHERE animal_class = 'breeding_male') AS breeding_males,
-            count(*) FILTER (WHERE animal_class = 'breeding_female') AS breeding_females,
-            count(*) FILTER (WHERE sex = 'female' AND (repro_status IN ('pregnant', 'expected_kidding') OR repro_state = 'pregnant')) AS pregnant,
-            count(*) FILTER (WHERE sex = 'female' AND repro_status = 'ready') AS ready,
-            count(*) FILTER (WHERE animal_class = 'male_kid' OR (animal_class IS NULL AND sex = 'male' AND age_category = 'kid')) AS male_kids,
-            count(*) FILTER (WHERE animal_class = 'female_kid' OR (animal_class IS NULL AND sex = 'female' AND age_category = 'kid')) AS female_kids,
-            count(*) FILTER (WHERE animal_class IN ('growing_male', 'growing_female', 'replacement_male', 'replacement_female')) AS growing,
-            count(*) FILTER (WHERE sex = 'female' AND (repro_status IN ('lactating', 'nursing') OR repro_state = 'lactating')) AS lactating,
-            count(*) FILTER (WHERE health_flag = 'sick' OR health_status = 'critical') AS sick,
-            count(*) FILTER (WHERE health_status = 'treatment' OR health_flag = 'quarantine') AS treatment,
-            count(*) FILTER (WHERE animal_purpose = 'sale' OR animal_class IN ('fattening_male', 'cull') OR kid_stage = 'sale_selected') AS for_sale
-        SQL)->first();
+        // Worked out per goat with the live category (D-047): fine for thousands of goats, and never stale.
+        $goats = Animal::active()->get(['id', 'sex', 'birth_date', 'age_category', 'animal_class', 'animal_purpose', 'repro_status', 'repro_state', 'health_flag', 'health_status', 'kid_stage']);
+        $count = fn (callable $test) => $goats->filter($test)->count();
+        $cat = fn (Animal $a) => $a->effectiveCategory();
+        $female = fn (Animal $a) => $a->sex === 'female';
+
+        $values = [
+            'total' => $goats->count(),
+            'breeding_males' => $count(fn ($a) => $cat($a) === 'breeding_male'),
+            'breeding_females' => $count(fn ($a) => $cat($a) === 'breeding_female'),
+            'pregnant' => $count(fn ($a) => $female($a) && (in_array($a->repro_status, ['pregnant', 'expected_kidding'], true) || $a->repro_state === 'pregnant')),
+            'ready' => $count(fn ($a) => $female($a) && $a->repro_status === 'ready'),
+            'male_kids' => $count(fn ($a) => $cat($a) === 'male_kid'),
+            'female_kids' => $count(fn ($a) => $cat($a) === 'female_kid'),
+            'growing' => $count(fn ($a) => in_array($cat($a), ['growing_male', 'growing_female', 'replacement_male', 'replacement_female'], true)),
+            'lactating' => $count(fn ($a) => $female($a) && (in_array($a->repro_status, ['lactating', 'nursing'], true) || $a->repro_state === 'lactating')),
+            'sick' => $count(fn ($a) => $a->health_flag === 'sick' || $a->health_status === 'critical'),
+            'treatment' => $count(fn ($a) => $a->health_status === 'treatment' || $a->health_flag === 'quarantine'),
+            'for_sale' => $count(fn ($a) => $a->animal_purpose === 'sale' || in_array($cat($a), ['fattening_male', 'cull'], true) || $a->kid_stage === 'sale_selected'),
+        ];
 
         return collect([
             'total' => 'Total Goats', 'breeding_males' => 'Breeding Male Goats', 'breeding_females' => 'Breeding Female Goats',
             'pregnant' => 'Pregnant Females', 'ready' => 'Ready for Breeding', 'male_kids' => 'Male Kids', 'female_kids' => 'Female Kids',
             'growing' => 'Growing Goats', 'lactating' => 'Lactating Females', 'sick' => 'Sick Goats', 'treatment' => 'Goats Under Treatment',
             'for_sale' => 'Goats Ready for Sale',
-        ])->map(fn (string $label, string $key) => ['key' => $key, 'label' => $label, 'value' => (int) $r->{$key}])->values()->all();
+        ])->map(fn (string $label, string $key) => ['key' => $key, 'label' => $label, 'value' => $values[$key]])->values()->all();
     }
 
     /** @return array<int, array{month: string, in: float, out: float}> */

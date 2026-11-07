@@ -117,9 +117,8 @@ final class GoatRegistration
         }
         self::assertParents($data);
 
-        // D-046: what is not chosen follows from what is known.
-        $data['age_category'] = ($data['age_category'] ?? null) ?: Classification::ageCategory($data['birth_date'] ?? null);
-        $data['animal_class'] = ($data['animal_class'] ?? null) ?: Classification::suggestCategory($data['sex'] ?? null, $data['age_category'], $data['animal_purpose'] ?? null);
+        // D-047: age and category left empty are not saved: they are worked out from the birth date whenever they
+        // are shown, so a kid becomes a grower and an adult by itself. Breed purity does not change, so it is saved.
         [$data['breed_purity'], $data['cross_breeds']] = self::purity($data);
 
         return DB::transaction(function () use ($data, $user, $epc, $via, $mating) {

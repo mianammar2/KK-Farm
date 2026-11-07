@@ -382,8 +382,36 @@ class GoatRegistrationTest extends TestCase
         }
         foreach ($cases as [$tag, , , , $age, $category]) {
             $goat = Animal::where('farm_number', $tag)->sole();
-            $this->assertSame([$age, $category], [$goat->age_category, $goat->animal_class], $tag);
+            $this->assertSame([$age, $category], [$goat->effectiveAge(), $goat->effectiveCategory()], $tag);
+            $this->assertNull($goat->animal_class, 'an automatic category is not saved, so it can never go stale');
         }
+    }
+
+    public function test_a_kid_grows_into_a_grower_and_an_adult_by_itself_with_the_farms_age_boundaries(): void
+    {
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['tag_id' => 'KID-1', 'sex' => 'female', 'birth_date' => now()->subMonths(2)->toDateString()]));
+        $kid = Animal::where('farm_number', 'KID-1')->sole();
+        $this->assertSame(['kid', 'female_kid'], [$kid->effectiveAge(), $kid->effectiveCategory()]);
+
+        $this->travel(2)->months();
+        $this->assertSame(['grower', 'growing_female'], [$kid->effectiveAge(), $kid->effectiveCategory()], 'KK Farms default: grower from 3 months');
+        $this->travel(9)->months();
+        $this->assertSame(['adult', 'breeding_female'], [$kid->effectiveAge(), $kid->effectiveCategory()], 'adult from 12 months');
+    }
+
+    public function test_the_owner_sets_the_farms_age_boundaries(): void
+    {
+        $owner = $this->user('ceo');
+        $this->actingAs($owner)->post('/goats', $this->payload(['tag_id' => 'G-1', 'birth_date' => now()->subMonths(5)->toDateString()]));
+        $goat = Animal::where('farm_number', 'G-1')->sole();
+        $this->assertSame('grower', $goat->effectiveAge());
+
+        $this->actingAs($owner)->post('/settings/ages', ['grower_from_months' => 6, 'adult_from_months' => 18])->assertSessionHasNoErrors();
+        \App\Support\Classification::forgetBoundaries();
+        $this->assertSame('kid', $goat->fresh()->effectiveAge());
+
+        $this->actingAs($owner)->post('/settings/ages', ['grower_from_months' => 10, 'adult_from_months' => 8])->assertSessionHasErrors(['adult_from_months']);
+        $this->actingAs($this->user('manager'))->post('/settings/ages', ['grower_from_months' => 2, 'adult_from_months' => 9])->assertForbidden();
     }
 
     public function test_female_status_is_only_for_female_goats(): void
@@ -426,10 +454,12 @@ class GoatRegistrationTest extends TestCase
         foreach ([['B-1', 'male', 'breeding_male', null], ['B-2', 'female', 'breeding_female', 'pregnant'], ['B-3', 'female', 'breeding_female', 'ready'], ['K-1', 'male', 'male_kid', null]] as [$tag, $sex, $class, $status]) {
             $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => $tag, 'sex' => $sex, 'animal_class' => $class, 'repro_status' => $status]))->assertSessionHasNoErrors();
         }
+        // A young goat without a chosen category is counted from its age.
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'K-2', 'sex' => 'male', 'birth_date' => now()->subMonth()->toDateString()]))->assertSessionHasNoErrors();
 
         $this->actingAs($manager)->get('/')->assertInertia(fn (AssertableInertia $page) => $page->where('herd', function ($herd) {
             $v = collect($herd)->pluck('value', 'key');
-            $this->assertSame([4, 1, 2, 1, 1, 1], [$v['total'], $v['breeding_males'], $v['breeding_females'], $v['pregnant'], $v['ready'], $v['male_kids']]);
+            $this->assertSame([5, 1, 2, 1, 1, 2], [$v['total'], $v['breeding_males'], $v['breeding_females'], $v['pregnant'], $v['ready'], $v['male_kids']]);
             $this->assertCount(12, $herd);
 
             return true;

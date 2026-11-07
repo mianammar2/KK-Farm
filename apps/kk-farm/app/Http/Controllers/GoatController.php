@@ -62,7 +62,7 @@ class GoatController extends Controller
             'classification' => [
                 'categories' => array_map(fn (array $c) => $c[0], Classification::CATEGORIES),
                 'statuses' => Classification::FEMALE_STATUSES, 'purposes' => Classification::PURPOSES, 'kidStages' => Classification::KID_STAGES,
-                'growerFrom' => Classification::GROWER_FROM_MONTHS, 'adultFrom' => Classification::ADULT_FROM_MONTHS,
+                'growerFrom' => Classification::boundaries()[0], 'adultFrom' => Classification::boundaries()[1],
             ],
             // D-042: for each doe, the latest mating a kid could come from, so choosing the dam fills in the sire.
             'damMatings' => Mating::with('sire')->whereIn('status', ['open', 'pregnant', 'kidded'])->where('mated_on', '>=', now()->subDays(GoatRegistration::GESTATION_WINDOW[1] + 30))

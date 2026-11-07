@@ -39,10 +39,33 @@ final class Classification
 
     public const AGE_CATEGORIES = ['kid' => 'Kid', 'grower' => 'Grower', 'adult' => 'Adult'];
 
-    /** Months at which a goat counts as a grower, then an adult. Planning defaults; the farm may adjust them. */
-    public const GROWER_FROM_MONTHS = 4;
+    /** Default months at which a goat counts as a grower, then an adult (KK Farms). Each farm can change them. */
+    public const GROWER_FROM_MONTHS = 3;
 
     public const ADULT_FROM_MONTHS = 12;
+
+    /** @var array<string, array{0: int, 1: int}> */
+    private static array $cache = [];
+
+    /** @return array{0: int, 1: int} [grower from, adult from] in months, for the current organization */
+    public static function boundaries(): array
+    {
+        $orgId = Tenant::current();
+        if (! $orgId) {
+            return [self::GROWER_FROM_MONTHS, self::ADULT_FROM_MONTHS];
+        }
+
+        return self::$cache[$orgId] ??= (function () use ($orgId) {
+            $org = \App\Models\Organization::find($orgId);
+
+            return [(int) ($org->grower_from_months ?? self::GROWER_FROM_MONTHS), (int) ($org->adult_from_months ?? self::ADULT_FROM_MONTHS)];
+        })();
+    }
+
+    public static function forgetBoundaries(): void
+    {
+        self::$cache = [];
+    }
 
     public const PURPOSES = ['breeding' => 'Breeding', 'replacement' => 'Replacement Breeding', 'fattening' => 'Fattening / Qurbani', 'sale' => 'Sale', 'milk' => 'Milk'];
 
@@ -75,10 +98,11 @@ final class Classification
             return null;
         }
         $months = Carbon::parse($birthDate)->diffInMonths(now());
+        [$grower, $adult] = self::boundaries();
 
         return match (true) {
-            $months < self::GROWER_FROM_MONTHS => 'kid',
-            $months < self::ADULT_FROM_MONTHS => 'grower',
+            $months < $grower => 'kid',
+            $months < $adult => 'grower',
             default => 'adult',
         };
     }

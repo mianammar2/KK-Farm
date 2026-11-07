@@ -3,13 +3,14 @@ import { Check } from 'lucide-react';
 import { Button, Field, Note, PageHeader, Panel } from '../components/ui';
 import type { SharedProps } from '../types';
 
-type Props = { breeds: Array<{ id: number; name: string; code: string; next: string; gestation: number | null; goats: number }>; matrix: Record<string, string[]>; gates: Record<string, string[]>; environment: Record<string, string> };
+type Props = { ages: { growerFrom: number; adultFrom: number }; breeds: Array<{ id: number; name: string; code: string; next: string; gestation: number | null; goats: number }>; matrix: Record<string, string[]>; gates: Record<string, string[]>; environment: Record<string, string> };
 
 const GATE_LABEL: Record<string, string> = { clinical: 'Diagnose and treat', approve_feeding_plan: 'Approve feeding plans', exit_animal: 'Record goat exits', assign_tags: 'Assign RFID tags' };
 
-export default function Settings({ breeds, matrix, gates, environment }: Props) {
+export default function Settings({ ages, breeds, matrix, gates, environment }: Props) {
     const { roles } = usePage<SharedProps>().props;
     const form = useForm({ name: '', code: '' });
+    const ageForm = useForm({ grower_from_months: ages.growerFrom, adult_from_months: ages.adultFrom });
     const roleKeys = Object.keys(roles);
     const cells = (allowed: string[]) => roleKeys.map((r) => <td key={r} className="text-center">{allowed.includes(r) ? <Check size={15} className="mx-auto text-turq-700" aria-label="Allowed" /> : <span className="text-ink-faint" aria-label="Not allowed">–</span>}</td>);
 
@@ -25,6 +26,16 @@ export default function Settings({ breeds, matrix, gates, environment }: Props) 
                             <div className="flex-1"><Field label="Add a breed" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} /></Field></div>
                             <div className="w-24"><Field label="Tag code" error={form.errors.code}><input className="field font-mono uppercase" maxLength={8} value={form.data.code} onChange={(e) => form.setData('code', e.target.value.toUpperCase())} placeholder="Auto" /></Field></div>
                             <Button type="submit" disabled={form.processing}>Add</Button>
+                        </form>
+                    </Panel>
+                    <Panel title="Age categories" description="Worked out from each goat's birth date">
+                        <form onSubmit={(e) => { e.preventDefault(); ageForm.post('/settings/ages', { preserveScroll: true }); }} className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                                <Field label="Grower from (months)" error={ageForm.errors.grower_from_months}><input className="field" type="number" min={1} max={24} inputMode="numeric" value={ageForm.data.grower_from_months} onChange={(e) => ageForm.setData('grower_from_months', Number(e.target.value))} /></Field>
+                                <Field label="Adult from (months)" error={ageForm.errors.adult_from_months}><input className="field" type="number" min={2} max={60} inputMode="numeric" value={ageForm.data.adult_from_months} onChange={(e) => ageForm.setData('adult_from_months', Number(e.target.value))} /></Field>
+                            </div>
+                            <p className="text-sm text-ink-soft">Kid: under {ageForm.data.grower_from_months} months · Grower: {ageForm.data.grower_from_months}–{ageForm.data.adult_from_months} months · Adult: {ageForm.data.adult_from_months} months and older</p>
+                            <Button type="submit" variant="secondary" disabled={ageForm.processing || !ageForm.isDirty}>Save age categories</Button>
                         </form>
                     </Panel>
                     <Panel title="Users and sign-in" description="Who can sign in, and with which role">

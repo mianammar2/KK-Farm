@@ -32,9 +32,9 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     }, []);
 
     // D-046: Female Status only for females, Kid Stage only for kids.
-    const isKid = form.data.age_category === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
-    const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid);
     const age = form.data.age_category || ageCategory(form.data.birth_date, classification);
+    const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
+    const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid);
     const suggested = suggestCategory(form.data.sex, age, form.data.animal_purpose);
     const category = form.data.animal_class || suggested;
     const breedName = (lookups.breed_id ?? []).find((b) => String(b.value) === String(form.data.breed_id ?? ''))?.label;
@@ -74,9 +74,8 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             return next;
         }
         next.origin = 'born_on_farm';
-        if (!d.age_category) next.age_category = 'kid';
+        // Age and category are left to the birth date (D-047), so the kid grows into a grower and adult by itself.
         if (!d.kid_stage) next.kid_stage = 'newborn';
-        if (!d.animal_class && d.sex) next.animal_class = d.sex === 'male' ? 'male_kid' : 'female_kid';
         if (!mating) return next;
         if (!d.sire_id && mating.sireId) next.sire_id = mating.sireId;
         if (!d.birth_date) next.birth_date = mating.expected && mating.expected < TODAY ? mating.expected : TODAY;
