@@ -16,3 +16,10 @@ The project lead supplied photos of the farm's test readers. From the About scre
 - Barcode/QR scanning (Zebra engine) can identify pens, silos and medicine bottles; the camera supports photo records.
 - Android 13 background limits mean scanning runs in a foreground context and sync uses a constrained background job.
 - D-036's "no live hardware" restriction needs an explicit owner decision before the spike (see Open items in CLAUDE.md).
+
+## Spike result (2026-11-07, on the real C72 over wireless adb)
+- **Reading works out of the box through Chainway InfoWedge** (`com.rscja.infowedge`, a DataWedge-like service). The trigger broadcasts `com.rscja.android.KEY_DOWN/KEY_UP`; InfoWedge runs the UHF read (DeviceAPI R2000) and then broadcasts **`com.rscja.android.DATA_RESULT`** with extras `data` (String: the EPCs read, **one per line**) and `overwrite` (Boolean), followed by `com.rscja.android.OVER_RESULT`. Its default profile also emits keystrokes, which only land when a text field has focus.
+- Real EPCs are 24 hex characters, for example `E280699500004000FD384063`. One trigger pull at default power read 1 to 4 tags in a room, so **multiple reads per pull are normal**: single-tag mode (lower power, RSSI) is still needed for action flows.
+- No vendor SDK was needed for this. The `android/` app (`com.kkfarm.scanner`, Kotlin WebView) listens for `DATA_RESULT`, opens `/scan?tag=CODE` for one tag, and shows a "which goat?" chooser when several are read. Verified on the device: a single real EPC opened the Goat Register with the code filled in; the two-tag read showed the chooser.
+- Connection during the spike: the app loads `http://localhost:8000` through `adb reverse`, so the laptop's server is never exposed on the farm Wi-Fi. Standalone use needs a reachable server (Wi-Fi LAN address, or the future hosted SaaS over HTTPS).
+- Still open: InfoWedge power/RSSI settings for nearest-tag reads, trigger behaviour when the app is in the background, a signed release build, and kiosk/auto-start on the gun.

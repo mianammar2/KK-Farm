@@ -55,9 +55,27 @@ class MainActivity : Activity() {
         override fun onReceive(context: Context, intent: Intent) {
             val extras = intent.extras
             Log.i(TAG, "broadcast action=${intent.action} extras=${extras?.keySet()?.associateWith { k -> extras.get(k).let { v -> "${v?.javaClass?.simpleName}:${if (v is ByteArray) String(v) else v}" } }}")
-            val code = extractCode(intent) ?: return
-            onScan(code, "broadcast")
+            val codes = extractCodes(intent)
+            when {
+                codes.isEmpty() -> return
+                codes.size == 1 -> onScan(codes[0], "broadcast")
+                else -> runOnUiThread { chooseTag(codes) }
+            }
         }
+    }
+
+    /**
+     * InfoWedge sends every tag it saw in one trigger pull, one per line. More than one means neighbouring
+     * goats were in range, so the user picks the right one instead of the app guessing.
+     */
+    private fun chooseTag(codes: List<String>) {
+        if (isFinishing) return
+        Log.i(TAG, "multiple tags ${codes.joinToString()}")
+        AlertDialog.Builder(this)
+            .setTitle("${codes.size} tags read. Which goat?")
+            .setItems(codes.toTypedArray()) { _, i -> onScan(codes[i], "broadcast-choice") }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -133,9 +151,12 @@ class MainActivity : Activity() {
         Log.i(TAG, "listening for ${filter.actionsIterator().asSequence().toList()}")
     }
 
-    /** Takes the configured extra first, then common names, then any string extra that looks like a tag. */
-    private fun extractCode(intent: Intent): String? {
-        val extras = intent.extras ?: return null
+    /**
+     * Distinct tag codes from the broadcast. The configured extra is tried first, then common names, then any
+     * text extra. A value may hold several tags separated by line breaks (InfoWedge, one tag per line).
+     */
+    private fun extractCodes(intent: Intent): List<String> {
+        val extras = intent.extras ?: return emptyList()
         val keys = listOf(extraKey) + KNOWN_EXTRAS + extras.keySet()
         for (key in keys.distinct()) {
             val value = when (val v = extras.get(key)) {
@@ -143,12 +164,13 @@ class MainActivity : Activity() {
                 is ByteArray -> String(v)
                 is CharSequence -> v.toString()
                 else -> null
-            }?.trim()
-            if (!value.isNullOrEmpty() && TAG_PATTERN.matches(value)) {
-                return value
+            } ?: continue
+            val codes = value.split(Regex("[\\s,;]+")).map { it.trim().uppercase() }.filter { TAG_PATTERN.matches(it) }.distinct()
+            if (codes.isNotEmpty()) {
+                return codes
             }
         }
-        return null
+        return emptyList()
     }
 
     private fun onScan(raw: String, via: String) {
@@ -234,5 +256,5 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.1.1"
+    const val NAME = "0.1.2"
 }
