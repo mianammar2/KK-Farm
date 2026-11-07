@@ -78,22 +78,15 @@ export default function Scan({ result, samples, goats }: Props) {
     );
 }
 
-/** Waiting state: a radar that pulses like the reader is listening. */
+/** Waiting state: a radar that pulses like the reader is listening. CSS animations only (compositor, no JS per frame). */
 function Idle({ scanning }: { scanning?: boolean }) {
     return (
-        <div className="relative overflow-hidden rounded-3xl bg-cobalt-900 px-4 py-10 text-center text-white shadow-float">
+        <div className={`relative overflow-hidden rounded-3xl bg-cobalt-900 px-4 py-10 text-center text-white shadow-float ${scanning ? 'kk-fast' : ''}`}>
             <div className="relative mx-auto grid size-48 place-items-center">
                 {[0, 1, 2].map((i) => (
-                    <motion.span
-                        key={i}
-                        aria-hidden
-                        className="absolute inset-0 rounded-full border-2 border-turq-400"
-                        initial={{ scale: 0.35, opacity: 0.9 }}
-                        animate={{ scale: 1.15, opacity: 0 }}
-                        transition={{ duration: scanning ? 1.1 : 2.4, repeat: Infinity, delay: i * (scanning ? 0.36 : 0.8), ease: 'easeOut' }}
-                    />
+                    <span key={i} aria-hidden className="kk-ring absolute inset-0 rounded-full border-2 border-turq-400" style={{ animationDelay: `${i * 0.8}s` }} />
                 ))}
-                <motion.span aria-hidden className="absolute inset-6 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,oklch(0.78_0.12_190/0.45)_60deg,transparent_90deg)]" animate={{ rotate: 360 }} transition={{ duration: scanning ? 1 : 3, repeat: Infinity, ease: 'linear' }} />
+                <span aria-hidden className="kk-sweep absolute inset-6 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,oklch(0.78_0.12_190/0.45)_60deg,transparent_90deg)]" />
                 <span className="relative grid size-20 place-items-center rounded-full bg-turq-500 text-cobalt-950 shadow-float"><Radio size={34} aria-hidden /></span>
             </div>
             <p className="relative mt-6 text-lg font-bold">{scanning ? 'Reading…' : 'Ready to scan'}</p>

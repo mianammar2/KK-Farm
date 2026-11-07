@@ -160,3 +160,30 @@
         scroll-behavior: auto !important;
     }
 }
+
+/* Lite mode on the RFID gun (D-050): effects that cost GPU time on its modest chip are switched off. */
+.lite *,
+.lite *::before,
+.lite *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+.lite .shadow-float { box-shadow: 0 2px 8px -3px rgb(0 0 0 / 0.3) !important; }
+.lite .lite-off { display: none !important; }
+
+/* GPU-only animations (transform and opacity), run by the compositor rather than JavaScript. */
+@keyframes kk-ring { from { transform: scale(0.35); opacity: 0.9; } to { transform: scale(1.15); opacity: 0; } }
+@keyframes kk-sweep { to { transform: rotate(360deg); } }
+@keyframes kk-pulse { from { transform: scale(1); opacity: 0.45; } to { transform: scale(1.35); opacity: 0; } }
+.kk-ring { animation: kk-ring 2.4s ease-out infinite; will-change: transform, opacity; }
+.kk-sweep { animation: kk-sweep 3s linear infinite; will-change: transform; }
+.kk-pulse { animation: kk-pulse 1.8s ease-out infinite; will-change: transform, opacity; }
+.kk-fast .kk-ring { animation-duration: 1.1s; }
+.kk-fast .kk-sweep { animation-duration: 1s; }
+/* On the gun the radar stands still while waiting (no work for the processor) and animates only while reading. */
+.lite .kk-sweep { display: none; }
+.lite .kk-pulse { display: none; }
+.lite .kk-ring { animation: none; transform: scale(0.75); opacity: 0.35; }
+.lite .kk-ring:nth-child(2) { transform: scale(0.95); opacity: 0.2; }
+.lite .kk-ring:nth-child(3) { display: none; }
+.lite .kk-fast .kk-ring { animation: kk-ring 1.1s ease-out infinite; }

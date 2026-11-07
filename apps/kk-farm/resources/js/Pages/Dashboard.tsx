@@ -19,7 +19,8 @@ type Props = { herd: Array<{ key: string; label: string; value: number }>;
 
 export default function Dashboard({ stats, herd, wall, attention, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
-    usePoll(10000, { only: ['stats', 'wall', 'attention', 'activity'] });
+    // 30 s keeps the dashboard current without keeping the gun's processor busy.
+    usePoll(30000, { only: ['stats', 'herd', 'wall', 'attention', 'activity'] });
 
     const growthChart = useMemo(() => ({
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} kg` },
@@ -54,7 +55,7 @@ export default function Dashboard({ stats, herd, wall, attention, kiddings, acti
     return (
         <>
             <Head title="Dashboard" />
-            <PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Figures refresh by themselves every 10 seconds.`} />
+            <PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Figures refresh by themselves every 30 seconds.`} />
 
             <StatRow>
                 <Stat label="Goats on farm" value={stats.goats} note={`${stats.does} does, ${stats.bucks} bucks`} />

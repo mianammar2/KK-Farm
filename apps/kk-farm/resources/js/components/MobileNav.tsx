@@ -88,13 +88,13 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
 
     return (
         <>
-            <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-tile/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+            <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-tile pb-[env(safe-area-inset-bottom)] lg:hidden">
                 <div className="mx-auto flex h-16 max-w-xl items-stretch px-1">
                     {tabs.slice(0, 2).map(tab)}
                     {can('scan') ? (
                         <div className="flex flex-1 justify-center">
                             <Link href="/scan" aria-label="Scan a tag" className="relative -mt-6 grid size-16 place-items-center rounded-full bg-turq-600 text-white shadow-float ring-4 ring-tile transition-transform active:scale-95">
-                                {path !== '/scan' ? <motion.span aria-hidden className="absolute inset-0 rounded-full bg-turq-500" animate={{ scale: [1, 1.35], opacity: [0.45, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }} /> : null}
+                                {path !== '/scan' ? <span aria-hidden className="kk-pulse absolute inset-0 rounded-full bg-turq-500" /> : null}
                                 <ScanLine size={28} className="relative" />
                             </Link>
                         </div>
