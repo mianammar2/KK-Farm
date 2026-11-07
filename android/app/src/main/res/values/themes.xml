@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App look: cobalt status bar like the web app bar, light navigation bar. -->
+    <style name="KKFarm" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#14306F</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:colorAccent">#33C3BD</item>
+    </style>
+</resources>

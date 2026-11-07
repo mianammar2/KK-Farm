@@ -29,10 +29,11 @@ export const HEALTH: Record<Health, { label: string; tile: string; chip: string 
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
     return (
-        <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <header className="mb-4 flex flex-wrap items-end justify-between gap-3 lg:mb-5">
             <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-cobalt-900">{title}</h1>
-                {description ? <p className="mt-1 max-w-[68ch] text-ink-soft">{description}</p> : null}
+                {/* On phones and the gun the app bar already shows the title. */}
+                <h1 className="hidden text-2xl font-bold tracking-tight text-cobalt-900 lg:block">{title}</h1>
+                {description ? <p className="max-w-[68ch] text-sm text-ink-soft lg:mt-1 lg:text-base">{description}</p> : null}
             </div>
             {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </header>
@@ -54,7 +55,7 @@ export function Button({ variant = 'primary', className, ...props }: ButtonProps
             type="button"
             {...props}
             className={cx(
-                'inline-flex min-h-11 items-center justify-center gap-2 rounded-tile px-4 py-2 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+                'inline-flex min-h-11 items-center justify-center gap-2 rounded-tile px-4 py-2 text-sm font-semibold transition-[color,background-color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
                 BUTTON[variant],
                 className,
             )}

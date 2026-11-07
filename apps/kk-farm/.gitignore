@@ -29,3 +29,4 @@ Thumbs.db
 # Local tooling
 /.claude
 /.mcp.json
+/public/downloads

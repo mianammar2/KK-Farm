@@ -2,10 +2,11 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, Wheat, X,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
 import { ScanCapture } from '../lib/scanner';
+import { AppBar, TabBar } from './MobileNav';
 import type { SharedProps } from '../types';
 
 const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; module: string; icon: typeof Beef }> }> = [
@@ -100,7 +101,7 @@ function NavList({ path, modules, onNavigate }: { path: string; modules: string[
     );
 }
 
-function RoleSwitcher({ auth, roles }: { auth: NonNullable<SharedProps['auth']>; roles: SharedProps['roles'] }) {
+function RoleSwitcher({ auth, roles, compact }: { auth: NonNullable<SharedProps['auth']>; roles: SharedProps['roles']; compact?: boolean }) {
     const { demoLogin } = usePage<SharedProps>().props;
     const [open, setOpen] = useState(false);
     const root = useRef<HTMLDivElement>(null);
@@ -117,6 +118,11 @@ function RoleSwitcher({ auth, roles }: { auth: NonNullable<SharedProps['auth']>;
 
     return (
         <div className="relative" ref={root}>
+            {compact ? (
+                <button type="button" aria-label="Account" aria-expanded={open} onClick={() => setOpen(!open)} className="grid size-11 place-items-center rounded-full active:bg-white/15">
+                    <span className="grid size-8 place-items-center rounded-full bg-turq-500 text-xs font-bold text-cobalt-950">{(auth.name.match(/[A-Za-z]+/g) ?? ['K']).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>
+                </button>
+            ) : (
             <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-11 items-center gap-2 rounded-tile border border-rule-strong bg-tile px-2.5 text-left hover:bg-cobalt-100">
                 <span className="grid size-7 place-items-center rounded-[4px] bg-cobalt-800 text-xs font-bold text-white">{auth.roleLabel.slice(0, 2).toUpperCase()}</span>
                 <span className="hidden leading-tight sm:block">
@@ -125,8 +131,9 @@ function RoleSwitcher({ auth, roles }: { auth: NonNullable<SharedProps['auth']>;
                 </span>
                 <ChevronDown size={15} className="text-ink-soft" aria-hidden />
             </button>
+            )}
             {open ? (
-                <div className="absolute right-0 z-40 mt-1.5 w-60 rounded-tile border border-rule bg-tile p-1 shadow-float">
+                <div className="absolute right-0 z-40 mt-1.5 w-60 rounded-tile border border-rule bg-tile p-1 text-ink shadow-float">
                     <Link href="/account/password" onClick={() => setOpen(false)} className="flex min-h-10 w-full items-center rounded-[4px] px-2.5 text-left text-sm hover:bg-cobalt-100">Change password</Link>
                     {demoLogin ? <div className="px-2.5 py-1.5 text-sm text-ink-soft">Local testing: view the app as</div> : null}
                     {demoLogin && Object.entries(roles).map(([role, label]) => (
@@ -156,6 +163,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState<string | null>(null);
     const path = page.url.split('?')[0];
+    const reduced = useReducedMotion();
 
     useEffect(() => {
         if (!flash) {
@@ -201,7 +209,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 ) : null}
             </AnimatePresence>
 
-            <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-rule bg-tile/95 px-3 py-2 backdrop-blur sm:px-5">
+            <AppBar path={path} items={NAV.flatMap((g) => g.items)} right={<RoleSwitcher auth={auth} roles={roles} compact />} />
+            <header className="sticky top-0 z-20 hidden items-center gap-2 border-b border-rule bg-tile/95 px-3 py-2 backdrop-blur sm:px-5 lg:flex">
                 <button type="button" aria-label="Open menu" onClick={() => setDrawer(true)} className="grid size-11 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100 lg:hidden">
                     <Menu size={21} />
                 </button>
@@ -217,13 +226,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <RoleSwitcher auth={auth} roles={roles} />
             </header>
 
-            <motion.main key={path} initial={{ opacity: 0.4, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="mx-auto max-w-[1440px] px-3 py-5 sm:px-5">
+            {/* Page transition: a short slide like a native app; only a fade when the user prefers less motion. */}
+            <motion.main
+                key={path}
+                initial={reduced ? { opacity: 0 } : { opacity: 0, x: 22 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={reduced ? { duration: 0.15 } : { type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
+                className="mx-auto max-w-[1440px] px-3 pt-4 pb-28 sm:px-5 lg:py-5"
+            >
                 {children}
             </motion.main>
 
+            <TabBar path={path} modules={auth.modules} items={NAV.flatMap((g) => g.items)} onLogout={() => router.post('/logout')} />
+
             <AnimatePresence>
                 {toast ? (
-                    <motion.div role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.2 }} className="fixed right-4 bottom-4 left-4 z-50 rounded-tile bg-cobalt-900 px-4 py-3 text-sm font-medium text-white shadow-float sm:left-auto sm:max-w-sm">
+                    <motion.div role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.2 }} className="fixed right-4 bottom-24 left-4 z-50 rounded-2xl bg-cobalt-900 px-4 py-3 text-sm font-medium text-white shadow-float sm:left-auto sm:max-w-sm lg:bottom-4">
                         {toast}
                     </motion.div>
                 ) : null}

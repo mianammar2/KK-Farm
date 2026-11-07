@@ -50,6 +50,7 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private val prefs by lazy { getSharedPreferences("kkfarm", Context.MODE_PRIVATE) }
     private var isVisible = false
+    private lateinit var progress: android.widget.ProgressBar
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var cameraUri: Uri? = null
     private var pendingChoice: List<String>? = null
@@ -97,6 +98,10 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Guns set up during the laptop spike still point at localhost: move them to the farm server.
+        if (prefs.getString(KEY_SERVER, null) == OLD_LAPTOP_SERVER) {
+            prefs.edit().remove(KEY_SERVER).apply()
+        }
         WebView.setWebContentsDebuggingEnabled(true) // lets Chrome DevTools inspect the page during the spike
 
         web = WebView(this).apply {
@@ -108,6 +113,12 @@ class MainActivity : Activity() {
             // A WebView ignores <input type="file"> unless the app handles it: this opens the C72 camera
             // ("Open camera", capture attribute) or a chooser with the gallery and the camera.
             webChromeClient = object : WebChromeClient() {
+                override fun onProgressChanged(view: WebView, newProgress: Int) {
+                    val bar = this@MainActivity.progress
+                    bar.progress = newProgress
+                    bar.visibility = if (newProgress >= 100) android.view.View.GONE else android.view.View.VISIBLE
+                }
+
                 override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                     fileCallback?.onReceiveValue(null)
                     fileCallback = callback
@@ -137,12 +148,18 @@ class MainActivity : Activity() {
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                     if (request.isForMainFrame) {
                         Log.w(TAG, "load failed ${request.url}: ${error.description}")
-                        showSettings("Cannot reach $server (${error.description}). Check the address and that the laptop is running KK Farm.")
+                        showSettings("Cannot reach KK Farm at $server (${error.description}). Check the Wi-Fi or mobile data, then tap Retry.")
                     }
                 }
             }
         }
-        setContentView(web)
+        // A thin loading bar along the top, like a native app, instead of a blank screen while pages load.
+        progress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFF33C3BD.toInt())
+            layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (3 * resources.displayMetrics.density).toInt())
+        }
+        setContentView(android.widget.FrameLayout(this).apply { addView(web); addView(progress) })
 
         if (savedInstanceState != null) {
             web.restoreState(savedInstanceState)
@@ -290,6 +307,13 @@ class MainActivity : Activity() {
         return emptyList()
     }
 
+    private fun vibrate(ms: Long) {
+        runCatching {
+            val vibrator = getSystemService(android.os.Vibrator::class.java)
+            vibrator?.vibrate(android.os.VibrationEffect.createOneShot(ms, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+    }
+
     private fun onScan(raw: String, via: String) {
         val code = raw.trim().uppercase()
         val now = System.currentTimeMillis()
@@ -299,6 +323,7 @@ class MainActivity : Activity() {
         lastCode = code
         lastAt = now
         Log.i(TAG, "scan $code via $via")
+        vibrate(40)
         val url = "$server/scan?tag=" + URLEncoder.encode(code, "UTF-8")
         if (isVisible) {
             runOnUiThread { openScan(url, code) }
@@ -357,6 +382,7 @@ class MainActivity : Activity() {
     /** Lets the web page ask whether it runs inside the scanner app, and simulate a read for testing. */
     inner class Bridge {
         @JavascriptInterface fun isScannerApp(): Boolean = true
+        @JavascriptInterface fun vibrate(ms: Int) = this@MainActivity.vibrate(ms.coerceIn(10, 400).toLong())
         @JavascriptInterface fun version(): String = BuildConfigVersion.NAME
         @JavascriptInterface fun simulateScan(code: String) = onScan(code, "simulated")
         @JavascriptInterface fun openSettings() = runOnUiThread { showSettings(null) }
@@ -371,8 +397,9 @@ class MainActivity : Activity() {
         private const val KEY_SERVER = "server"
         private const val KEY_ACTION = "action"
         private const val KEY_EXTRA = "extra"
-        // With `adb reverse tcp:8000 tcp:8000`, localhost on the gun is the laptop. Change in settings for Wi-Fi use.
-        const val DEFAULT_SERVER = "http://localhost:8000"
+        // The farm server (D-045). For laptop testing set http://localhost:8000 in settings and use adb reverse.
+        const val DEFAULT_SERVER = "https://103-163-48-203.sslip.io"
+        private const val OLD_LAPTOP_SERVER = "http://localhost:8000"
         const val DEFAULT_ACTION = "com.kkfarm.SCAN"
         const val DEFAULT_EXTRA = "data"
         // Broadcast actions seen on Chainway devices. Unconfirmed for this firmware: logcat shows what really arrives.
@@ -388,5 +415,5 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.2.1"
+    const val NAME = "0.3.0"
 }

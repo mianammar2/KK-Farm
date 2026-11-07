@@ -3,6 +3,7 @@ import { Radio, ScanLine } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useScannerDevice } from '../lib/scanner';
+import { haptic } from '../lib/native';
 import GoatPortrait from '../components/GoatPortrait';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
 import type { GoatCard, Option } from '../types';
@@ -66,8 +67,8 @@ export default function Scan({ result, samples, goats }: Props) {
 
                 <AnimatePresence mode="wait">
                     {/* On a phone or the gun the result comes first, above the reader panel. */}
-                    <motion.div key={result?.code ?? 'idle'} className="order-first lg:order-none" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}>
-                        {!result ? <Idle /> : null}
+                    <motion.div key={result?.code ?? 'idle'} className="order-first lg:order-none" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ type: 'spring', stiffness: 360, damping: 30 }}>
+                        {!result ? <Idle scanning={scanning} /> : null}
                         {result?.state === 'assigned' && result.goat ? <Found goat={result.goat} result={result} /> : null}
                         {result && result.state !== 'assigned' ? <Unassigned result={result} goats={goats} /> : null}
                     </motion.div>
@@ -77,26 +78,41 @@ export default function Scan({ result, samples, goats }: Props) {
     );
 }
 
-function Idle() {
+/** Waiting state: a radar that pulses like the reader is listening. */
+function Idle({ scanning }: { scanning?: boolean }) {
     return (
-        <Panel className="h-full">
-            <div className="flex flex-col items-center gap-2 py-14 text-center">
-                <span className="grid size-14 place-items-center rounded-tile bg-cobalt-100 text-cobalt-700"><Radio size={26} aria-hidden /></span>
-                <p className="font-semibold text-cobalt-900">Waiting for a scan</p>
-                <p className="max-w-[40ch] text-sm text-ink-soft">The goat is found through its current tag assignment. The tag code is never the goat's identity.</p>
+        <div className="relative overflow-hidden rounded-3xl bg-cobalt-900 px-4 py-10 text-center text-white shadow-float">
+            <div className="relative mx-auto grid size-48 place-items-center">
+                {[0, 1, 2].map((i) => (
+                    <motion.span
+                        key={i}
+                        aria-hidden
+                        className="absolute inset-0 rounded-full border-2 border-turq-400"
+                        initial={{ scale: 0.35, opacity: 0.9 }}
+                        animate={{ scale: 1.15, opacity: 0 }}
+                        transition={{ duration: scanning ? 1.1 : 2.4, repeat: Infinity, delay: i * (scanning ? 0.36 : 0.8), ease: 'easeOut' }}
+                    />
+                ))}
+                <motion.span aria-hidden className="absolute inset-6 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,oklch(0.78_0.12_190/0.45)_60deg,transparent_90deg)]" animate={{ rotate: 360 }} transition={{ duration: scanning ? 1 : 3, repeat: Infinity, ease: 'linear' }} />
+                <span className="relative grid size-20 place-items-center rounded-full bg-turq-500 text-cobalt-950 shadow-float"><Radio size={34} aria-hidden /></span>
             </div>
-        </Panel>
+            <p className="relative mt-6 text-lg font-bold">{scanning ? 'Reading…' : 'Ready to scan'}</p>
+            <p className="relative mx-auto mt-1 max-w-[34ch] text-sm text-cobalt-200">{IN_APP ? "Point the gun at a goat's ear tag and pull the trigger." : 'Type or scan a tag code. A tag with no goat starts the goat register.'}</p>
+        </div>
     );
 }
 
 function Found({ goat, result }: { goat: GoatCard; result: Result }) {
+    useEffect(() => haptic(40), [result.code]);
     const remove = useForm({ animal_id: goat.id, reason: 'lost' });
     // Releasing a tag cannot be undone from here, so it takes two deliberate taps.
     const [confirmLost, setConfirmLost] = useState(false);
     return (
         <Panel title="Goat found" description={`Tag ${result.code}, on this goat since ${result.since}`}>
             <div className="flex flex-col gap-4 sm:flex-row">
-                {goat.photo ? <img src={`/media/${goat.photo}`} alt="" className="size-32 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={128} />}
+                <motion.div initial={{ scale: 0.6, opacity: 0, rotate: -6 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 18 }} className="shrink-0 self-center sm:self-start">
+                    {goat.photo ? <img src={`/media/${goat.photo}`} alt="" className="size-36 rounded-3xl object-cover shadow-float" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}
+                </motion.div>
                 <div className="min-w-0">
                     <h2 className="text-xl font-bold text-cobalt-900">{goat.name ?? 'Unnamed goat'}</h2>
                     <p className="text-ink-soft">{goat.number} · {goat.breed} · {goat.age}</p>
