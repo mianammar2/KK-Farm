@@ -3,12 +3,17 @@
 namespace App\Support;
 
 use App\Models\Animal;
+use App\Models\AnimalPhoto;
+use App\Models\Kidding;
+use App\Models\Mating;
 use App\Models\Breed;
 use App\Models\FieldDefinition;
 use App\Models\RfidAssignment;
 use App\Models\RfidTag;
 use App\Models\User;
 use App\Models\WeightRecord;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -34,7 +39,7 @@ final class GoatRegistration
     /** @param Collection<int, FieldDefinition> $definitions */
     public static function rules(Collection $definitions): array
     {
-        $rules = ['custom_fields' => ['nullable', 'array']];
+        $rules = ['custom_fields' => ['nullable', 'array'], 'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360']];
 
         foreach ($definitions as $d) {
             $required = $d->required || in_array($d->key, FieldCatalog::STRUCTURAL, true);
@@ -84,6 +89,12 @@ final class GoatRegistration
     {
         $epc = self::normaliseCode($data['rfid_epc'] ?? null);
 
+        // D-042: a farm-born kid with a known dam inherits the sire of the dam's mating in the gestation window.
+        $mating = self::birthMating($data);
+        if ($mating && empty($data['sire_id']) && $mating->sire_id) {
+            $data['sire_id'] = $mating->sire_id;
+        }
+
         if ($epc !== '') {
             if (! $user->passes('assign_tags')) {
                 throw ValidationException::withMessages(['rfid_epc' => 'Your role cannot assign RFID tags. Register the goat without a tag, or ask a manager.']);
@@ -92,7 +103,7 @@ final class GoatRegistration
         }
         self::assertParents($data);
 
-        return DB::transaction(function () use ($data, $user, $epc, $via) {
+        return DB::transaction(function () use ($data, $user, $epc, $via, $mating) {
             $lifecycle = $data['lifecycle_status'] ?? 'active';
             [$status, $exitReason] = self::LIFECYCLE[$lifecycle] ?? ['active', null];
             $repro = $data['repro_status'] ?? null;
@@ -127,6 +138,15 @@ final class GoatRegistration
                 'exit_date' => $exitReason ? now() : null,
             ]);
 
+            // The kidding is recorded from the kids themselves: the first kid creates it, twins add to it.
+            if ($mating && (! $mating->sire_id || $mating->sire_id === $animal->sire_id)) {
+                self::recordBirth($animal, $mating, $user);
+            }
+
+            if (! empty($data['photo'])) {
+                self::storeProfilePhoto($animal, $data['photo'], $user);
+            }
+
             if (isset($data['latest_weight_kg'])) {
                 WeightRecord::create(['animal_id' => $animal->id, 'measured_on' => now(), 'weight_kg' => $data['latest_weight_kg'], 'context' => 'registration', 'measured_by' => $user->name]);
             }
@@ -142,6 +162,51 @@ final class GoatRegistration
 
             return $animal;
         });
+    }
+
+    /** Days after mating in which a birth is attributed to it (gestation about 150 days, generous either side). */
+    public const GESTATION_WINDOW = [120, 175];
+
+    /** The dam's mating that this farm-born kid most likely came from, or null. */
+    public static function birthMating(array $data): ?Mating
+    {
+        if (($data['origin'] ?? null) !== 'born_on_farm' || empty($data['dam_id']) || empty($data['birth_date'])) {
+            return null;
+        }
+
+        return Mating::where('dam_id', $data['dam_id'])
+            ->whereIn('status', ['open', 'pregnant', 'kidded'])
+            ->whereRaw('(?::date - mated_on) BETWEEN ? AND ?', [Carbon::parse($data['birth_date'])->toDateString(), ...self::GESTATION_WINDOW])
+            ->orderByRaw("CASE status WHEN 'pregnant' THEN 0 WHEN 'kidded' THEN 1 ELSE 2 END")
+            ->orderByDesc('mated_on')
+            ->first();
+    }
+
+    /** Creates the kidding for this mating, or adds this kid to it (twins, triplets), and links the kid to it. */
+    private static function recordBirth(Animal $kid, Mating $mating, User $user): void
+    {
+        $kidding = Kidding::where('mating_id', $mating->id)->lockForUpdate()->first();
+        if ($kidding) {
+            $kidding->increment('born_alive');
+        } else {
+            $kidding = Kidding::create(['dam_id' => $mating->dam_id, 'mating_id' => $mating->id, 'kidded_on' => $kid->birth_date, 'born_alive' => 1, 'stillborn' => 0, 'recorded_by' => $user->name]);
+        }
+        $kid->update(['birth_kidding_id' => $kidding->id]);
+
+        $mating->update(['status' => 'kidded']);
+        $dam = Animal::find($mating->dam_id);
+        $dam?->update(['repro_state' => 'lactating', 'repro_status' => 'lactating']);
+        if ($dam) {
+            Farm::event($dam, 'breeding', "Kid {$kid->farm_number} registered".($kidding->born_alive > 1 ? " ({$kidding->born_alive} kids in this kidding)" : ''), $user->name);
+        }
+    }
+
+    private static function storeProfilePhoto(Animal $animal, UploadedFile $file, User $user): void
+    {
+        $path = $file->store("animals/{$animal->id}");
+        abort_unless($path, 500, 'The photograph could not be stored.');
+        AnimalPhoto::create(['animal_id' => $animal->id, 'path' => $path, 'notes' => 'Profile picture taken at registration', 'is_profile' => true, 'added_by' => $user->name]);
+        Farm::event($animal, 'photo', 'Profile picture added at registration', $user->name);
     }
 
     private static function assertTagFree(string $epc): void

@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Animal;
+use App\Models\AnimalPhoto;
+use App\Models\Kidding;
+use App\Models\Mating;
 use App\Models\Breed;
 use App\Models\FieldDefinition;
 use App\Models\Organization;
@@ -15,6 +18,8 @@ use App\Models\WeightRecord;
 use App\Support\Farm;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -226,6 +231,82 @@ class GoatRegistrationTest extends TestCase
             $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => $sex, 'animal_class' => $class]))->assertSessionHasNoErrors();
         }
         $this->assertSame(6, Animal::count());
+    }
+
+    private function mating(Animal $dam, ?Animal $sire, int $daysAgo, string $status = 'pregnant'): Mating
+    {
+        $on = now()->subDays($daysAgo);
+
+        return Mating::create(['dam_id' => $dam->id, 'sire_id' => $sire?->id, 'mated_on' => $on, 'expected_kidding_on' => $on->copy()->addDays(150), 'status' => $status, 'recorded_by' => 'x']);
+    }
+
+    public function test_a_farm_born_kid_gets_its_sire_from_the_dams_mating_and_records_the_kidding(): void
+    {
+        $caretaker = $this->user('caretaker');
+        $dam = $this->goat('DAM-1', 'female');
+        $sire = $this->goat('SIRE-1', 'male');
+        $mating = $this->mating($dam, $sire, 150);
+
+        $kid = ['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'birth_date' => now()->toDateString(), 'animal_class' => 'kid'];
+        $this->actingAs($caretaker)->post('/goats', $this->payload($kid))->assertSessionHasNoErrors();
+        $this->actingAs($caretaker)->post('/goats', $this->payload($kid + ['sex' => 'male']))->assertSessionHasNoErrors();
+
+        $kids = Animal::whereNotNull('birth_kidding_id')->get();
+        $this->assertCount(2, $kids);
+        $this->assertSame([$sire->id, $sire->id], $kids->pluck('sire_id')->all(), 'the sire came from the mating');
+        $kidding = Kidding::where('mating_id', $mating->id)->sole();
+        $this->assertSame(2, $kidding->born_alive, 'twins are counted in one kidding');
+        $this->assertSame([$kidding->id], $kids->pluck('birth_kidding_id')->unique()->values()->all());
+        $this->assertSame('kidded', $mating->fresh()->status);
+        $this->assertSame('lactating', $dam->fresh()->repro_state);
+    }
+
+    public function test_no_mating_in_the_gestation_window_means_no_sire_is_guessed(): void
+    {
+        $dam = $this->goat('DAM-1', 'female');
+        $this->mating($dam, $this->goat('SIRE-1', 'male'), 40); // far too recent to be this kid's father
+
+        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'birth_date' => now()->toDateString()]))->assertSessionHasNoErrors();
+
+        $kid = Animal::where('dam_id', $dam->id)->sole();
+        $this->assertNull($kid->sire_id);
+        $this->assertNull($kid->birth_kidding_id);
+        $this->assertSame(0, Kidding::count());
+    }
+
+    public function test_a_sire_chosen_by_hand_is_kept_and_not_tied_to_another_bucks_mating(): void
+    {
+        $dam = $this->goat('DAM-1', 'female');
+        $this->mating($dam, $this->goat('SIRE-1', 'male'), 150);
+        $other = $this->goat('SIRE-2', 'male');
+
+        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'sire_id' => $other->id, 'birth_date' => now()->toDateString()]))->assertSessionHasNoErrors();
+
+        $kid = Animal::where('dam_id', $dam->id)->sole();
+        $this->assertSame($other->id, $kid->sire_id);
+        $this->assertSame(0, Kidding::count());
+    }
+
+    public function test_the_register_page_knows_each_does_mating(): void
+    {
+        $dam = $this->goat('DAM-1', 'female');
+        $sire = $this->goat('SIRE-1', 'male');
+        $this->mating($dam, $sire, 100);
+
+        $this->actingAs($this->user('caretaker'))->get('/goats/register')
+            ->assertInertia(fn (AssertableInertia $page) => $page->where("damMatings.{$dam->id}.sireId", $sire->id)->where("damMatings.{$dam->id}.sire", 'SIRE-1')->where("damMatings.{$dam->id}.status", 'pregnant'));
+    }
+
+    public function test_a_profile_picture_taken_at_registration_is_saved_as_the_goats_profile_photo(): void
+    {
+        Storage::fake();
+
+        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['photo' => UploadedFile::fake()->image('goat.jpg', 800, 600)]))->assertSessionHasNoErrors();
+
+        $photo = AnimalPhoto::sole();
+        $this->assertTrue($photo->is_profile);
+        Storage::assertExists($photo->path);
+        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['photo' => UploadedFile::fake()->create('notes.pdf', 20, 'application/pdf')]))->assertSessionHasErrors(['photo']);
     }
 
     public function test_the_owner_can_add_a_custom_field_and_it_is_used_on_the_form_and_saved_with_the_goat(): void

@@ -10,6 +10,9 @@ import type { GoatCard, Option } from '../types';
 type Result = { code: string; state: 'assigned' | 'free' | 'lost' | 'unknown'; goat: GoatCard | null; since: string | null; history: Array<{ id: string; number: string; to: string | null; reason: string | null }> };
 type Props = { result: Result | null; samples: { assigned: string[]; free: string[]; new: string[] }; untagged: Option[]; goats: Option[] };
 
+// Inside the KK Farm Android app on the RFID gun (its user agent carries "KKFarmScanner").
+const IN_APP = typeof navigator !== 'undefined' && navigator.userAgent.includes('KKFarmScanner');
+
 export default function Scan({ result, samples, goats }: Props) {
     const [code, setCode] = useState(result?.code ?? '');
     const [scanning, setScanning] = useState(false);
@@ -38,17 +41,17 @@ export default function Scan({ result, samples, goats }: Props) {
     return (
         <>
             <Head title="RFID Scan" />
-            <PageHeader title="RFID scan" description="Scan a tag to open the goat. A tag with no goat starts the goat register. This is a simulator: no real reader is connected." />
+            <PageHeader title="RFID scan" description={IN_APP ? "Pull the trigger at a goat's ear tag. A tag with no goat starts the goat register." : "Scan a tag to open the goat. A tag with no goat starts the goat register. This is a simulator: no real reader is connected."} />
             <div className="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
                 <div className="space-y-4">
-                    <Panel title="Simulated reader">
+                    <Panel title={IN_APP ? 'Type a tag code' : 'Simulated reader'}>
                         <form onSubmit={(e) => { e.preventDefault(); scan(code); }} className="space-y-2">
                             <Field label="Tag code"><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Scan or type a tag code" className="field" autoFocus /></Field>
                             <Button type="submit" className="w-full" disabled={scanning}><ScanLine size={17} aria-hidden /> {scanning ? 'Reading' : 'Scan tag'}</Button>
                         </form>
                     </Panel>
-                    <ReaderSetup />
-                    <Panel title="Try a demo tag">
+                    {IN_APP ? null : <ReaderSetup />}
+                    {IN_APP ? null : <Panel title="Try a demo tag">
                         <div className="space-y-3">
                             {sample('On a goat', samples.assigned)}
                             {sample('Released by a goat that left', samples.free)}
@@ -58,11 +61,12 @@ export default function Scan({ result, samples, goats }: Props) {
                                 <button type="button" onClick={() => scan(Array.from({ length: 24 }, () => '0123456789ABCDEF'[Math.floor(Math.random() * 16)]).join(''))} className="min-h-9 rounded-[4px] border border-rule bg-tile px-2 text-sm hover:border-turq-600">Scan a brand-new tag</button>
                             </div>
                         </div>
-                    </Panel>
+                    </Panel>}
                 </div>
 
                 <AnimatePresence mode="wait">
-                    <motion.div key={result?.code ?? 'idle'} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}>
+                    {/* On a phone or the gun the result comes first, above the reader panel. */}
+                    <motion.div key={result?.code ?? 'idle'} className="order-first lg:order-none" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}>
                         {!result ? <Idle /> : null}
                         {result?.state === 'assigned' && result.goat ? <Found goat={result.goat} result={result} /> : null}
                         {result && result.state !== 'assigned' ? <Unassigned result={result} goats={goats} /> : null}
@@ -87,6 +91,8 @@ function Idle() {
 
 function Found({ goat, result }: { goat: GoatCard; result: Result }) {
     const remove = useForm({ animal_id: goat.id, reason: 'lost' });
+    // Releasing a tag cannot be undone from here, so it takes two deliberate taps.
+    const [confirmLost, setConfirmLost] = useState(false);
     return (
         <Panel title="Goat found" description={`Tag ${result.code}, on this goat since ${result.since}`}>
             <div className="flex flex-col gap-4 sm:flex-row">
@@ -98,7 +104,19 @@ function Found({ goat, result }: { goat: GoatCard; result: Result }) {
                     <div className="mt-1 flex gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} /></div>
                     <div className="mt-3 flex flex-wrap gap-2">
                         <Link href={`/goats/${goat.id}`}><Button>Open full record</Button></Link>
-                        <Button variant="secondary" disabled={remove.processing} onClick={() => remove.post('/scan/remove', { preserveScroll: true })}>Tag lost: release it</Button>
+                    </div>
+                    <div className="mt-4 border-t border-rule pt-3">
+                        {!confirmLost ? (
+                            <button type="button" className="text-sm text-ink-soft underline-offset-2 hover:underline" onClick={() => setConfirmLost(true)}>The ear tag fell off or is missing…</button>
+                        ) : (
+                            <div className="space-y-2">
+                                <Note>Only if the ear tag is really missing. The tag is removed from {goat.number} and blocked until it is reviewed. The goat keeps its identity and history.</Note>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button variant="secondary" onClick={() => setConfirmLost(false)}>Cancel</Button>
+                                    <Button disabled={remove.processing} className="bg-crit-700 hover:bg-crit-700/90" onClick={() => remove.post('/scan/remove', { preserveScroll: true })}>Yes, mark tag lost</Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

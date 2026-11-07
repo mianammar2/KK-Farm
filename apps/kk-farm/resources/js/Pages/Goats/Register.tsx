@@ -1,22 +1,25 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ScanLine, Tag } from 'lucide-react';
 import type { ReactNode } from 'react';
+import PhotoPicker from '../../components/PhotoPicker';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
 
-type Choice = { value: string | number; label: string; next?: string };
+type Choice = { value: string | number; label: string; next?: string; breed?: number | null };
+type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
-type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; canAssignTags: boolean; untagged: Option[] };
+type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[] };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-export default function Register({ epc, fields, lookups, classSex, canAssignTags, untagged }: Props) {
+export default function Register({ epc, fields, lookups, classSex, damMatings, mixedBreedId, canAssignTags, untagged }: Props) {
     const form = useForm<Record<string, any>>({
         rfid_epc: epc ?? '',
         birth_date_is_estimate: false,
         lifecycle_status: 'active',
         from_scan: Boolean(epc),
         custom_fields: {} as Record<string, any>,
+        photo: null as File | null,
     });
     const assign = useForm({ tag: epc ?? '', animal_id: '', reason: 'initial' });
 
@@ -34,8 +37,34 @@ export default function Register({ epc, fields, lookups, classSex, canAssignTags
         if (f.key === 'sex' && classSex[form.data.animal_class] && classSex[form.data.animal_class] !== v) {
             return form.setData((d: Record<string, any>) => ({ ...d, sex: v, animal_class: '' }));
         }
+        if (f.key === 'dam_id') {
+            return form.setData((d: Record<string, any>) => ({ ...d, ...kidDefaults(d, v) }));
+        }
         form.setData(f.key, v);
     };
+
+    /**
+     * D-042: choosing the dam of a farm-born kid fills in what the farm already knows: the sire from her
+     * mating, the breed (the parents' breed, or Mixed when they differ), the class Kid, and the birth date.
+     * Anything the user already chose is kept.
+     */
+    const kidDefaults = (d: Record<string, any>, damId: string): Record<string, any> => {
+        const next: Record<string, any> = { dam_id: damId };
+        const mating = damMatings[damId];
+        if (!damId || (d.origin && d.origin !== 'born_on_farm')) {
+            return next;
+        }
+        next.origin = 'born_on_farm';
+        if (!d.animal_class) next.animal_class = 'kid';
+        if (!mating) return next;
+        if (!d.sire_id && mating.sireId) next.sire_id = mating.sireId;
+        if (!d.birth_date) next.birth_date = mating.expected && mating.expected < TODAY ? mating.expected : TODAY;
+        const damBreed = lookups.dam_id?.find((o) => String(o.value) === damId)?.breed;
+        const sireBreed = mating.sireBreed;
+        if (!d.breed_id && damBreed) next.breed_id = String(sireBreed && sireBreed !== damBreed ? mixedBreedId ?? damBreed : damBreed);
+        return next;
+    };
+    const damMating = form.data.dam_id && form.data.origin === 'born_on_farm' ? damMatings[form.data.dam_id] : undefined;
     const error = (f: FieldDef) => (f.builtin ? form.errors[f.key] : form.errors[`custom_fields.${f.key}`]);
 
     const control = (f: FieldDef): ReactNode => {
@@ -98,9 +127,18 @@ export default function Register({ epc, fields, lookups, classSex, canAssignTags
             ) : null}
             {!canAssignTags ? <div className="mb-4"><Note>Your role cannot assign RFID tags, so the tag field is switched off. You can still register the goat.</Note></div> : null}
 
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/goats'); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); form.post('/goats', { forceFormData: true }); }} className="space-y-4">
+                <Panel title="Profile picture" description="Take a photo with the camera, or choose one. Optional.">
+                    <PhotoPicker value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
+                </Panel>
                 {sections.map((section) => (
                     <Panel key={section.name} title={section.name}>
+                        {section.name === 'Parentage' && damMating ? (
+                            <div className="mb-3"><Note>From the mating on {damMating.matedOn}{damMating.sire ? ` with ${damMating.sire}` : ''}{damMating.expectedLabel ? `, expected kidding ${damMating.expectedLabel}` : ''}. The sire, breed and kidding are filled in from it.</Note></div>
+                        ) : null}
+                        {section.name === 'Parentage' && form.data.dam_id && form.data.origin === 'born_on_farm' && !damMating ? (
+                            <div className="mb-3"><Note>No mating is recorded for this doe in the last months. Choose the sire yourself.</Note></div>
+                        ) : null}
                         <div className="grid gap-x-4 gap-y-3 md:grid-cols-2">
                             {section.fields.map((f) => (
                                 <div key={f.key} className={f.type === 'long_text' ? 'md:col-span-2' : undefined}>

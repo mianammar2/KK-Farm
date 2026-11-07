@@ -15,7 +15,10 @@ import android.text.InputType
 import android.util.Log
 import android.view.KeyEvent
 import android.view.ViewGroup
+import android.provider.MediaStore
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -24,6 +27,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.FileProvider
+import java.io.File
 import java.net.URLEncoder
 
 /**
@@ -45,6 +50,8 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private val prefs by lazy { getSharedPreferences("kkfarm", Context.MODE_PRIVATE) }
     private var isVisible = false
+    private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private var cameraUri: Uri? = null
     private var pendingChoice: List<String>? = null
     private var pendingUrl: String? = null
     private var pendingAt = 0L
@@ -98,6 +105,20 @@ class MainActivity : Activity() {
             settings.domStorageEnabled = true
             settings.userAgentString = settings.userAgentString + " KKFarmScanner/" + BuildConfigVersion.NAME
             addJavascriptInterface(Bridge(), "KKNative")
+            // A WebView ignores <input type="file"> unless the app handles it: this opens the C72 camera
+            // ("Open camera", capture attribute) or a chooser with the gallery and the camera.
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+                    fileCallback?.onReceiveValue(null)
+                    fileCallback = callback
+                    return runCatching { openPhotoPicker(params.isCaptureEnabled); true }.getOrElse {
+                        Log.w(TAG, "photo picker failed", it)
+                        fileCallback = null
+                        callback.onReceiveValue(null)
+                        false
+                    }
+                }
+            }
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     val target = request.url
@@ -175,6 +196,39 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.dataString?.let { web.loadUrl(it) }
+    }
+
+    private fun openPhotoPicker(cameraOnly: Boolean) {
+        val dir = File(cacheDir, "photos").apply { mkdirs() }
+        val photo = File.createTempFile("goat_", ".jpg", dir)
+        val uri = FileProvider.getUriForFile(this, "$packageName.files", photo)
+        cameraUri = uri
+        val camera = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            .putExtra(MediaStore.EXTRA_OUTPUT, uri)
+            .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val intent = if (cameraOnly) {
+            camera
+        } else {
+            val gallery = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType("image/*")
+            Intent.createChooser(gallery, "Goat photo").putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(camera))
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(intent, REQUEST_PHOTO)
+    }
+
+    @Deprecated("Activity result API needs androidx.activity; this app stays framework-only")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_PHOTO) return
+        val picked: Uri? = when {
+            resultCode != RESULT_OK -> null
+            data?.data != null -> data.data // chosen from the gallery
+            else -> cameraUri?.takeIf { uri -> contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize > 0 } == true } // taken with the camera
+        }
+        Log.i(TAG, "photo picked=${picked != null}")
+        fileCallback?.onReceiveValue(picked?.let { arrayOf(it) })
+        fileCallback = null
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -294,6 +348,7 @@ class MainActivity : Activity() {
     companion object {
         const val TAG = "KKFarm"
         private const val PENDING_SCAN_MS = 120_000L
+        private const val REQUEST_PHOTO = 41
         private const val KEY_SERVER = "server"
         private const val KEY_ACTION = "action"
         private const val KEY_EXTRA = "extra"
@@ -314,5 +369,5 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.1.5"
+    const val NAME = "0.2.0"
 }

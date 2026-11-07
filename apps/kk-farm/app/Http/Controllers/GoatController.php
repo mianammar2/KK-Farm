@@ -54,10 +54,18 @@ class GoatController extends Controller
             'lookups' => [
                 'breed_id' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['value' => $b->id, 'label' => $b->name, 'next' => $b->nextTagId()]),
                 'pen_id' => Pen::with('shed')->orderBy('name')->get()->map(fn (Pen $p) => ['value' => $p->id, 'label' => trim(($p->shed?->name ?? '').' / '.$p->name.($p->purpose ? " · {$p->purpose}" : ''), ' /')]),
-                'sire_id' => Animal::where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : '')]),
-                'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : '')]),
+                'sire_id' => Animal::where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id]),
+                'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id]),
             ],
             'classSex' => GoatRegistration::CLASS_SEX,
+            // D-042: for each doe, the latest mating a kid could come from, so choosing the dam fills in the sire.
+            'damMatings' => Mating::with('sire')->whereIn('status', ['open', 'pregnant', 'kidded'])->where('mated_on', '>=', now()->subDays(GoatRegistration::GESTATION_WINDOW[1] + 30))
+                ->orderByRaw("CASE status WHEN 'pregnant' THEN 0 WHEN 'kidded' THEN 1 ELSE 2 END")->orderByDesc('mated_on')->get()->unique('dam_id')
+                ->mapWithKeys(fn (Mating $m) => [$m->dam_id => [
+                    'sireId' => $m->sire_id, 'sire' => $m->sire?->farm_number, 'sireBreed' => $m->sire?->breed_id, 'status' => $m->status,
+                    'matedOn' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('Y-m-d'), 'expectedLabel' => $m->expected_kidding_on?->format('j M Y'),
+                ]]),
+            'mixedBreedId' => Breed::where('name', 'Mixed')->value('id'),
             'canAssignTags' => $request->user()->passes('assign_tags'),
             'untagged' => Animal::active()->whereDoesntHave('openAssignment')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
         ]);

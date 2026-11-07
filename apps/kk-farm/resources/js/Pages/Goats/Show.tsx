@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import PhotoPicker from '../../components/PhotoPicker';
 import { Camera, MoveRight, Scale, Star, TriangleAlert } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import Chart, { axis } from '../../components/Chart';
@@ -205,7 +206,6 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? '') });
     const exit = useForm({ reason: 'sold' });
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
-    const fileInput = useRef<HTMLInputElement>(null);
     const options = { preserveScroll: true, onSuccess: close };
 
     if (kind === 'weight') {
@@ -236,7 +236,7 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     if (kind === 'photo') {
         return (
             <form onSubmit={(e) => { e.preventDefault(); photo.post(`/goats/${goat.id}/photos`, { ...options, forceFormData: true }); }} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                <Field label="Photo" error={photo.errors.photo} hint="On a phone this opens the camera or gallery"><input ref={fileInput} type="file" accept="image/*" capture="environment" className="field" onChange={(e) => photo.setData('photo', e.target.files?.[0] ?? null)} /></Field>
+                <PhotoPicker value={photo.data.photo} onChange={(file) => photo.setData('photo', file)} error={photo.errors.photo} />
                 <Field label="Note (optional)"><input className="field" value={photo.data.notes} onChange={(e) => photo.setData('notes', e.target.value)} /></Field>
                 <Button type="submit" disabled={photo.processing || !photo.data.photo}>Save photo</Button>
             </form>
