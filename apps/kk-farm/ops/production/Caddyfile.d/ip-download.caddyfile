@@ -1,0 +1,15 @@
+# D-048: download the Android app by plain IP address, for networks whose DNS cannot look up the sslip.io name.
+# Only the APK is served here (Android checks the app signature on update, so a tampered file cannot replace
+# an installed KK Farm). Every other path goes to the HTTPS site.
+http://{$PUBLIC_IP} {
+	root * /app/public
+	handle /app {
+		redir * /downloads/kkfarm.apk 302
+	}
+	handle /downloads/kkfarm.apk {
+		file_server
+	}
+	handle {
+		redir * https://{$SERVER_NAME}{uri} 308
+	}
+}

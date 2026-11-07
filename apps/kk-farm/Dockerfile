@@ -19,6 +19,7 @@ RUN npm run build
 FROM dunglas/frankenphp:1-php8.4
 RUN install-php-extensions pdo_pgsql gd intl zip bcmath opcache exif
 COPY ops/production/php.ini /usr/local/etc/php/conf.d/zz-kkfarm.ini
+COPY ops/production/Caddyfile.d/ /etc/caddy/Caddyfile.d/
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY . .

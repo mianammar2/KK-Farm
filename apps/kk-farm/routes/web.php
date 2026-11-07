@@ -18,6 +18,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeightController;
 use Illuminate\Support\Facades\Route;
 
+// Short link to install the KK Farm Android app on the RFID gun (D-048). Public: the app itself needs a sign-in.
+Route::get('/app', fn () => redirect('/downloads/kkfarm.apk'));
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'show'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
