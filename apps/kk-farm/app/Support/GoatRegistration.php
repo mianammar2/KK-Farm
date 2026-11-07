@@ -158,8 +158,18 @@ final class GoatRegistration
         }
     }
 
+    /** Animal classes that only fit one sex. Kid and Other fit both; classes a farm adds are not restricted. */
+    public const CLASS_SEX = ['replacement_doe' => 'female', 'breeding_doe' => 'female', 'breeding_buck' => 'male', 'wether' => 'male'];
+
     private static function assertParents(array $data): void
     {
+        $needs = self::CLASS_SEX[$data['animal_class'] ?? ''] ?? null;
+        if ($needs && $needs !== ($data['sex'] ?? null)) {
+            throw ValidationException::withMessages(['animal_class' => $needs === 'female'
+                ? 'A doe class is only for female goats. For a male, choose Breeding Buck, Wether or Kid.'
+                : 'Breeding Buck and Wether are only for male goats. For a female, choose Replacement Doe, Breeding Doe or Kid.']);
+        }
+
         if (! empty($data['sire_id']) && Animal::whereKey($data['sire_id'])->value('sex') !== 'male') {
             throw ValidationException::withMessages(['sire_id' => 'The sire must be a male goat.']);
         }

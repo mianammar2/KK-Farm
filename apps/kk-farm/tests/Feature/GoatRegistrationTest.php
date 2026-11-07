@@ -212,6 +212,22 @@ class GoatRegistrationTest extends TestCase
         $this->assertSame(1, Animal::count());
     }
 
+    public function test_the_animal_class_must_fit_the_sex(): void
+    {
+        $caretaker = $this->user('caretaker');
+
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'male', 'animal_class' => 'breeding_doe']))->assertSessionHasErrors(['animal_class']);
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'male', 'animal_class' => 'replacement_doe']))->assertSessionHasErrors(['animal_class']);
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'female', 'animal_class' => 'wether']))->assertSessionHasErrors(['animal_class']);
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => 'female', 'animal_class' => 'breeding_buck']))->assertSessionHasErrors(['animal_class']);
+        $this->assertSame(0, Animal::count());
+
+        foreach ([['male', 'breeding_buck'], ['male', 'wether'], ['male', 'kid'], ['female', 'breeding_doe'], ['female', 'kid'], ['female', 'other']] as [$sex, $class]) {
+            $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => $sex, 'animal_class' => $class]))->assertSessionHasNoErrors();
+        }
+        $this->assertSame(6, Animal::count());
+    }
+
     public function test_the_owner_can_add_a_custom_field_and_it_is_used_on_the_form_and_saved_with_the_goat(): void
     {
         $owner = $this->user('ceo');

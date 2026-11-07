@@ -6,11 +6,11 @@ import type { Option } from '../../types';
 
 type Choice = { value: string | number; label: string; next?: string };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
-type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; canAssignTags: boolean; untagged: Option[] };
+type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; canAssignTags: boolean; untagged: Option[] };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-export default function Register({ epc, fields, lookups, canAssignTags, untagged }: Props) {
+export default function Register({ epc, fields, lookups, classSex, canAssignTags, untagged }: Props) {
     const form = useForm<Record<string, any>>({
         rfid_epc: epc ?? '',
         birth_date_is_estimate: false,
@@ -27,7 +27,15 @@ export default function Register({ epc, fields, lookups, canAssignTags, untagged
     }, []);
 
     const value = (f: FieldDef) => (f.builtin ? form.data[f.key] : form.data.custom_fields[f.key]) ?? (f.type === 'yes_no' ? false : '');
-    const set = (f: FieldDef, v: any) => (f.builtin ? form.setData(f.key, v) : form.setData('custom_fields', { ...form.data.custom_fields, [f.key]: v }));
+    const set = (f: FieldDef, v: any) => {
+        if (!f.builtin) {
+            return form.setData('custom_fields', { ...form.data.custom_fields, [f.key]: v });
+        }
+        if (f.key === 'sex' && classSex[form.data.animal_class] && classSex[form.data.animal_class] !== v) {
+            return form.setData((d: Record<string, any>) => ({ ...d, sex: v, animal_class: '' }));
+        }
+        form.setData(f.key, v);
+    };
     const error = (f: FieldDef) => (f.builtin ? form.errors[f.key] : form.errors[`custom_fields.${f.key}`]);
 
     const control = (f: FieldDef): ReactNode => {
@@ -49,8 +57,12 @@ export default function Register({ epc, fields, lookups, canAssignTags, untagged
                 return <input className="field" type="date" max={f.key === 'birth_date' || f.key === 'acquired_on' ? TODAY : undefined} value={v} onChange={(e) => set(f, e.target.value)} />;
             case 'yes_no':
                 return <span className="flex min-h-11 items-center gap-2"><input type="checkbox" className="size-5" checked={Boolean(v)} onChange={(e) => set(f, e.target.checked)} /><span className="text-sm text-ink-soft">Yes</span></span>;
-            case 'select':
-                return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{f.options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+            case 'select': {
+                // Animal Class only offers classes that fit the chosen sex (a male cannot be a Breeding Doe).
+                const sex = form.data.sex;
+                const options = f.key === 'animal_class' && sex ? f.options?.filter((o) => !classSex[String(o.value)] || classSex[String(o.value)] === sex) : f.options;
+                return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+            }
             case 'lookup':
                 return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{(lookups[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
             default:
