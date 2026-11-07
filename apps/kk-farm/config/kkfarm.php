@@ -13,6 +13,9 @@ return [
     // Shows the "synthetic demo data" badge. Set true only when the DemoSeeder data is loaded.
     'demo' => (bool) env('KKFARM_DEMO', false),
 
+    // D-044: the passwordless role picker. Only honoured in local/testing environments, never on a server.
+    'demo_login' => (bool) env('KKFARM_DEMO_LOGIN', false),
+
     // Candidate roles from the project brief. Actual responsibilities are confirmed after the farm visit.
     'roles' => [
         'ceo' => 'CEO / Owner',

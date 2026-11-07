@@ -101,6 +101,7 @@ function NavList({ path, modules, onNavigate }: { path: string; modules: string[
 }
 
 function RoleSwitcher({ auth, roles }: { auth: NonNullable<SharedProps['auth']>; roles: SharedProps['roles'] }) {
+    const { demoLogin } = usePage<SharedProps>().props;
     const [open, setOpen] = useState(false);
     const root = useRef<HTMLDivElement>(null);
 
@@ -119,15 +120,16 @@ function RoleSwitcher({ auth, roles }: { auth: NonNullable<SharedProps['auth']>;
             <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-11 items-center gap-2 rounded-tile border border-rule-strong bg-tile px-2.5 text-left hover:bg-cobalt-100">
                 <span className="grid size-7 place-items-center rounded-[4px] bg-cobalt-800 text-xs font-bold text-white">{auth.roleLabel.slice(0, 2).toUpperCase()}</span>
                 <span className="hidden leading-tight sm:block">
-                    <span className="block text-sm font-semibold">{auth.roleLabel}</span>
-                    <span className="block text-xs text-ink-soft">Simulated role</span>
+                    <span className="block text-sm font-semibold">{auth.name}</span>
+                    <span className="block text-xs text-ink-soft">{auth.roleLabel}</span>
                 </span>
                 <ChevronDown size={15} className="text-ink-soft" aria-hidden />
             </button>
             {open ? (
                 <div className="absolute right-0 z-40 mt-1.5 w-60 rounded-tile border border-rule bg-tile p-1 shadow-float">
-                    <div className="px-2.5 py-1.5 text-sm text-ink-soft">View the app as</div>
-                    {Object.entries(roles).map(([role, label]) => (
+                    <Link href="/account/password" onClick={() => setOpen(false)} className="flex min-h-10 w-full items-center rounded-[4px] px-2.5 text-left text-sm hover:bg-cobalt-100">Change password</Link>
+                    {demoLogin ? <div className="px-2.5 py-1.5 text-sm text-ink-soft">Local testing: view the app as</div> : null}
+                    {demoLogin && Object.entries(roles).map(([role, label]) => (
                         <button
                             key={role}
                             type="button"

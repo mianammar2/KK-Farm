@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureModule;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetTenant;
@@ -17,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [SetTenant::class, HandleInertiaRequests::class]);
+        $middleware->web(append: [EnsureActiveAccount::class, SetTenant::class, HandleInertiaRequests::class]);
         // The tenant must be bound before route-model binding resolves {animal} etc. (D-037).
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: SetTenant::class);
         $middleware->alias(['module' => EnsureModule::class]);

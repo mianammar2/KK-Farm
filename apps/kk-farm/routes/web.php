@@ -14,6 +14,7 @@ use App\Http\Controllers\ScanController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShedController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeightController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,7 +25,9 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/switch-role', [AuthController::class, 'login']);
+    Route::post('/switch-role', [AuthController::class, 'login']); // demo login only (D-044)
+    Route::get('/account/password', [AuthController::class, 'editPassword']);
+    Route::post('/account/password', [AuthController::class, 'updatePassword']);
 
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
 
@@ -98,6 +101,9 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:settings')->group(function (): void {
         Route::get('/settings', [SettingsController::class, 'index']);
         Route::post('/settings/breeds', [SettingsController::class, 'addBreed']);
+        Route::get('/settings/users', [UserController::class, 'index']);
+        Route::post('/settings/users', [UserController::class, 'store']);
+        Route::post('/settings/users/{id}', [UserController::class, 'update'])->whereNumber('id');
         Route::get('/settings/fields', [FieldController::class, 'index']);
         Route::post('/settings/fields', [FieldController::class, 'store']);
         Route::post('/settings/fields/{field}', [FieldController::class, 'update']);

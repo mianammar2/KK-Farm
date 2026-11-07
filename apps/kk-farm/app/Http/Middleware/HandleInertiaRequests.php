@@ -24,6 +24,7 @@ class HandleInertiaRequests extends Middleware
             ] : null,
             'roles' => config('kkfarm.roles'),
             'demo' => (bool) config('kkfarm.demo'),
+            'demoLogin' => \App\Http\Controllers\AuthController::demoLogin(),
             'flash' => fn () => $request->session()->get('success'),
         ];
     }

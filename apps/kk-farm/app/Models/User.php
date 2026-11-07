@@ -10,6 +10,11 @@ class User extends Authenticatable
 
     protected $hidden = ['password', 'remember_token'];
 
+    /** Same defaults as the database, so a user created in code is not mistaken for a disabled account. */
+    protected $attributes = ['active' => true, 'must_change_password' => false];
+
+    protected $casts = ['active' => 'boolean', 'must_change_password' => 'boolean', 'last_login_at' => 'datetime', 'password' => 'hashed'];
+
     public function canModule(string $module): bool
     {
         return in_array($this->role, config("kkfarm.modules.$module", []), true);

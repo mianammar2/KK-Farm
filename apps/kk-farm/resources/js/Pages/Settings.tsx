@@ -27,6 +27,10 @@ export default function Settings({ breeds, matrix, gates, environment }: Props) 
                             <Button type="submit" disabled={form.processing}>Add</Button>
                         </form>
                     </Panel>
+                    <Panel title="Users and sign-in" description="Who can sign in, and with which role">
+                        <p className="mb-3 text-sm text-ink-soft">Add staff and vets, reset passwords, or disable an account.</p>
+                        <Link href="/settings/users"><Button variant="secondary">Manage users</Button></Link>
+                    </Panel>
                     <Panel title="Goat register fields" description="The registration form, from the KK Farms workbook">
                         <p className="mb-3 text-sm text-ink-soft">Rename fields, edit dropdown options, or add your own fields.</p>
                         <Link href="/settings/fields"><Button variant="secondary">Edit register fields</Button></Link>

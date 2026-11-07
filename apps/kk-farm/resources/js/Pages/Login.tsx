@@ -1,7 +1,8 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
 import { useMemo } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
+import { Button, Field } from '../components/ui';
 import type { SharedProps } from '../types';
 
 const SCOPE: Record<string, string> = {
@@ -16,8 +17,10 @@ const SCOPE: Record<string, string> = {
 
 const COATS = ['black', 'spotted', 'brown', 'boer', 'tan', 'white'];
 
-export default function Login() {
+export default function Login({ demoLogin }: { demoLogin: boolean }) {
     const { roles } = usePage<SharedProps>().props;
+    // Remember is on by default: the RFID gun should not ask staff to sign in every day.
+    const form = useForm({ login: '', password: '', remember: true });
     const tiles = useMemo(() => Array.from({ length: 48 }, (_, i) => ({ number: `DEMO-${i * 7 + 3}`, coat: COATS[(i * 5) % COATS.length], sex: i % 3 ? 'female' : 'male' })), []);
 
     return (
@@ -35,8 +38,16 @@ export default function Login() {
                     <h1 className="text-3xl font-bold tracking-tight text-cobalt-900">KK Farm</h1>
                     <p className="mt-1 text-ink-soft">Every goat, one permanent record.</p>
                 </div>
-                <h2 className="font-semibold text-ink">Choose a role to explore</h2>
-                <p className="mb-3 text-sm text-ink-soft">Local preview with simulated sign-in and synthetic data. No passwords are used here.</p>
+                <form onSubmit={(e) => { e.preventDefault(); form.post('/login', { onFinish: () => form.reset('password') }); }} className="space-y-3">
+                    <Field label="Username or email" error={form.errors.login}><input className="field" autoComplete="username" autoCapitalize="none" spellCheck={false} value={form.data.login} onChange={(e) => form.setData('login', e.target.value)} autoFocus /></Field>
+                    <Field label="Password" error={form.errors.password}><input className="field" type="password" autoComplete="current-password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} /></Field>
+                    <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="size-5" checked={form.data.remember} onChange={(e) => form.setData('remember', e.target.checked)} /> Keep me signed in on this device</label>
+                    <Button type="submit" className="w-full" disabled={form.processing}>{form.processing ? 'Signing in…' : 'Sign in'}</Button>
+                    <p className="text-sm text-ink-soft">No account yet? Ask the farm owner to add you.</p>
+                </form>
+                {demoLogin ? (<>
+                <h2 className="mt-8 font-semibold text-ink">Local testing: choose a role</h2>
+                <p className="mb-3 text-sm text-ink-soft">Only on this laptop (KKFARM_DEMO_LOGIN). Never available on a server.</p>
                 <div className="divide-y divide-rule rounded-tile border border-rule">
                     {Object.entries(roles).map(([role, label]) => (
                         <button key={role} type="button" onClick={() => router.post('/login', { role })} className="group flex min-h-14 w-full items-center justify-between gap-3 px-3.5 py-2 text-left transition-colors hover:bg-cobalt-100">
@@ -48,6 +59,7 @@ export default function Login() {
                         </button>
                     ))}
                 </div>
+                </>) : null}
             </main>
         </div>
     );

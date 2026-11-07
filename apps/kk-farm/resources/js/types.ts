@@ -22,6 +22,7 @@ export type SharedProps = {
     auth: { name: string; role: string; roleLabel: string; modules: string[]; gates: string[] } | null;
     roles: Record<string, string>;
     demo: boolean;
+    demoLogin: boolean;
     flash: string | null;
     errors: Record<string, string>;
 };
