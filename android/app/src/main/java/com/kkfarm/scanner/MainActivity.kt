@@ -54,7 +54,7 @@ class MainActivity : Activity() {
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val extras = intent.extras
-            Log.i(TAG, "broadcast action=${intent.action} extras=${extras?.keySet()?.associateWith { extras.get(it) }}")
+            Log.i(TAG, "broadcast action=${intent.action} extras=${extras?.keySet()?.associateWith { k -> extras.get(k).let { v -> "${v?.javaClass?.simpleName}:${if (v is ByteArray) String(v) else v}" } }}")
             val code = extractCode(intent) ?: return
             onScan(code, "broadcast")
         }
@@ -224,7 +224,9 @@ class MainActivity : Activity() {
         const val DEFAULT_ACTION = "com.kkfarm.SCAN"
         const val DEFAULT_EXTRA = "data"
         // Broadcast actions seen on Chainway devices. Unconfirmed for this firmware: logcat shows what really arrives.
-        val KNOWN_ACTIONS = listOf("com.scanner.broadcast", "com.rscja.scanner.action.scanner.RFID", "android.rfid.FUN_KEY")
+        // com.rscja.android.DATA_RESULT is what InfoWedge broadcasts after each read on this C72 (seen in the
+        // broadcast history, 2026-11-07); its extras carry the tag data.
+        val KNOWN_ACTIONS = listOf("com.rscja.android.DATA_RESULT", "com.scanner.broadcast", "com.rscja.scanner.action.scanner.RFID", "android.rfid.FUN_KEY")
         val KNOWN_EXTRAS = listOf("data", "barcode_string", "barcodeData", "scannerdata", "epc", "EPC", "barcode", "code")
         private val TAG_PATTERN = Regex("^[A-Za-z0-9._:-]{4,64}$")
     }
@@ -232,5 +234,5 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.1.0"
+    const val NAME = "0.1.1"
 }
