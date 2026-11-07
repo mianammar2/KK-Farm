@@ -26,6 +26,7 @@ export default function Breeding({ pregnant, open, recent, performance, focus, p
     const [tab, setTab] = useState('cycle');
     const isVet = auth?.gates.includes('clinical');
     const mating = useForm({ dam_id: String(does[0]?.id ?? ''), sire_id: String(bucks[0]?.id ?? ''), mated_on: new Date().toLocaleDateString('en-CA'), method: 'natural' });
+    // The form follows the herd: when goats are registered the first doe/buck become the defaults.
 
     const checkPair = () => router.get('/breeding', { sire: mating.data.sire_id, dam: mating.data.dam_id }, { preserveState: true, preserveScroll: true, only: ['pairCheck'] });
 
@@ -71,12 +72,13 @@ export default function Breeding({ pregnant, open, recent, performance, focus, p
 
                     <Panel title="Record a mating">
                         <form onSubmit={(e) => { e.preventDefault(); mating.post('/breeding/matings', { preserveScroll: true }); }} className="space-y-3">
-                            <Field label="Doe" error={mating.errors.dam_id}><select className="field" value={mating.data.dam_id} onChange={(e) => mating.setData('dam_id', e.target.value)}>{does.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>
-                            <Field label="Buck" error={mating.errors.sire_id}><select className="field" value={mating.data.sire_id} onChange={(e) => mating.setData('sire_id', e.target.value)}>{bucks.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>
+                            {!does.length ? <Note>No female goats are registered yet. Register a doe first, then record her mating here.</Note> : null}
+                            <Field label="Doe" error={mating.errors.dam_id}><select className="field" value={mating.data.dam_id} onChange={(e) => mating.setData('dam_id', e.target.value)} disabled={!does.length}>{does.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>
+                            <Field label="Buck" error={mating.errors.sire_id} hint="Not recorded: the buck is unknown or not on this farm"><select className="field" value={mating.data.sire_id} onChange={(e) => mating.setData('sire_id', e.target.value)}><option value="">Not recorded</option>{bucks.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>
                             <Field label="Date" error={mating.errors.mated_on}><input type="date" className="field" value={mating.data.mated_on} onChange={(e) => mating.setData('mated_on', e.target.value)} /></Field>
                             <Button variant="secondary" className="w-full" onClick={checkPair}>Check relatedness</Button>
                             {pairCheck ? (pairCheck.shared ? <Note>{pairCheck.sire} and {pairCheck.dam} share {pairCheck.shared} recorded ancestor{pairCheck.shared > 1 ? 's' : ''} within three generations. Your vet decides.</Note> : <p className="text-sm text-ok-700">No shared ancestors recorded within three generations.</p>) : null}
-                            <Button type="submit" className="w-full" disabled={mating.processing}>Save mating</Button>
+                            <Button type="submit" className="w-full" disabled={mating.processing || !does.length}>Save mating</Button>
                         </form>
                     </Panel>
                 </div>

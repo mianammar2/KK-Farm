@@ -8,7 +8,7 @@ import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 
-type Goat = GoatCard & { origin: string; birthDate: string | null; estimated: boolean; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string };
+type Goat = GoatCard & { origin: string; birthDate: string | null; estimated: boolean; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
@@ -95,7 +95,9 @@ export default function GoatShow(props: Props) {
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
-                                {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : 'Born on the farm')}
+                                {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
+                                {fact('Sire', parentLink(goat.sire))}
+                                {fact('Dam', parentLink(goat.dam))}
                                 {fact('Feeding group', goat.feedingGroup)}
                             </dl>
                             <p className="mt-2 text-sm text-ink-soft">This ID never changes and is never reused, even when the RFID tag does.</p>
@@ -249,4 +251,10 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
             <p className="w-full text-sm text-ink-soft">The RFID tag is released. Nothing about this goat is deleted.</p>
         </form>
     );
+}
+
+/** A parent: a link when registered, the ear tag with a note when only known by tag (D-043). */
+function parentLink(parent: { id: string | null; number: string } | null | undefined) {
+    if (!parent) return null;
+    return parent.id ? <Link href={`/goats/${parent.id}`} className="text-cobalt-800 hover:underline">{parent.number}</Link> : <span>{parent.number} <span className="text-sm font-normal text-ink-faint">(not registered)</span></span>;
 }

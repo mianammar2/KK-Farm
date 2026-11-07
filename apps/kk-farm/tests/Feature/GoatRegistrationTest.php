@@ -309,6 +309,59 @@ class GoatRegistrationTest extends TestCase
         $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['photo' => UploadedFile::fake()->create('notes.pdf', 20, 'application/pdf')]))->assertSessionHasErrors(['photo']);
     }
 
+    public function test_an_unregistered_parent_is_kept_by_tag_and_linked_when_it_is_registered(): void
+    {
+        $manager = $this->user('manager');
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'KID-1', 'sire_tag' => 'bt-0099', 'dam_tag' => 'DAM-77']))->assertSessionHasNoErrors();
+
+        $kid = Animal::where('farm_number', 'KID-1')->sole();
+        $this->assertSame([null, 'BT-0099', null, 'DAM-77'], [$kid->sire_id, $kid->sire_tag, $kid->dam_id, $kid->dam_tag]);
+
+        // The sire arrives later and is registered with that tag: the kid is linked to it.
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'BT-0099', 'sex' => 'male']))->assertSessionHasNoErrors();
+        $sire = Animal::where('farm_number', 'BT-0099')->sole();
+        $kid->refresh();
+        $this->assertSame([$sire->id, null], [$kid->sire_id, $kid->sire_tag]);
+        $this->assertSame('DAM-77', $kid->dam_tag, 'the dam is still only known by tag');
+        $this->assertTrue($kid->events()->where('summary', 'like', 'BT-0099 registered and linked%')->exists());
+    }
+
+    public function test_a_typed_parent_tag_of_a_registered_goat_becomes_a_real_link_and_is_checked(): void
+    {
+        $manager = $this->user('manager');
+        $buck = $this->goat('BUCK-1', 'male');
+        $doe = $this->goat('DOE-1', 'female');
+
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'KID-2', 'sire_tag' => 'buck-1', 'dam_tag' => 'DOE-1']))->assertSessionHasNoErrors();
+        $kid = Animal::where('farm_number', 'KID-2')->sole();
+        $this->assertSame([$buck->id, null, $doe->id, null], [$kid->sire_id, $kid->sire_tag, $kid->dam_id, $kid->dam_tag]);
+
+        $this->actingAs($manager)->post('/goats', $this->payload(['sire_tag' => 'DOE-1']))->assertSessionHasErrors(['sire_id']);
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'SELF-1', 'dam_tag' => 'SELF-1']))->assertSessionHasErrors(['dam_id']);
+        $this->actingAs($manager)->post('/goats', $this->payload(['sire_tag' => 'bad tag!']))->assertSessionHasErrors(['sire_tag']);
+    }
+
+    public function test_a_mating_can_be_recorded_with_an_unrecorded_buck(): void
+    {
+        $doe = $this->goat('DOE-1', 'female');
+
+        $this->actingAs($this->user('manager'))->post('/breeding/matings', ['dam_id' => $doe->id, 'sire_id' => '', 'mated_on' => now()->subDays(140)->toDateString(), 'method' => 'natural'])->assertSessionHasNoErrors();
+
+        $this->assertNull(Mating::where('dam_id', $doe->id)->sole()->sire_id);
+    }
+
+    public function test_the_goat_page_shows_parents_including_those_only_known_by_tag(): void
+    {
+        $manager = $this->user('manager');
+        $buck = $this->goat('BUCK-1', 'male');
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'KID-3', 'sire_id' => $buck->id, 'dam_tag' => 'DAM-9']));
+        $kid = Animal::where('farm_number', 'KID-3')->sole();
+
+        $this->actingAs($manager)->get("/goats/{$kid->id}")->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('goat.sire.id', $buck->id)->where('goat.sire.number', 'BUCK-1')
+            ->where('goat.dam.id', null)->where('goat.dam.number', 'DAM-9'));
+    }
+
     public function test_the_owner_can_add_a_custom_field_and_it_is_used_on_the_form_and_saved_with_the_goat(): void
     {
         $owner = $this->user('ceo');

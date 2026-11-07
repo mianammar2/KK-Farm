@@ -5,7 +5,7 @@ import PhotoPicker from '../../components/PhotoPicker';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
 
-type Choice = { value: string | number; label: string; next?: string; breed?: number | null };
+type Choice = { value: string | number; label: string; next?: string; breed?: number | null; code?: string };
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[] };
@@ -64,6 +64,34 @@ export default function Register({ epc, fields, lookups, classSex, damMatings, m
         if (!d.breed_id && damBreed) next.breed_id = String(sireBreed && sireBreed !== damBreed ? mixedBreedId ?? damBreed : damBreed);
         return next;
     };
+    /**
+     * D-043: Sire Tag / Dam Tag as in the workbook. Pick a registered goat from the list, or type the ear tag of
+     * a parent that is not registered (a purchased goat's parents). That tag links up automatically later.
+     */
+    const parentInput = (f: FieldDef): ReactNode => {
+        const tagKey = f.key === 'sire_id' ? 'sire_tag' : 'dam_tag';
+        const options = lookups[f.key] ?? [];
+        const picked = options.find((o) => String(o.value) === String(form.data[f.key] ?? ''));
+        const text = picked?.code ?? form.data[tagKey] ?? '';
+        const typed = !picked && text !== '';
+        const change = (raw: string) => {
+            const value = raw.toUpperCase().trim();
+            const match = options.find((o) => o.code === value);
+            if (f.key === 'dam_id' && match) {
+                return form.setData((d: Record<string, any>) => ({ ...d, ...kidDefaults(d, String(match.value)), dam_tag: '' }));
+            }
+            form.setData((d: Record<string, any>) => ({ ...d, [f.key]: match ? String(match.value) : '', [tagKey]: match ? '' : value }));
+        };
+        return (
+            <div>
+                <input className="field font-mono" list={`${f.key}-list`} value={text} onChange={(e) => change(e.target.value)} placeholder={options.length ? 'Pick or type the ear tag' : 'Type the ear tag'} autoComplete="off" spellCheck={false} />
+                <datalist id={`${f.key}-list`}>{options.map((o) => <option key={o.value} value={o.code}>{o.label}</option>)}</datalist>
+                {picked ? <span className="mt-1 inline-flex"><Chip className="bg-turq-100 text-turq-800">Registered: {picked.label}</Chip></span> : null}
+                {typed ? <span className="mt-1 block text-sm text-ink-soft">Not registered yet. Saved as a tag and linked automatically when {text} is registered.</span> : null}
+                {form.errors[tagKey] ? <span className="mt-1 block text-sm font-medium text-crit-700">{form.errors[tagKey]}</span> : null}
+            </div>
+        );
+    };
     const damMating = form.data.dam_id && form.data.origin === 'born_on_farm' ? damMatings[form.data.dam_id] : undefined;
     const error = (f: FieldDef) => (f.builtin ? form.errors[f.key] : form.errors[`custom_fields.${f.key}`]);
 
@@ -93,6 +121,9 @@ export default function Register({ epc, fields, lookups, classSex, damMatings, m
                 return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
             }
             case 'lookup':
+                if (f.key === 'sire_id' || f.key === 'dam_id') {
+                    return parentInput(f);
+                }
                 return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{(lookups[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
             default:
                 if (f.key === 'tag_id') {

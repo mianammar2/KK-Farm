@@ -39,7 +39,13 @@ final class GoatRegistration
     /** @param Collection<int, FieldDefinition> $definitions */
     public static function rules(Collection $definitions): array
     {
-        $rules = ['custom_fields' => ['nullable', 'array'], 'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360']];
+        $rules = [
+            'custom_fields' => ['nullable', 'array'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
+            // D-043: parents typed by ear tag when they are not (yet) registered.
+            'sire_tag' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+            'dam_tag' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+        ];
 
         foreach ($definitions as $d) {
             $required = $d->required || in_array($d->key, FieldCatalog::STRUCTURAL, true);
@@ -89,9 +95,17 @@ final class GoatRegistration
     {
         $epc = self::normaliseCode($data['rfid_epc'] ?? null);
 
+        // D-043: a typed parent tag that belongs to a registered goat becomes a real link; otherwise it is kept as text.
+        [$data['sire_id'], $data['sire_tag']] = self::resolveParent($data['sire_id'] ?? null, $data['sire_tag'] ?? null);
+        [$data['dam_id'], $data['dam_tag']] = self::resolveParent($data['dam_id'] ?? null, $data['dam_tag'] ?? null);
+        $ownTag = strtoupper(trim((string) ($data['tag_id'] ?? '')));
+        if ($ownTag !== '' && in_array($ownTag, [$data['sire_tag'], $data['dam_tag']], true)) {
+            throw ValidationException::withMessages([$data['sire_tag'] === $ownTag ? 'sire_id' : 'dam_id' => 'A goat cannot be its own parent.']);
+        }
+
         // D-042: a farm-born kid with a known dam inherits the sire of the dam's mating in the gestation window.
         $mating = self::birthMating($data);
-        if ($mating && empty($data['sire_id']) && $mating->sire_id) {
+        if ($mating && empty($data['sire_id']) && empty($data['sire_tag']) && $mating->sire_id) {
             $data['sire_id'] = $mating->sire_id;
         }
 
@@ -120,6 +134,8 @@ final class GoatRegistration
                 'origin' => $data['origin'],
                 'sire_id' => $data['sire_id'] ?? null,
                 'dam_id' => $data['dam_id'] ?? null,
+                'sire_tag' => $data['sire_tag'] ?? null,
+                'dam_tag' => $data['dam_tag'] ?? null,
                 'acquired_on' => $data['acquired_on'] ?? null,
                 'source_farm' => $data['source_farm'] ?? null,
                 'animal_class' => $data['animal_class'] ?? null,
@@ -137,6 +153,9 @@ final class GoatRegistration
                 'exit_reason' => $exitReason,
                 'exit_date' => $exitReason ? now() : null,
             ]);
+
+            // Goats registered earlier with this goat's tag as their parent are now linked to it.
+            self::linkWaitingChildren($animal, $user);
 
             // The kidding is recorded from the kids themselves: the first kid creates it, twins add to it.
             if ($mating && (! $mating->sire_id || $mating->sire_id === $animal->sire_id)) {
@@ -162,6 +181,34 @@ final class GoatRegistration
 
             return $animal;
         });
+    }
+
+    /** @return array{0: ?string, 1: ?string} [registered parent id, unregistered parent tag] */
+    private static function resolveParent(?string $id, ?string $tag): array
+    {
+        if (! empty($id)) {
+            return [$id, null];
+        }
+        $tag = strtoupper(trim((string) $tag));
+        if ($tag === '') {
+            return [null, null];
+        }
+        $registered = Animal::where('farm_number', $tag)->value('id');
+
+        return $registered ? [$registered, null] : [null, $tag];
+    }
+
+    private static function linkWaitingChildren(Animal $parent, User $user): void
+    {
+        [$idColumn, $tagColumn, $role] = $parent->sex === 'male' ? ['sire_id', 'sire_tag', 'sire'] : ['dam_id', 'dam_tag', 'dam'];
+        $children = Animal::where($tagColumn, $parent->farm_number)->whereNull($idColumn)->get();
+        foreach ($children as $child) {
+            $child->update([$idColumn => $parent->id, $tagColumn => null]);
+            Farm::event($child, 'origin', "{$parent->farm_number} registered and linked as this goat's $role", $user->name);
+        }
+        if ($children->isNotEmpty()) {
+            Farm::event($parent, 'origin', "Linked as $role of ".$children->pluck('farm_number')->implode(', ').' (entered earlier by tag)', $user->name);
+        }
     }
 
     /** Days after mating in which a birth is attributed to it (gestation about 150 days, generous either side). */
