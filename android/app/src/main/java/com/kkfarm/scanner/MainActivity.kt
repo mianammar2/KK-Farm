@@ -153,6 +153,24 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    /**
+     * Opens a scan, but never throws away a half-filled goat register: while that form is open the user is
+     * asked first. Scanning another tag by accident must not cost them what they typed.
+     */
+    private fun openScan(url: String, code: String) {
+        val onForm = web.url?.contains("/goats/register") == true
+        if (!onForm) {
+            web.loadUrl(url)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Tag $code read")
+            .setMessage("You are filling in the goat register. Leave it and open this tag? What you typed will be lost.")
+            .setPositiveButton("Open tag") { _, _ -> web.loadUrl(url) }
+            .setNegativeButton("Stay on the form", null)
+            .show()
+    }
+
     /** A scan that arrived while the app was in the background relaunches it with the scan address. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -193,7 +211,7 @@ class MainActivity : Activity() {
                 is CharSequence -> v.toString()
                 else -> null
             } ?: continue
-            val codes = value.split(Regex("[\\s,;]+")).map { it.trim().uppercase() }.filter { TAG_PATTERN.matches(it) }.distinct()
+            val codes = value.split(Regex("[\\s,;]+")).map { it.trim().uppercase() }.filter { TAG_PATTERN.matches(it) && !JUNK_PATTERN.matches(it) }.distinct()
             if (codes.isNotEmpty()) {
                 return codes
             }
@@ -212,7 +230,7 @@ class MainActivity : Activity() {
         Log.i(TAG, "scan $code via $via")
         val url = "$server/scan?tag=" + URLEncoder.encode(code, "UTF-8")
         if (isVisible) {
-            runOnUiThread { web.loadUrl(url) }
+            runOnUiThread { openScan(url, code) }
         } else {
             // Android 10+ refuses to let a background app bring itself to the front, so remember the scan and
             // open it as soon as KK Farm is opened again. (Set KK Farm as the Home app to avoid this entirely.)
@@ -289,10 +307,12 @@ class MainActivity : Activity() {
         val KNOWN_ACTIONS = listOf("com.rscja.android.DATA_RESULT", "com.scanner.broadcast", "com.rscja.scanner.action.scanner.RFID", "android.rfid.FUN_KEY")
         val KNOWN_EXTRAS = listOf("data", "barcode_string", "barcodeData", "scannerdata", "epc", "EPC", "barcode", "code")
         private val TAG_PATTERN = Regex("^[A-Za-z0-9._:-]{4,64}$")
+        // Empty or failed reads come back as all zeros (seen on the C72) or all F.
+        private val JUNK_PATTERN = Regex("^(0+|F+)$")
     }
 }
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.1.4"
+    const val NAME = "0.1.5"
 }
