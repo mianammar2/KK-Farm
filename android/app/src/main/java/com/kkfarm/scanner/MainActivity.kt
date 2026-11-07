@@ -157,6 +157,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         isVisible = true
+        handler.post(readerWatchdog)
         pendingChoice?.let { pendingChoice = null; chooseTag(it) }
         pendingUrl?.let { url ->
             pendingUrl = null
@@ -166,7 +167,23 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         isVisible = false
+        handler.removeCallbacks(readerWatchdog)
         super.onPause()
+    }
+
+    /**
+     * InfoWedge is what reads the tags. If it crashes (seen on this C72: a null-profile bug in its settings
+     * screen), nothing restarts it and the trigger silently does nothing. While KK Farm is on screen we start
+     * its WedgeService every 20 s: a no-op when it runs, a restart when it died.
+     */
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val readerWatchdog = object : Runnable {
+        override fun run() {
+            runCatching { startService(Intent(INFOWEDGE_SERVICE).setPackage(INFOWEDGE_PACKAGE)) }
+                .onSuccess { if (it == null) Log.w(TAG, "InfoWedge service not found") }
+                .onFailure { Log.w(TAG, "could not start InfoWedge: ${it.message}") }
+            if (isVisible) handler.postDelayed(this, 20_000)
+        }
     }
 
     override fun onDestroy() {
@@ -349,6 +366,8 @@ class MainActivity : Activity() {
         const val TAG = "KKFarm"
         private const val PENDING_SCAN_MS = 120_000L
         private const val REQUEST_PHOTO = 41
+        private const val INFOWEDGE_PACKAGE = "com.rscja.infowedge"
+        private const val INFOWEDGE_SERVICE = "com.rscja.infowedge.SERVICE"
         private const val KEY_SERVER = "server"
         private const val KEY_ACTION = "action"
         private const val KEY_EXTRA = "extra"
@@ -369,5 +388,5 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.2.0"
+    const val NAME = "0.2.1"
 }
