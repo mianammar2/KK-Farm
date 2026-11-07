@@ -11,6 +11,7 @@ use App\Models\FeedingLog;
 use App\Models\HealthRecord;
 use App\Models\LedgerEntry;
 use App\Models\Mating;
+use App\Models\Organization;
 use App\Models\Pen;
 use App\Models\RfidAssignment;
 use App\Models\RfidTag;
@@ -18,6 +19,7 @@ use App\Models\Shed;
 use App\Models\User;
 use App\Models\WeightRecord;
 use App\Support\Farm;
+use App\Support\Tenant;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -39,6 +41,7 @@ class FarmRulesTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+        Tenant::set(Organization::create(['name' => 'Test Farm', 'slug' => 'test-farm'])->id);
         $this->breed = Breed::create(['name' => 'Test Breed', 'default_gestation_days' => 150]);
         $shed = Shed::create(['code' => 'SHED-T', 'name' => 'Test Shed']);
         $this->pen = Pen::create(['shed_id' => $shed->id, 'name' => 'Pen T', 'purpose' => 'Kids']);
@@ -46,7 +49,7 @@ class FarmRulesTest extends TestCase
 
     private function user(string $role): User
     {
-        return User::create(['name' => "Test $role", 'email' => "$role@test.local", 'password' => 'unused', 'role' => $role]);
+        return User::create(['name' => "Test $role", 'email' => "$role@test.local", 'password' => 'unused', 'role' => $role, 'org_id' => Tenant::current()]);
     }
 
     private function goat(string $number, string $sex = 'female'): Animal

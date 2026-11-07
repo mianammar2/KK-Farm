@@ -25,3 +25,19 @@ Option 3.
 - Analytics across tenants (benchmarks) are only allowed on anonymised, opt-in aggregates.
 - Billing, plans and onboarding become real work items, but can follow the first customer.
 - Does not change: no hard deletes (D-005), audit trail, RFID tag/assignment model (D-004).
+
+## Spike result (2026-11-07, branch `saas/foundation`)
+Implemented in `apps/kk-farm` and verified by `tests/Feature/TenantIsolationTest.php` (8 tests; the whole suite is 25 tests, all passing).
+
+- Migration `2026_11_07_000200_add_tenancy.php`: `organizations`, `app_current_org()`, `org_id uuid NOT NULL DEFAULT app_current_org()` plus FK and index on the 18 tenant tables, `ENABLE` + `FORCE ROW LEVEL SECURITY` with a `tenant_isolation` policy (`USING` and `WITH CHECK`), per-organization uniques for breed name, shed code, farm number, tag code and employee code, and `users.org_id`.
+- `App\Support\Tenant` binds `app.current_org` and switches the session into the `kkfarm_app` role (NOSUPERUSER, NOBYPASSRLS). **Superusers bypass RLS, so without the role switch the policies would silently do nothing.** `SetTenant` middleware does this per request and restores the previous state at terminate, so nothing leaks between requests on long-lived workers.
+- `SetTenant` runs before `SubstituteBindings`. Removing that ordering makes another organization's goat open (404 became 200 in the check), and a test guards it.
+- Checks proven by tests: every table with `org_id` has forced RLS and a policy (a new table cannot be forgotten); each tenant sees only its own rows in every table; no read, update or delete of another tenant's rows by id; no insert or move into another tenant; no tenant bound means no visibility; same names and codes allowed across tenants but not within one; the app role cannot bypass RLS; no tenant or role leaks past a request. Disabling the role switch makes 6 of the 8 tests fail.
+
+### Not done yet (follow-ups)
+- `animal_number_seq` is still one global sequence, so farm numbers are unique but have gaps per tenant. Needs a per-tenant counter.
+- Users belong to exactly one organization. D-037 wants memberships so a vet can serve several farms.
+- Queue jobs, Reverb channels, cache keys, file paths and logs are not yet tenant-aware (the prototype uses none of them yet).
+- Runtime uses `SET ROLE` on an owner/superuser connection. Production should connect as a login role without CREATE or superuser rights.
+- History tables still allow UPDATE/DELETE for the app role (D-038 will tighten this).
+- The role-picker sign-in is a prototype shim and must be replaced by real authentication.

@@ -13,6 +13,7 @@ use App\Models\HealthRecord;
 use App\Models\Kidding;
 use App\Models\LedgerEntry;
 use App\Models\Mating;
+use App\Models\Organization;
 use App\Models\Pen;
 use App\Models\RfidAssignment;
 use App\Models\RfidTag;
@@ -20,6 +21,7 @@ use App\Models\Shed;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WeightRecord;
+use App\Support\Tenant;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -45,6 +47,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         mt_srand(20261107);
+
+        // Everything below belongs to one synthetic organization; org_id fills itself from the bound tenant (D-037).
+        Tenant::set(Organization::create(['name' => 'KK Farm (synthetic demo)', 'slug' => 'kk-farm-demo'])->id);
 
         $users = collect(config('kkfarm.roles'))->mapWithKeys(fn (string $label, string $role) => [$role => User::create([
             'name' => $role === 'vet' ? 'Dr. Demo Vet' : "Demo {$label}",

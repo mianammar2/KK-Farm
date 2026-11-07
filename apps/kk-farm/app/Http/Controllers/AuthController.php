@@ -23,7 +23,10 @@ class AuthController extends Controller
         abort_unless(app()->environment('local', 'testing'), 404);
         $data = $request->validate(['role' => ['required', Rule::in(array_keys(config('kkfarm.roles')))]]);
 
-        Auth::login(User::where('role', $data['role'])->firstOrFail());
+        // Switching roles stays inside the current organization (D-037).
+        Auth::login(User::where('role', $data['role'])
+            ->when(Auth::user(), fn ($query, $current) => $query->where('org_id', $current->org_id))
+            ->firstOrFail());
         $request->session()->regenerate();
 
         return redirect('/');

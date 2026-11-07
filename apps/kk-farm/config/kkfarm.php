@@ -3,6 +3,10 @@
 $all = ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'cleaning', 'finance'];
 
 return [
+    // D-037. Database role the connection switches into per request so Row-Level Security applies.
+    // Superusers bypass RLS, so leave this set everywhere except one-off CLI work (migrations, seeding).
+    'tenancy' => ['db_role' => env('TENANCY_DB_ROLE', 'kkfarm_app')],
+
     // Candidate roles from the project brief. Actual responsibilities are confirmed after the farm visit.
     'roles' => [
         'ceo' => 'CEO / Owner',
