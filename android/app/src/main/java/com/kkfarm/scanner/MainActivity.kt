@@ -3,10 +3,8 @@ package com.kkfarm.scanner
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -62,19 +60,6 @@ class MainActivity : Activity() {
     private val server: String get() = prefs.getString(KEY_SERVER, DEFAULT_SERVER)!!.trimEnd('/')
     private val action: String get() = prefs.getString(KEY_ACTION, DEFAULT_ACTION)!!
     private val extraKey: String get() = prefs.getString(KEY_EXTRA, DEFAULT_EXTRA)!!
-
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val extras = intent.extras
-            Log.i(TAG, "broadcast action=${intent.action} extras=${extras?.keySet()?.associateWith { k -> extras.get(k).let { v -> "${v?.javaClass?.simpleName}:${if (v is ByteArray) String(v) else v}" } }}")
-            val codes = extractCodes(intent)
-            when {
-                codes.isEmpty() -> return
-                codes.size == 1 -> onScan(codes[0], "broadcast")
-                else -> runOnUiThread { chooseTag(codes) }
-            }
-        }
-    }
 
     /**
      * InfoWedge sends every tag it saw in one trigger pull, one per line. More than one means neighbouring
@@ -166,14 +151,32 @@ class MainActivity : Activity() {
         } else {
             web.loadUrl(intent?.dataString ?: "$server/scan")
         }
-        // Listen for the whole life of the app, not only while it is on screen: a worker who pressed Home
-        // still expects the trigger to work. A scan brings the app back to the front (see onScan).
-        registerScanReceiver()
+        // The scanner service listens to the reader for the whole life of the gun (D-049) and opens this
+        // screen with each scan, even after the app was swiped away.
+        ScannerService.start(this)
+        handleLaunch(intent)
+    }
+
+    /** A scan or a trigger press that (re)opened KK Farm. */
+    private fun handleLaunch(intent: Intent?) {
+        intent ?: return
+        val codes = intent.getStringArrayExtra(EXTRA_CODES)?.toList().orEmpty()
+        intent.removeExtra(EXTRA_CODES)
+        when {
+            codes.size == 1 -> onScan(codes[0], "reader")
+            codes.size > 1 -> chooseTag(codes)
+            intent.getBooleanExtra(EXTRA_OPEN_SCAN, false) -> {
+                intent.removeExtra(EXTRA_OPEN_SCAN)
+                // Keep a half-filled goat register; otherwise show the Scan screen, ready for the read.
+                if (web.url?.contains("/goats/register") != true && web.url?.contains("/scan") != true) web.loadUrl("$server/scan")
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         isVisible = true
+        visible = true
         handler.post(readerWatchdog)
         pendingChoice?.let { pendingChoice = null; chooseTag(it) }
         pendingUrl?.let { url ->
@@ -184,6 +187,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         isVisible = false
+        visible = false
         handler.removeCallbacks(readerWatchdog)
         super.onPause()
     }
@@ -203,10 +207,6 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onDestroy() {
-        runCatching { unregisterReceiver(receiver) }
-        super.onDestroy()
-    }
 
     /**
      * Opens a scan, but never throws away a half-filled goat register: while that form is open the user is
@@ -229,7 +229,9 @@ class MainActivity : Activity() {
     /** A scan that arrived while the app was in the background relaunches it with the scan address. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         intent.dataString?.let { web.loadUrl(it) }
+        handleLaunch(intent)
     }
 
     private fun openPhotoPicker(cameraOnly: Boolean) {
@@ -268,43 +270,6 @@ class MainActivity : Activity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         web.saveState(outState)
-    }
-
-    private fun registerScanReceiver() {
-        runCatching { unregisterReceiver(receiver) }
-        val filter = IntentFilter().apply {
-            addAction(action)
-            KNOWN_ACTIONS.forEach { addAction(it) }
-        }
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED) // InfoWedge is another app
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(receiver, filter)
-        }
-        Log.i(TAG, "listening for ${filter.actionsIterator().asSequence().toList()}")
-    }
-
-    /**
-     * Distinct tag codes from the broadcast. The configured extra is tried first, then common names, then any
-     * text extra. A value may hold several tags separated by line breaks (InfoWedge, one tag per line).
-     */
-    private fun extractCodes(intent: Intent): List<String> {
-        val extras = intent.extras ?: return emptyList()
-        val keys = listOf(extraKey) + KNOWN_EXTRAS + extras.keySet()
-        for (key in keys.distinct()) {
-            val value = when (val v = extras.get(key)) {
-                is String -> v
-                is ByteArray -> String(v)
-                is CharSequence -> v.toString()
-                else -> null
-            } ?: continue
-            val codes = value.split(Regex("[\\s,;]+")).map { it.trim().uppercase() }.filter { TAG_PATTERN.matches(it) && !JUNK_PATTERN.matches(it) }.distinct()
-            if (codes.isNotEmpty()) {
-                return codes
-            }
-        }
-        return emptyList()
     }
 
     private fun vibrate(ms: Long) {
@@ -351,6 +316,17 @@ class MainActivity : Activity() {
         val serverField = EditText(this).apply { setText(server); inputType = InputType.TYPE_TEXT_VARIATION_URI; hint = "http://192.168.20.105:8000" }
         val actionField = EditText(this).apply { setText(action); hint = DEFAULT_ACTION }
         val extraField = EditText(this).apply { setText(extraKey); hint = DEFAULT_EXTRA }
+        val triggerSwitch = android.widget.CheckBox(this).apply {
+            text = "Open KK Farm when the trigger is pressed"
+            isChecked = prefs.getBoolean(KEY_OPEN_ON_TRIGGER, true)
+        }
+        val overlayNote = TextView(this).apply {
+            text = "Needs \"Display over other apps\" for KK Farm. Tap here to allow it."
+            setTextColor(0xFFB3261E.toInt())
+            setPadding(0, pad / 3, 0, 0)
+            visibility = if (android.provider.Settings.canDrawOverlays(this@MainActivity)) android.view.View.GONE else android.view.View.VISIBLE
+            setOnClickListener { startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) }
+        }
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, 0)
@@ -361,6 +337,8 @@ class MainActivity : Activity() {
             addView(actionField)
             addView(TextView(context).apply { text = "Broadcast data key" })
             addView(extraField)
+            addView(triggerSwitch)
+            addView(overlayNote)
         }
         AlertDialog.Builder(this)
             .setTitle("KK Farm settings")
@@ -370,8 +348,9 @@ class MainActivity : Activity() {
                     .putString(KEY_SERVER, serverField.text.toString().trim().ifEmpty { DEFAULT_SERVER })
                     .putString(KEY_ACTION, actionField.text.toString().trim().ifEmpty { DEFAULT_ACTION })
                     .putString(KEY_EXTRA, extraField.text.toString().trim().ifEmpty { DEFAULT_EXTRA })
+                    .putBoolean(KEY_OPEN_ON_TRIGGER, triggerSwitch.isChecked)
                     .apply()
-                registerScanReceiver()
+                ScannerService.restart(this)
                 web.loadUrl("$server/scan")
             }
             .setNeutralButton("Retry") { _, _ -> web.reload() }
@@ -402,18 +381,15 @@ class MainActivity : Activity() {
         private const val OLD_LAPTOP_SERVER = "http://localhost:8000"
         const val DEFAULT_ACTION = "com.kkfarm.SCAN"
         const val DEFAULT_EXTRA = "data"
-        // Broadcast actions seen on Chainway devices. Unconfirmed for this firmware: logcat shows what really arrives.
-        // com.rscja.android.DATA_RESULT is what InfoWedge broadcasts after each read on this C72 (seen in the
-        // broadcast history, 2026-11-07); its extras carry the tag data.
-        val KNOWN_ACTIONS = listOf("com.rscja.android.DATA_RESULT", "com.scanner.broadcast", "com.rscja.scanner.action.scanner.RFID", "android.rfid.FUN_KEY")
-        val KNOWN_EXTRAS = listOf("data", "barcode_string", "barcodeData", "scannerdata", "epc", "EPC", "barcode", "code")
-        private val TAG_PATTERN = Regex("^[A-Za-z0-9._:-]{4,64}$")
-        // Empty or failed reads come back as all zeros (seen on the C72) or all F.
-        private val JUNK_PATTERN = Regex("^(0+|F+)$")
+        const val KEY_OPEN_ON_TRIGGER = "open_on_trigger"
+        const val EXTRA_CODES = "kkfarm.codes"
+        const val EXTRA_OPEN_SCAN = "kkfarm.open_scan"
+        /** True while the KK Farm screen is in front; the scanner service only opens it when it is not. */
+        @Volatile var visible = false
     }
 }
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.3.0"
+    const val NAME = "0.4.0"
 }
