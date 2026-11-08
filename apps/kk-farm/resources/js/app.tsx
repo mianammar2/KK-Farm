@@ -1,4 +1,4 @@
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import { MotionConfig } from 'motion/react';
 import type { ComponentType, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -9,6 +9,15 @@ import { inScannerApp } from './lib/native';
 // animations reduced to quick fades. Phones and desktop keep the full effects.
 const LITE = inScannerApp();
 if (LITE) document.documentElement.classList.add('lite');
+
+// D-090: an installed app (iPhone home screen, the gun) can sit in the background for days. When it comes back after
+// 5 minutes away it reloads its data; if a new version was deployed meanwhile, Inertia sees the changed asset version
+// and loads the new app by itself. So the app is always up to date without anyone updating it.
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) hiddenAt = Date.now();
+    else if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000) router.reload();
+});
 
 type PageModule = { default: ComponentType & { layout?: unknown } };
 

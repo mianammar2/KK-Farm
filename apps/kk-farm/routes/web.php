@@ -31,6 +31,13 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/switch-role', [AuthController::class, 'login']); // demo login only (D-044)
     Route::get('/account/password', [AuthController::class, 'editPassword']);
     Route::post('/account/password', [AuthController::class, 'updatePassword']);
+    // D-090: the app on each device and its updates
+    Route::get('/account/app', function () {
+        $file = public_path('downloads/kkfarm.json');
+        $info = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+
+        return \Inertia\Inertia::render('Account/AppUpdates', ['android' => $info ? ['versionName' => $info['versionName'] ?? '', 'versionCode' => (int) ($info['versionCode'] ?? 0), 'notes' => $info['notes'] ?? ''] : null]);
+    });
 
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
 

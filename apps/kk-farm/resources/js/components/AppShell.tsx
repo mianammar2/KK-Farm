@@ -135,6 +135,7 @@ function RoleSwitcher({ auth, roles, compact }: { auth: NonNullable<SharedProps[
             {open ? (
                 <div className="absolute right-0 z-40 mt-1.5 w-60 rounded-tile border border-rule bg-tile p-1 text-ink shadow-float">
                     <Link href="/account/password" onClick={() => setOpen(false)} className="flex min-h-10 w-full items-center rounded-[4px] px-2.5 text-left text-sm hover:bg-cobalt-100">Change password</Link>
+                    <Link href="/account/app" onClick={() => setOpen(false)} className="flex min-h-10 w-full items-center rounded-[4px] px-2.5 text-left text-sm hover:bg-cobalt-100">App and updates</Link>
                     {demoLogin ? <div className="px-2.5 py-1.5 text-sm text-ink-soft">Local testing: view the app as</div> : null}
                     {demoLogin && Object.entries(roles).map(([role, label]) => (
                         <button

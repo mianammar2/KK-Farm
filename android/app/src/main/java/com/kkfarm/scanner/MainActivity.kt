@@ -155,6 +155,7 @@ class MainActivity : Activity() {
         // screen with each scan, even after the app was swiped away.
         ScannerService.start(this)
         handleLaunch(intent)
+        Updater.check(this, server) // D-090: at most every 6 hours
     }
 
     /** A scan or a trigger press that (re)opened KK Farm. */
@@ -179,6 +180,7 @@ class MainActivity : Activity() {
         visible = true
         handler.post(readerWatchdog)
         pendingChoice?.let { pendingChoice = null; chooseTag(it) }
+        Updater.check(this, server)
         pendingUrl?.let { url ->
             pendingUrl = null
             if (System.currentTimeMillis() - pendingAt < PENDING_SCAN_MS) web.loadUrl(url)
@@ -320,6 +322,14 @@ class MainActivity : Activity() {
             text = "Open KK Farms when the trigger is pressed"
             isChecked = prefs.getBoolean(KEY_OPEN_ON_TRIGGER, true)
         }
+        val autoUpdate = android.widget.CheckBox(this).apply {
+            text = "Update the app automatically"
+            isChecked = Updater.isAuto(this@MainActivity)
+        }
+        val updateButton = android.widget.Button(this).apply {
+            text = "Check for updates (now ${BuildConfigVersion.NAME})"
+            setOnClickListener { Updater.check(this@MainActivity, server, manual = true) }
+        }
         val overlayNote = TextView(this).apply {
             text = "Needs \"Display over other apps\" for KK Farms. Tap here to allow it."
             setTextColor(0xFFB3261E.toInt())
@@ -339,6 +349,8 @@ class MainActivity : Activity() {
             addView(extraField)
             addView(triggerSwitch)
             addView(overlayNote)
+            addView(autoUpdate)
+            addView(updateButton)
         }
         AlertDialog.Builder(this)
             .setTitle("KK Farms settings")
@@ -350,6 +362,7 @@ class MainActivity : Activity() {
                     .putString(KEY_EXTRA, extraField.text.toString().trim().ifEmpty { DEFAULT_EXTRA })
                     .putBoolean(KEY_OPEN_ON_TRIGGER, triggerSwitch.isChecked)
                     .apply()
+                Updater.setAuto(this, autoUpdate.isChecked)
                 ScannerService.restart(this)
                 web.loadUrl("$server/scan")
             }
@@ -365,6 +378,11 @@ class MainActivity : Activity() {
         @JavascriptInterface fun version(): String = BuildConfigVersion.NAME
         @JavascriptInterface fun simulateScan(code: String) = onScan(code, "simulated")
         @JavascriptInterface fun openSettings() = runOnUiThread { showSettings(null) }
+        // D-090: app updates, shown on the web Account page inside the app.
+        @JavascriptInterface fun versionCode(): Int = BuildConfigVersion.CODE
+        @JavascriptInterface fun isAutoUpdate(): Boolean = Updater.isAuto(this@MainActivity)
+        @JavascriptInterface fun setAutoUpdate(on: Boolean) = Updater.setAuto(this@MainActivity, on)
+        @JavascriptInterface fun checkForUpdate() = runOnUiThread { Updater.check(this@MainActivity, server, manual = true) }
     }
 
     companion object {
@@ -391,5 +409,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.4.0"
+    const val NAME = "0.6.0"
+    const val CODE = 12 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

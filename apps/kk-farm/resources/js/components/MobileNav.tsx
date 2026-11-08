@@ -1,6 +1,6 @@
 import BrandMark from './BrandMark';
 import { Link, router } from '@inertiajs/react';
-import { ChevronLeft, ClipboardList, HeartPulse, KeyRound, LayoutGrid, LogOut, MoreHorizontal, ScanLine, Search, X, CalendarCheck } from 'lucide-react';
+import { ChevronLeft, Smartphone, ClipboardList, HeartPulse, KeyRound, LayoutGrid, LogOut, MoreHorizontal, ScanLine, Search, X, CalendarCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -128,7 +128,8 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
                                     </motion.div>
                                 ))}
                             </div>
-                            <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                                <Link href="/account/app" onClick={() => setMore(false)} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-glaze text-sm font-semibold active:scale-95"><Smartphone size={17} aria-hidden /> App</Link>
                                 <Link href="/account/password" onClick={() => setMore(false)} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-glaze text-sm font-semibold active:scale-95"><KeyRound size={17} aria-hidden /> Password</Link>
                                 <button type="button" onClick={onLogout} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-crit-100 text-sm font-semibold text-crit-700 active:scale-95"><LogOut size={17} aria-hidden /> Sign out</button>
                             </div>
