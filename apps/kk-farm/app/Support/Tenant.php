@@ -21,6 +21,14 @@ final class Tenant
     /** @var array{org: ?string, role: string}|null */
     private static ?array $saved = null;
 
+    /** The org bound by set()/clear(), so current() needs no query (it was asked ~800 times per dashboard). */
+    private static ?string $current = null;
+
+    private static bool $known = false;
+
+    /** @var array<string, mixed> values worked out once per request for the current org (D-088) */
+    private static array $memo = [];
+
     public static function enter(?string $orgId): void
     {
         self::$saved ??= [
@@ -51,17 +59,61 @@ final class Tenant
     public static function set(string $orgId): void
     {
         DB::select("select set_config('app.current_org', ?, false)", [$orgId]);
+        self::remember($orgId);
     }
 
     public static function clear(): void
     {
         DB::select("select set_config('app.current_org', '', false)");
+        self::remember(null);
     }
 
     /** The organization bound to this session, or null. */
     public static function current(): ?string
     {
-        return DB::selectOne('select app_current_org() as v')->v;
+        if (! self::$known) {
+            self::remember(DB::selectOne('select app_current_org() as v')->v);
+        }
+
+        return self::$current;
+    }
+
+    /** The current organization row, read once per request. */
+    public static function org(): ?\App\Models\Organization
+    {
+        $id = self::current();
+
+        return $id ? self::memo('org', fn () => \App\Models\Organization::find($id)) : null;
+    }
+
+    /**
+     * D-088: work a value out once per request (and org). Cleared when the org changes, at the start and end of every
+     * request, and whenever a model is saved or deleted, so it never serves a value older than the data.
+     */
+    public static function memo(string $key, \Closure $make): mixed
+    {
+        return array_key_exists($key, self::$memo) ? self::$memo[$key] : (self::$memo[$key] = $make());
+    }
+
+    public static function flush(): void
+    {
+        self::$memo = [];
+    }
+
+    /** Forget everything cached (tests: each test starts with a fresh database session). */
+    public static function forget(): void
+    {
+        self::$memo = [];
+        self::$known = false;
+        self::$current = null;
+        self::$saved = null;
+    }
+
+    private static function remember(?string $orgId): void
+    {
+        self::$current = $orgId ?: null;
+        self::$known = true;
+        self::$memo = [];
     }
 
     public static function role(): ?string

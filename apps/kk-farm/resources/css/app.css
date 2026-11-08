@@ -55,6 +55,10 @@
 }
 
 @layer base {
+    /* D-088: farm codes (KKF-BDU-01-P01, BT-150926P-01) never break at their hyphens on small screens. */
+    .font-mono:not(.break-all):not(pre) {
+        white-space: nowrap;
+    }
     html {
         font-family: var(--font-sans);
         color: var(--color-ink);

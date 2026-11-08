@@ -80,21 +80,21 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                         <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint" />
                         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Number, name, breed or tag" aria-label="Search the registry" className="field pl-9" />
                     </div>
-                    <select aria-label="Breed" value={breed} onChange={(e) => setBreed(e.target.value)} className="field w-auto">
+                    <select aria-label="Breed" value={breed} onChange={(e) => setBreed(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">All breeds</option>
                         {Object.values(breeds).map((b) => <option key={b}>{b}</option>)}
                     </select>
-                    <select aria-label="Sex" value={sex} onChange={(e) => setSex(e.target.value)} className="field w-auto">
+                    <select aria-label="Sex" value={sex} onChange={(e) => setSex(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">Both sexes</option><option value="female">Female</option><option value="male">Male</option>
                     </select>
-                    <select aria-label="Pen" value={pen} onChange={(e) => setPen(e.target.value)} className="field w-auto">
+                    <select aria-label="Pen" value={pen} onChange={(e) => setPen(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">All pens</option>
                         {pens.map((p) => <option key={p.id} value={p.name}>{p.name}: {p.purpose}</option>)}
                     </select>
-                    <select aria-label="Health" value={health} onChange={(e) => setHealth(e.target.value)} className="field w-auto">
+                    <select aria-label="Health" value={health} onChange={(e) => setHealth(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">Any health</option><option value="healthy">Healthy</option><option value="watch">Watch</option><option value="treatment">In treatment</option><option value="critical">Critical</option>
                     </select>
-                    <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="field w-auto">
+                    <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="active">On farm</option><option value="left">Left the farm</option><option value="all">All records</option>
                     </select>
                     <div className="flex rounded-tile border border-rule-strong" role="group" aria-label="View">

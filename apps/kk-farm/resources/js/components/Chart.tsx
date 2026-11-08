@@ -3,11 +3,9 @@ import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } f
 import * as echarts from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers';
 import { useEffect, useRef } from 'react';
+import { SERIES } from '../lib/chartTheme';
 
 echarts.use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, SVGRenderer]);
-
-// D-068: brand green and gold first, then distinct colours.
-export const SERIES = ['#1d5c2e', '#b8892b', '#5b8c3a', '#7a4a2b', '#2f7d74', '#c9a23f', '#8aa36b'];
 
 const BASE = {
     color: SERIES,
@@ -46,8 +44,3 @@ export default function Chart({ option, height = 240, label, onSelect }: { optio
 
     return <div ref={element} role="img" aria-label={label} style={{ height, width: '100%', cursor: onSelect ? 'pointer' : undefined }} />;
 }
-
-export const axis = {
-    category: (data: string[]) => ({ type: 'category', data, axisLine: { lineStyle: { color: '#cfd3c2' } }, axisTick: { show: false }, axisLabel: { color: '#5e6a5f' } }),
-    value: (format?: (v: number) => string) => ({ type: 'value', splitLine: { lineStyle: { color: '#ebece2' } }, axisLabel: { color: '#5e6a5f', formatter: format } }),
-};

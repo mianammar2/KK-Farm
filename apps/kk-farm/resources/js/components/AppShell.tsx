@@ -120,7 +120,7 @@ function RoleSwitcher({ auth, roles, compact }: { auth: NonNullable<SharedProps[
         <div className="relative" ref={root}>
             {compact ? (
                 <button type="button" aria-label="Account" aria-expanded={open} onClick={() => setOpen(!open)} className="grid size-11 place-items-center rounded-full active:bg-white/15">
-                    <span className="grid size-8 place-items-center rounded-full bg-turq-500 text-xs font-bold text-cobalt-950">{(auth.name.match(/[A-Za-z]+/g) ?? ['K']).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>
+                    <span className="grid size-8 place-items-center rounded-full bg-turq-400 text-xs font-bold text-cobalt-950">{(auth.name.match(/[A-Za-z]+/g) ?? ['K']).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>
                 </button>
             ) : (
             <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-11 items-center gap-2 rounded-tile border border-rule-strong bg-tile px-2.5 text-left hover:bg-cobalt-100">

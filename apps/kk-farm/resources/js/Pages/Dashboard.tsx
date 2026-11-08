@@ -1,7 +1,10 @@
 import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
+import { LIVE_MS } from '../lib/live';
+import { inScannerApp } from '../lib/native';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
-import Chart, { axis } from '../components/Chart';
+import Chart from '../components/LazyChart';
+import { axis } from '../lib/chartTheme';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
 import { Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
 import type { Health, SharedProps } from '../types';
@@ -65,7 +68,7 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
 export default function Dashboard({ shedBoard, canMove, requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
-    usePoll(10000, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
+    usePoll(LIVE_MS, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
 
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
@@ -101,11 +104,13 @@ export default function Dashboard({ shedBoard, canMove, requirement, actions, st
     const total = herd.find((h) => h.key === 'total');
     const categories = herd.filter((h) => h.key !== 'total' && h.value > 0);
     const charts = [growthChart, breedChart, financeChart].filter(Boolean).length;
+    // D-088: on the RFID gun charts wait for a tap; drawing them is the heaviest work on its processor.
+    const [showCharts, setShowCharts] = useState(() => !inScannerApp());
 
     return (
         <>
             <Head title="Dashboard" />
-            <PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Updates by itself every 10 seconds.`} />
+            <div className="max-sm:hidden"><PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Updates by itself every ${LIVE_MS / 1000} seconds.`} /></div>
 
             <ActionBanner actions={actions} />
 
@@ -175,9 +180,10 @@ export default function Dashboard({ shedBoard, canMove, requirement, actions, st
                     </ul>
                 </Panel>
                     ) : null}
-                    {growthChart ? <Panel title="Average weight" description="All weighings, by month"><Chart option={growthChart} label="Average herd weight by month" height={220} onSelect={() => router.visit('/weights')} /></Panel> : null}
-                    {breedChart ? <Panel title="Herd by breed" description="Goats on the farm · tap a bar to see them"><Chart option={breedChart} label="Goats by breed" height={Math.max(110, breeds.length * 36 + 24)} onSelect={(name) => router.visit(`/goats?breed=${encodeURIComponent(name)}`)} /></Panel> : null}
-                    {financeChart ? <Panel title="Income and spending" description="Last 6 months"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></Panel> : null}
+                    {charts && !showCharts ? <Panel title="Charts" description="Average weight, herd by breed, income and spending"><button type="button" onClick={() => setShowCharts(true)} className="w-full rounded-tile border border-rule py-2.5 text-sm font-semibold text-cobalt-800 hover:bg-glaze">Show charts</button></Panel> : null}
+                    {growthChart && showCharts ? <Panel title="Average weight" description="All weighings, by month"><Chart option={growthChart} label="Average herd weight by month" height={220} onSelect={() => router.visit('/weights')} /></Panel> : null}
+                    {breedChart && showCharts ? <Panel title="Herd by breed" description="Goats on the farm · tap a bar to see them"><Chart option={breedChart} label="Goats by breed" height={Math.max(110, breeds.length * 36 + 24)} onSelect={(name) => router.visit(`/goats?breed=${encodeURIComponent(name)}`)} /></Panel> : null}
+                    {financeChart && showCharts ? <Panel title="Income and spending" description="Last 6 months"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></Panel> : null}
                     {kiddings.length ? (
                         <Panel title="Next kiddings" flush description="Mating date + gestation days">
                             <ul className="divide-y divide-rule">
@@ -338,7 +344,7 @@ const REQ_STATE: Record<ReqGoat['state'], string> = { planned: '', milk: 'bg-cob
 function FeedRequirement({ req }: { req: Requirement }) {
     const [open, setOpen] = useState<number | null | 'none'>(req.sheds.length === 1 ? req.sheds[0].id : 'none');
     return (
-        <Panel className="mt-4" title="Feed requirement today" description={`${req.kgDay} KG for ${plural(req.planned, 'goat', 'goats')} · PKR ${req.cost.toLocaleString('en-PK')} a day · ${req.kgMonth} KG (PKR ${req.costMonth.toLocaleString('en-PK')}) in ${req.supply.month}${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
+        <Panel className="mt-4" title="Feed requirement today" description={`${req.kgDay} KG for ${plural(req.planned, 'goat', 'goats')}${req.cost ? ` · PKR ${req.cost.toLocaleString('en-PK')} a day` : ''} · ${req.kgMonth} KG${req.costMonth ? ` (PKR ${req.costMonth.toLocaleString('en-PK')})` : ''} in ${req.supply.month}${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
             actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Rations</Link>} flush>
             <SupplyStrip s={req.supply} />
             {req.sheds.length ? (
@@ -353,7 +359,7 @@ function FeedRequirement({ req }: { req: Requirement }) {
                                         <span className="block text-xs text-ink-soft">{s.typeName ? `${s.typeName} · ` : ''}{plural(s.count, 'goat', 'goats')} · {s.pens.length} pen{s.pens.length === 1 ? '' : 's'}</span>
                                     </span>
                                     <span className="hidden flex-wrap gap-1 md:flex">{s.feeds.slice(0, 3).map((f) => <span key={f.name} className="rounded-[4px] bg-glaze px-1.5 py-0.5 text-xs text-ink-soft">{f.name} {f.kg} KG</span>)}</span>
-                                    <span className="text-right"><span className="block font-bold text-cobalt-900">{s.kgDay} KG/day</span><span className="block text-xs text-ink-soft">{s.kgMonth} KG this month · PKR {s.cost.toLocaleString('en-PK')}/day</span></span>
+                                    <span className="text-right"><span className="block font-bold text-cobalt-900">{s.kgDay} KG/day</span><span className="block text-xs text-ink-soft">{s.kgMonth} KG this month{s.cost ? ` · PKR ${s.cost.toLocaleString('en-PK')}/day` : ''}</span></span>
                                     <ChevronDown size={16} className={`text-ink-faint transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden />
                                 </button>
                                 {isOpen ? <div className="space-y-3 bg-glaze/50 px-4 pb-3">{s.pens.map((p) => <ReqPenCard key={p.id ?? 'none'} pen={p} />)}</div> : null}
@@ -373,7 +379,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
         <div className="rounded-tile border border-rule bg-tile">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-rule px-3 py-2">
                 <span className="font-mono text-sm font-semibold text-cobalt-900">{pen.name}</span>
-                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong> · given today {pen.givenToday} KG <BalanceTag balance={pen.balance} diff={pen.diff} /> · {pen.kgMonth} KG this month · PKR {pen.cost.toLocaleString('en-PK')}</span>
+                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong> · given today {pen.givenToday} KG <BalanceTag balance={pen.balance} diff={pen.diff} /> · {pen.kgMonth} KG this month{pen.cost ? ` · PKR ${pen.cost.toLocaleString('en-PK')}` : ''}</span>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[46rem] text-sm">

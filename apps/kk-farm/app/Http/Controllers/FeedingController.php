@@ -165,7 +165,7 @@ class FeedingController extends Controller
             $current = FeedUsage::current()->where(['fed_on' => $today, 'meal' => $data['meal'], 'pen_id' => $data['pen_id']])->lockForUpdate()->get()->keyBy('feed_item_id');
             // D-084: never give more than the store holds. A correction only needs stock for the extra KG on top of what was already given.
             FeedItem::whereIn('id', array_column($data['lines'], 'feed_item_id'))->lockForUpdate()->get();
-            $stock = Feed::stock();
+            $stock = Feed::stock(fresh: true);
             $short = [];
             foreach ($data['lines'] as $i => $l) {
                 $extra = (float) $l['offered_kg'] - (float) ($current[$l['feed_item_id']]?->offered_kg ?? 0);

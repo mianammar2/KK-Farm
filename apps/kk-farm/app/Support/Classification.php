@@ -56,7 +56,7 @@ final class Classification
         }
 
         return self::$cache[$orgId] ??= (function () use ($orgId) {
-            $org = \App\Models\Organization::find($orgId);
+            $org = Tenant::org();
 
             return [(int) ($org->grower_from_months ?? self::GROWER_FROM_MONTHS), (int) ($org->adult_from_months ?? self::ADULT_FROM_MONTHS)];
         })();

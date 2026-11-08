@@ -27,7 +27,7 @@ final class ActionCenter
     /** @return list<array{key: string, label: string, severity: string, count: int, action: string, url: string, items: list<array{text: string, sub: ?string, url: ?string}>}> */
     public static function items(User $user): array
     {
-        $org = Organization::findOrFail(Tenant::current());
+        $org = Tenant::org() ?? abort(404);
         $today = now()->startOfDay();
         $todayIso = $today->toDateString();
         $out = [];

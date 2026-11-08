@@ -35,9 +35,11 @@ final class Feed
     /** D-084: the feed an automatic plan is put on: the active feed with the most in store (first by code when none has stock). */
     public static function defaultFeedId(): ?int
     {
-        $stock = self::stock();
+        return Tenant::memo('feed.defaultFeed', function () {
+            $stock = self::stock();
 
-        return FeedItem::where('active', true)->orderBy('code')->get()->sortByDesc(fn (FeedItem $i) => $stock[$i->id] ?? 0)->first()?->id;
+            return FeedItem::where('active', true)->orderBy('code')->get()->sortByDesc(fn (FeedItem $i) => $stock[$i->id] ?? 0)->first()?->id;
+        });
     }
 
     /** Workbook ration groups, plus Growers and Fattening for KK Farms' categories. code => [name, who is in it]. */
@@ -86,7 +88,7 @@ final class Feed
     /** @return Collection<string, int> group id for each goat */
     public static function groupIds(Collection $animals): Collection
     {
-        $byCode = FeedingGroup::whereNotNull('code')->pluck('id', 'code');
+        $byCode = Tenant::memo('feed.groupCodes', fn () => FeedingGroup::whereNotNull('code')->pluck('id', 'code'));
 
         return $animals->mapWithKeys(fn (Animal $a) => [$a->id => $a->feeding_group_id ?? $byCode[self::groupCode($a)] ?? null]);
     }
@@ -96,6 +98,11 @@ final class Feed
     {
         $day = Carbon::parse($date)->toDateString();
 
+        return Tenant::memo("feed.plans.$day", fn () => self::loadPlans($day));
+    }
+
+    private static function loadPlans(string $day): Collection
+    {
         return RationPlan::with('lines.item')->where('status', 'approved')->where('effective_from', '<=', $day)
             ->orderBy('effective_from')->orderBy('id')->get()->keyBy('feeding_group_id'); // later plans overwrite earlier ones
     }
@@ -113,7 +120,7 @@ final class Feed
     {
         $plans ??= self::plansOn($date);
         $org = self::org();
-        $animals = Animal::active()->whereNotNull('pen_id')->get();
+        $animals = Tenant::memo('feed.penAnimals', fn () => Animal::active()->whereNotNull('pen_id')->get());
         $groups = self::groupIds($animals);
         $weights = self::latestWeights();
         $defaultFeed = self::defaultFeedId();
@@ -242,8 +249,8 @@ final class Feed
     /** @return Collection<string, float> each goat's most recent weight in kg */
     public static function latestWeights(): Collection
     {
-        return DB::table('weight_records')->selectRaw('distinct on (animal_id) animal_id, weight_kg')
-            ->orderBy('animal_id')->orderByDesc('measured_on')->orderByDesc('id')->pluck('weight_kg', 'animal_id')->map(fn ($kg) => (float) $kg);
+        return Tenant::memo('feed.weights', fn () => DB::table('weight_records')->selectRaw('distinct on (animal_id) animal_id, weight_kg')
+            ->orderBy('animal_id')->orderByDesc('measured_on')->orderByDesc('id')->pluck('weight_kg', 'animal_id')->map(fn ($kg) => (float) $kg));
     }
 
     /**
@@ -286,7 +293,13 @@ final class Feed
     }
 
     /** @return Collection<int, float> kg in store by feed item id */
-    public static function stock(): Collection
+    /** KG in store per feed. $fresh skips the per-request cache (used under a lock when feed is given). */
+    public static function stock(bool $fresh = false): Collection
+    {
+        return $fresh ? self::loadStock() : Tenant::memo('feed.stock', fn () => self::loadStock());
+    }
+
+    private static function loadStock(): Collection
     {
         $in = FeedStockMovement::groupBy('feed_item_id')->selectRaw('feed_item_id, sum(qty_kg) as kg')->pluck('kg', 'feed_item_id');
         $out = FeedUsage::current()->groupBy('feed_item_id')->selectRaw('feed_item_id, sum(offered_kg) as kg')->pluck('kg', 'feed_item_id');
@@ -381,7 +394,7 @@ final class Feed
 
     public static function org(): Organization
     {
-        return Organization::findOrFail(Tenant::current());
+        return Tenant::org() ?? throw new \Illuminate\Database\Eloquent\ModelNotFoundException('No organization');
     }
 
     public static function now(?Organization $org = null): Carbon

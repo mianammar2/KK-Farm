@@ -27,7 +27,7 @@ class BreedingController extends Controller
 {
     private function org(): Organization
     {
-        return Organization::findOrFail(Tenant::current());
+        return Tenant::org() ?? abort(404);
     }
 
     public function index(Request $request): Response

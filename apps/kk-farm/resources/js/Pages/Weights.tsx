@@ -1,7 +1,8 @@
 import { Head, useForm } from '@inertiajs/react';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import Chart, { axis } from '../components/Chart';
+import Chart from '../components/LazyChart';
+import { axis } from '../lib/chartTheme';
 import { Button, cx, Empty, Field, GoatLabel, monthLabel, PageHeader, Panel, Stat, StatRow } from '../components/ui';
 import type { GoatCard } from '../types';
 

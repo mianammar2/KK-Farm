@@ -110,7 +110,8 @@ class DashboardController extends Controller
         ];
         $byPen = $goats->groupBy(fn ($g) => $g->pen_id ?? 0);
         $byId = $goats->keyBy('id');
-        $sheds = \App\Models\Shed::with(['pens' => fn ($q) => $q->orderBy('name')])->orderBy('name')->get()->map(fn (\App\Models\Shed $s) => [
+        $sheds = \App\Models\Shed::with(['pens' => fn ($q) => $q->orderBy('name')])->orderBy('name')->get()
+            ->each(fn (\App\Models\Shed $s) => $s->pens->each->setRelation('shed', $s))->map(fn (\App\Models\Shed $s) => [
             'id' => $s->id, 'name' => $s->name, 'typeName' => $s->typeName(),
             'pens' => $s->pens->where('kind', 'pen')->map(fn (\App\Models\Pen $p) => [
                 'id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity,

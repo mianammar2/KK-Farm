@@ -20,6 +20,9 @@ FROM dunglas/frankenphp:1-php8.4
 RUN install-php-extensions pdo_pgsql gd intl zip bcmath opcache exif
 COPY ops/production/php.ini /usr/local/etc/php/conf.d/zz-kkfarm.ini
 COPY ops/production/Caddyfile.d/ /etc/caddy/Caddyfile.d/
+# D-088: built files have a content hash in their name, so browsers and the gun keep them for a year instead of
+# downloading ~360 KB of scripts again on every launch.
+ENV CADDY_SERVER_EXTRA_DIRECTIVES="header /build/assets/* Cache-Control \"public, max-age=31536000, immutable\""
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY . .

@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import Chart, { axis } from '../components/Chart';
+import Chart from '../components/LazyChart';
+import { axis } from '../lib/chartTheme';
 import { Button, Chip, cx, Field, monthLabel, PageHeader, Panel, pkr, pkrShort, Stat, StatRow } from '../components/ui';
 
 type Entry = { id: number; direction: 'in' | 'out'; category: string; amount: number; on: string; counterparty: string | null; description: string | null; by: string; reversed: boolean; isReversal: boolean; payment: 'paid' | 'pending' | 'partial'; paidBy: string | null; reference: string | null; goatId: string | null; goat: string | null };

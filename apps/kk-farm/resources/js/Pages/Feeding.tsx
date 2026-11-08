@@ -1,4 +1,5 @@
 import { Head, router, useForm, usePoll } from '@inertiajs/react';
+import { LIVE_MS } from '../lib/live';
 import { Check, Clock, Plus, Trash2, Wheat } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -44,7 +45,7 @@ const STOCK: Record<Item['status'], { label: string; className: string }> = {
 
 export default function Feeding(props: Props) {
     // D-086: live. Moves on other screens change pen plans; this picks them up within 10 seconds.
-    usePoll(10000, { only: ['board', 'items', 'history'] });
+    usePoll(LIVE_MS, { only: ['board', 'items', 'history'] });
     const { today, meal, meals, mealTimes, board, groups, items, can } = props;
     const [tab, setTab] = useState('now');
     const fed = board.filter((p) => p.status === 'done' || p.status === 'late').length;

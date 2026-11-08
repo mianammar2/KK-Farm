@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
+import { LIVE_MS } from '../lib/live';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 
@@ -22,7 +23,7 @@ const SETTINGS: Record<string, Array<[string, string]>> = {
 };
 
 export default function Sensors(p: Props) {
-    usePoll(10000, { only: ['devices', 'alerts', 'readings', 'out'] });
+    usePoll(LIVE_MS, { only: ['devices', 'alerts', 'readings', 'out'] });
     const [tab, setTab] = useState(p.devices.length ? 'devices' : 'connect');
     const open = p.alerts.filter((a) => a.status === 'open');
     return (

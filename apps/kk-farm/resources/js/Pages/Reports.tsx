@@ -1,7 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 import { Download } from 'lucide-react';
 import { useMemo } from 'react';
-import Chart, { axis } from '../components/Chart';
+import Chart from '../components/LazyChart';
+import { axis } from '../lib/chartTheme';
 import { Button, PageHeader, Panel, pkr, Stat, StatRow } from '../components/ui';
 
 type Props = {
