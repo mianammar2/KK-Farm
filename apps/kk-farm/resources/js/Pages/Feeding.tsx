@@ -22,7 +22,7 @@ type Props = {
 };
 
 const MEALS: Meal[] = ['morning', 'midday', 'evening'];
-const kg = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString('en-PK')} kg`;
+const kg = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString('en-PK')} KG`;
 const pkr = (n: number) => `PKR ${Math.round(n).toLocaleString('en-PK')}`;
 /** Client-generated ids make a resubmitted entry harmless (offline retries, double taps). */
 const uuid = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16); }));
@@ -141,8 +141,8 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
                 {lines.map((l, i) => (
                     <div key={l.feedItemId} className="grid grid-cols-[minmax(0,1fr)_6.5rem_6.5rem] items-end gap-2">
                         <div className="min-w-0 pb-2"><div className="truncate font-medium text-cobalt-900">{l.name}</div><div className="text-xs text-ink-soft">Plan {kg(l.planned)}{l.max > l.min ? ` (${kg(l.min)}–${kg(l.max)})` : ''}</div></div>
-                        <Field label="Given kg" error={errors[`lines.${i}.offered_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={!editing} value={l.offered} onChange={(e) => set(i, 'offered', e.target.value)} /></Field>
-                        <Field label="Leftover kg" error={errors[`lines.${i}.refused_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={editing || !l.usage} placeholder={l.usage ? '0' : '—'} value={l.refused} onChange={(e) => set(i, 'refused', e.target.value)} /></Field>
+                        <Field label="Given KG" error={errors[`lines.${i}.offered_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={!editing} value={l.offered} onChange={(e) => set(i, 'offered', e.target.value)} /></Field>
+                        <Field label="Leftover KG" error={errors[`lines.${i}.refused_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={editing || !l.usage} placeholder={l.usage ? '0' : '—'} value={l.refused} onChange={(e) => set(i, 'refused', e.target.value)} /></Field>
                     </div>
                 ))}
             </div>
@@ -177,7 +177,7 @@ function Rations({ groups, items, can, settings }: Props) {
 
     return (
         <div className="space-y-3">
-            <p className="text-sm text-ink-soft">Each goat is in a feeding group automatically, from its category, female status and health. A ration is kg per goat per day, split over the meals. A veterinarian approves each ration before it is used.</p>
+            <p className="text-sm text-ink-soft">Each goat is in a feeding group automatically, from its category, female status and health. A ration is KG per goat per day, split over the meals. A veterinarian approves each ration before it is used.</p>
             {editing ? <RationForm key={editing.id} group={editing} items={items} settings={settings} onDone={() => setEditing(null)} /> : null}
             {groups.map((g) => (
                 <Panel key={g.id} title={`${g.name} · ${g.head} goats`} description={g.criteria ?? undefined}
@@ -200,8 +200,8 @@ function PlanView({ plan, label }: { plan: Plan; label: string }) {
     return (
         <div>
             <div className="mb-1 flex flex-wrap items-center gap-2 text-sm"><Chip className={plan.status === 'approved' ? 'bg-ok-100 text-ok-700' : 'bg-watch-100 text-watch-700'}>{label}</Chip>
-                <span className="text-ink-soft">{plan.basis === 'body_weight' ? `% of body weight a day · ${pkr(plan.costPerKg)} per kg of mix` : `${kg(plan.kgPerHead)} per goat per day · ${pkr(plan.costPerHead)}`} · meals {plan.split.morning}/{plan.split.midday}/{plan.split.evening}%</span></div>
-            <ul className="flex flex-wrap gap-1.5">{plan.lines.map((l) => <li key={l.feedItemId} className="rounded-[4px] border border-rule px-2 py-1 text-sm"><Wheat size={13} className="mr-1 inline text-turq-700" aria-hidden />{l.name} <span className="font-semibold">{plan.basis === 'body_weight' ? `${l.share}%` : `${l.kg} kg`}</span></li>)}</ul>
+                <span className="text-ink-soft">{plan.basis === 'body_weight' ? `% of body weight a day · ${pkr(plan.costPerKg)} per KG of mix` : `${kg(plan.kgPerHead)} per goat per day · ${pkr(plan.costPerHead)}`} · meals {plan.split.morning}/{plan.split.midday}/{plan.split.evening}%</span></div>
+            <ul className="flex flex-wrap gap-1.5">{plan.lines.map((l) => <li key={l.feedItemId} className="rounded-[4px] border border-rule px-2 py-1 text-sm"><Wheat size={13} className="mr-1 inline text-turq-700" aria-hidden />{l.name} <span className="font-semibold">{plan.basis === 'body_weight' ? `${l.share}%` : `${l.kg} KG`}</span></li>)}</ul>
             {plan.approvedBy ? <p className="mt-1 text-xs text-ink-faint">Approved by {plan.approvedBy} on {plan.approvedOn}</p> : null}
             {plan.notes ? <p className="mt-1 text-sm text-ink-soft">{plan.notes}</p> : null}
         </div>
@@ -215,7 +215,7 @@ function RationForm({ group, items, settings, onDone }: { group: Group; items: I
         feeding_group_id: group.id,
         effective_from: group.draft?.fromIso ?? todayIso,
         split_morning: base?.split.morning ?? 40, split_midday: base?.split.midday ?? 20, split_evening: base?.split.evening ?? 40,
-        // D-067: fixed kg per goat, or a % of each goat's body weight split over the feeds by share.
+        // D-067: fixed KG per goat, or a % of each goat's body weight split over the feeds by share.
         basis: (base?.basis ?? 'body_weight') as 'per_head' | 'body_weight',
         lines: base?.lines.map((l) => ({ feed_item_id: l.feedItemId, kg_per_head: String(l.kg ?? l.share ?? '') })) ?? [{ feed_item_id: items.find((i) => i.active)?.id ?? 0, kg_per_head: '' }],
         notes: group.draft?.notes ?? '',
@@ -240,7 +240,7 @@ function RationForm({ group, items, settings, onDone }: { group: Group; items: I
                 <Field label="How much each goat gets">
                     <select className="field" value={form.data.basis} onChange={(e) => form.setData('basis', e.target.value as 'per_head' | 'body_weight')}>
                         <option value="body_weight">% of body weight a day (growers {settings.intake.grower.join('–')}%, adults {settings.intake.adult.join('–')}%{settings.intake.kid ? `, kids ${settings.intake.kid.join('–')}%` : ', kids on milk'})</option>
-                        <option value="per_head">Fixed kg per goat a day</option>
+                        <option value="per_head">Fixed KG per goat a day</option>
                     </select>
                 </Field>
                 {byWeight ? <p className="text-sm text-ink-soft">Each goat gets its latest weight × the % range for its age (planned at the middle), split over the feeds below by share. A goat needs a weight to be planned. Kids drink milk.</p> : null}
@@ -255,7 +255,7 @@ function RationForm({ group, items, settings, onDone }: { group: Group; items: I
                     {errors.lines ? <p className="text-sm text-crit-700">{errors.lines}</p> : null}
                     <Button type="button" variant="quiet" onClick={() => form.setData('lines', [...form.data.lines, { feed_item_id: items.find((it) => it.active && !form.data.lines.some((x) => x.feed_item_id === it.id))?.id ?? items[0].id, kg_per_head: '' }])}><Plus size={15} className="mr-1 inline" aria-hidden />Add feed</Button>
                     {byWeight
-                        ? <p className={cx('text-sm', Math.abs(shareTotal - 100) < 0.01 ? 'text-ok-700' : 'text-crit-700')}>Shares add up to {shareTotal}%{Math.abs(shareTotal - 100) < 0.01 ? '' : ' (must be 100%)'} · {pkr(cost / 100)} per kg of the mix. Example: a 30 kg adult gets {kg(30 * settings.intake.adult[0] / 100)}–{kg(30 * settings.intake.adult[1] / 100)} a day (planned at the middle).</p>
+                        ? <p className={cx('text-sm', Math.abs(shareTotal - 100) < 0.01 ? 'text-ok-700' : 'text-crit-700')}>Shares add up to {shareTotal}%{Math.abs(shareTotal - 100) < 0.01 ? '' : ' (must be 100%)'} · {pkr(cost / 100)} per KG of the mix. Example: a 30 KG adult gets {kg(30 * settings.intake.adult[0] / 100)}–{kg(30 * settings.intake.adult[1] / 100)} a day (planned at the middle).</p>
                         : <p className="text-sm text-ink-soft">{kg(perHead)} per goat per day · {pkr(cost)} per goat per day · {pkr(cost * group.head)} a day for {group.head} goats</p>}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -296,15 +296,15 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
                                         {!i.active ? <Chip className="bg-rule text-ink-soft">Not used</Chip> : null}
                                         <span className="ml-auto flex items-center gap-2"><span className="font-semibold">{kg(i.stock)}</span><Chip className={STOCK[i.status].className}>{STOCK[i.status].label}</Chip></span>
                                     </div>
-                                    <div className="mt-0.5 text-sm text-ink-soft">{pkr(i.costPerKg)}/kg · worth {pkr(i.value)} · reorder at {kg(i.reorder)}{i.daysLeft !== null ? ` · about ${i.daysLeft} days left` : ''}{i.supplier ? ` · ${i.supplier}` : ''}</div>
+                                    <div className="mt-0.5 text-sm text-ink-soft">{pkr(i.costPerKg)}/KG · worth {pkr(i.value)} · reorder at {kg(i.reorder)}{i.daysLeft !== null ? ` · about ${i.daysLeft} days left` : ''}{i.supplier ? ` · ${i.supplier}` : ''}</div>
                                     {can.store ? (edit === i.id ? <ItemForm item={i} categories={categories} onDone={() => setEdit(null)} /> : <button type="button" className="mt-1 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setEdit(i.id)}>Edit</button>) : null}
                                 </li>
                             ))}
                         </ul>
-                    ) : <Empty title="No feeds yet">{can.store ? 'Add the feeds you use, with their cost per kg and opening stock.' : 'The manager or feed store adds feeds.'}</Empty>}
+                    ) : <Empty title="No feeds yet">{can.store ? 'Add the feeds you use, with their cost per KG and opening stock.' : 'The manager or feed store adds feeds.'}</Empty>}
                 </Panel>
                 <Panel title="Recent stock movements" flush>
-                    {movements.length ? <ul className="divide-y divide-rule text-sm">{movements.map((m) => <li key={m.id} className="flex flex-wrap gap-x-2 px-4 py-2"><span className="w-14 text-ink-faint">{m.on}</span><span className="font-medium">{m.item}</span><span className="text-ink-soft">{m.type}</span><span className={cx('ml-auto font-semibold', m.qty < 0 ? 'text-crit-700' : 'text-ok-700')}>{m.qty > 0 ? '+' : ''}{kg(m.qty)}</span>{m.rate !== null ? <span className="text-ink-soft">@ {pkr(m.rate)}/kg</span> : null}<span className="w-full text-ink-faint">{[m.party, m.reference, m.by].filter(Boolean).join(' · ')}</span></li>)}</ul>
+                    {movements.length ? <ul className="divide-y divide-rule text-sm">{movements.map((m) => <li key={m.id} className="flex flex-wrap gap-x-2 px-4 py-2"><span className="w-14 text-ink-faint">{m.on}</span><span className="font-medium">{m.item}</span><span className="text-ink-soft">{m.type}</span><span className={cx('ml-auto font-semibold', m.qty < 0 ? 'text-crit-700' : 'text-ok-700')}>{m.qty > 0 ? '+' : ''}{kg(m.qty)}</span>{m.rate !== null ? <span className="text-ink-soft">@ {pkr(m.rate)}/KG</span> : null}<span className="w-full text-ink-faint">{[m.party, m.reference, m.by].filter(Boolean).join(' · ')}</span></li>)}</ul>
                         : <p className="p-4 text-sm text-ink-soft">Purchases and adjustments appear here. Feed given to goats reduces stock automatically.</p>}
                 </Panel>
             </div>
@@ -330,9 +330,9 @@ function ItemForm({ item, categories, onDone }: { item?: Item; categories: Recor
             {!item ? <Field label="Code" error={form.errors.code} hint="Short, e.g. WS, CONC, BRAN"><input className="field font-mono uppercase" value={form.data.code} onChange={(e) => form.setData('code', e.target.value)} maxLength={20} /></Field> : null}
             <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Wheat straw (Bhoosa)" /></Field>
             <Field label="Category" error={form.errors.category}><select className="field" value={form.data.category} onChange={(e) => form.setData('category', e.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="Cost PKR per kg" error={form.errors.cost_per_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" value={form.data.cost_per_kg} onChange={(e) => form.setData('cost_per_kg', e.target.value)} /></Field>
-            <Field label="Reorder when below (kg)" error={form.errors.reorder_level_kg}><input className="field" type="number" inputMode="decimal" min={0} value={form.data.reorder_level_kg} onChange={(e) => form.setData('reorder_level_kg', e.target.value)} /></Field>
-            {!item ? <Field label="Stock now (kg)" error={form.errors.opening_kg} hint="Opening stock. Later receipts go through Stock in / out."><input className="field" type="number" inputMode="decimal" min={0} value={form.data.opening_kg} onChange={(e) => form.setData('opening_kg', e.target.value)} /></Field> : null}
+            <Field label="Cost PKR per KG" error={form.errors.cost_per_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" value={form.data.cost_per_kg} onChange={(e) => form.setData('cost_per_kg', e.target.value)} /></Field>
+            <Field label="Reorder when below (KG)" error={form.errors.reorder_level_kg}><input className="field" type="number" inputMode="decimal" min={0} value={form.data.reorder_level_kg} onChange={(e) => form.setData('reorder_level_kg', e.target.value)} /></Field>
+            {!item ? <Field label="Stock now (KG)" error={form.errors.opening_kg} hint="Opening stock. Later receipts go through Stock in / out."><input className="field" type="number" inputMode="decimal" min={0} value={form.data.opening_kg} onChange={(e) => form.setData('opening_kg', e.target.value)} /></Field> : null}
             <Field label="Supplier" error={form.errors.supplier}><input className="field" value={form.data.supplier} onChange={(e) => form.setData('supplier', e.target.value)} /></Field>
             {item ? <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="size-5" checked={form.data.active} onChange={(e) => form.setData('active', e.target.checked)} /> Still used</label> : null}
             <div className={cx('flex gap-2', item ? 'sm:col-span-3' : '')}><Button type="submit" disabled={form.processing}>{item ? 'Save' : 'Add feed'}</Button>{item ? <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button> : null}</div>
@@ -353,8 +353,8 @@ function StockForm({ items, movementTypes }: { items: Item[]; movementTypes: Pro
                 <Field label="What happened" error={form.errors.type}><select className="field" value={form.data.type} onChange={(e) => form.setData('type', e.target.value)}>{Object.entries(movementTypes).filter(([k]) => k !== 'opening').map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
                 {type?.direction === 0 ? <Field label="Stock goes" error={form.errors.direction}><select className="field" value={form.data.direction} onChange={(e) => form.setData('direction', e.target.value)}><option value="">Choose…</option><option value="in">In (more than recorded)</option><option value="out">Out (less than recorded)</option></select></Field> : null}
                 <div className="grid grid-cols-2 gap-2">
-                    <Field label="Quantity kg" error={form.errors.qty_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" value={form.data.qty_kg} onChange={(e) => form.setData('qty_kg', e.target.value)} /></Field>
-                    <Field label={form.data.type === 'purchase' ? 'Price PKR / kg' : 'PKR / kg (optional)'} error={form.errors.rate}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" placeholder={item ? String(item.costPerKg) : ''} value={form.data.rate} onChange={(e) => form.setData('rate', e.target.value)} /></Field>
+                    <Field label="Quantity KG" error={form.errors.qty_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" value={form.data.qty_kg} onChange={(e) => form.setData('qty_kg', e.target.value)} /></Field>
+                    <Field label={form.data.type === 'purchase' ? 'Price PKR / KG' : 'PKR / KG (optional)'} error={form.errors.rate}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" placeholder={item ? String(item.costPerKg) : ''} value={form.data.rate} onChange={(e) => form.setData('rate', e.target.value)} /></Field>
                 </div>
                 {form.data.type === 'purchase' && form.data.qty_kg && form.data.rate ? <p className="text-sm text-ink-soft">Expense: {pkr(Number(form.data.qty_kg) * Number(form.data.rate))}. New cost per kg: {pkr(Number(form.data.rate))}.</p> : null}
                 <Field label="Date" error={form.errors.moved_on}><input className="field" type="date" max={todayIso} value={form.data.moved_on} onChange={(e) => form.setData('moved_on', e.target.value)} /></Field>

@@ -105,7 +105,7 @@ export default function Breeding(props: Props) {
                     </Panel>
                     <Panel title="Weaned" flush>
                         {weaned.length ? (
-                            <ul className="divide-y divide-rule text-sm">{weaned.map((w) => <li key={w.id} className="flex flex-wrap justify-between gap-2 px-4 py-2"><Link href={`/goats/${w.kidId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{w.kid}</Link><span className="text-ink-soft">{w.on}{w.age !== null ? ` · ${w.age} days` : ''}{w.weight ? ` · ${w.weight} kg` : ''}{w.method ? ` · ${w.method}` : ''} · {w.by}</span></li>)}</ul>
+                            <ul className="divide-y divide-rule text-sm">{weaned.map((w) => <li key={w.id} className="flex flex-wrap justify-between gap-2 px-4 py-2"><Link href={`/goats/${w.kidId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{w.kid}</Link><span className="text-ink-soft">{w.on}{w.age !== null ? ` · ${w.age} days` : ''}{w.weight ? ` · ${w.weight} KG` : ''}{w.method ? ` · ${w.method}` : ''} · {w.by}</span></li>)}</ul>
                         ) : <p className="p-4 text-sm text-ink-soft">Weaned kids appear here.</p>}
                     </Panel>
                 </div>
@@ -233,7 +233,7 @@ function WeaningRow({ w, pens, options }: { w: Due } & Props) {
             {mode === 'wean' ? (
                 <div className="mt-2 grid gap-3 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                     <Field label="Weaning date" error={e.weaned_on}><input type="date" max={today()} className="field" value={form.data.weaned_on} onChange={(x) => form.setData('weaned_on', x.target.value)} /></Field>
-                    <Field label="Weight kg" error={e.weight_kg} hint="Saved to the weight log"><input type="number" step="0.1" min={1} className="field" value={form.data.weight_kg} onChange={(x) => form.setData('weight_kg', x.target.value)} /></Field>
+                    <Field label="Weight KG" error={e.weight_kg} hint="Saved to the weight log"><input type="number" step="0.1" min={1} className="field" value={form.data.weight_kg} onChange={(x) => form.setData('weight_kg', x.target.value)} /></Field>
                     <Field label="Method" error={e.method}><select className="field" value={form.data.method} onChange={(x) => form.setData('method', x.target.value)}>{Object.entries(options.weanMethods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Move to pen (optional)" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay in current pen</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
                     <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>

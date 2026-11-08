@@ -219,7 +219,7 @@ class GoatController extends Controller
         return response()->streamDownload(function (): void {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Synthetic demonstration data']);
-            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Pen', 'Status', 'Health', 'Latest kg']);
+            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Pen', 'Status', 'Health', 'Latest weight (KG)']);
             Animal::with(['breed', 'pen', 'latestWeight'])->orderBy('farm_number')->each(function (Animal $a) use ($out): void {
                 fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
             });

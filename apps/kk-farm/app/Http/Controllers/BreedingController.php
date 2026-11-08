@@ -264,7 +264,7 @@ class BreedingController extends Controller
             }
             $kid->update($changes);
             $age = $kid->birth_date ? (int) $kid->birth_date->diffInDays(Carbon::parse($data['weaned_on'])) : null;
-            Farm::event($kid, 'breeding', 'Weaned'.($age !== null ? " at {$age} days" : '').(! empty($data['weight_kg']) ? ", {$data['weight_kg']} kg" : '').$moved, $request->user()->name, Carbon::parse($data['weaned_on']));
+            Farm::event($kid, 'breeding', 'Weaned'.($age !== null ? " at {$age} days" : '').(! empty($data['weight_kg']) ? ", {$data['weight_kg']} KG" : '').$moved, $request->user()->name, Carbon::parse($data['weaned_on']));
         });
         Farm::log($request->user(), ($data['status'] === 'completed' ? 'Weaned ' : 'Postponed weaning for ').$kid->farm_number, "/goats/{$kid->id}");
 

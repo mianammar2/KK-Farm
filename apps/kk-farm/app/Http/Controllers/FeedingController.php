@@ -26,7 +26,7 @@ class FeedingController extends Controller
 {
     private const ATTRIBUTES = [
         'lines' => 'feeds', 'lines.*.feed_item_id' => 'feed', 'lines.*.kg_per_head' => 'kg per goat', 'lines.*.offered_kg' => 'kg given',
-        'lines.*.refused_kg' => 'leftover', 'qty_kg' => 'quantity', 'cost_per_kg' => 'cost per kg', 'reorder_level_kg' => 'reorder level', 'opening_kg' => 'stock now',
+        'lines.*.refused_kg' => 'leftover', 'qty_kg' => 'quantity', 'cost_per_kg' => 'cost per KG', 'reorder_level_kg' => 'reorder level', 'opening_kg' => 'stock now',
     ];
 
     public function index(Request $request): Response
@@ -282,7 +282,7 @@ class FeedingController extends Controller
             if ($data['type'] === 'purchase' && $rate > 0) {
                 $ledger = LedgerEntry::create([
                     'direction' => 'out', 'category' => 'Feed Purchase', 'amount' => round($data['qty_kg'] * $rate / 100, 2), 'occurred_on' => $data['moved_on'],
-                    'counterparty' => $data['party'] ?? null, 'description' => "{$data['qty_kg']} kg {$item->name}".(! empty($data['reference']) ? " · {$data['reference']}" : ''),
+                    'counterparty' => $data['party'] ?? null, 'description' => "{$data['qty_kg']} KG {$item->name}".(! empty($data['reference']) ? " · {$data['reference']}" : ''),
                     'recorded_by' => $request->user()->name,
                 ]);
                 $item->update(['cost_per_kg_minor' => $rate]); // feed is costed at the latest purchase price from now on
@@ -293,7 +293,7 @@ class FeedingController extends Controller
                 'ledger_entry_id' => $ledger?->id, 'recorded_by' => $request->user()->name,
             ]);
         });
-        Farm::log($request->user(), FeedStockMovement::TYPES[$data['type']][0].": {$data['qty_kg']} kg {$item->name}", '/feeding');
+        Farm::log($request->user(), FeedStockMovement::TYPES[$data['type']][0].": {$data['qty_kg']} KG {$item->name}", '/feeding');
 
         return back()->with('success', 'Stock updated'.($data['type'] === 'purchase' ? ' and the expense recorded.' : '.'));
     }

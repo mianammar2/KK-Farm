@@ -109,7 +109,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                 <div className="min-w-0">
                     <h2 className="text-xl font-bold text-cobalt-900">{goat.name ?? 'Unnamed goat'}</h2>
                     <p className="text-ink-soft">{goat.number} · {goat.breed} · {goat.age}</p>
-                    <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} kg` : ''}</p>
+                    <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} KG` : ''}</p>
                     <div className="mt-1 flex gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} /></div>
                     {goat.withdrawal ? (
                         <p role="alert" className="mt-2 rounded-tile bg-crit-100 px-2.5 py-1.5 text-sm font-semibold text-crit-700">

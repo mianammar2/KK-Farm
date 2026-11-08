@@ -149,6 +149,7 @@ class DashboardController extends Controller
     {
         $goats->loadMissing('pen.shed');
         $req = \App\Support\Feed::perGoat($goats, \App\Support\Feed::now()->toDateString());
+        $md = \App\Support\Feed::now()->daysInMonth;
         $items = \App\Models\FeedItem::all()->keyBy('id');
         $feedText = fn (array $lines) => collect($lines)->map(fn ($kg, $id) => ($items[$id]->name ?? '?').' '.round($kg, 2))->implode(' · ');
         $cost = fn (array $lines) => collect($lines)->sum(fn ($kg, $id) => $kg * ($items[$id]->cost_per_kg_minor ?? 0)) / 100;
@@ -163,17 +164,17 @@ class DashboardController extends Controller
             return collect($lines)->map(fn ($kg, $id) => ['name' => $items[$id]->name ?? '?', 'kg' => round($kg, 1)])->sortByDesc('kg')->values()->all();
         };
 
-        $sheds = $goats->groupBy(fn ($g) => $g->pen?->shed_id ?? 0)->map(function ($inShed, $shedId) use ($req, $feedText, $cost, $sum) {
+        $sheds = $goats->groupBy(fn ($g) => $g->pen?->shed_id ?? 0)->map(function ($inShed, $shedId) use ($req, $feedText, $cost, $sum, $md) {
             $shed = $inShed->first()->pen?->shed;
-            $pens = $inShed->groupBy(fn ($g) => $g->pen_id ?? 0)->map(function ($inPen) use ($req, $feedText, $cost) {
+            $pens = $inShed->groupBy(fn ($g) => $g->pen_id ?? 0)->map(function ($inPen) use ($req, $feedText, $cost, $md) {
                 $rows = $inPen->map(fn ($g) => $req[$g->id] + ['id' => $g->id, 'number' => $g->farm_number])->sortBy('number')->values();
 
                 return [
-                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1),
+                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1), 'kgMonth' => round($rows->sum('kgDay') * $md, 1),
                     'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
                     'goats' => $rows->map(fn ($r) => [
                         'id' => $r['id'], 'number' => $r['number'], 'group' => $r['group'], 'weight' => $r['weight'], 'state' => $r['state'], 'rule' => $r['rule'],
-                        'kgDay' => $r['kgDay'], 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
+                        'kgDay' => $r['kgDay'], 'kgMonth' => round($r['kgDay'] * $md, 1), 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
                     ])->values()->all(),
                     '_rows' => $rows,
                 ];
@@ -181,7 +182,7 @@ class DashboardController extends Controller
             $all = $pens->flatMap(fn ($p) => $p['_rows']);
 
             return [
-                'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a pen', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1),
+                'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a pen', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1), 'kgMonth' => round($all->sum('kgDay') * $md, 1),
                 'cost' => round($all->sum(fn ($r) => $cost($r['lines']))), 'count' => $all->count(), 'feeds' => $sum($all),
                 'pens' => $pens->map(fn ($p) => collect($p)->except('_rows')->all())->all(),
             ];
@@ -198,19 +199,27 @@ class DashboardController extends Controller
         }
         $kgDay = round($req->sum('kgDay'), 2);
         $inStore = round($active->sum(fn ($i) => max(0, $stock[$i->id] ?? 0)), 1);
+        // D-081: this calendar month in the farm's time zone: the whole month's need, and what is still needed from today to month end.
+        $now = \App\Support\Feed::now();
+        $monthDays = $now->daysInMonth;
+        $daysLeft = $monthDays - $now->day + 1;
         $supply = [
-            'needDay' => round($kgDay, 1), 'needWeek' => round($kgDay * 7, 1), 'needMonth' => round($kgDay * 30), 'inStore' => $inStore,
+            'needDay' => round($kgDay, 1), 'needWeek' => round($kgDay * 7, 1), 'inStore' => $inStore,
+            'month' => $now->format('F'), 'monthDays' => $monthDays, 'daysLeft' => $daysLeft,
+            'needMonth' => round($kgDay * $monthDays, 1), 'needLeft' => round($kgDay * $daysLeft, 1), 'shortMonth' => round(max(0, $kgDay * $daysLeft - $inStore), 1),
             'days' => $kgDay > 0 ? (int) floor($inStore / $kgDay) : null,
             'unsplit' => round($req->where('state', 'planned')->where('split', false)->sum('kgDay'), 1),
             'feeds' => collect($needByFeed)->map(fn ($need, $id) => [
                 'name' => $items[$id]->name ?? '?', 'needDay' => round($need, 1), 'stock' => round(max(0, $stock[$id] ?? 0), 1),
                 'days' => $need > 0 ? (int) floor(max(0, $stock[$id] ?? 0) / $need) : null, 'shortWeek' => round(max(0, $need * 7 - max(0, $stock[$id] ?? 0)), 1),
+                'needMonth' => round($need * $monthDays, 1), 'shortMonth' => round(max(0, $need * $daysLeft - max(0, $stock[$id] ?? 0)), 1),
             ])->sortBy('days')->values()->all(),
         ];
 
         return [
             'supply' => $supply,
             'kgDay' => round($req->sum('kgDay'), 1), 'cost' => round($req->sum(fn ($r) => $cost($r['lines']))), 'feeds' => $sum($req->values()),
+            'kgMonth' => round($req->sum('kgDay') * $monthDays, 1), 'costMonth' => round($req->sum(fn ($r) => $cost($r['lines'])) * $monthDays),
             'planned' => $req->where('state', 'planned')->count(), 'milk' => $req->where('state', 'milk')->count(),
             'missing' => $req->whereIn('state', ['no_ration', 'no_weight'])->count(), 'sheds' => $sheds->all(),
         ];

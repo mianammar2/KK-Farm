@@ -106,12 +106,12 @@ final class ActionCenter
                 $days = (int) floor($inStore / $need);
                 if ($days < 7) {
                     $add('feeding', 'feed_short', $days === 0 ? 'Not enough feed for today' : "Feed lasts only {$days} day".($days === 1 ? '' : 's'), $days < 2 ? 'critical' : 'warning',
-                        'Buy feed: the goats need '.round($need, 1).' kg a day ('.round($need * 7).' kg a week).', '/feeding',
-                        collect([['text' => round($inStore, 1).' kg in store', 'sub' => round($need, 1).' kg needed a day · short '.round(max(0, $need * 7 - $inStore)).' kg for a week', 'url' => '/feeding']]));
+                        'Buy feed: the goats need '.round($need, 1).' KG a day ('.round($need * 7).' KG a week).', '/feeding',
+                        collect([['text' => round($inStore, 1).' KG in store', 'sub' => round($need, 1).' KG needed a day · short '.round(max(0, $need * 7 - $inStore)).' KG for a week', 'url' => '/feeding']]));
                 }
             }
             $add('feeding', 'feed_low', 'Feed low, out or below zero', $low->contains(fn ($i) => ($stock[$i->id] ?? 0) <= 0) ? 'critical' : 'warning', 'Check the store and record the purchase.', '/feeding',
-                $low->map(fn (FeedItem $i) => ['text' => $i->name, 'sub' => round($stock[$i->id] ?? 0, 1).' kg · reorder at '.round($i->reorder_level_kg).' kg', 'url' => '/feeding'])->values());
+                $low->map(fn (FeedItem $i) => ['text' => $i->name, 'sub' => round($stock[$i->id] ?? 0, 1).' KG · reorder at '.round($i->reorder_level_kg).' KG', 'url' => '/feeding'])->values());
         }
 
         // ---- Herd data ----

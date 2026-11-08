@@ -308,7 +308,7 @@ class DemoSeeder extends Seeder
                 $push($animal, 'health', $record->title, $record->occurred_on, $record->recorded_by);
             }
             foreach (WeightRecord::where('animal_id', $animal->id)->orderBy('measured_on')->get()->filter(fn (WeightRecord $w, int $i) => $i % 4 === 0) as $weight) {
-                $push($animal, 'weight', "Weighed {$weight->weight_kg} kg", $weight->measured_on, $weight->measured_by);
+                $push($animal, 'weight', "Weighed {$weight->weight_kg} KG", $weight->measured_on, $weight->measured_by);
             }
             if ($animal->exit_date) {
                 $push($animal, 'exit', 'Left the farm: '.$animal->exit_reason, $animal->exit_date);

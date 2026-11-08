@@ -36,7 +36,7 @@ export default function GoatShow(props: Props) {
     const onFarm = goat.status === 'active';
 
     const chart = useMemo(() => ({
-        tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} kg` },
+        tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
         xAxis: axis.category(weights.map((w) => new Date(w.on).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }))),
         yAxis: { ...axis.value((v) => `${v}`), scale: true },
         series: [{ type: 'line', data: weights.map((w) => w.kg), smooth: true, symbolSize: 7, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 } }],
@@ -70,7 +70,7 @@ export default function GoatShow(props: Props) {
                         <p className="text-ink-soft">{goat.number} · {goat.breed} · {goat.age}</p>
                         {goat.classification ? <p className="mt-1 inline-flex rounded-full bg-cobalt-900 px-3 py-1 text-sm font-semibold text-white">{goat.classification}</p> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
-                            {fact('Current weight', goat.weight ? `${goat.weight} kg` : 'No weighing yet')}
+                            {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}
                             {fact('Recent daily gain', goat.adg !== null ? `${goat.adg} g/day` : '—')}
                             {fact('Pen', goat.pen ?? '—')}
                             {fact('RFID tag', tags.find((t) => !t.to)?.code ?? 'No open tag')}
@@ -261,7 +261,7 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     if (kind === 'weight') {
         return (
             <form onSubmit={(e) => { e.preventDefault(); weight.post('/weights', options); }} className="flex flex-wrap items-end gap-2">
-                <div className="w-44"><Field label="Weight (kg)" error={weight.errors.weight_kg}><input inputMode="decimal" autoFocus className="field" value={weight.data.weight_kg} onChange={(e) => weight.setData('weight_kg', e.target.value)} /></Field></div>
+                <div className="w-44"><Field label="Weight (KG)" error={weight.errors.weight_kg}><input inputMode="decimal" autoFocus className="field" value={weight.data.weight_kg} onChange={(e) => weight.setData('weight_kg', e.target.value)} /></Field></div>
                 <Button type="submit" disabled={weight.processing}>Save weight</Button>
             </form>
         );

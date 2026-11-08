@@ -323,6 +323,20 @@ class FeedTest extends TestCase
             ->where('requirement.sheds.0.pens.0.goats.0.number', 'D-1')->where('requirement.sheds.0.pens.0.goats.0.feeds', 'Feed WS 1'));
     }
 
+    public function test_the_requirement_shows_this_month_and_the_shortage_to_month_end(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-21 06:00', 'UTC'));
+        $adult = Animal::where('farm_number', 'D-1')->first();
+        \App\Models\WeightRecord::create(['animal_id' => $adult->id, 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']);
+        $this->item('WS', 30, 5);
+
+        // 40 kg × 2.5% = 1 kg a day: November has 30 days, 10 are left including today, the store holds 5 kg.
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page
+            ->where('requirement.supply.month', 'November')->where('requirement.supply.needMonth', 30)
+            ->where('requirement.supply.daysLeft', 10)->where('requirement.supply.needLeft', 10)->where('requirement.supply.shortMonth', 5)
+            ->where('requirement.kgMonth', 30)->where('requirement.sheds.0.kgMonth', 30)->where('requirement.sheds.0.pens.0.goats.0.kgMonth', 30));
+    }
+
     public function test_the_requirement_comes_from_weight_and_intake_even_without_a_ration_and_is_checked_against_the_store(): void
     {
         $adult = Animal::where('farm_number', 'D-1')->first();

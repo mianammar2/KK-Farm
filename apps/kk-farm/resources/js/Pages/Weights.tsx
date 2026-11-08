@@ -30,11 +30,11 @@ export default function Weights({ goats, log, byBreed }: Props) {
         const months = [...new Set(byBreed.map((r) => r.month))];
         const breeds = [...new Set(byBreed.map((r) => r.breed))];
         return {
-            tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v ? `${v} kg` : '—') },
+            tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v ? `${v} KG` : '—') },
             legend: { bottom: 0, itemWidth: 12, itemHeight: 8, type: 'scroll' },
             grid: { left: 8, right: 12, top: 14, bottom: 32, containLabel: true },
             xAxis: axis.category(months.map(monthLabel)),
-            yAxis: { ...axis.value((v) => `${v} kg`), scale: true },
+            yAxis: { ...axis.value((v) => `${v} KG`), scale: true },
             series: breeds.map((breed) => ({ name: breed, type: 'line', smooth: true, symbolSize: 5, data: months.map((m) => byBreed.find((r) => r.breed === breed && r.month === m)?.kg ?? null) })),
         };
     }, [byBreed]);
@@ -64,7 +64,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
                                     {rows.map((g) => (
                                         <tr key={g.id}>
                                             <td><GoatLabel goat={g} size={34} /></td>
-                                            <td className="font-semibold whitespace-nowrap">{g.weight ? `${g.weight} kg` : '—'}</td>
+                                            <td className="font-semibold whitespace-nowrap">{g.weight ? `${g.weight} KG` : '—'}</td>
                                             <td className={cx('whitespace-nowrap', (g.adg ?? 0) < 0 ? 'font-semibold text-crit-700' : 'text-ok-700')}>
                                                 {g.adg === null ? '—' : <span className="inline-flex items-center gap-1">{g.adg < 0 ? <ArrowDownRight size={14} aria-hidden /> : <ArrowUpRight size={14} aria-hidden />}{g.adg} g/day</span>}
                                             </td>
@@ -82,7 +82,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
                     <Panel title="Record a weight">
                         <form onSubmit={(e) => { e.preventDefault(); form.post('/weights', { preserveScroll: true, onSuccess: () => form.reset('weight_kg', 'body_score', 'height_in') }); }} className="space-y-3">
                             <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</select></Field>
-                            <Field label="Weight (kg)" error={form.errors.weight_kg}><input inputMode="decimal" className="field" value={form.data.weight_kg} onChange={(e) => form.setData('weight_kg', e.target.value)} /></Field>
+                            <Field label="Weight (KG)" error={form.errors.weight_kg}><input inputMode="decimal" className="field" value={form.data.weight_kg} onChange={(e) => form.setData('weight_kg', e.target.value)} /></Field>
                             <div className="grid grid-cols-2 gap-2">
                                 <Field label="Body score 1–5" error={form.errors.body_score} hint="1 thin · 3 good · 5 fat"><select className="field" value={form.data.body_score} onChange={(e) => form.setData('body_score', e.target.value)}><option value="">Not scored</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
                                 <Field label="Height (inches)" error={form.errors.height_in}><input inputMode="decimal" className="field" value={form.data.height_in} onChange={(e) => form.setData('height_in', e.target.value)} /></Field>
@@ -105,8 +105,8 @@ export default function Weights({ goats, log, byBreed }: Props) {
                                 {log.slice(0, logShown).map((w) => (
                                     <tr key={w.id}>
                                         <td className="whitespace-nowrap">{w.on}</td><td><a href={`/goats/${w.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{w.goat}</a></td>
-                                        <td className="font-semibold">{w.kg} kg</td><td>{w.previous !== null ? `${w.previous} kg` : '—'}</td><td>{w.days ?? '—'}</td>
-                                        <td className={cx((w.gain ?? 0) < 0 && 'font-semibold text-crit-700')}>{w.gain !== null ? `${w.gain > 0 ? '+' : ''}${w.gain} kg` : '—'}</td>
+                                        <td className="font-semibold">{w.kg} KG</td><td>{w.previous !== null ? `${w.previous} KG` : '—'}</td><td>{w.days ?? '—'}</td>
+                                        <td className={cx((w.gain ?? 0) < 0 && 'font-semibold text-crit-700')}>{w.gain !== null ? `${w.gain > 0 ? '+' : ''}${w.gain} KG` : '—'}</td>
                                         <td className={cx((w.adg ?? 0) < 0 ? 'font-semibold text-crit-700' : 'text-ok-700')}>{w.adg ?? '—'}</td>
                                         <td>{w.score ?? '—'}</td><td>{w.heightIn !== null ? `${w.heightIn} in` : '—'}</td><td className="text-ink-soft">{w.by}{w.context && w.context !== 'routine' ? ` · ${w.context}` : ''}</td>
                                     </tr>

@@ -116,7 +116,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                                         <td>{g.breed}</td>
                                         <td><SexIcon sex={g.sex} /></td>
                                         <td className="whitespace-nowrap">{g.age}</td>
-                                        <td className="whitespace-nowrap">{g.weight ? `${g.weight} kg` : 'None yet'}</td>
+                                        <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : 'None yet'}</td>
                                         <td>{g.pen ?? '—'}</td>
                                         <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">Left farm</span>}<ReproChip repro={g.repro} /></div></td>
                                         <td className="text-sm text-ink-soft">{g.tag ?? 'No open tag'}</td>
@@ -133,7 +133,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                                 <div className="min-w-0">
                                     <div className="truncate font-semibold text-cobalt-900">{g.name ?? 'Unnamed'}</div>
                                     <div className="truncate text-sm text-ink-soft">{g.number} · {g.breed}</div>
-                                    <div className="truncate text-sm text-ink-soft">{g.age}{g.weight ? ` · ${g.weight} kg` : ''}</div>
+                                    <div className="truncate text-sm text-ink-soft">{g.age}{g.weight ? ` · ${g.weight} KG` : ''}</div>
                                     <div className="mt-1 flex flex-wrap gap-1"><HealthChip health={g.health} /><ReproChip repro={g.repro} /></div>
                                 </div>
                             </Link>

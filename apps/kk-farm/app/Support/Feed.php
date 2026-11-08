@@ -193,7 +193,7 @@ final class Feed
                 $lines = $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => (float) $l->kg_per_head])->all();
                 $kg = round(array_sum($lines), 2);
 
-                return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => $kg, 'max' => $kg, 'rule' => "Fixed {$kg} kg a day", 'lines' => $lines, 'split' => true] + $base];
+                return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => $kg, 'max' => $kg, 'rule' => "Fixed {$kg} KG a day", 'lines' => $lines, 'split' => true] + $base];
             }
             if ($age === 'kid' && ! $range) {
                 return [$goat->id => $base + ['state' => 'milk', 'rule' => 'Kid on milk']];
@@ -209,7 +209,7 @@ final class Feed
             $lines = $split ? $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => round($kg * $l->share_pct / 100, 3)])->all() : [];
 
             return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => round($weight * $min / 100, 2), 'max' => round($weight * $max / 100, 2),
-                'rule' => rtrim(rtrim(number_format($mid, 2), '0'), '.')."% of {$weight} kg ({$ageLabel[$age]})", 'lines' => $lines, 'split' => $split] + $base];
+                'rule' => rtrim(rtrim(number_format($mid, 2), '0'), '.')."% of {$weight} KG ({$ageLabel[$age]})", 'lines' => $lines, 'split' => $split] + $base];
         });
     }
 

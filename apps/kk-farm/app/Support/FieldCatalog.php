@@ -53,9 +53,9 @@ final class FieldCatalog
             ['key' => 'purchase_cost_pkr', 'label' => 'Purchase Cost PKR', 'type' => 'number', 'section' => 'Origin and identity'],
             ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth', 'required' => true, 'help' => 'Required for farm-born goats. For a bought goat leave it empty if unknown.'],
             ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth'],
-            ['key' => 'birth_weight_kg', 'label' => 'Birth Weight Kg', 'type' => 'number', 'section' => 'Birth'],
+            ['key' => 'birth_weight_kg', 'label' => 'Birth Weight (KG)', 'type' => 'number', 'section' => 'Birth'],
             // D-063: weight and height follow the birth date (or the estimated age of a bought goat).
-            ['key' => 'latest_weight_kg', 'label' => 'Weight Kg', 'type' => 'number', 'section' => 'Birth', 'help' => 'Saved as the first weighing in the goat\'s weight log.'],
+            ['key' => 'latest_weight_kg', 'label' => 'Weight (KG)', 'type' => 'number', 'section' => 'Birth', 'help' => 'Saved as the first weighing in the goat\'s weight log.'],
             ['key' => 'height_in', 'label' => 'Height (inches)', 'type' => 'number', 'section' => 'Birth', 'help' => 'At the shoulder (withers). Saved with the first weighing.'], // D-065: entered in inches, stored in cm
             ['key' => 'sire_id', 'label' => 'Sire Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'dam_id', 'label' => 'Dam Tag', 'type' => 'lookup', 'section' => 'Parentage'],

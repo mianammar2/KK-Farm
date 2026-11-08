@@ -67,8 +67,8 @@ class WeightController extends Controller
         if ($heightCm) {
             $animal->update(['height_cm' => $heightCm]);
         }
-        Farm::event($animal, 'weight', "Weighed {$data['weight_kg']} kg".(! empty($data['body_score']) ? ", body score {$data['body_score']}" : '').(! empty($data['height_in']) ? ", {$data['height_in']} in" : ''), $request->user()->name);
-        Farm::log($request->user(), "Weighed {$animal->farm_number} at {$data['weight_kg']} kg", "/goats/{$animal->id}");
+        Farm::event($animal, 'weight', "Weighed {$data['weight_kg']} KG".(! empty($data['body_score']) ? ", body score {$data['body_score']}" : '').(! empty($data['height_in']) ? ", {$data['height_in']} in" : ''), $request->user()->name);
+        Farm::log($request->user(), "Weighed {$animal->farm_number} at {$data['weight_kg']} KG", "/goats/{$animal->id}");
 
         return back()->with('success', "Weight saved for {$animal->farm_number}.");
     }
