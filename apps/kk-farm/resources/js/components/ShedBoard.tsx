@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowRightLeft, X } from 'lucide-react';
+import { ArrowRightLeft, ChevronDown, X } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 import { cx, Panel } from './ui';
 
@@ -19,6 +19,9 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
     const [picked, setPicked] = useState<string[]>([]);
     const [over, setOver] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
+    // Closed until opened; each viewer's choice is remembered on this device.
+    const [open, setOpenState] = useState(() => { try { return localStorage.getItem('kk.shedBoard.open') === '1'; } catch { return false; } });
+    const setOpen = (v: boolean) => { setOpenState(v); try { localStorage.setItem('kk.shedBoard.open', v ? '1' : '0'); } catch { /* storage off */ } };
     const sheds = shedId === 'all' ? board.sheds : board.sheds.filter((s) => s.id === shedId);
     const all = [...board.sheds.flatMap((s) => s.pens.flatMap((p) => p.goats)), ...board.noPen];
     const pickedGoats = all.filter((g) => picked.includes(g.id));
@@ -75,8 +78,22 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
     };
 
     return (
-        <Panel className="mt-4" title="Sheds and pens" description={canMove ? 'Drag goats to another pen, or tick goats and press “Move here”. Every move is saved in the goat’s history.' : 'Where every goat is now.'}
-            actions={<Link href="/sheds" className="text-sm font-semibold text-turq-800 hover:underline">Manage sheds</Link>}>
+        <Panel className="mt-4" flush>
+            <div className="flex items-center gap-3 px-4 py-3">
+                <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    <ChevronDown size={18} className={cx('shrink-0 text-ink-soft transition-transform', open && 'rotate-180')} aria-hidden />
+                    <span className="min-w-0">
+                        <span className="block font-semibold text-cobalt-900">Sheds and pens</span>
+                        <span className="block truncate text-sm text-ink-soft">
+                            {board.sheds.length} shed{board.sheds.length === 1 ? '' : 's'} · {board.sheds.reduce((n, sh) => n + sh.pens.length, 0)} pens · {all.length} goats
+                            {board.noPen.length ? ` · ${board.noPen.length} not in a pen` : ''}
+                            {open ? (canMove ? ' · drag goats to another pen, or tick them and press “Move here”' : '') : ' · tap to open'}
+                        </span>
+                    </span>
+                </button>
+                <Link href="/sheds" className="shrink-0 text-sm font-semibold text-turq-800 hover:underline">Manage sheds</Link>
+            </div>
+            {open ? <div className="border-t border-rule px-4 py-3">
             {board.sheds.length > 1 ? (
                 <div className="mb-3 flex gap-1.5 overflow-x-auto" role="group" aria-label="Shed">
                     {[{ id: 'all' as const, name: 'All sheds', count: all.length - board.noPen.length }, ...board.sheds.map((s) => ({ id: s.id, name: s.name, count: s.pens.reduce((n, p) => n + p.goats.length, 0) }))].map((s) => (
@@ -115,6 +132,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
                     <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4">{board.noPen.map(chip)}</ul>
                 </div>
             ) : null}
+            </div> : null}
         </Panel>
     );
 }
