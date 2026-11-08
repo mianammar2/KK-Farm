@@ -23,6 +23,7 @@ use App\Support\Tenant;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia;
@@ -278,5 +279,58 @@ class FarmRulesTest extends TestCase
     {
         $this->get('/')->assertRedirect('/login');
         $this->get('/finance')->assertRedirect('/login');
+    }
+
+    public function test_a_manager_adds_and_renames_sheds_and_pens(): void
+    {
+        $manager = $this->user('manager');
+
+        $this->actingAs($manager)->post('/sheds', ['name' => 'Kid shed', 'status' => 'active'])->assertRedirect()->assertSessionHasNoErrors();
+        $shed = Shed::where('name', 'Kid shed')->firstOrFail();
+        $this->assertSame('SHED-2', $shed->code);
+        $this->assertSame(Tenant::current(), $shed->org_id);
+
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'Pen A', 'purpose' => 'Kids', 'capacity' => 40])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'Pen A', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
+        $pen = $shed->pens()->firstOrFail();
+        $this->assertSame(40, $pen->capacity);
+
+        $this->actingAs($manager)->patch("/pens/{$pen->id}", ['name' => 'Pen A1', 'purpose' => 'Weaners', 'capacity' => null])->assertSessionHasNoErrors();
+        $this->assertSame(['Pen A1', 'Weaners', null], [$pen->fresh()->name, $pen->fresh()->purpose, $pen->fresh()->capacity]);
+
+        $this->actingAs($manager)->post('/sheds', ['name' => 'Kid shed', 'status' => 'active'])->assertSessionHasErrors('name');
+    }
+
+    public function test_pen_capacity_and_shed_status_respect_goats_already_housed(): void
+    {
+        $manager = $this->user('manager');
+        $this->goat('T-0101');
+        $this->goat('T-0102');
+
+        $this->actingAs($manager)->patch("/pens/{$this->pen->id}", ['name' => 'Pen T', 'purpose' => 'Kids', 'capacity' => 1])->assertSessionHasErrors('capacity');
+        $this->actingAs($manager)->patch("/sheds/{$this->pen->shed_id}", ['name' => 'Test Shed', 'status' => 'planned'])->assertSessionHasErrors('status');
+    }
+
+    public function test_only_the_owner_and_manager_change_the_shed_layout(): void
+    {
+        $caretaker = $this->user('caretaker');
+
+        $this->actingAs($caretaker)->get('/sheds')->assertOk();
+        $this->actingAs($caretaker)->post('/sheds', ['name' => 'X', 'status' => 'active'])->assertForbidden();
+        $this->actingAs($caretaker)->post("/sheds/{$this->pen->shed_id}/pens", ['name' => 'X', 'purpose' => 'Kids'])->assertForbidden();
+        $this->actingAs($caretaker)->patch("/pens/{$this->pen->id}", ['name' => 'X', 'purpose' => 'Kids'])->assertForbidden();
+    }
+
+    public function test_a_manager_cannot_edit_another_farms_pen(): void
+    {
+        $manager = $this->user('manager');
+        $mine = Tenant::current();
+        Tenant::set(Organization::create(['name' => 'Other Farm', 'slug' => 'other-farm'])->id);
+        $other = Pen::create(['shed_id' => Shed::create(['code' => 'SHED-T', 'name' => 'Other shed'])->id, 'name' => 'Theirs', 'purpose' => 'Kids']);
+        Tenant::set($mine);
+
+        $this->actingAs($manager)->patch("/pens/{$other->id}", ['name' => 'Mine now', 'purpose' => 'Kids'])->assertNotFound();
+        $this->actingAs($manager)->post("/sheds/{$other->shed_id}/pens", ['name' => 'Sneaky', 'purpose' => 'Kids'])->assertNotFound();
+        $this->assertSame('Theirs', DB::table('pens')->where('id', $other->id)->value('name'));
     }
 }

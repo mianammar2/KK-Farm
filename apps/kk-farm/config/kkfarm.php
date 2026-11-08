@@ -49,6 +49,7 @@ return [
         'approve_feeding_plan' => ['vet'],
         'exit_animal' => ['ceo', 'manager'],
         'assign_tags' => ['ceo', 'manager', 'caretaker'],
+        'manage_sheds' => ['ceo', 'manager'], // D-051: add and rename sheds and pens
     ],
 
     // Demonstration assumption (Q-PB-2): the real value is confirmed by the veterinarians.

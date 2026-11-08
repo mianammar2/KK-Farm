@@ -80,6 +80,10 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:sheds')->group(function (): void {
         Route::get('/sheds', [ShedController::class, 'index']);
         Route::post('/sheds/transfer', [ShedController::class, 'transfer']);
+        Route::post('/sheds', [ShedController::class, 'store']);
+        Route::patch('/sheds/{shed}', [ShedController::class, 'update']);
+        Route::post('/sheds/{shed}/pens', [ShedController::class, 'storePen']);
+        Route::patch('/pens/{pen}', [ShedController::class, 'updatePen']);
     });
 
     Route::middleware('module:employees')->group(function (): void {

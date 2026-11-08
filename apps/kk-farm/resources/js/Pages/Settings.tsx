@@ -5,7 +5,7 @@ import type { SharedProps } from '../types';
 
 type Props = { ages: { growerFrom: number; adultFrom: number }; breeds: Array<{ id: number; name: string; code: string; next: string; gestation: number | null; goats: number }>; matrix: Record<string, string[]>; gates: Record<string, string[]>; environment: Record<string, string> };
 
-const GATE_LABEL: Record<string, string> = { clinical: 'Diagnose and treat', approve_feeding_plan: 'Approve feeding plans', exit_animal: 'Record goat exits', assign_tags: 'Assign RFID tags' };
+const GATE_LABEL: Record<string, string> = { clinical: 'Diagnose and treat', approve_feeding_plan: 'Approve feeding plans', exit_animal: 'Record goat exits', assign_tags: 'Assign RFID tags', manage_sheds: 'Add sheds and pens' };
 
 export default function Settings({ ages, breeds, matrix, gates, environment }: Props) {
     const { roles } = usePage<SharedProps>().props;
