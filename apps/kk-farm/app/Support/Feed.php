@@ -165,6 +165,50 @@ final class Feed
         });
     }
 
+    /**
+     * D-079: each goat's daily requirement (all meals), with the reason when it has none. Same rules as plannedByPen,
+     * so the dashboard's per-goat figures add up to the pen plans on Feed now.
+     *
+     * @return Collection<string, array{state: string, kgDay: float, min: float, max: float, rule: string, lines: array<int, float>, group: ?string}> by goat id;
+     *         state: planned | milk | no_ration | no_weight
+     */
+    public static function perGoat(Collection $animals, Carbon|string $date): Collection
+    {
+        $plans = self::plansOn($date);
+        $org = self::org();
+        $groups = self::groupIds($animals);
+        $groupNames = FeedingGroup::pluck('name', 'id');
+        $weights = self::latestWeights();
+
+        return $animals->mapWithKeys(function (Animal $goat) use ($plans, $org, $groups, $groupNames, $weights) {
+            $plan = $plans[$groups[$goat->id]] ?? null;
+            $range = self::intakeRange($goat, $org);
+            $weight = $weights[$goat->id] ?? null;
+            $base = ['kgDay' => 0.0, 'min' => 0.0, 'max' => 0.0, 'lines' => [], 'group' => $groupNames[$groups[$goat->id]] ?? null, 'weight' => $weight];
+            if ($goat->effectiveAge() === 'kid' && ! $range && (! $plan || $plan->basis === 'body_weight' || $plan->lines->isEmpty())) {
+                return [$goat->id => $base + ['state' => 'milk', 'rule' => 'Kid on milk']];
+            }
+            if (! $plan || $plan->lines->isEmpty()) {
+                return [$goat->id => $base + ['state' => 'no_ration', 'rule' => 'No approved ration for its group']];
+            }
+            if ($plan->basis === 'body_weight') {
+                if (! $weight || ! $range) {
+                    return [$goat->id => $base + ['state' => 'no_weight', 'rule' => 'Needs a weight']];
+                }
+                [$min, $max] = $range;
+                $mid = ($min + $max) / 2;
+                $lines = $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => round($weight * $mid / 100 * $l->share_pct / 100, 3)])->all();
+
+                return [$goat->id => ['state' => 'planned', 'kgDay' => round($weight * $mid / 100, 2), 'min' => round($weight * $min / 100, 2), 'max' => round($weight * $max / 100, 2),
+                    'rule' => rtrim(rtrim(number_format($mid, 2), '0'), '.')."% of {$weight} kg", 'lines' => $lines] + $base];
+            }
+            $lines = $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => (float) $l->kg_per_head])->all();
+            $kg = round(array_sum($lines), 2);
+
+            return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => $kg, 'max' => $kg, 'rule' => 'Fixed '.$kg.' kg a day', 'lines' => $lines] + $base];
+        });
+    }
+
     /** @return Collection<string, float> each goat's most recent weight in kg */
     public static function latestWeights(): Collection
     {

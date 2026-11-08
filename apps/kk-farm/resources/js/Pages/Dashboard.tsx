@@ -10,7 +10,11 @@ type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
 type Feeding = { meal: Meal; meals: Record<Meal, string>; times: Record<Meal, string>; plannedKg: number; givenKg: number; cost: number; lowStock: string[];
     pens: Array<{ id: number; name: string; goats: number; onMilk: number; meals: Record<Meal, { status: FeedStatus; planned: number; given: number }> }> };
 type ActionSummary = { key: string; label: string; count: number; severity: 'critical' | 'warning' | 'info' };
-type Props = { actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
+type ReqGoat = { id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; min: number; max: number; feeds: string };
+type ReqPen = { id: number | null; name: string; kgDay: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
+type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
+type Requirement = { kgDay: number; cost: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
+type Props = { requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
@@ -54,10 +58,10 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
-    usePoll(30000, { only: ['actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
+    usePoll(30000, { only: ['requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
 
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} kg` },
@@ -142,6 +146,8 @@ export default function Dashboard({ actions, stats, feeding, herd, attention, mi
                     {stats.toReview ? <Link href="/health" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-cobalt-800 hover:bg-glaze">{plural(stats.toReview, 'open health report', 'open health reports')} on healthy goats to review →</Link> : null}
                 </Panel>
             </div>
+
+            {requirement ? <FeedRequirement req={requirement} /> : null}
 
             {/* D-072: charts, activity and kiddings share one two-column grid, so no panel stretches alone across a wide screen. */}
             {missing.length || charts || activity.length || kiddings.length ? (
@@ -307,5 +313,70 @@ function ActionBanner({ actions }: { actions: ActionSummary[] }) {
             </span>
             <span className="ml-auto flex items-center gap-1 text-sm font-semibold text-cobalt-900">Open Action Center <ChevronRight size={15} aria-hidden /></span>
         </Link>
+    );
+}
+
+const REQ_STATE: Record<ReqGoat['state'], string> = { planned: '', milk: 'bg-cobalt-100 text-cobalt-800', no_ration: 'bg-crit-100 text-crit-700', no_weight: 'bg-watch-100 text-watch-700' };
+
+/** D-079: what every goat needs to eat today, and where it is: shed → pen → goat, with totals and cost. */
+function FeedRequirement({ req }: { req: Requirement }) {
+    const [open, setOpen] = useState<number | null | 'none'>(req.sheds.length === 1 ? req.sheds[0].id : 'none');
+    return (
+        <Panel className="mt-4" title="Feed requirement today" description={`${req.kgDay} kg for ${plural(req.planned, 'goat', 'goats')} · PKR ${req.cost.toLocaleString('en-PK')} a day${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
+            actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Rations</Link>} flush>
+            {req.feeds.length ? <div className="flex flex-wrap gap-1.5 border-b border-rule px-4 py-2.5">{req.feeds.map((f) => <span key={f.name} className="rounded-[4px] bg-glaze px-2 py-0.5 text-xs font-semibold text-ink">{f.name} · {f.kg} kg</span>)}</div> : null}
+            {req.sheds.length ? (
+                <ul className="divide-y divide-rule">
+                    {req.sheds.map((s) => {
+                        const isOpen = open === s.id;
+                        return (
+                            <li key={s.id ?? 'none'}>
+                                <button type="button" onClick={() => setOpen(isOpen ? 'none' : s.id)} aria-expanded={isOpen} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left hover:bg-glaze">
+                                    <span className="min-w-0 flex-1">
+                                        <span className="font-mono font-semibold text-cobalt-900">{s.name}</span>
+                                        <span className="block text-xs text-ink-soft">{s.typeName ? `${s.typeName} · ` : ''}{plural(s.count, 'goat', 'goats')} · {s.pens.length} pen{s.pens.length === 1 ? '' : 's'}</span>
+                                    </span>
+                                    <span className="hidden flex-wrap gap-1 md:flex">{s.feeds.slice(0, 3).map((f) => <span key={f.name} className="rounded-[4px] bg-glaze px-1.5 py-0.5 text-xs text-ink-soft">{f.name} {f.kg} kg</span>)}</span>
+                                    <span className="text-right"><span className="block font-bold text-cobalt-900">{s.kgDay} kg/day</span><span className="block text-xs text-ink-soft">PKR {s.cost.toLocaleString('en-PK')}</span></span>
+                                    <ChevronDown size={16} className={`text-ink-faint transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden />
+                                </button>
+                                {isOpen ? <div className="space-y-3 bg-glaze/50 px-4 pb-3">{s.pens.map((p) => <ReqPenCard key={p.id ?? 'none'} pen={p} />)}</div> : null}
+                            </li>
+                        );
+                    })}
+                </ul>
+            ) : <p className="p-4 text-sm text-ink-soft">No goats on the farm yet.</p>}
+        </Panel>
+    );
+}
+
+function ReqPenCard({ pen }: { pen: ReqPen }) {
+    const [all, setAll] = useState(false);
+    const rows = all ? pen.goats : pen.goats.slice(0, 5);
+    return (
+        <div className="rounded-tile border border-rule bg-tile">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-rule px-3 py-2">
+                <span className="font-mono text-sm font-semibold text-cobalt-900">{pen.name}</span>
+                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} kg/day</strong> · PKR {pen.cost.toLocaleString('en-PK')}</span>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[40rem] text-sm">
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-1.5 font-semibold">Goat</th><th className="px-3 font-semibold">Group</th><th className="px-3 font-semibold">Weight</th><th className="px-3 font-semibold">Rule</th><th className="px-3 font-semibold">Per day</th><th className="px-3 font-semibold">Feeds (kg)</th></tr></thead>
+                    <tbody className="divide-y divide-rule">
+                        {rows.map((g) => (
+                            <tr key={g.id}>
+                                <td className="px-3 py-1.5"><Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{g.number}</Link></td>
+                                <td className="px-3 text-ink-soft">{g.group ?? '—'}</td>
+                                <td className="px-3">{g.weight ? `${g.weight} kg` : '—'}</td>
+                                <td className="px-3">{g.state === 'planned' ? <span className="text-ink-soft">{g.rule}</span> : <span className={`rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${REQ_STATE[g.state]}`}>{g.rule}</span>}</td>
+                                <td className="px-3 font-semibold text-cobalt-900">{g.state === 'planned' ? <>{g.kgDay} kg{g.max > g.min ? <span className="block text-xs font-normal text-ink-faint">{g.min}–{g.max}</span> : null}</> : '—'}</td>
+                                <td className="px-3 text-xs text-ink-soft">{g.feeds || '—'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {pen.goats.length > 5 ? <button type="button" onClick={() => setAll(!all)} className="w-full border-t border-rule px-3 py-1.5 text-sm font-semibold text-cobalt-800 hover:bg-glaze">{all ? 'Show less' : `Show ${pen.goats.length - 5} more`}</button> : null}
+        </div>
     );
 }

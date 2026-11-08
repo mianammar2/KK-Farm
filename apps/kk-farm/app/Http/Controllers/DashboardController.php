@@ -79,6 +79,7 @@ class DashboardController extends Controller
             'herd' => collect(['total', ...HerdStats::CATEGORIES])->map(fn ($k) => ['key' => $k, 'label' => HerdStats::LABELS[$k], 'value' => $counts[$k]])->values(),
             'missing' => $missing,
             'feeding' => $user->canModule('feeding') ? $feedToday : null,
+            'requirement' => $user->canModule('feeding') ? $this->feedRequirement($goats) : null,
             'attention' => $attention,
             'kiddings' => $kiddings,
             'activity' => fn () => Activity::latest()->limit(20)
@@ -136,6 +137,60 @@ class DashboardController extends Controller
             'pens' => $rows, 'plannedKg' => round($planned, 1), 'givenKg' => round($given, 1), 'cost' => round($cost),
             'lowStock' => \App\Models\FeedItem::where('active', true)->get()->filter(fn ($i) => \App\Support\Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg) !== 'ok')->pluck('name')->values(),
             'compliance' => $compliance,
+        ];
+    }
+
+    /**
+     * D-079: today's feed requirement for every goat, grouped by shed and pen: the goat's rule (e.g. 3.5% of 20 kg),
+     * kg a day and the split over feeds; pen and shed totals with cost. Kids on milk and goats without a ration or a
+     * weight are listed with the reason, so nothing is silently left out.
+     */
+    private function feedRequirement(\Illuminate\Support\Collection $goats): array
+    {
+        $goats->loadMissing('pen.shed');
+        $req = \App\Support\Feed::perGoat($goats, \App\Support\Feed::now()->toDateString());
+        $items = \App\Models\FeedItem::all()->keyBy('id');
+        $feedText = fn (array $lines) => collect($lines)->map(fn ($kg, $id) => ($items[$id]->name ?? '?').' '.round($kg, 2))->implode(' · ');
+        $cost = fn (array $lines) => collect($lines)->sum(fn ($kg, $id) => $kg * ($items[$id]->cost_per_kg_minor ?? 0)) / 100;
+        $sum = function ($rows) use ($items) {
+            $lines = [];
+            foreach ($rows as $r) {
+                foreach ($r['lines'] as $id => $kg) {
+                    $lines[$id] = ($lines[$id] ?? 0) + $kg;
+                }
+            }
+
+            return collect($lines)->map(fn ($kg, $id) => ['name' => $items[$id]->name ?? '?', 'kg' => round($kg, 1)])->sortByDesc('kg')->values()->all();
+        };
+
+        $sheds = $goats->groupBy(fn ($g) => $g->pen?->shed_id ?? 0)->map(function ($inShed, $shedId) use ($req, $feedText, $cost, $sum) {
+            $shed = $inShed->first()->pen?->shed;
+            $pens = $inShed->groupBy(fn ($g) => $g->pen_id ?? 0)->map(function ($inPen) use ($req, $feedText, $cost) {
+                $rows = $inPen->map(fn ($g) => $req[$g->id] + ['id' => $g->id, 'number' => $g->farm_number])->sortBy('number')->values();
+
+                return [
+                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1),
+                    'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
+                    'goats' => $rows->map(fn ($r) => [
+                        'id' => $r['id'], 'number' => $r['number'], 'group' => $r['group'], 'weight' => $r['weight'], 'state' => $r['state'], 'rule' => $r['rule'],
+                        'kgDay' => $r['kgDay'], 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
+                    ])->values()->all(),
+                    '_rows' => $rows,
+                ];
+            })->sortBy('name')->values();
+            $all = $pens->flatMap(fn ($p) => $p['_rows']);
+
+            return [
+                'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a pen', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1),
+                'cost' => round($all->sum(fn ($r) => $cost($r['lines']))), 'count' => $all->count(), 'feeds' => $sum($all),
+                'pens' => $pens->map(fn ($p) => collect($p)->except('_rows')->all())->all(),
+            ];
+        })->sortBy(fn ($s) => [$s['id'] === null ? 1 : 0, $s['name']])->values();
+
+        return [
+            'kgDay' => round($req->sum('kgDay'), 1), 'cost' => round($req->sum(fn ($r) => $cost($r['lines']))), 'feeds' => $sum($req->values()),
+            'planned' => $req->where('state', 'planned')->count(), 'milk' => $req->where('state', 'milk')->count(),
+            'missing' => $req->whereIn('state', ['no_ration', 'no_weight'])->count(), 'sheds' => $sheds->all(),
         ];
     }
 }

@@ -301,4 +301,25 @@ class FeedTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('history.0.off', true));
         $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('feeding.pens.0.name', 'Shed 1-Pen A')->where('feeding.pens.0.meals.morning.given', 0.9)->has('feeding.pens', 2));
     }
+
+    public function test_the_dashboard_shows_each_goats_requirement_by_shed_and_pen(): void
+    {
+        $straw = $this->item('WS', 30);
+        $d1 = Animal::where('farm_number', 'D-1')->first();
+        \App\Models\WeightRecord::create(['animal_id' => $d1->id, 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']);
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
+            'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => $straw->id, 'share_pct' => 100]]])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
+
+        $req = Feed::perGoat(Animal::active()->get(), now());
+        $this->assertSame(['planned', 1.0, 0.8, 1.2], [$req[$d1->id]['state'], $req[$d1->id]['kgDay'], $req[$d1->id]['min'], $req[$d1->id]['max']], '40 kg adult × 2–3%, planned at 2.5%');
+        $this->assertSame('no_weight', $req[Animal::where('farm_number', 'D-2')->value('id')]['state']);
+        $this->assertSame('milk', $req[Animal::where('farm_number', 'K-1')->value('id')]['state']);
+        $this->assertEqualsWithDelta(Feed::plannedByPen('morning', now())[$this->penA->id]['lines'][$straw->id] * 2, $req[$d1->id]['kgDay'], 0.01, 'per goat adds up to the pen plan');
+
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page
+            ->where('requirement.kgDay', 1)->where('requirement.cost', 30)->where('requirement.milk', 1)->where('requirement.missing', 1)
+            ->where('requirement.sheds.0.name', 'Shed 1')->where('requirement.sheds.0.pens.0.name', 'Shed 1-Pen A')
+            ->where('requirement.sheds.0.pens.0.goats.0.number', 'D-1')->where('requirement.sheds.0.pens.0.goats.0.feeds', 'Feed WS 1'));
+    }
 }
