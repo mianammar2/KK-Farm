@@ -79,6 +79,7 @@ final class GoatRegistration
                 'birth_date', 'acquired_on' => ['date', 'before_or_equal:today'],
                 'birth_weight_kg' => ['numeric', 'between:0.1,12'],
                 'latest_weight_kg' => ['numeric', 'between:0.5,150'],
+                'height_cm' => ['numeric', 'between:10,200'],
                 'purchase_cost_pkr' => ['numeric', 'min:0', 'max:100000000'],
                 'name', 'source_farm' => ['string', 'max:60'],
                 default => null,
@@ -164,6 +165,7 @@ final class GoatRegistration
                 'health_status' => self::HEALTH[$data['health_flag'] ?? 'healthy'] ?? 'healthy',
                 'ownership' => $data['ownership'] ?? null,
                 'birth_weight_kg' => $data['birth_weight_kg'] ?? null,
+                'height_cm' => $data['height_cm'] ?? null,
                 'purchase_cost_minor' => isset($data['purchase_cost_pkr']) ? (int) round($data['purchase_cost_pkr'] * 100) : null,
                 'notes' => $data['notes'] ?? null,
                 'custom_fields' => $data['custom_fields'] ?? [],
@@ -186,7 +188,7 @@ final class GoatRegistration
             }
 
             if (isset($data['latest_weight_kg'])) {
-                WeightRecord::create(['animal_id' => $animal->id, 'measured_on' => now(), 'weight_kg' => $data['latest_weight_kg'], 'context' => 'registration', 'measured_by' => $user->name]);
+                WeightRecord::create(['animal_id' => $animal->id, 'measured_on' => now(), 'weight_kg' => $data['latest_weight_kg'], 'height_cm' => $data['height_cm'] ?? null, 'context' => 'registration', 'measured_by' => $user->name]);
             }
 
             $origin = ['purchased' => 'Purchased and registered', 'transferred_in' => 'Transferred in and registered'][$data['origin']] ?? 'Born on the farm';

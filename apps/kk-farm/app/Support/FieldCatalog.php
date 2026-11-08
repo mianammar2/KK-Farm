@@ -54,6 +54,9 @@ final class FieldCatalog
             ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth', 'required' => true, 'help' => 'Required for farm-born goats. For a bought goat leave it empty if unknown.'],
             ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth'],
             ['key' => 'birth_weight_kg', 'label' => 'Birth Weight Kg', 'type' => 'number', 'section' => 'Birth'],
+            // D-063: weight and height follow the birth date (or the estimated age of a bought goat).
+            ['key' => 'latest_weight_kg', 'label' => 'Weight Kg', 'type' => 'number', 'section' => 'Birth', 'help' => 'Saved as the first weighing in the goat\'s weight log.'],
+            ['key' => 'height_cm', 'label' => 'Height cm', 'type' => 'number', 'section' => 'Birth', 'help' => 'At the shoulder (withers). Saved with the first weighing.'],
             ['key' => 'sire_id', 'label' => 'Sire Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'dam_id', 'label' => 'Dam Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'breed_purity', 'label' => 'Breed Purity', 'type' => 'select', 'section' => 'Parentage', 'help' => 'Set automatically when both parents are known.'],
@@ -65,8 +68,7 @@ final class FieldCatalog
             ['key' => 'kid_stage', 'label' => 'Kid Stage', 'type' => 'select', 'section' => 'Classification'],
             ['key' => 'lifecycle_status', 'label' => 'Lifecycle Status', 'type' => 'select', 'section' => 'Status'],
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],
-            ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing and weight', 'required' => true],
-            ['key' => 'latest_weight_kg', 'label' => 'Latest Weight Kg', 'type' => 'number', 'section' => 'Housing and weight', 'help' => 'Saved as the first weighing in the goat\'s weight log.'],
+            ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing', 'required' => true],
             ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership'],
             ['key' => 'notes', 'label' => 'Notes', 'type' => 'long_text', 'section' => 'Notes'],
         ];

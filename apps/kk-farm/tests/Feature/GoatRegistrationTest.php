@@ -98,7 +98,7 @@ class GoatRegistrationTest extends TestCase
     public function test_the_register_form_has_the_workbook_fields_in_order_with_their_dropdown_options(): void
     {
         $this->actingAs($this->user('caretaker'))->get('/goats/register?epc='.self::EPC)->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 27)
+            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 28)
                 // D-058: Origin Type, Breed, Purchase Date, then the Tag ID from the breed.
                 ->where('fields.0.key', 'origin')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'acquired_on')->where('fields.2.label', 'Purchase Date')->where('fields.3.key', 'tag_id')
                 ->where('fields', function ($fields) {
@@ -491,7 +491,7 @@ class GoatRegistrationTest extends TestCase
         $this->assertFalse($field->builtin);
         $this->assertSame(['horned', 'polled'], array_column($field->options, 'value'));
 
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 28)->where('fields.27.key', 'horn_status')->where('fields.27.required', true));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 29)->where('fields.28.key', 'horn_status')->where('fields.28.required', true));
 
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasErrors(['custom_fields.horn_status']);
         $this->actingAs($owner)->post('/goats', $this->payload(['custom_fields' => ['horn_status' => 'bogus']]))->assertSessionHasErrors(['custom_fields.horn_status']);
@@ -524,7 +524,7 @@ class GoatRegistrationTest extends TestCase
         $this->actingAs($owner)->post("/settings/fields/{$note->id}", ['label' => 'Coat note', 'active' => false, 'required' => true])->assertSessionHasNoErrors();
 
         // Switched off means hidden and no longer required.
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 27));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 28));
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasNoErrors();
     }
 
@@ -541,8 +541,8 @@ class GoatRegistrationTest extends TestCase
         $other = Organization::create(['name' => 'Other Farm', 'slug' => 'other-farm']);
         $outsider = $this->user('ceo', $other);
 
-        $this->assertSame(27, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
-        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 27)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
+        $this->assertSame(28, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
+        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 28)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
     }
 
     public function test_a_bought_goat_may_have_no_birth_date_but_a_farm_born_goat_must(): void
@@ -562,5 +562,19 @@ class GoatRegistrationTest extends TestCase
         foreach (['/', '/goats', '/reports', '/breeding', '/sheds'] as $page) {
             $this->actingAs($owner)->get($page)->assertOk();
         }
+    }
+
+    public function test_a_bought_goat_gets_its_estimated_birth_date_weight_and_height(): void
+    {
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload([
+            'origin' => 'purchased', 'acquired_on' => now()->toDateString(), 'birth_date' => now()->subMonths(18)->toDateString(), 'birth_date_is_estimate' => true,
+            'latest_weight_kg' => 32.5, 'height_cm' => 61,
+        ]))->assertSessionHasNoErrors();
+
+        $goat = Animal::with('latestWeight')->sole();
+        $this->assertTrue($goat->birth_date_is_estimate);
+        $this->assertEquals(61.0, (float) $goat->height_cm);
+        $this->assertEquals([32.5, 61.0], [(float) $goat->latestWeight->weight_kg, (float) $goat->latestWeight->height_cm]);
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['tag_id' => 'X-1', 'height_cm' => 500]))->assertSessionHasErrors('height_cm');
     }
 }

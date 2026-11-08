@@ -8,7 +8,7 @@ import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 
-type Goat = GoatCard & { origin: string; birthDate: string | null; estimated: boolean; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Goat = GoatCard & { origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
@@ -96,6 +96,7 @@ export default function GoatShow(props: Props) {
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
+                                {goat.height !== null ? fact('Height', `${goat.height} cm`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
                                 {fact('Sire', parentLink(goat.sire))}
                                 {fact('Dam', parentLink(goat.dam))}
