@@ -98,7 +98,7 @@ class GoatRegistrationTest extends TestCase
     public function test_the_register_form_has_the_workbook_fields_in_order_with_their_dropdown_options(): void
     {
         $this->actingAs($this->user('caretaker'))->get('/goats/register?epc='.self::EPC)->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 28)
+            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 26) // D-066: Lifecycle Status and Ownership are off by default
                 // D-058: Origin Type, Breed, Purchase Date, then the Tag ID from the breed.
                 ->where('fields.0.key', 'origin')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'acquired_on')->where('fields.2.label', 'Purchase Date')->where('fields.3.key', 'tag_id')
                 ->where('fields', function ($fields) {
@@ -114,9 +114,8 @@ class GoatRegistrationTest extends TestCase
                     $this->assertCount(14, $labels('repro_status'));
                     $this->assertSame(['Kid', 'Grower', 'Adult'], $labels('age_category'));
                     $this->assertSame(['Newborn', 'Suckling', 'Weaned', 'Breeding Selected', 'Sale Selected', 'Orphan'], $labels('kid_stage'));
-                    $this->assertSame(['Active', 'Sold', 'Dead', 'Culled', 'Transferred'], $labels('lifecycle_status'));
                     $this->assertSame(['Healthy', 'Monitor', 'Sick', 'Quarantine', 'Recovering'], $labels('health_flag'));
-                    $this->assertSame(['KK Farms', 'Partner', 'Consignment', 'Other'], $labels('ownership'));
+                    $this->assertFalse($by->has('lifecycle_status') || $by->has('ownership'));
                     $this->assertTrue($by['sex']['required'] && $by['breed_id']['required'] && $by['pen_id']['required'] && $by['birth_date']['required']);
 
                     return true;
@@ -136,7 +135,7 @@ class GoatRegistrationTest extends TestCase
 
         $goat = Animal::where('farm_number', 'KK-501')->firstOrFail();
         $this->assertSame('Noor', $goat->name);
-        $this->assertSame(['replacement_female', 'pregnant', 'monitor', 'partner', 'Cholistan Farm'], [$goat->animal_class, $goat->repro_status, $goat->health_flag, $goat->ownership, $goat->source_farm]);
+        $this->assertSame(['replacement_female', 'pregnant', 'monitor', null, 'Cholistan Farm'], [$goat->animal_class, $goat->repro_status, $goat->health_flag, $goat->ownership, $goat->source_farm], 'Ownership is switched off (D-066), so it is not saved');
         $this->assertSame('watch', $goat->health_status, 'Monitor maps to the existing watch state');
         $this->assertSame('pregnant', $goat->repro_state);
         $this->assertSame(1850000, $goat->purchase_cost_minor, 'Money is stored in paisa');
@@ -491,7 +490,7 @@ class GoatRegistrationTest extends TestCase
         $this->assertFalse($field->builtin);
         $this->assertSame(['horned', 'polled'], array_column($field->options, 'value'));
 
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 29)->where('fields.28.key', 'horn_status')->where('fields.28.required', true));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 27)->where('fields.26.key', 'horn_status')->where('fields.26.required', true));
 
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasErrors(['custom_fields.horn_status']);
         $this->actingAs($owner)->post('/goats', $this->payload(['custom_fields' => ['horn_status' => 'bogus']]))->assertSessionHasErrors(['custom_fields.horn_status']);
@@ -524,7 +523,7 @@ class GoatRegistrationTest extends TestCase
         $this->actingAs($owner)->post("/settings/fields/{$note->id}", ['label' => 'Coat note', 'active' => false, 'required' => true])->assertSessionHasNoErrors();
 
         // Switched off means hidden and no longer required.
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 28));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 26));
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasNoErrors();
     }
 
@@ -542,7 +541,7 @@ class GoatRegistrationTest extends TestCase
         $outsider = $this->user('ceo', $other);
 
         $this->assertSame(28, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
-        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 28)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
+        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 26)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
     }
 
     public function test_a_bought_goat_may_have_no_birth_date_but_a_farm_born_goat_must(): void

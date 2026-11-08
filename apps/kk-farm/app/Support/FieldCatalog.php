@@ -66,10 +66,11 @@ final class FieldCatalog
             ['key' => 'animal_class', 'label' => 'Goat Category', 'type' => 'select', 'section' => 'Classification', 'help' => 'Suggested from gender, age and purpose if left empty.'],
             ['key' => 'repro_status', 'label' => 'Female Status', 'type' => 'select', 'section' => 'Classification', 'help' => 'Reproductive status. Female goats only.'],
             ['key' => 'kid_stage', 'label' => 'Kid Stage', 'type' => 'select', 'section' => 'Classification'],
-            ['key' => 'lifecycle_status', 'label' => 'Lifecycle Status', 'type' => 'select', 'section' => 'Status'],
+            // D-066: off by default (new goats are Active; exits change it). The owner can switch it on in Settings.
+            ['key' => 'lifecycle_status', 'label' => 'Lifecycle Status', 'type' => 'select', 'section' => 'Status', 'active' => false],
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],
             ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing', 'required' => true],
-            ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership'],
+            ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership', 'active' => false], // D-066
             ['key' => 'notes', 'label' => 'Notes', 'type' => 'long_text', 'section' => 'Notes'],
         ];
     }
@@ -82,7 +83,7 @@ final class FieldCatalog
             DB::table('field_definitions')->insertOrIgnore([
                 'id' => (string) Str::uuid(), 'org_id' => $orgId, 'entity' => 'animal', 'key' => $d['key'], 'label' => $d['label'], 'type' => $d['type'],
                 'options' => $options ? json_encode(collect($options)->map(fn ($label, $value) => ['value' => $value, 'label' => $label])->values()) : null,
-                'section' => $d['section'], 'sort' => ($i + 1) * 10, 'required' => $d['required'] ?? false, 'builtin' => true, 'active' => true,
+                'section' => $d['section'], 'sort' => ($i + 1) * 10, 'required' => $d['required'] ?? false, 'builtin' => true, 'active' => $d['active'] ?? true,
                 'help' => $d['help'] ?? null, 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
