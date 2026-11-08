@@ -99,6 +99,17 @@ final class ActionCenter
             $add('feeding', 'feeding_missed', 'Feeding missed today', 'critical', 'Find out why and feed the pen.', '/feeding', $missed);
             $stock = Feed::stock();
             $low = FeedItem::where('active', true)->orderBy('name')->get()->filter(fn (FeedItem $i) => Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg) !== 'ok');
+            // D-080: will the feed in store last? Need = every goat's intake % of body weight (or its fixed ration).
+            $need = Feed::perGoat(Animal::active()->get(), $todayIso)->sum('kgDay');
+            $inStore = FeedItem::where('active', true)->get()->sum(fn ($i) => max(0, $stock[$i->id] ?? 0));
+            if ($need > 0) {
+                $days = (int) floor($inStore / $need);
+                if ($days < 7) {
+                    $add('feeding', 'feed_short', $days === 0 ? 'Not enough feed for today' : "Feed lasts only {$days} day".($days === 1 ? '' : 's'), $days < 2 ? 'critical' : 'warning',
+                        'Buy feed: the goats need '.round($need, 1).' kg a day ('.round($need * 7).' kg a week).', '/feeding',
+                        collect([['text' => round($inStore, 1).' kg in store', 'sub' => round($need, 1).' kg needed a day · short '.round(max(0, $need * 7 - $inStore)).' kg for a week', 'url' => '/feeding']]));
+                }
+            }
             $add('feeding', 'feed_low', 'Feed low, out or below zero', $low->contains(fn ($i) => ($stock[$i->id] ?? 0) <= 0) ? 'critical' : 'warning', 'Check the store and record the purchase.', '/feeding',
                 $low->map(fn (FeedItem $i) => ['text' => $i->name, 'sub' => round($stock[$i->id] ?? 0, 1).' kg · reorder at '.round($i->reorder_level_kg).' kg', 'url' => '/feeding'])->values());
         }
@@ -106,8 +117,8 @@ final class ActionCenter
         // ---- Herd data ----
         $goats = Animal::with('pen')->active()->orderBy('farm_number')->get();
         $tags = HerdStats::tagsFor($goats);
-        $add('goats', 'missing', 'Goats missing a pen or weight', 'warning', 'Move the goat into a pen and weigh it, so feed can be planned.', '/goats?show=missing',
-            $goats->filter(fn (Animal $a) => in_array('missing', $tags[$a->id], true))->map(fn (Animal $a) => $goat($a, implode(' · ', array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight'], $tags[$a->id]))))));
+        $add('goats', 'missing', 'Goats with missing or wrong data', 'warning', 'Put the goat in a pen, weigh it, or correct its birth date, so feed can be planned.', '/goats?show=missing',
+            $goats->filter(fn (Animal $a) => in_array('missing', $tags[$a->id], true))->map(fn (Animal $a) => $goat($a, implode(' · ', array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight', 'age_conflict'], $tags[$a->id]))))));
 
         // ---- Money ----
         $unpaid = \App\Models\LedgerEntry::where('direction', 'out')->whereIn('payment_status', ['pending', 'partial'])->whereNull('reverses_id')->whereDoesntHave('reversal')->orderBy('occurred_on')->get();

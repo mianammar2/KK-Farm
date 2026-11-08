@@ -175,6 +175,26 @@ class GoatController extends Controller
         return response()->file(Storage::path($photo->path), ['Cache-Control' => 'private, max-age=86400']);
     }
 
+    /**
+     * D-080: correct a goat's birth date (e.g. the purchase date was entered as the birth date). The change is written
+     * to the goat's lifecycle with the old date and the reason, so the history shows what was corrected and by whom.
+     */
+    public function correctBirth(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless(in_array($request->user()->role, ['ceo', 'manager'], true), 403);
+        $data = $request->validate([
+            'birth_date' => ['nullable', 'required_without:age_months', 'date', 'before_or_equal:today'], 'age_months' => ['nullable', 'integer', 'between:0,240'],
+            'estimated' => ['boolean'], 'reason' => ['required', 'string', 'max:200'],
+        ], [], ['age_months' => 'age in months']);
+        $new = ! empty($data['birth_date']) ? \Illuminate\Support\Carbon::parse($data['birth_date']) : now()->subMonths((int) $data['age_months']);
+        $old = $animal->birth_date?->format('j M Y') ?? 'none';
+        $animal->update(['birth_date' => $new->toDateString(), 'birth_date_is_estimate' => (bool) ($data['estimated'] ?? empty($data['birth_date'])), 'age_category' => null]);
+        Farm::event($animal, 'origin', "Birth date corrected from {$old} to {$new->format('j M Y')}: {$data['reason']}", $request->user()->name);
+        Farm::log($request->user(), "Corrected the birth date of {$animal->farm_number}", "/goats/{$animal->id}");
+
+        return back()->with('success', "Birth date of {$animal->farm_number} is now {$new->format('j M Y')}.");
+    }
+
     /** The goat page's "Record exit": one movement through the movement service (D-076). */
     public function exitFarm(Request $request, Animal $animal): RedirectResponse
     {

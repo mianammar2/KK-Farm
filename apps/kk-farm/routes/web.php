@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/photos', [GoatController::class, 'addPhoto']);
         Route::post('/goats/{animal}/photos/{photo}/profile', [GoatController::class, 'setProfilePhoto']);
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);
+        Route::post('/goats/{animal}/birth-date', [GoatController::class, 'correctBirth']); // D-080
         Route::get('/media/{photo}', [GoatController::class, 'media']);
     });
 

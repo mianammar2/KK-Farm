@@ -61,7 +61,7 @@ final class Feed
 
         return match (true) {
             in_array($a->health_flag, ['sick', 'quarantine'], true) => 'quarantine',
-            in_array($category, ['male_kid', 'female_kid'], true) || $a->effectiveAge() === 'kid' => 'kids',
+            in_array($category, ['male_kid', 'female_kid'], true) || self::intakeAge($a) === 'kid' => 'kids',
             in_array($a->repro_status, ['pregnant', 'expected_kidding'], true) => 'pregnant_does',
             in_array($a->repro_status, ['kidded', 'lactating', 'nursing'], true) => 'lactating_does',
             $category === 'breeding_male' => 'breeding_bucks',
@@ -122,7 +122,7 @@ final class Feed
                 $plan = $plans[$groups[$goat->id]] ?? null;
                 $range = self::intakeRange($goat, $org);
                 // D-069: kids drink milk. Without a ration of their own they are "on milk", not missing a ration.
-                if ($goat->effectiveAge() === 'kid' && ! $range && (! $plan || $plan->basis === 'body_weight' || $plan->lines->isEmpty())) {
+                if (self::intakeAge($goat) === 'kid' && ! $range && (! $plan || $plan->basis === 'body_weight' || $plan->lines->isEmpty())) {
                     $onMilk++;
 
                     continue;
@@ -179,33 +179,37 @@ final class Feed
         $groups = self::groupIds($animals);
         $groupNames = FeedingGroup::pluck('name', 'id');
         $weights = self::latestWeights();
+        $ageLabel = ['kid' => 'kid', 'grower' => 'grower', 'adult' => 'adult'];
 
-        return $animals->mapWithKeys(function (Animal $goat) use ($plans, $org, $groups, $groupNames, $weights) {
+        return $animals->mapWithKeys(function (Animal $goat) use ($plans, $org, $groups, $groupNames, $weights, $ageLabel) {
             $plan = $plans[$groups[$goat->id]] ?? null;
+            $age = self::intakeAge($goat);
             $range = self::intakeRange($goat, $org);
             $weight = $weights[$goat->id] ?? null;
-            $base = ['kgDay' => 0.0, 'min' => 0.0, 'max' => 0.0, 'lines' => [], 'group' => $groupNames[$groups[$goat->id]] ?? null, 'weight' => $weight];
-            if ($goat->effectiveAge() === 'kid' && ! $range && (! $plan || $plan->basis === 'body_weight' || $plan->lines->isEmpty())) {
+            $base = ['kgDay' => 0.0, 'min' => 0.0, 'max' => 0.0, 'lines' => [], 'group' => $groupNames[$groups[$goat->id]] ?? null, 'weight' => $weight, 'age' => $age, 'split' => false];
+
+            // A fixed ration (kg per goat) is the requirement as the vet approved it.
+            if ($plan && $plan->basis === 'per_head' && $plan->lines->isNotEmpty()) {
+                $lines = $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => (float) $l->kg_per_head])->all();
+                $kg = round(array_sum($lines), 2);
+
+                return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => $kg, 'max' => $kg, 'rule' => "Fixed {$kg} kg a day", 'lines' => $lines, 'split' => true] + $base];
+            }
+            if ($age === 'kid' && ! $range) {
                 return [$goat->id => $base + ['state' => 'milk', 'rule' => 'Kid on milk']];
             }
-            if (! $plan || $plan->lines->isEmpty()) {
-                return [$goat->id => $base + ['state' => 'no_ration', 'rule' => 'No approved ration for its group']];
+            if (! $weight) {
+                return [$goat->id => $base + ['state' => 'no_weight', 'rule' => 'Needs a weight']];
             }
-            if ($plan->basis === 'body_weight') {
-                if (! $weight || ! $range) {
-                    return [$goat->id => $base + ['state' => 'no_weight', 'rule' => 'Needs a weight']];
-                }
-                [$min, $max] = $range;
-                $mid = ($min + $max) / 2;
-                $lines = $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => round($weight * $mid / 100 * $l->share_pct / 100, 3)])->all();
+            // D-080: otherwise the farm's intake % of body weight for its age, ration or not. The ration only splits it over feeds.
+            [$min, $max] = $range;
+            $mid = ($min + $max) / 2;
+            $kg = round($weight * $mid / 100, 2);
+            $split = $plan && $plan->basis === 'body_weight' && $plan->lines->isNotEmpty();
+            $lines = $split ? $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => round($kg * $l->share_pct / 100, 3)])->all() : [];
 
-                return [$goat->id => ['state' => 'planned', 'kgDay' => round($weight * $mid / 100, 2), 'min' => round($weight * $min / 100, 2), 'max' => round($weight * $max / 100, 2),
-                    'rule' => rtrim(rtrim(number_format($mid, 2), '0'), '.')."% of {$weight} kg", 'lines' => $lines] + $base];
-            }
-            $lines = $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => (float) $l->kg_per_head])->all();
-            $kg = round(array_sum($lines), 2);
-
-            return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => $kg, 'max' => $kg, 'rule' => 'Fixed '.$kg.' kg a day', 'lines' => $lines] + $base];
+            return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => round($weight * $min / 100, 2), 'max' => round($weight * $max / 100, 2),
+                'rule' => rtrim(rtrim(number_format($mid, 2), '0'), '.')."% of {$weight} kg ({$ageLabel[$age]})", 'lines' => $lines, 'split' => $split] + $base];
         });
     }
 
@@ -224,13 +228,35 @@ final class Feed
      */
     public static function intakeRange(Animal $goat, Organization $org): ?array
     {
-        [$min, $max] = match ($goat->effectiveAge()) {
+        [$min, $max] = match (self::intakeAge($goat)) {
             'kid' => [$org->kid_intake_min_pct, $org->kid_intake_max_pct],
             'grower' => [$org->grower_intake_min_pct, $org->grower_intake_max_pct],
             default => [$org->adult_intake_min_pct, $org->adult_intake_max_pct],
         };
 
         return $min !== null && $max !== null ? [(float) $min, (float) $max] : null;
+    }
+
+    /** Goat categories that are never kids, whatever the birth date says (a wrong birth date must not put a buck on milk). */
+    public const ADULT_CATEGORIES = ['breeding_male', 'breeding_female', 'wether', 'cull'];
+
+    public const GROWER_CATEGORIES = ['growing_male', 'growing_female', 'replacement_male', 'replacement_female', 'fattening_male'];
+
+    /**
+     * D-080: the age used for feed intake. The birth-date age, unless it says "kid" for a goat whose category cannot be
+     * a kid (a Breeding Male counts as an adult, a Growing goat as a grower): usually a purchase date entered as birth date.
+     */
+    public static function intakeAge(Animal $goat): string
+    {
+        $age = $goat->effectiveAge() ?? 'adult';
+        $category = $goat->animal_class;
+
+        // Only a "kid" age can contradict the category; a real grower or adult keeps its age.
+        return match (true) {
+            $age === 'kid' && in_array($category, self::ADULT_CATEGORIES, true) => 'adult',
+            $age === 'kid' && in_array($category, self::GROWER_CATEGORIES, true) => 'grower',
+            default => $age,
+        };
     }
 
     /** @return Collection<int, float> kg in store by feed item id */

@@ -47,7 +47,7 @@ class DashboardController extends Controller
             $o = $origins[$id] ?? null;
 
             return $card($byId[$id]) + [
-                'missing' => array_values(array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight'], $tags[$id]))),
+                'missing' => array_values(array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight', 'age_conflict'], $tags[$id]))),
                 'source' => $o ? $o->summary.' · '.$o->recorded_by.' · '.\Illuminate\Support\Carbon::parse($o->occurred_at)->format('j M') : 'Added '.$byId[$id]->created_at->format('j M'),
             ];
         })->values();
@@ -187,7 +187,29 @@ class DashboardController extends Controller
             ];
         })->sortBy(fn ($s) => [$s['id'] === null ? 1 : 0, $s['name']])->values();
 
+        // D-080: need against the feed store. Per feed where a ration splits the need; overall for the rest.
+        $stock = \App\Support\Feed::stock();
+        $active = $items->where('active', true);
+        $needByFeed = [];
+        foreach ($req as $r) {
+            foreach ($r['lines'] as $id => $kg) {
+                $needByFeed[$id] = ($needByFeed[$id] ?? 0) + $kg;
+            }
+        }
+        $kgDay = round($req->sum('kgDay'), 2);
+        $inStore = round($active->sum(fn ($i) => max(0, $stock[$i->id] ?? 0)), 1);
+        $supply = [
+            'needDay' => round($kgDay, 1), 'needWeek' => round($kgDay * 7, 1), 'needMonth' => round($kgDay * 30), 'inStore' => $inStore,
+            'days' => $kgDay > 0 ? (int) floor($inStore / $kgDay) : null,
+            'unsplit' => round($req->where('state', 'planned')->where('split', false)->sum('kgDay'), 1),
+            'feeds' => collect($needByFeed)->map(fn ($need, $id) => [
+                'name' => $items[$id]->name ?? '?', 'needDay' => round($need, 1), 'stock' => round(max(0, $stock[$id] ?? 0), 1),
+                'days' => $need > 0 ? (int) floor(max(0, $stock[$id] ?? 0) / $need) : null, 'shortWeek' => round(max(0, $need * 7 - max(0, $stock[$id] ?? 0)), 1),
+            ])->sortBy('days')->values()->all(),
+        ];
+
         return [
+            'supply' => $supply,
             'kgDay' => round($req->sum('kgDay'), 1), 'cost' => round($req->sum(fn ($r) => $cost($r['lines']))), 'feeds' => $sum($req->values()),
             'planned' => $req->where('state', 'planned')->count(), 'milk' => $req->where('state', 'milk')->count(),
             'missing' => $req->whereIn('state', ['no_ration', 'no_weight'])->count(), 'sheds' => $sheds->all(),

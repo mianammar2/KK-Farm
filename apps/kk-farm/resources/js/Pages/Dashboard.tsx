@@ -13,7 +13,8 @@ type ActionSummary = { key: string; label: string; count: number; severity: 'cri
 type ReqGoat = { id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; min: number; max: number; feeds: string };
 type ReqPen = { id: number | null; name: string; kgDay: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
 type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
-type Requirement = { kgDay: number; cost: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
+type Supply = { needDay: number; needWeek: number; needMonth: number; inStore: number; days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number }> };
+type Requirement = { supply: Supply; kgDay: number; cost: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
 type Props = { requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
@@ -153,7 +154,7 @@ export default function Dashboard({ requirement, actions, stats, feeding, herd, 
             {missing.length || charts || activity.length || kiddings.length ? (
                 <div className="mt-4 grid items-start gap-4 lg:grid-cols-2 lg:[&>*:last-child:nth-child(odd)]:col-span-2">
                     {missing.length ? (
-                <Panel title="Missing data" description="No pen or weight yet · where each came from" flush
+                <Panel title="Missing data" description="No pen, no weight or a wrong birth date · where each came from" flush
                     actions={<Link href="/goats?show=missing" className="text-sm font-semibold text-turq-800 hover:underline">Open as table</Link>}>
                     <ul className="divide-y divide-rule">
                         <ShowMore items={missing} render={(m) => (
@@ -324,7 +325,7 @@ function FeedRequirement({ req }: { req: Requirement }) {
     return (
         <Panel className="mt-4" title="Feed requirement today" description={`${req.kgDay} kg for ${plural(req.planned, 'goat', 'goats')} · PKR ${req.cost.toLocaleString('en-PK')} a day${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
             actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Rations</Link>} flush>
-            {req.feeds.length ? <div className="flex flex-wrap gap-1.5 border-b border-rule px-4 py-2.5">{req.feeds.map((f) => <span key={f.name} className="rounded-[4px] bg-glaze px-2 py-0.5 text-xs font-semibold text-ink">{f.name} · {f.kg} kg</span>)}</div> : null}
+            <SupplyStrip s={req.supply} />
             {req.sheds.length ? (
                 <ul className="divide-y divide-rule">
                     {req.sheds.map((s) => {
@@ -377,6 +378,38 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
                 </table>
             </div>
             {pen.goats.length > 5 ? <button type="button" onClick={() => setAll(!all)} className="w-full border-t border-rule px-3 py-1.5 text-sm font-semibold text-cobalt-800 hover:bg-glaze">{all ? 'Show less' : `Show ${pen.goats.length - 5} more`}</button> : null}
+        </div>
+    );
+}
+
+/** D-080: what the goats need against what is in the feed store. */
+function SupplyStrip({ s }: { s: Supply }) {
+    const short = s.days !== null && s.days < 7;
+    const box = (label: string, value: string, note?: string, alert?: boolean) => (
+        <div className={`rounded-tile px-3 py-2 ${alert ? 'bg-crit-100' : 'bg-glaze'}`}>
+            <div className="text-xs text-ink-soft">{label}</div>
+            <div className={`text-lg font-bold tabular-nums ${alert ? 'text-crit-700' : 'text-cobalt-900'}`}>{value}</div>
+            {note ? <div className="text-xs text-ink-faint">{note}</div> : null}
+        </div>
+    );
+    return (
+        <div className="space-y-2 border-b border-rule px-4 py-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {box('Needed today', `${s.needDay} kg`)}
+                {box('Needed this week', `${s.needWeek} kg`, `${s.needMonth} kg a month`)}
+                {box('In the feed store', `${s.inStore} kg`, undefined, s.needDay > 0 && s.inStore === 0)}
+                {box('Store lasts', s.days === null ? '—' : s.days === 0 ? 'Not today' : `${s.days} day${s.days === 1 ? '' : 's'}`, short ? `Short ${Math.max(0, Math.round(s.needWeek - s.inStore))} kg for a week` : undefined, short)}
+            </div>
+            {short ? <p className="rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">{s.inStore === 0 ? 'No feed recorded in the store.' : 'Feed is running short.'} The goats need {s.needDay} kg a day: record a purchase in Feeding → Feed store.</p> : null}
+            {s.unsplit > 0 ? <p className="text-xs text-ink-soft">{s.unsplit} kg a day is not split into feeds yet: set a ration (Feeding → Rations) to see which feed is short.</p> : null}
+            {s.feeds.length ? (
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[30rem] text-sm">
+                        <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1 font-semibold">Feed</th><th className="font-semibold">Needed a day</th><th className="font-semibold">In store</th><th className="font-semibold">Lasts</th><th className="font-semibold">Short for a week</th></tr></thead>
+                        <tbody className="divide-y divide-rule">{s.feeds.map((f) => <tr key={f.name}><td className="py-1 font-medium">{f.name}</td><td>{f.needDay} kg</td><td>{f.stock} kg</td><td className={f.days !== null && f.days < 7 ? 'font-semibold text-crit-700' : ''}>{f.days === null ? '—' : `${f.days} days`}</td><td className={f.shortWeek ? 'font-semibold text-crit-700' : 'text-ink-faint'}>{f.shortWeek ? `${f.shortWeek} kg` : '—'}</td></tr>)}</tbody>
+                    </table>
+                </div>
+            ) : null}
         </div>
     );
 }

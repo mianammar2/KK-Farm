@@ -18,7 +18,7 @@ final class HerdStats
         'growing' => 'Growing Goats', 'lactating' => 'Lactating Females', 'sick' => 'Sick Goats', 'treatment' => 'Goats Under Treatment',
         'for_sale' => 'Goats Ready for Sale',
         // Not CEO categories, but filters the dashboard links to.
-        'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'missing' => 'Missing data',
+        'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data',
     ];
 
     public const CATEGORIES = ['breeding_males', 'breeding_females', 'pregnant', 'ready', 'male_kids', 'female_kids', 'growing', 'lactating', 'sick', 'treatment', 'for_sale'];
@@ -45,8 +45,10 @@ final class HerdStats
             'attention' => $flag !== 'healthy',
             'no_pen' => $a->pen_id === null,
             'no_weight' => ! $hasWeight,
+            // D-080: e.g. a Breeding Male whose birth date makes it a few days old: the date is probably the purchase date.
+            'age_conflict' => $a->effectiveAge() === 'kid' && in_array($a->animal_class, \App\Support\Feed::ADULT_CATEGORIES, true),
         ];
-        $tests['missing'] = $tests['no_pen'] || $tests['no_weight'];
+        $tests['missing'] = $tests['no_pen'] || $tests['no_weight'] || $tests['age_conflict'];
 
         return array_keys(array_filter($tests));
     }

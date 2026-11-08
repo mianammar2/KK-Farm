@@ -81,6 +81,7 @@ export default function GoatShow(props: Props) {
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><TriangleAlert size={16} aria-hidden /> Report concern</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><MoveRight size={16} aria-hidden /> Move</Button>
+                                {['ceo', 'manager'].includes(auth?.role ?? '') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}>Correct birth date</Button> : null}
                                 {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}>Record exit</Button> : null}
                             </div>
                         ) : null}
@@ -242,7 +243,20 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? '') });
     const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
+    const birth = useForm({ birth_date: '', age_months: '', reason: '' });
     const options = { preserveScroll: true, onSuccess: close };
+
+    // D-080: correct a wrong birth date (often the purchase date). Kept in the lifecycle with the old date and reason.
+    if (kind === 'birth') {
+        return (
+            <form onSubmit={(e) => { e.preventDefault(); birth.post(`/goats/${goat.id}/birth-date`, options); }} className="grid gap-2 sm:grid-cols-[11rem_9rem_1fr_auto] sm:items-end">
+                <Field label="Birth date" error={birth.errors.birth_date}><input type="date" className="field" value={birth.data.birth_date} onChange={(e) => birth.setData('birth_date', e.target.value)} /></Field>
+                <Field label="or age (months)" error={birth.errors.age_months}><input inputMode="numeric" className="field" value={birth.data.age_months} onChange={(e) => birth.setData('age_months', e.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g. 24" /></Field>
+                <Field label="Reason" error={birth.errors.reason}><input className="field" value={birth.data.reason} onChange={(e) => birth.setData('reason', e.target.value)} placeholder="e.g. purchase date was entered as birth date" /></Field>
+                <Button type="submit" disabled={birth.processing}>Save</Button>
+            </form>
+        );
+    }
 
     if (kind === 'weight') {
         return (

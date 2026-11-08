@@ -322,4 +322,36 @@ class FeedTest extends TestCase
             ->where('requirement.sheds.0.name', 'Shed 1')->where('requirement.sheds.0.pens.0.name', 'Shed 1-Pen A')
             ->where('requirement.sheds.0.pens.0.goats.0.number', 'D-1')->where('requirement.sheds.0.pens.0.goats.0.feeds', 'Feed WS 1'));
     }
+
+    public function test_the_requirement_comes_from_weight_and_intake_even_without_a_ration_and_is_checked_against_the_store(): void
+    {
+        $adult = Animal::where('farm_number', 'D-1')->first();
+        $grower = $this->goat('G-1', $this->penA, ['animal_class' => 'growing_female', 'birth_date' => now()->subMonths(6)]);
+        // A purchase date entered as the birth date: the category says Breeding Male, so it is fed as an adult and flagged.
+        $buck = $this->goat('B-1', $this->penB, ['sex' => 'male', 'animal_class' => 'breeding_male', 'birth_date' => now()->subDay()]);
+        foreach ([[$adult, 50], [$grower, 20], [$buck, 88]] as [$g, $kg]) {
+            \App\Models\WeightRecord::create(['animal_id' => $g->id, 'measured_on' => now(), 'weight_kg' => $kg, 'measured_by' => 'x']);
+        }
+
+        $req = Feed::perGoat(Animal::active()->get(), now());
+        $this->assertSame([1.25, 'planned', false], [$req[$adult->id]['kgDay'], $req[$adult->id]['state'], $req[$adult->id]['split']], '50 kg adult × 2.5% with no ration at all');
+        $this->assertSame(0.7, $req[$grower->id]['kgDay'], '20 kg grower × 3.5%');
+        $this->assertSame([2.2, 'adult'], [$req[$buck->id]['kgDay'], $req[$buck->id]['age']], 'not a kid on milk despite the wrong date');
+        $this->assertContains('age_conflict', \App\Support\HerdStats::tags($buck->fresh(), true));
+
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page
+            ->where('requirement.supply.needDay', 4.2)->where('requirement.supply.inStore', 0)->where('requirement.supply.days', 0)->where('requirement.supply.unsplit', 4.2));
+        $short = collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'feed_short');
+        $this->assertSame(['Not enough feed for today', 'critical'], [$short['label'], $short['severity']]);
+
+        $straw = $this->item('WS', 30, 30);
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.days', 7));
+        $this->assertNull(collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'feed_short'), '30 kg lasts 7 days at 4.2 kg a day');
+
+        // The owner corrects the birth date; the old one stays in the lifecycle.
+        $this->actingAs($this->user('ceo'))->post("/goats/{$buck->id}/birth-date", ['age_months' => 30, 'reason' => 'purchase date was entered'])->assertSessionHasNoErrors();
+        $this->assertSame('adult', $buck->fresh()->effectiveAge());
+        $this->assertNotContains('age_conflict', \App\Support\HerdStats::tags($buck->fresh(), true));
+        $this->actingAs($this->user('caretaker'))->post("/goats/{$buck->id}/birth-date", ['age_months' => 30, 'reason' => 'x'])->assertForbidden();
+    }
 }
