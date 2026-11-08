@@ -11,6 +11,7 @@ use Illuminate\Validation\ValidationException;
 use App\Support\Farm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -18,6 +19,9 @@ use Inertia\Response;
 
 class HealthController extends Controller
 {
+    /** D-078: workbook "Preventive Care" types. */
+    public const CARE_TYPES = ['vaccination' => 'Vaccine', 'deworming' => 'Deworming', 'hoof_care' => 'Hoof care', 'examination' => 'Routine examination', 'other_care' => 'Other'];
+
     public function index(): Response
     {
         $row = fn (HealthRecord $r) => [
@@ -25,7 +29,7 @@ class HealthController extends Controller
             'health' => $r->animal->health_status, 'kind' => $r->kind, 'title' => $r->title, 'notes' => $r->notes, 'severity' => $r->severity, 'by' => $r->recorded_by, 'role' => $r->recorded_role,
             'on' => $r->occurred_on->format('j M Y'), 'next' => $r->next_due_on?->format('j M Y'),
         ];
-        $care = HealthRecord::with('animal')->whereIn('kind', ['vaccination', 'deworming'])->whereBetween('next_due_on', [now()->subDays(60), now()->addDays(21)])
+        $care = HealthRecord::with('animal')->whereIn('kind', array_keys(self::CARE_TYPES))->where(fn ($q) => $q->whereNull('care_status')->orWhere('care_status', '!=', 'cancelled'))->whereBetween('next_due_on', [now()->subDays(60), now()->addDays(21)])
             ->whereHas('animal', fn ($q) => $q->active())->orderBy('next_due_on')->limit(30)->get();
         $withdrawal = Withdrawal::active();
         $goatsById = Animal::whereIn('id', $withdrawal->keys())->get()->keyBy('id');
@@ -39,7 +43,7 @@ class HealthController extends Controller
             // Concerns reported by staff (and older records) that no case covers yet.
             'reports' => HealthRecord::with('animal')->where('status', 'open')->whereNotIn('id', HealthCase::whereNotNull('report_id')->pluck('report_id'))
                 ->orderByDesc('occurred_on')->get()->map($row),
-            'care' => $care->map(fn (HealthRecord $r) => $row($r) + ['overdue' => $r->next_due_on->isPast()]),
+            'care' => $care->map(fn (HealthRecord $r) => $row($r) + ['overdue' => $r->next_due_on->isPast(), 'planned' => $r->care_status === 'planned']),
             'withdrawal' => $withdrawal->map(fn ($w, $id) => [
                 'goatId' => $id, 'number' => $goatsById[$id]->farm_number ?? '?', 'name' => $goatsById[$id]->name ?? null, 'coat' => $goatsById[$id]->coat ?? 'brown', 'sex' => $goatsById[$id]->sex ?? 'female',
                 'meat' => $w['meat'] ? \Illuminate\Support\Carbon::parse($w['meat'])->format('j M Y') : null, 'milk' => $w['milk'] ? \Illuminate\Support\Carbon::parse($w['milk'])->format('j M Y') : null,
@@ -52,7 +56,8 @@ class HealthController extends Controller
                 'withdrawal' => $withdrawal->count(),
                 'overdue' => HealthRecord::whereIn('kind', ['vaccination', 'deworming'])->where('next_due_on', '<', now())->whereHas('animal', fn ($q) => $q->active())->distinct('animal_id')->count('animal_id'),
             ],
-            'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
+            'goats' => Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => ['id' => $a->id, 'farm_number' => $a->farm_number, 'name' => $a->name, 'pen' => $a->pen?->fullName()]),
+            'careTypes' => self::CARE_TYPES,
             'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
         ] + $this->medicineStore());
     }
@@ -119,6 +124,52 @@ class HealthController extends Controller
             default => 'healthy',
         };
         $animal->update(['health_flag' => $flag]);
+    }
+
+    /**
+     * D-078: preventive care for one goat or a whole batch in one go: one record per goat, with product, batch/lot,
+     * next due date, cost and status. A product from the medicine store is issued for each goat (earliest expiry first).
+     */
+    public function preventive(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403, 'Preventive care is recorded by a veterinarian.');
+        $data = $request->validate([
+            'animal_ids' => ['required', 'array', 'min:1', 'max:1000'], 'animal_ids.*' => ['uuid', 'distinct', 'exists:animals,id'],
+            'kind' => ['required', Rule::in(array_keys(self::CARE_TYPES))], 'title' => ['nullable', 'required_without:medicine_id', 'string', 'max:120'],
+            'medicine_id' => ['nullable', 'exists:medicines,id'], 'qty_per_goat' => ['nullable', 'required_with:medicine_id', 'numeric', 'gt:0', 'max:1000'],
+            'given_on' => ['required', 'date'], 'next_due_on' => ['nullable', 'date', 'after:given_on'],
+            'batch_lot' => ['nullable', 'string', 'max:40'], 'cost_per_goat' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+            'care_status' => ['required', Rule::in(['administered', 'planned', 'cancelled'])], 'notes' => ['nullable', 'string', 'max:500'],
+        ], [], ['animal_ids' => 'goats', 'title' => 'product / vaccine', 'qty_per_goat' => 'quantity per goat']);
+        if ($data['care_status'] === 'administered' && Carbon::parse($data['given_on'])->isFuture()) {
+            throw ValidationException::withMessages(['given_on' => 'Care given cannot be in the future. Use "Planned" for a future date.']);
+        }
+        $medicine = ! empty($data['medicine_id']) ? \App\Models\Medicine::findOrFail($data['medicine_id']) : null;
+        $title = $data['title'] ?? $medicine->name;
+        $cost = isset($data['cost_per_goat']) ? (int) round($data['cost_per_goat'] * 100) : ($medicine && $medicine->cost_per_unit_minor ? (int) round($data['qty_per_goat'] * $medicine->cost_per_unit_minor) : null);
+        $goats = Animal::whereIn('id', $data['animal_ids'])->get();
+        $short = 0.0;
+
+        DB::transaction(function () use ($goats, $data, $title, $cost, $medicine, $request, &$short) {
+            foreach ($goats as $goat) {
+                HealthRecord::create([
+                    'animal_id' => $goat->id, 'kind' => $data['kind'], 'occurred_on' => $data['given_on'], 'title' => $title, 'notes' => $data['notes'] ?? null,
+                    'recorded_by' => $request->user()->name, 'recorded_role' => 'Veterinarian', 'next_due_on' => $data['care_status'] === 'planned' ? $data['given_on'] : ($data['next_due_on'] ?? null),
+                    'status' => 'closed', 'batch_lot' => $data['batch_lot'] ?? null, 'cost_minor' => $cost, 'care_status' => $data['care_status'],
+                ]);
+                if ($data['care_status'] === 'administered') {
+                    Farm::event($goat, 'health', self::CARE_TYPES[$data['kind']].": {$title}".(! empty($data['batch_lot']) ? " (lot {$data['batch_lot']})" : ''), $request->user()->name, Carbon::parse($data['given_on']));
+                    if ($medicine) {
+                        $short += \App\Support\MedicineStock::issue($medicine, (float) $data['qty_per_goat'], ['moved_on' => $data['given_on'], 'reference' => self::CARE_TYPES[$data['kind']], 'recorded_by' => $request->user()->name]);
+                    }
+                }
+            }
+        });
+        $n = $goats->count();
+        Farm::log($request->user(), self::CARE_TYPES[$data['kind']].": {$title} for {$n} goat".($n === 1 ? '' : 's'), '/health');
+        $warning = $short > 0 ? " Warning: not enough in-date {$medicine->name} in the store ({$short} {$medicine->unit} short)." : '';
+
+        return back()->with('success', "{$title} recorded for {$n} goat".($n === 1 ? '' : 's').'.'.$warning);
     }
 
     /** Opens a case (optionally from a reported concern, which it then covers). Veterinarian only. */

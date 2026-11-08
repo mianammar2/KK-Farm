@@ -30,9 +30,12 @@ class FinanceController extends Controller
                 ->groupBy('month')->orderBy('month')->get(),
             'categories' => LedgerEntry::where('direction', 'out')->where('occurred_on', '>=', $yearStart)->groupBy('category')
                 ->select('category as name', DB::raw('sum(amount)::float as value'))->orderByDesc('value')->get(),
-            'entries' => LedgerEntry::with('reversal')->orderByDesc('occurred_on')->orderByDesc('id')->limit(60)->get()->map(fn (LedgerEntry $e) => [
+            'goats' => \App\Models\Animal::active()->orderBy('farm_number')->get(['id', 'farm_number']),
+            'pending' => (float) LedgerEntry::where('direction', 'out')->whereIn('payment_status', ['pending', 'partial'])->whereDoesntHave('reversal')->whereNull('reverses_id')->sum('amount'),
+            'entries' => LedgerEntry::with(['reversal', 'animal'])->orderByDesc('occurred_on')->orderByDesc('id')->limit(60)->get()->map(fn (LedgerEntry $e) => [
                 'id' => $e->id, 'direction' => $e->direction, 'category' => $e->category, 'amount' => $e->amount, 'on' => $e->occurred_on->format('j M Y'), 'counterparty' => $e->counterparty,
                 'description' => $e->description, 'by' => $e->recorded_by, 'reversed' => (bool) $e->reversal, 'isReversal' => (bool) $e->reverses_id,
+                'payment' => $e->payment_status, 'paidBy' => $e->paid_by, 'reference' => $e->reference, 'goatId' => $e->animal_id, 'goat' => $e->animal?->farm_number,
             ]),
             'sales' => \App\Models\Sale::with('animal')->orderByDesc('sold_on')->orderByDesc('id')->limit(100)->get()->map(fn (\App\Models\Sale $s) => [
                 'id' => $s->id, 'on' => $s->sold_on->format('j M Y'), 'category' => \App\Models\Sale::CATEGORIES[$s->category] ?? $s->category, 'goatId' => $s->animal_id,
@@ -47,7 +50,14 @@ class FinanceController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate(['direction' => ['required', Rule::in(['in', 'out'])], 'category' => ['required', 'string', 'max:40'], 'amount' => ['required', 'numeric', 'min:1', 'max:100000000'], 'counterparty' => ['nullable', 'string', 'max:80'], 'description' => ['nullable', 'string', 'max:200'], 'occurred_on' => ['required', 'date', 'before_or_equal:today']]);
+        $data = $request->validate([
+            'direction' => ['required', Rule::in(['in', 'out'])], 'category' => ['required', 'string', 'max:40'], 'amount' => ['required', 'numeric', 'min:1', 'max:100000000'],
+            'counterparty' => ['nullable', 'string', 'max:80'], 'description' => ['nullable', 'string', 'max:200'], 'occurred_on' => ['required', 'date', 'before_or_equal:today'],
+            // D-078: workbook "Expenses"
+            'payment_status' => ['nullable', Rule::in(['paid', 'pending', 'partial'])], 'paid_by' => ['nullable', 'string', 'max:80'],
+            'reference' => ['nullable', 'string', 'max:60'], 'animal_id' => ['nullable', 'exists:animals,id'],
+        ]);
+        $data['payment_status'] ??= 'paid';
 
         LedgerEntry::create($data + ['recorded_by' => $request->user()->name]); // D-076: no longer filed under shed #1
         Farm::log($request->user(), "Recorded PKR {$data['amount']} ({$data['category']})", '/finance', 'finance');
@@ -67,6 +77,17 @@ class FinanceController extends Controller
         Farm::log($request->user(), "Reversed ledger entry #{$entry->id}", '/finance', 'finance');
 
         return back()->with('success', 'Reversing entry added. The original stays on record.');
+    }
+
+    /** D-078: a pending or partly paid expense is settled. The amount never changes; only its payment status. */
+    public function markPaid(Request $request, LedgerEntry $entry): RedirectResponse
+    {
+        abort_unless($entry->direction === 'out' && $entry->payment_status !== 'paid', 422);
+        $data = $request->validate(['paid_by' => ['nullable', 'string', 'max:80']]);
+        $entry->update(['payment_status' => 'paid', 'paid_by' => $data['paid_by'] ?? $request->user()->name]);
+        Farm::log($request->user(), "Paid: {$entry->category} PKR ".number_format((float) $entry->amount).($entry->counterparty ? " to {$entry->counterparty}" : ''), '/finance', 'finance');
+
+        return back()->with('success', 'Marked as paid.');
     }
 
     /** D-076: a product sale (milk, manure…) or another sale without a goat. Goat sales come from a movement. */

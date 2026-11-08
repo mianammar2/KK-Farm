@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/health/clinical', [HealthController::class, 'clinical']);
         Route::post('/health/records/{record}/close', [HealthController::class, 'close']);
         Route::post('/health/cases', [HealthController::class, 'openCase']);
+        Route::post('/health/preventive', [HealthController::class, 'preventive']);
         Route::post('/health/cases/{case}', [HealthController::class, 'updateCase']);
         Route::post('/health/cases/{case}/treatments', [HealthController::class, 'addTreatment']);
         Route::post('/health/medicines', [\App\Http\Controllers\MedicineController::class, 'store']);
@@ -114,6 +115,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/tasks', [TaskController::class, 'index']);
         Route::post('/tasks', [TaskController::class, 'store']);
         Route::post('/tasks/{task}/toggle', [TaskController::class, 'toggle']);
+        Route::post('/tasks/{task}/status', [TaskController::class, 'status']);
     });
 
     Route::middleware('module:finance')->group(function (): void {
@@ -121,6 +123,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/finance/entries', [FinanceController::class, 'store']);
         Route::post('/finance/entries/{entry}/reverse', [FinanceController::class, 'reverse']);
         Route::post('/finance/sales', [FinanceController::class, 'sale']);
+        Route::post('/finance/entries/{entry}/paid', [FinanceController::class, 'markPaid']);
     });
 
     Route::get('/reports', ReportController::class)->middleware('module:reports');

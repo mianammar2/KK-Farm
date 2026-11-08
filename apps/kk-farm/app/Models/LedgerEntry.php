@@ -15,6 +15,11 @@ class LedgerEntry extends Model
         return $this->belongsTo(Shed::class);
     }
 
+    public function animal()
+    {
+        return $this->belongsTo(Animal::class);
+    }
+
     public function reversal()
     {
         return $this->hasOne(LedgerEntry::class, 'reverses_id');

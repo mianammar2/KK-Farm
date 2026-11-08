@@ -78,7 +78,7 @@ class ActionCenterTest extends TestCase
         $med = Medicine::create(['code' => 'OLD', 'name' => 'Old vial', 'category' => 'other', 'unit' => 'ml', 'reorder_level' => 0]);
         MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now()->subYear(), 'type' => 'purchase', 'qty' => 10, 'batch' => 'B1', 'expiry_on' => now()->subMonth(), 'recorded_by' => 'x']);
         FeedItem::create(['code' => 'WS', 'name' => 'Straw', 'category' => 'roughage', 'reorder_level_kg' => 50]);
-        Task::create(['title' => 'Fix the gate', 'type' => 'other', 'due_on' => now()->subDays(2), 'priority' => 'normal', 'status' => 'open']);
+        Task::create(['title' => 'Fix the gate', 'type' => 'other', 'due_on' => now()->subDays(2), 'priority' => 'medium', 'status' => 'open']);
 
         $items = $this->items('ceo');
         $this->assertSame(['SICK-1'], array_column($items['dose_overdue']['items'], 'text'));
@@ -99,7 +99,7 @@ class ActionCenterTest extends TestCase
     {
         $sick = $this->goat('SICK-1');
         HealthCase::create(['case_no' => 1, 'animal_id' => $sick->id, 'onset_on' => now(), 'condition' => 'X', 'severity' => 'low', 'recorded_by' => 'x']);
-        Task::create(['title' => 'Late task', 'type' => 'other', 'due_on' => now()->subDay(), 'priority' => 'normal', 'status' => 'open']);
+        Task::create(['title' => 'Late task', 'type' => 'other', 'due_on' => now()->subDay(), 'priority' => 'medium', 'status' => 'open']);
 
         $finance = $this->items('finance');
         $this->assertArrayNotHasKey('open_cases', $finance);
@@ -109,7 +109,7 @@ class ActionCenterTest extends TestCase
 
     public function test_the_page_and_the_dashboard_banner_show_the_same_items(): void
     {
-        Task::create(['title' => 'Late task', 'type' => 'other', 'due_on' => now()->subDay(), 'priority' => 'normal', 'status' => 'open']);
+        Task::create(['title' => 'Late task', 'type' => 'other', 'due_on' => now()->subDay(), 'priority' => 'medium', 'status' => 'open']);
         $this->actingAs($this->user('manager'))->get('/actions')->assertOk()->assertInertia(fn (AssertableInertia $p) => $p->component('Actions')->where('items', fn ($i) => collect($i)->contains('key', 'tasks_overdue')));
         $this->actingAs($this->user('manager'))->get('/')->assertInertia(fn (AssertableInertia $p) => $p->where('actions', fn ($a) => collect($a)->contains(fn ($x) => $x['key'] === 'tasks_overdue' && $x['count'] === 1)));
     }

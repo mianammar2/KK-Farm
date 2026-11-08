@@ -55,11 +55,11 @@ final class ActionCenter
             $concerns->map(fn (HealthRecord $r) => $goat($r->animal, "{$r->title} · {$r->occurred_on->format('j M')} · {$r->recorded_by}")));
 
         // Preventive care: the latest record of each goat and care type, overdue.
-        $care = HealthRecord::with('animal')->whereIn('id', DB::table('health_records')->whereIn('kind', ['vaccination', 'deworming'])
+        $care = HealthRecord::with('animal')->whereIn('id', DB::table('health_records')->whereIn('kind', ['vaccination', 'deworming', 'hoof_care'])->where(fn ($q) => $q->whereNull('care_status')->orWhere('care_status', '!=', 'cancelled'))
             ->selectRaw('distinct on (animal_id, kind) id')->orderBy('animal_id')->orderBy('kind')->orderByDesc('occurred_on')->orderByDesc('id'))
             ->where('next_due_on', '<', $todayIso)->whereHas('animal', fn ($q) => $q->active())->orderBy('next_due_on')->get();
         $add('health', 'care_overdue', 'Preventive care overdue', 'warning', 'Vaccinate or deworm and record it with the next due date.', '/health',
-            $care->map(fn (HealthRecord $r) => $goat($r->animal, ucfirst($r->kind)." · {$r->title} · due {$r->next_due_on->format('j M')}")));
+            $care->map(fn (HealthRecord $r) => $goat($r->animal, ucfirst(str_replace('_', ' ', $r->kind))." · {$r->title} · due {$r->next_due_on->format('j M')}")));
 
         $withdrawal = Withdrawal::active();
         $wGoats = Animal::whereIn('id', $withdrawal->keys())->get()->keyBy('id');
@@ -109,8 +109,13 @@ final class ActionCenter
         $add('goats', 'missing', 'Goats missing a pen or weight', 'warning', 'Move the goat into a pen and weigh it, so feed can be planned.', '/goats?show=missing',
             $goats->filter(fn (Animal $a) => in_array('missing', $tags[$a->id], true))->map(fn (Animal $a) => $goat($a, implode(' · ', array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight'], $tags[$a->id]))))));
 
+        // ---- Money ----
+        $unpaid = \App\Models\LedgerEntry::where('direction', 'out')->whereIn('payment_status', ['pending', 'partial'])->whereNull('reverses_id')->whereDoesntHave('reversal')->orderBy('occurred_on')->get();
+        $add('finance', 'unpaid', 'Expenses not fully paid', 'info', 'Pay the vendor and record it.', '/finance',
+            $unpaid->map(fn ($e) => ['text' => $e->counterparty ?? $e->category, 'sub' => $e->category.' · PKR '.number_format((float) $e->amount).' · '.$e->occurred_on->format('j M').($e->payment_status === 'partial' ? ' · partly paid' : ''), 'url' => '/finance']));
+
         // ---- Tasks ----
-        $tasks = Task::where('status', 'open')->where('due_on', '<', $todayIso)->orderBy('due_on')->get();
+        $tasks = Task::whereIn('status', Task::OPEN)->where('due_on', '<', $todayIso)->orderBy('due_on')->get();
         $add('tasks', 'tasks_overdue', 'Tasks overdue', 'warning', 'Finish or reassign the task.', '/tasks',
             $tasks->map(fn (Task $t) => ['text' => $t->title, 'sub' => 'due '.$t->due_on->format('j M'), 'url' => '/tasks']));
 

@@ -17,10 +17,10 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 5 | Pregnancy Checks | Vet · at checks | Breeding → mating → Pregnancy check | ✅ D-075 |
 | 6 | Kidding | Breeding Lead · at birth | Breeding → Kidding | ✅ D-075 |
 | 7 | Weaning | Breeding Lead · at weaning | Breeding → Weaning | ✅ D-075 |
-| 8 | Weight Log | Supervisor · scheduled | Weight & Growth | 🟡 |
+| 8 | Weight Log | Supervisor · scheduled | Weight & Growth → Weight log | ✅ D-078 |
 | 9 | Health Cases | Vet · onset and review | Health → Cases | ✅ D-073 |
 | 10 | Treatments | Vet / staff · each dose | Health → case → Add treatment | ✅ D-073 |
-| 11 | Preventive Care | Vet · per health plan | Health (one record type) | 🟡 |
+| 11 | Preventive Care | Vet · per health plan | Health → Preventive care (batch) | ✅ D-078 |
 | 12 | Feed Items | Feed store · setup | Feeding → Feed store | ✅ D-054 |
 | 13 | Ration Plans | Nutritionist · diet change | Feeding → Rations | ✅ D-054 |
 | 14 | Feed Usage | Feed lead · 3 meals daily | Feeding → Feed now | ✅ D-054 |
@@ -29,9 +29,9 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 17 | Medicine Stock | Vet store · setup | Health → Medicine store | ✅ D-074 |
 | 18 | Medicine Movements | Vet store · each issue | Medicine store + treatments | ✅ D-074 |
 | 19 | Animal Movements | Farm Manager · per event | Movements (single or batch) | ✅ D-076 |
-| 20 | Expenses | Accounts · each transaction | Finance | 🟡 |
+| 20 | Expenses | Accounts · each transaction | Finance (payment status) | ✅ D-078 |
 | 21 | Sales | Accounts · each sale | Movements (goats) + Finance → Sales (products) | ✅ D-076 |
-| 22 | Tasks | Farm Manager · daily | Tasks & Daily Work | 🟡 |
+| 22 | Tasks | Farm Manager · daily | Tasks & Daily Work | ✅ D-078 |
 | 23 | Action Center | Farm Manager · every morning | Action Center + dashboard banner | ✅ D-077 |
 | 24 | Settings | Owner · as needed | Settings | 🟡 |
 | 25 | START HERE | — | not needed (the app guides) | — |

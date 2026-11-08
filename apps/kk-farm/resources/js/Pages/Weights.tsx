@@ -5,13 +5,15 @@ import Chart, { axis } from '../components/Chart';
 import { Button, cx, Empty, Field, GoatLabel, monthLabel, PageHeader, Panel, Stat, StatRow } from '../components/ui';
 import type { GoatCard } from '../types';
 
-type Row = GoatCard & { adg: number | null; previous: number | null; weighedOn: string | null; daysAgo: number | null };
-type Props = { goats: Row[]; byBreed: Array<{ breed: string; month: string; kg: number }> };
+type Row = GoatCard & { adg: number | null; previous: number | null; weighedOn: string | null; daysAgo: number | null; bodyScore: number | null };
+type LogRow = { id: number; goatId: string; goat: string; on: string; kg: number; previous: number | null; days: number | null; gain: number | null; adg: number | null; score: number | null; heightIn: number | null; context: string | null; by: string };
+type Props = { goats: Row[]; log: LogRow[]; byBreed: Array<{ breed: string; month: string; kg: number }> };
 
-export default function Weights({ goats, byBreed }: Props) {
+export default function Weights({ goats, log, byBreed }: Props) {
     const [query, setQuery] = useState('');
     const [view, setView] = useState('all');
-    const form = useForm({ animal_id: goats[0]?.id ?? '', weight_kg: '' });
+    const form = useForm({ animal_id: goats[0]?.id ?? '', weight_kg: '', body_score: '', height_in: '', measured_on: new Date().toLocaleDateString('en-CA') });
+    const [logShown, setLogShown] = useState(10);
 
     const losing = goats.filter((g) => (g.adg ?? 0) < 0);
     const stale = goats.filter((g) => (g.daysAgo ?? 0) > 45);
@@ -57,7 +59,7 @@ export default function Weights({ goats, byBreed }: Props) {
                     {rows.length ? (
                         <div className="max-h-[62vh] overflow-auto">
                             <table className="data-table min-w-[560px]">
-                                <thead><tr><th>Goat</th><th>Latest</th><th>Daily gain</th><th>Weighed</th></tr></thead>
+                                <thead><tr><th>Goat</th><th>Latest</th><th>Daily gain</th><th>Body score</th><th>Weighed</th></tr></thead>
                                 <tbody>
                                     {rows.map((g) => (
                                         <tr key={g.id}>
@@ -66,6 +68,7 @@ export default function Weights({ goats, byBreed }: Props) {
                                             <td className={cx('whitespace-nowrap', (g.adg ?? 0) < 0 ? 'font-semibold text-crit-700' : 'text-ok-700')}>
                                                 {g.adg === null ? '—' : <span className="inline-flex items-center gap-1">{g.adg < 0 ? <ArrowDownRight size={14} aria-hidden /> : <ArrowUpRight size={14} aria-hidden />}{g.adg} g/day</span>}
                                             </td>
+                                            <td>{g.bodyScore ?? '—'}</td>
                                             <td className="text-ink-soft">{g.weighedOn}</td>
                                         </tr>
                                     ))}
@@ -77,15 +80,43 @@ export default function Weights({ goats, byBreed }: Props) {
 
                 <div className="space-y-4">
                     <Panel title="Record a weight">
-                        <form onSubmit={(e) => { e.preventDefault(); form.post('/weights', { preserveScroll: true, onSuccess: () => form.reset('weight_kg') }); }} className="space-y-3">
+                        <form onSubmit={(e) => { e.preventDefault(); form.post('/weights', { preserveScroll: true, onSuccess: () => form.reset('weight_kg', 'body_score', 'height_in') }); }} className="space-y-3">
                             <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</select></Field>
                             <Field label="Weight (kg)" error={form.errors.weight_kg}><input inputMode="decimal" className="field" value={form.data.weight_kg} onChange={(e) => form.setData('weight_kg', e.target.value)} /></Field>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Field label="Body score 1–5" error={form.errors.body_score} hint="1 thin · 3 good · 5 fat"><select className="field" value={form.data.body_score} onChange={(e) => form.setData('body_score', e.target.value)}><option value="">Not scored</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
+                                <Field label="Height (inches)" error={form.errors.height_in}><input inputMode="decimal" className="field" value={form.data.height_in} onChange={(e) => form.setData('height_in', e.target.value)} /></Field>
+                            </div>
+                            <Field label="Date" error={form.errors.measured_on}><input type="date" className="field" value={form.data.measured_on} onChange={(e) => form.setData('measured_on', e.target.value)} /></Field>
                             <Button type="submit" className="w-full" disabled={form.processing}>Save weight</Button>
                         </form>
                     </Panel>
                     <Panel title="Average weight by breed"><Chart option={chart} label="Average weight by breed and month" height={270} /></Panel>
                 </div>
             </div>
+
+            {/* D-078: workbook "Weight Log": previous weight, days, gain and ADG are worked out, never typed. */}
+            <Panel flush title="Weight log" description="Every weighing, newest first" className="mt-4">
+                {log.length ? (
+                    <div className="overflow-x-auto">
+                        <table className="data-table min-w-[720px]">
+                            <thead><tr><th>Date</th><th>Goat</th><th>Weight</th><th>Previous</th><th>Days</th><th>Gain</th><th>ADG g/day</th><th>Body score</th><th>Height</th><th>By</th></tr></thead>
+                            <tbody>
+                                {log.slice(0, logShown).map((w) => (
+                                    <tr key={w.id}>
+                                        <td className="whitespace-nowrap">{w.on}</td><td><a href={`/goats/${w.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{w.goat}</a></td>
+                                        <td className="font-semibold">{w.kg} kg</td><td>{w.previous !== null ? `${w.previous} kg` : '—'}</td><td>{w.days ?? '—'}</td>
+                                        <td className={cx((w.gain ?? 0) < 0 && 'font-semibold text-crit-700')}>{w.gain !== null ? `${w.gain > 0 ? '+' : ''}${w.gain} kg` : '—'}</td>
+                                        <td className={cx((w.adg ?? 0) < 0 ? 'font-semibold text-crit-700' : 'text-ok-700')}>{w.adg ?? '—'}</td>
+                                        <td>{w.score ?? '—'}</td><td>{w.heightIn !== null ? `${w.heightIn} in` : '—'}</td><td className="text-ink-soft">{w.by}{w.context && w.context !== 'routine' ? ` · ${w.context}` : ''}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {log.length > logShown ? <button type="button" onClick={() => setLogShown(logShown + 25)} className="w-full px-4 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">Show more</button> : null}
+                    </div>
+                ) : <p className="p-4 text-sm text-ink-soft">Weighings appear here.</p>}
+            </Panel>
         </>
     );
 }

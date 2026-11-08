@@ -19,8 +19,8 @@ class EmployeeController extends Controller
         return Inertia::render('Employees', [
             'employees' => Employee::orderBy('code')->get()->map(fn (Employee $e) => [
                 'id' => $e->id, 'code' => $e->code, 'name' => $e->name, 'role' => $e->role, 'shift' => $e->shift, 'active' => $e->is_active,
-                'open' => Task::where('employee_id', $e->id)->where('due_on', $today)->where('status', 'open')->count(),
-                'done' => Task::where('employee_id', $e->id)->where('due_on', $today)->where('status', 'done')->count(),
+                'open' => Task::where('employee_id', $e->id)->where('due_on', $today)->whereIn('status', Task::OPEN)->count(),
+                'done' => Task::where('employee_id', $e->id)->where('due_on', $today)->where('status', 'completed')->count(),
             ]),
             'roles' => array_values(config('kkfarm.roles')),
         ]);

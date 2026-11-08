@@ -3,14 +3,14 @@ import { useMemo, useState } from 'react';
 import Chart, { axis } from '../components/Chart';
 import { Button, Chip, cx, Field, monthLabel, PageHeader, Panel, pkr, pkrShort, Stat, StatRow } from '../components/ui';
 
-type Entry = { id: number; direction: 'in' | 'out'; category: string; amount: number; on: string; counterparty: string | null; description: string | null; by: string; reversed: boolean; isReversal: boolean };
+type Entry = { id: number; direction: 'in' | 'out'; category: string; amount: number; on: string; counterparty: string | null; description: string | null; by: string; reversed: boolean; isReversal: boolean; payment: 'paid' | 'pending' | 'partial'; paidBy: string | null; reference: string | null; goatId: string | null; goat: string | null };
 type SaleRow = { id: number; on: string; category: string; goatId: string | null; what: string | null; buyer: string | null; gross: number; fee: number; net: number; receipt: string | null; by: string };
-type Props = { summary: Record<string, number>; monthly: Array<{ month: string; income: number; spend: number }>; categories: Array<{ name: string; value: number }>; entries: Entry[]; categoryOptions: string[]; sales: SaleRow[] };
+type Props = { summary: Record<string, number>; monthly: Array<{ month: string; income: number; spend: number }>; categories: Array<{ name: string; value: number }>; entries: Entry[]; categoryOptions: string[]; sales: SaleRow[]; goats: Array<{ id: string; farm_number: string }>; pending: number };
 
-export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales }: Props) {
+export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales, goats, pending }: Props) {
     const [direction, setDirection] = useState('');
     const [category, setCategory] = useState('');
-    const form = useForm({ direction: 'out', category: categoryOptions[0], amount: '', counterparty: '', description: '', occurred_on: new Date().toLocaleDateString('en-CA') });
+    const form = useForm({ direction: 'out', category: categoryOptions[0], amount: '', counterparty: '', description: '', occurred_on: new Date().toLocaleDateString('en-CA'), payment_status: 'paid', paid_by: '', reference: '', animal_id: '' });
     const rows = entries.filter((e) => (!direction || e.direction === direction) && (!category || e.category === category));
 
     const trend = useMemo(() => ({
@@ -46,6 +46,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
                 <Stat label="12 months in" value={pkrShort(summary.yearIn)} />
                 <Stat label="12 months out" value={pkrShort(summary.yearOut)} />
                 <Stat label="12 month result" value={pkrShort(summary.yearIn - summary.yearOut)} tone={summary.yearIn >= summary.yearOut ? 'good' : 'alert'} />
+                <Stat label="Unpaid expenses" value={pkrShort(pending)} note="Pending or partly paid" tone={pending ? 'alert' : undefined} />
             </StatRow>
 
             <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -62,14 +63,15 @@ export default function Finance({ summary, monthly, categories, entries, categor
                 }>
                     <div className="max-h-[60vh] overflow-auto">
                         <table className="data-table min-w-[680px]">
-                            <thead><tr><th>Date</th><th>Category</th><th>Party</th><th>Amount</th><th>Recorded by</th><th /></tr></thead>
+                            <thead><tr><th>Date</th><th>Category</th><th>Party</th><th>Amount</th><th>Payment</th><th>Recorded by</th><th /></tr></thead>
                             <tbody>
                                 {rows.map((e) => (
                                     <tr key={e.id} className={cx(e.reversed && 'text-ink-faint')}>
                                         <td className="whitespace-nowrap">{e.on}</td>
                                         <td>{e.category}{e.isReversal ? <Chip className="ml-1 bg-cobalt-100 text-cobalt-800">Reversal</Chip> : null}</td>
-                                        <td className="max-w-48 truncate">{e.counterparty ?? '—'}</td>
+                                        <td className="max-w-48 truncate">{e.counterparty ?? '—'}{e.goat ? <Link href={`/goats/${e.goatId}`} className="ml-1 font-mono text-xs text-cobalt-800 hover:underline">{e.goat}</Link> : null}{e.reference ? <span className="block text-xs text-ink-faint">{e.reference}</span> : null}</td>
                                         <td className={cx('font-semibold whitespace-nowrap', !e.reversed && (e.direction === 'in' ? 'text-ok-700' : 'text-cobalt-900'))}>{e.direction === 'in' ? '+' : '−'}{pkr(e.amount)}</td>
+                                        <td>{e.direction === 'out' && e.payment !== 'paid' ? <span className="flex items-center gap-1.5"><Chip className="bg-watch-100 text-watch-700">{e.payment === 'pending' ? 'Pending' : 'Partly paid'}</Chip>{!e.reversed ? <button type="button" className="text-xs font-semibold text-turq-800 hover:underline" onClick={() => router.post(`/finance/entries/${e.id}/paid`, {}, { preserveScroll: true })}>Mark paid</button> : null}</span> : <span className="text-sm text-ink-soft">Paid{e.paidBy ? ` · ${e.paidBy}` : ''}</span>}</td>
                                         <td className="text-sm text-ink-soft">{e.by}</td>
                                         <td>{e.reversed ? <span className="text-sm">Reversed</span> : e.isReversal ? null : <button type="button" className="text-sm font-semibold text-turq-800 hover:underline" onClick={() => router.post(`/finance/entries/${e.id}/reverse`, {}, { preserveScroll: true })}>Reverse</button>}</td>
                                     </tr>
@@ -83,7 +85,15 @@ export default function Finance({ summary, monthly, categories, entries, categor
                         <Field label="Type"><select className="field" value={form.data.direction} onChange={(e) => form.setData('direction', e.target.value)}><option value="out">Money out</option><option value="in">Money in</option></select></Field>
                         <Field label="Category"><select className="field" value={form.data.category} onChange={(e) => form.setData('category', e.target.value)}>{categoryOptions.map((c) => <option key={c}>{c}</option>)}</select></Field>
                         <Field label="Amount (PKR)" error={form.errors.amount}><input inputMode="decimal" className="field" value={form.data.amount} onChange={(e) => form.setData('amount', e.target.value)} /></Field>
-                        <Field label="Supplier or payer"><input className="field" value={form.data.counterparty} onChange={(e) => form.setData('counterparty', e.target.value)} /></Field>
+                        <Field label={form.data.direction === 'out' ? 'Vendor' : 'Payer'}><input className="field" value={form.data.counterparty} onChange={(e) => form.setData('counterparty', e.target.value)} /></Field>
+                        {form.data.direction === 'out' ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                <Field label="Payment"><select className="field" value={form.data.payment_status} onChange={(e) => form.setData('payment_status', e.target.value)}><option value="paid">Paid</option><option value="pending">Pending</option><option value="partial">Partly paid</option></select></Field>
+                                <Field label="Paid by"><input className="field" value={form.data.paid_by} onChange={(e) => form.setData('paid_by', e.target.value)} /></Field>
+                            </div>
+                        ) : null}
+                        <Field label="For a goat (optional)"><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}><option value="">Whole farm</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
+                        <Field label="Invoice / reference"><input className="field" value={form.data.reference} onChange={(e) => form.setData('reference', e.target.value)} /></Field>
                         <Field label="Date" error={form.errors.occurred_on}><input type="date" className="field" value={form.data.occurred_on} onChange={(e) => form.setData('occurred_on', e.target.value)} /></Field>
                         <Button type="submit" className="w-full" disabled={form.processing}>Save entry</Button>
                     </form>

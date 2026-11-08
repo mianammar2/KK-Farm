@@ -1,84 +1,120 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel, Tabs } from '../components/ui';
 import type { SharedProps } from '../types';
 
-type Task = { id: number; title: string; type: string; priority: string; status: string; pen: string | null; assignee: string | null; department: string | null; mine: boolean; due: string; completedBy: string | null; completedAt: string | null };
+type Task = {
+    id: number; title: string; type: string; priority: string; status: string; open: boolean; pen: string | null; goatId: string | null; goat: string | null; notes: string | null;
+    assignee: string | null; department: string | null; mine: boolean; due: string; dueIso: string; alert: 'overdue' | 'soon' | null; completedBy: string | null; completedAt: string | null;
+};
 type Person = { id: number; name: string; role: string; department: number | null };
-type Props = { tasks: Task[]; departments: Array<{ id: number; name: string }>; users: Person[]; pens: Array<{ id: number; name: string }> };
+type Props = {
+    tasks: Task[]; departments: Array<{ id: number; name: string }>; users: Person[]; pens: Array<{ id: number; name: string }>; goats: Array<{ id: string; farm_number: string }>;
+    types: Record<string, string>; priorities: Record<string, string>; statuses: Record<string, string>;
+};
 
-export default function Tasks({ tasks, departments, users, pens }: Props) {
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const PRIORITY_CLASS: Record<string, string> = { critical: 'bg-crit-100 text-crit-700', high: 'bg-treat-100 text-treat-700', medium: 'bg-glaze text-ink-soft', low: 'bg-glaze text-ink-faint' };
+const STATUS_CLASS: Record<string, string> = { in_progress: 'bg-cobalt-100 text-cobalt-800', blocked: 'bg-crit-100 text-crit-700', cancelled: 'bg-glaze text-ink-faint' };
+
+/** D-078: workbook "Tasks": due dates, related goat or pen, type, priority and status; overdue and due-soon flags. */
+export default function Tasks({ tasks, departments, users, pens, goats, types, priorities, statuses }: Props) {
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('open');
     const canAssign = ['ceo', 'manager', 'vet'].includes(auth?.role ?? '');
-    const form = useForm({ title: '', type: 'observation', department_id: '', user_id: '', pen_id: '', priority: 'normal' });
-    // D-052: people shown under "Assign to" follow the chosen department; with no department, everyone is listed.
-    const people = form.data.department_id ? users.filter((u) => String(u.department) === form.data.department_id) : users;
-
-    const open = tasks.filter((t) => t.status === 'open');
-    const done = tasks.filter((t) => t.status === 'done');
+    const open = tasks.filter((t) => t.open);
     const mine = open.filter((t) => t.mine);
-    const rows = tab === 'open' ? open : tab === 'mine' ? mine : done;
-    const percent = tasks.length ? Math.round((done.length / tasks.length) * 100) : 0;
+    const overdue = open.filter((t) => t.alert === 'overdue');
+    const closed = tasks.filter((t) => !t.open);
+    const rows = tab === 'open' ? open : tab === 'mine' ? mine : tab === 'overdue' ? overdue : closed;
+    const todays = tasks.filter((t) => t.dueIso === today() && t.status !== 'cancelled');
+    const percent = todays.length ? Math.round((todays.filter((t) => t.status === 'completed').length / todays.length) * 100) : 0;
 
     return (
         <>
             <Head title="Tasks & Daily Work" />
-            <PageHeader title="Tasks & daily work" description={`${done.length} of ${tasks.length} done today.`} />
-            <div className="mb-4 h-2 overflow-hidden rounded-sm bg-rule" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Tasks completed today"><div className="h-full bg-turq-600 transition-[width] duration-300 ease-out" style={{ width: `${percent}%` }} /></div>
+            <PageHeader title="Tasks & daily work" description={`${todays.filter((t) => t.status === 'completed').length} of ${todays.length} due today done · ${overdue.length} overdue`} />
+            <div className="mb-4 h-2 overflow-hidden rounded-sm bg-rule" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Tasks due today completed"><div className="h-full bg-turq-600 transition-[width] duration-300 ease-out" style={{ width: `${percent}%` }} /></div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
-                <div>
-                    <Tabs value={tab} onChange={setTab} tabs={[{ id: 'open', label: 'To do', count: open.length }, { id: 'mine', label: 'Mine', count: mine.length }, { id: 'done', label: 'Done', count: done.length }]} />
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <div className="min-w-0">
+                    <Tabs value={tab} onChange={setTab} tabs={[{ id: 'open', label: 'To do', count: open.length }, { id: 'mine', label: 'Mine', count: mine.length }, { id: 'overdue', label: 'Overdue', count: overdue.length }, { id: 'closed', label: 'Done this week', count: closed.length }]} />
                     <Panel flush>
                         {rows.length ? (
                             <ul className="divide-y divide-rule">
-                                {rows.map((t) => (
-                                    <li key={t.id} className="flex items-center gap-3 px-4 py-2.5">
-                                        <button
-                                            type="button"
-                                            aria-label={t.status === 'done' ? `Mark ${t.title} as not done` : `Mark ${t.title} as done`}
-                                            onClick={() => router.post(`/tasks/${t.id}/toggle`, {}, { preserveScroll: true })}
-                                            className={cx('grid size-9 shrink-0 place-items-center rounded-tile border transition-colors', t.status === 'done' ? 'border-turq-700 bg-turq-700 text-white' : 'border-rule-strong hover:border-turq-600 hover:bg-turq-100')}
-                                        >
-                                            {t.status === 'done' ? <Check size={17} aria-hidden /> : null}
-                                        </button>
-                                        <div className="min-w-0 flex-1">
-                                            <p className={cx('font-semibold', t.status === 'done' ? 'text-ink-soft' : 'text-cobalt-900')}>{t.title}</p>
-                                            <p className="truncate text-sm text-ink-soft">{t.assignee ?? (t.department ? `Anyone in ${t.department}` : 'Unassigned')}{t.assignee && t.department ? ` · ${t.department}` : ''}{t.pen ? ` · ${t.pen}` : ''}{t.completedAt ? ` · done ${t.completedAt}` : ''}</p>
-                                        </div>
-                                        {t.priority === 'high' && t.status === 'open' ? <Chip className="bg-treat-100 text-treat-700">Urgent</Chip> : null}
-                                    </li>
-                                ))}
+                                {rows.map((t) => <TaskRow key={t.id} t={t} statuses={statuses} priorities={priorities} />)}
                             </ul>
-                        ) : <Empty title={tab === 'done' ? 'Nothing finished yet' : tab === 'mine' ? 'Nothing for you or your department' : 'Everything is done'} />}
+                        ) : <Empty title={tab === 'closed' ? 'Nothing finished this week' : tab === 'mine' ? 'Nothing for you or your department' : tab === 'overdue' ? 'Nothing overdue' : 'Everything is done'} />}
                     </Panel>
                 </div>
-                {canAssign ? (
-                    <Panel title="Assign a task">
-                        <form onSubmit={(e) => { e.preventDefault(); form.post('/tasks', { preserveScroll: true, onSuccess: () => form.reset('title', 'user_id') }); }} className="space-y-3">
-                            <Field label="Task" error={form.errors.title}><input className="field" value={form.data.title} onChange={(e) => form.setData('title', e.target.value)} /></Field>
-                            <Field label="Type"><select className="field" value={form.data.type} onChange={(e) => form.setData('type', e.target.value)}><option value="observation">Observation</option><option value="feeding">Feeding</option><option value="cleaning">Cleaning</option><option value="weighing">Weighing</option><option value="other">Other</option></select></Field>
-                            <Field label="Department" error={form.errors.department_id}>
-                                <select className="field" value={form.data.department_id} onChange={(e) => form.setData((d) => ({ ...d, department_id: e.target.value, user_id: users.some((u) => String(u.id) === d.user_id && (!e.target.value || String(u.department) === e.target.value)) ? d.user_id : '' }))}>
-                                    <option value="">Any department</option>
-                                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </Field>
-                            <Field label="Assign to" error={form.errors.user_id}>
-                                <select className="field" value={form.data.user_id} onChange={(e) => form.setData('user_id', e.target.value)}>
-                                    <option value="">{form.data.department_id ? 'Everyone in this department' : 'Choose a person'}</option>
-                                    {people.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.role}</option>)}
-                                </select>
-                            </Field>
-                            <Field label="Pen (optional)"><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)}><option value="">None</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
-                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-turq-700" checked={form.data.priority === 'high'} onChange={(e) => form.setData('priority', e.target.checked ? 'high' : 'normal')} /> Urgent</label>
-                            <Button type="submit" className="w-full" disabled={form.processing}>Assign task</Button>
-                        </form>
-                    </Panel>
-                ) : null}
+                {canAssign ? <AssignForm departments={departments} users={users} pens={pens} goats={goats} types={types} priorities={priorities} /> : null}
             </div>
         </>
+    );
+}
+
+function TaskRow({ t, statuses, priorities }: { t: Task; statuses: Record<string, string>; priorities: Record<string, string> }) {
+    const done = t.status === 'completed';
+    return (
+        <li className="flex items-center gap-3 px-4 py-2.5">
+            <button type="button" aria-label={done ? `Mark ${t.title} as not done` : `Mark ${t.title} as done`} onClick={() => router.post(`/tasks/${t.id}/toggle`, {}, { preserveScroll: true })}
+                className={cx('grid size-9 shrink-0 place-items-center rounded-tile border transition-colors', done ? 'border-turq-700 bg-turq-700 text-white' : 'border-rule-strong hover:border-turq-600 hover:bg-turq-100')}>
+                {done ? <Check size={17} aria-hidden /> : null}
+            </button>
+            <div className="min-w-0 flex-1">
+                <p className={cx('font-semibold', t.open ? 'text-cobalt-900' : 'text-ink-soft line-through decoration-1')}>{t.title}</p>
+                <p className="truncate text-sm text-ink-soft">
+                    {t.type} · due {t.due} · {t.assignee ?? (t.department ? `anyone in ${t.department}` : 'unassigned')}{t.assignee && t.department ? ` (${t.department})` : ''}
+                    {t.goat ? <> · <Link href={`/goats/${t.goatId}`} className="font-mono text-cobalt-800 hover:underline">{t.goat}</Link></> : null}{t.pen ? ` · ${t.pen}` : ''}
+                    {t.completedAt ? ` · ${t.status === 'cancelled' ? 'cancelled' : 'done'} ${t.completedAt} by ${t.completedBy}` : ''}
+                </p>
+                {t.notes ? <p className="text-sm">{t.notes}</p> : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                {t.alert === 'overdue' ? <Chip className="bg-crit-100 text-crit-700">Overdue</Chip> : t.alert === 'soon' ? <Chip className="bg-watch-100 text-watch-700">Due soon</Chip> : null}
+                {t.priority !== 'medium' ? <Chip className={PRIORITY_CLASS[t.priority]}>{priorities[t.priority] ?? t.priority}</Chip> : null}
+                {t.open ? (
+                    <select aria-label={`Status of ${t.title}`} className={cx('rounded-[4px] border border-rule bg-tile px-1.5 py-1 text-xs font-semibold', STATUS_CLASS[t.status])} value={t.status}
+                        onChange={(e) => router.post(`/tasks/${t.id}/status`, { status: e.target.value }, { preserveScroll: true })}>
+                        {Object.entries(statuses).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                ) : t.status === 'cancelled' ? <Chip className={STATUS_CLASS.cancelled}>Cancelled</Chip> : null}
+            </div>
+        </li>
+    );
+}
+
+function AssignForm({ departments, users, pens, goats, types, priorities }: Pick<Props, 'departments' | 'users' | 'pens' | 'goats' | 'types' | 'priorities'>) {
+    const form = useForm({ title: '', type: 'health', department_id: '', user_id: '', pen_id: '', animal_id: '', priority: 'medium', due_on: today(), notes: '' });
+    const people = form.data.department_id ? users.filter((u) => String(u.department) === form.data.department_id) : users;
+    const e = form.errors as Record<string, string>;
+    return (
+        <Panel title="Assign a task">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/tasks', { preserveScroll: true, onSuccess: () => form.reset('title', 'user_id', 'animal_id', 'notes') }); }} className="space-y-3">
+                <Field label="Task" error={e.title}><input className="field" value={form.data.title} onChange={(x) => form.setData('title', x.target.value)} /></Field>
+                <div className="grid grid-cols-2 gap-2">
+                    <Field label="Type"><select className="field" value={form.data.type} onChange={(x) => form.setData('type', x.target.value)}>{Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <Field label="Priority"><select className="field" value={form.data.priority} onChange={(x) => form.setData('priority', x.target.value)}>{Object.entries(priorities).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                </div>
+                <Field label="Due date" error={e.due_on}><input type="date" className="field" value={form.data.due_on} onChange={(x) => form.setData('due_on', x.target.value)} /></Field>
+                <Field label="Department" error={e.department_id}>
+                    <select className="field" value={form.data.department_id} onChange={(x) => form.setData((d) => ({ ...d, department_id: x.target.value, user_id: users.some((u) => String(u.id) === d.user_id && (!x.target.value || String(u.department) === x.target.value)) ? d.user_id : '' }))}>
+                        <option value="">Any department</option>{departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                </Field>
+                <Field label="Assign to" error={e.user_id}>
+                    <select className="field" value={form.data.user_id} onChange={(x) => form.setData('user_id', x.target.value)}>
+                        <option value="">{form.data.department_id ? 'Everyone in this department' : 'Choose a person'}</option>{people.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.role}</option>)}
+                    </select>
+                </Field>
+                <div className="grid grid-cols-2 gap-2">
+                    <Field label="Goat (optional)"><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">None</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
+                    <Field label="Pen (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">None</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                </div>
+                <Field label="Notes"><textarea rows={2} className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
+                <Button type="submit" className="w-full" disabled={form.processing}>Assign task</Button>
+            </form>
+        </Panel>
     );
 }

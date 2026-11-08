@@ -346,10 +346,10 @@ class FarmRulesTest extends TestCase
         $worker = $this->user('feeding');
         $worker->forceFill(['department_id' => $feeding->id])->save();
 
-        $this->actingAs($manager)->post('/tasks', ['title' => 'Fill troughs', 'type' => 'feeding', 'department_id' => $feeding->id, 'priority' => 'normal'])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/tasks', ['title' => 'Fill troughs', 'type' => 'feeding', 'department_id' => $feeding->id, 'priority' => 'medium'])->assertSessionHasNoErrors();
         $this->actingAs($manager)->post('/tasks', ['title' => 'Check MC-0001', 'type' => 'observation', 'user_id' => $worker->id, 'priority' => 'high'])->assertSessionHasNoErrors();
         $this->assertSame($feeding->id, Task::where('title', 'Check MC-0001')->value('department_id'));
-        $this->actingAs($manager)->post('/tasks', ['title' => 'Nobody', 'type' => 'other', 'priority' => 'normal'])->assertSessionHasErrors(['department_id', 'user_id']);
+        $this->actingAs($manager)->post('/tasks', ['title' => 'Nobody', 'type' => 'other', 'priority' => 'medium'])->assertSessionHasErrors(['department_id', 'user_id']);
 
         $this->actingAs($worker)->get('/tasks')->assertInertia(fn (AssertableInertia $page) => $page
             ->where('tasks.0.title', 'Check MC-0001')->where('tasks.0.assignee', $worker->name)->where('tasks.0.mine', true)
@@ -362,7 +362,7 @@ class FarmRulesTest extends TestCase
         $manager = $this->user('manager');
         $outsider = User::create(['name' => 'Outsider', 'email' => 'out@test.local', 'password' => 'x', 'role' => 'caretaker', 'org_id' => Organization::create(['name' => 'Other', 'slug' => 'other'])->id]);
 
-        $this->actingAs($manager)->post('/tasks', ['title' => 'X', 'type' => 'other', 'user_id' => $outsider->id, 'priority' => 'normal'])->assertSessionHasErrors('user_id');
+        $this->actingAs($manager)->post('/tasks', ['title' => 'X', 'type' => 'other', 'user_id' => $outsider->id, 'priority' => 'medium'])->assertSessionHasErrors('user_id');
     }
 
     public function test_the_owner_adds_departments_and_new_users_get_one_from_their_role(): void
