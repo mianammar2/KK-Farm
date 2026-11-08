@@ -70,10 +70,10 @@ export default function Dashboard({ stats, feeding, herd, attention, missing, ki
         const rows = [...breeds].reverse();
         return {
             tooltip: { trigger: 'axis', axisPointer: { type: 'none' } },
-            grid: { left: 8, right: 34, top: 6, bottom: 6, containLabel: true },
+            grid: { left: 4, right: 30, top: 4, bottom: 4, containLabel: true },
             xAxis: { type: 'value', show: false },
             yAxis: { ...axis.category(rows.map((b) => b.name)), axisLine: { show: false } },
-            series: [{ type: 'bar', barMaxWidth: 18, data: rows.map((b) => b.value), itemStyle: { color: '#1d5c2e', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', color: '#163d22', fontWeight: 600 } }],
+            series: [{ type: 'bar', barMaxWidth: 16, barCategoryGap: '35%', data: rows.map((b) => b.value), itemStyle: { color: '#1d5c2e', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', color: '#163d22', fontWeight: 600 } }],
         };
     }, [breeds]);
 
@@ -140,8 +140,11 @@ export default function Dashboard({ stats, feeding, herd, attention, missing, ki
                 </Panel>
             </div>
 
-            {missing.length ? (
-                <Panel title="Missing data" description="Goats the farm cannot fully manage yet, and where each record came from" className="mt-4" flush
+            {/* D-072: charts, activity and kiddings share one two-column grid, so no panel stretches alone across a wide screen. */}
+            {missing.length || charts || activity.length || kiddings.length ? (
+                <div className="mt-4 grid items-start gap-4 lg:grid-cols-2 lg:[&>*:last-child:nth-child(odd)]:col-span-2">
+                    {missing.length ? (
+                <Panel title="Missing data" description="No pen or weight yet · where each came from" flush
                     actions={<Link href="/goats?show=missing" className="text-sm font-semibold text-turq-800 hover:underline">Open as table</Link>}>
                     <ul className="divide-y divide-rule">
                         <ShowMore items={missing} render={(m) => (
@@ -156,19 +159,10 @@ export default function Dashboard({ stats, feeding, herd, attention, missing, ki
                         )} />
                     </ul>
                 </Panel>
-            ) : null}
-
-            {charts ? (
-                <div className={`mt-4 grid gap-4 ${charts > 1 ? 'lg:grid-cols-2' : ''} ${charts > 2 ? 'xl:grid-cols-3' : ''}`}>
+                    ) : null}
                     {growthChart ? <Panel title="Average weight" description="All weighings, by month"><Chart option={growthChart} label="Average herd weight by month" height={220} onSelect={() => router.visit('/weights')} /></Panel> : null}
-                    {breedChart ? <Panel title="Herd by breed" description="Goats on the farm"><Chart option={breedChart} label="Goats by breed" height={220} onSelect={(name) => router.visit(`/goats?breed=${encodeURIComponent(name)}`)} /></Panel> : null}
+                    {breedChart ? <Panel title="Herd by breed" description="Goats on the farm · tap a bar to see them"><Chart option={breedChart} label="Goats by breed" height={Math.max(110, breeds.length * 36 + 24)} onSelect={(name) => router.visit(`/goats?breed=${encodeURIComponent(name)}`)} /></Panel> : null}
                     {financeChart ? <Panel title="Income and spending" description="Last 6 months"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></Panel> : null}
-                </div>
-            ) : null}
-
-            {activity.length || kiddings.length ? (
-                <div className={`mt-4 grid gap-4 ${kiddings.length ? 'xl:grid-cols-[minmax(0,1fr)_21rem]' : ''}`}>
-                    {activity.length ? <Panel title="Recent activity" flush><ActivityList activity={activity} /></Panel> : null}
                     {kiddings.length ? (
                         <Panel title="Next kiddings" flush description="Mating date + gestation days">
                             <ul className="divide-y divide-rule">
@@ -183,6 +177,7 @@ export default function Dashboard({ stats, feeding, herd, attention, missing, ki
                             </ul>
                         </Panel>
                     ) : null}
+                    {activity.length ? <Panel title="Recent activity" flush><ActivityList activity={activity} /></Panel> : null}
                 </div>
             ) : null}
         </>
