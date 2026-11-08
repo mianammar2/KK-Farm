@@ -1,8 +1,7 @@
 import BrandMark from './BrandMark';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
-    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, Wheat, X,
-} from 'lucide-react';
+    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, Wheat, X, ArrowLeftRight } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -32,6 +31,7 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
         heading: 'Farm',
         items: [
             { href: '/sheds', label: 'Sheds', module: 'sheds', icon: Warehouse },
+            { href: '/movements', label: 'Movements', module: 'sheds', icon: ArrowLeftRight },
             { href: '/tasks', label: 'Tasks & Daily Work', module: 'tasks', icon: CalendarCheck },
             { href: '/employees', label: 'Employees', module: 'employees', icon: Users },
         ],

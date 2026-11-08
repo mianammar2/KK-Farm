@@ -28,9 +28,9 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 16 | Stock Movements | Storekeeper · each transaction | Feeding → Feed store | ✅ D-054 |
 | 17 | Medicine Stock | Vet store · setup | Health → Medicine store | ✅ D-074 |
 | 18 | Medicine Movements | Vet store · each issue | Medicine store + treatments | ✅ D-074 |
-| 19 | Animal Movements | Farm Manager · per event | Sheds (move) + goat exit | 🟡 |
+| 19 | Animal Movements | Farm Manager · per event | Movements (single or batch) | ✅ D-076 |
 | 20 | Expenses | Accounts · each transaction | Finance | 🟡 |
-| 21 | Sales | Accounts · each sale | Finance | 🟡 |
+| 21 | Sales | Accounts · each sale | Movements (goats) + Finance → Sales (products) | ✅ D-076 |
 | 22 | Tasks | Farm Manager · daily | Tasks & Daily Work | 🟡 |
 | 23 | Action Center | Farm Manager · every morning | — | ❌ |
 | 24 | Settings | Owner · as needed | Settings | 🟡 |

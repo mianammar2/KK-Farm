@@ -175,25 +175,20 @@ class GoatController extends Controller
         return response()->file(Storage::path($photo->path), ['Cache-Control' => 'private, max-age=86400']);
     }
 
+    /** The goat page's "Record exit": one movement through the movement service (D-076). */
     public function exitFarm(Request $request, Animal $animal): RedirectResponse
     {
         abort_unless($request->user()->passes('exit_animal'), 403);
-        $data = $request->validate(['reason' => ['required', Rule::in(['sold', 'gifted', 'sacrificed', 'died'])]]);
+        $data = $request->validate([
+            'reason' => ['required', Rule::in(array_keys(\App\Support\Movements::REASON_TO_TYPE))],
+            'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'destination' => ['nullable', 'string', 'max:120'], 'notes' => ['nullable', 'string', 'max:500'],
+        ]);
         abort_unless($animal->status === 'active', 422);
-        // D-073 safety: a goat under meat withdrawal cannot leave for meat (sold, gifted or sacrificed).
-        $withdrawal = \App\Support\Withdrawal::forAnimal($animal->id);
-        if ($withdrawal['meat'] && $data['reason'] !== 'died') {
-            throw \Illuminate\Validation\ValidationException::withMessages(['reason' => "{$animal->farm_number} is under meat withdrawal until {$withdrawal['meat']->format('j M Y')} (veterinary treatment). It cannot be sold, gifted or sacrificed before then."]);
+        try {
+            \App\Support\Movements::exit($animal, \App\Support\Movements::REASON_TO_TYPE[$data['reason']], $request->user(), $data);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['reason' => collect($e->errors())->flatten()->first()]);
         }
-
-        DB::transaction(function () use ($animal, $data, $request): void {
-            Farm::closeOpenTag($animal, $data['reason'], $request->user());
-            $animal->update([
-                'status' => $data['reason'] === 'died' ? 'deceased' : 'left_farm', 'exit_reason' => $data['reason'],
-                'exit_date' => now(), 'pen_id' => null, 'feeding_group_id' => null,
-            ]);
-            Farm::event($animal, 'exit', "Left the farm: {$data['reason']}", $request->user()->name);
-        });
         Farm::log($request->user(), "Closed {$animal->farm_number} ({$data['reason']})", "/goats/{$animal->id}");
 
         return back()->with('success', 'Exit recorded. The tag is released and every record stays on this goat.');

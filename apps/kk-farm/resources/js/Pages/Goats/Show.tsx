@@ -240,7 +240,7 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     const weight = useForm({ animal_id: goat.id, weight_kg: '' });
     const concern = useForm({ animal_id: goat.id, title: '', severity: 'low', notes: '' });
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? '') });
-    const exit = useForm({ reason: 'sold' });
+    const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
     const options = { preserveScroll: true, onSuccess: close };
 
@@ -280,7 +280,9 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     }
     return (
         <form onSubmit={(e) => { e.preventDefault(); exit.post(`/goats/${goat.id}/exit`, options); }} className="flex flex-wrap items-end gap-2">
-            <div className="w-52"><Field label="Reason"><select className="field" value={exit.data.reason} onChange={(e) => exit.setData('reason', e.target.value)}><option value="sold">Sold</option><option value="gifted">Gifted</option><option value="sacrificed">Sacrificed</option><option value="died">Died</option></select></Field></div>
+            <div className="w-52"><Field label="Reason" error={exit.errors.reason}><select className="field" value={exit.data.reason} onChange={(e) => exit.setData('reason', e.target.value)}><option value="sold">Sold</option><option value="sacrificed">Qurbani / sacrifice</option><option value="culled">Culled</option><option value="gifted">Gifted</option><option value="transferred">Transferred out</option><option value="died">Died</option><option value="other">Other</option></select></Field></div>
+            {exit.data.reason === 'sold' ? <div className="w-40"><Field label="Price (PKR)" error={exit.errors.amount}><input inputMode="decimal" className="field" value={exit.data.amount} onChange={(e) => exit.setData('amount', e.target.value)} /></Field></div> : null}
+            {exit.data.reason !== 'died' ? <div className="w-48"><Field label={exit.data.reason === 'sold' ? 'Buyer' : 'Destination'}><input className="field" value={exit.data.destination} onChange={(e) => exit.setData('destination', e.target.value)} /></Field></div> : null}
             <Button type="submit" variant="danger" disabled={exit.processing}>Confirm exit</Button>
             <p className="w-full text-sm text-ink-soft">The RFID tag is released. Nothing about this goat is deleted.</p>
         </form>

@@ -1,12 +1,13 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import Chart, { axis } from '../components/Chart';
-import { Button, Chip, cx, Field, monthLabel, Note, PageHeader, Panel, pkr, pkrShort, Stat, StatRow } from '../components/ui';
+import { Button, Chip, cx, Field, monthLabel, PageHeader, Panel, pkr, pkrShort, Stat, StatRow } from '../components/ui';
 
 type Entry = { id: number; direction: 'in' | 'out'; category: string; amount: number; on: string; counterparty: string | null; description: string | null; by: string; reversed: boolean; isReversal: boolean };
-type Props = { summary: Record<string, number>; monthly: Array<{ month: string; income: number; spend: number }>; categories: Array<{ name: string; value: number }>; entries: Entry[]; categoryOptions: string[] };
+type SaleRow = { id: number; on: string; category: string; goatId: string | null; what: string | null; buyer: string | null; gross: number; fee: number; net: number; receipt: string | null; by: string };
+type Props = { summary: Record<string, number>; monthly: Array<{ month: string; income: number; spend: number }>; categories: Array<{ name: string; value: number }>; entries: Entry[]; categoryOptions: string[]; sales: SaleRow[] };
 
-export default function Finance({ summary, monthly, categories, entries, categoryOptions }: Props) {
+export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales }: Props) {
     const [direction, setDirection] = useState('');
     const [category, setCategory] = useState('');
     const form = useForm({ direction: 'out', category: categoryOptions[0], amount: '', counterparty: '', description: '', occurred_on: new Date().toLocaleDateString('en-CA') });
@@ -46,7 +47,6 @@ export default function Finance({ summary, monthly, categories, entries, categor
                 <Stat label="12 months out" value={pkrShort(summary.yearOut)} />
                 <Stat label="12 month result" value={pkrShort(summary.yearIn - summary.yearOut)} tone={summary.yearIn >= summary.yearOut ? 'good' : 'alert'} />
             </StatRow>
-            <div className="mb-4"><Note>All figures are synthetic and do not describe the real farm.</Note></div>
 
             <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                 <Panel title="Monthly income and spending"><Chart option={trend} label="Monthly income and spending" height={250} /></Panel>
@@ -89,6 +89,60 @@ export default function Finance({ summary, monthly, categories, entries, categor
                     </form>
                 </Panel>
             </div>
+
+            {/* D-076: workbook "Sales". Goat sales come from Movements; products are recorded here. */}
+            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+                <SalesList sales={sales} />
+                <ProductSaleForm />
+            </div>
         </>
+    );
+}
+
+function SalesList({ sales }: { sales: SaleRow[] }) {
+    const [all, setAll] = useState(false);
+    const rows = all ? sales : sales.slice(0, 10);
+    return (
+        <Panel flush title="Sales" description="Goat sales are recorded from Movements (or Record exit on the goat). Net = price − fee or discount.">
+            {sales.length ? (
+                <div className="overflow-x-auto">
+                    <table className="data-table min-w-[680px]">
+                        <thead><tr><th>Date</th><th>What</th><th>Category</th><th>Buyer</th><th>Price</th><th>Fee</th><th>Net</th><th>Receipt</th></tr></thead>
+                        <tbody>
+                            {rows.map((s) => (
+                                <tr key={s.id}>
+                                    <td className="whitespace-nowrap">{s.on}</td>
+                                    <td>{s.goatId ? <Link href={`/goats/${s.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{s.what}</Link> : s.what}</td>
+                                    <td>{s.category}</td><td className="max-w-40 truncate">{s.buyer ?? '—'}</td>
+                                    <td>{pkr(s.gross)}</td><td>{s.fee ? pkr(s.fee) : '—'}</td><td className="font-semibold text-ok-700">{pkr(s.net)}</td><td className="text-ink-soft">{s.receipt ?? ''}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {sales.length > 10 ? <button type="button" onClick={() => setAll(!all)} className="w-full px-4 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">{all ? 'Show less' : `Show ${sales.length - 10} more`}</button> : null}
+                </div>
+            ) : <p className="p-4 text-sm text-ink-soft">No sales yet.</p>}
+        </Panel>
+    );
+}
+
+function ProductSaleForm() {
+    const form = useForm({ sold_on: new Date().toLocaleDateString('en-CA'), category: 'product', item: '', buyer: '', gross: '', fee: '', receipt_ref: '', notes: '' });
+    const e = form.errors as Record<string, string>;
+    return (
+        <Panel title="Record a product sale" description="Milk, manure, skins and other sales without a goat">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/finance/sales', { preserveScroll: true, onSuccess: () => form.reset('item', 'buyer', 'gross', 'fee', 'receipt_ref', 'notes') }); }} className="space-y-3">
+                <Field label="What was sold" error={e.item}><input className="field" value={form.data.item} onChange={(x) => form.setData('item', x.target.value)} placeholder="e.g. Milk 40 L" /></Field>
+                <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}><option value="product">Goat product</option><option value="other">Other</option></select></Field>
+                <div className="grid grid-cols-2 gap-2">
+                    <Field label="Price (PKR)" error={e.gross}><input inputMode="decimal" className="field" value={form.data.gross} onChange={(x) => form.setData('gross', x.target.value)} /></Field>
+                    <Field label="Fee / discount" error={e.fee}><input inputMode="decimal" className="field" value={form.data.fee} onChange={(x) => form.setData('fee', x.target.value)} /></Field>
+                </div>
+                <Field label="Buyer" error={e.buyer}><input className="field" value={form.data.buyer} onChange={(x) => form.setData('buyer', x.target.value)} /></Field>
+                <Field label="Receipt ref" error={e.receipt_ref}><input className="field" value={form.data.receipt_ref} onChange={(x) => form.setData('receipt_ref', x.target.value)} /></Field>
+                <Field label="Date" error={e.sold_on}><input type="date" className="field" value={form.data.sold_on} onChange={(x) => form.setData('sold_on', x.target.value)} /></Field>
+                <Button type="submit" className="w-full" disabled={form.processing}>Save sale</Button>
+            </form>
+        </Panel>
     );
 }

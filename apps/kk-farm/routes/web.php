@@ -95,6 +95,8 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:sheds')->group(function (): void {
         Route::get('/sheds', [ShedController::class, 'index']);
         Route::post('/sheds/transfer', [ShedController::class, 'transfer']);
+        Route::get('/movements', [\App\Http\Controllers\MovementController::class, 'index']);
+        Route::post('/movements', [\App\Http\Controllers\MovementController::class, 'store']);
         Route::post('/sheds', [ShedController::class, 'store']);
         Route::patch('/sheds/{shed}', [ShedController::class, 'update']);
         Route::post('/sheds/{shed}/pens', [ShedController::class, 'storePen']);
@@ -116,6 +118,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/finance', [FinanceController::class, 'index']);
         Route::post('/finance/entries', [FinanceController::class, 'store']);
         Route::post('/finance/entries/{entry}/reverse', [FinanceController::class, 'reverse']);
+        Route::post('/finance/sales', [FinanceController::class, 'sale']);
     });
 
     Route::get('/reports', ReportController::class)->middleware('module:reports');

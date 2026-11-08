@@ -130,19 +130,12 @@ class ShedController extends Controller
     public function transfer(Request $request): RedirectResponse
     {
         $data = $request->validate(['animal_id' => ['required', 'exists:animals,id'], 'pen_id' => ['required', 'exists:pens,id']]);
-
-        $animal = Animal::with('pen')->findOrFail($data['animal_id']);
-        abort_unless($animal->status === 'active', 422, 'This goat is no longer on the farm.');
-        $pen = Pen::findOrFail($data['pen_id']);
-        if ($animal->pen_id === $pen->id) {
+        $animal = Animal::with('pen.shed')->findOrFail($data['animal_id']);
+        $pen = Pen::with('shed')->findOrFail($data['pen_id']);
+        $movement = \App\Support\Movements::transfer($animal, $pen, $request->user()); // D-076
+        if (! $movement) {
             return back()->with('success', "{$animal->farm_number} is already in {$pen->fullName()}.");
         }
-
-        DB::transaction(function () use ($animal, $pen, $request): void {
-            $from = $animal->pen?->fullName() ?? 'no pen';
-            $animal->update(['pen_id' => $pen->id]);
-            Farm::event($animal, 'move', "Moved from $from to {$pen->fullName()}", $request->user()->name);
-        });
         Farm::log($request->user(), "Moved {$animal->farm_number} to {$pen->fullName()}", "/goats/{$animal->id}");
 
         return back()->with('success', "{$animal->farm_number} moved to {$pen->fullName()}.");
