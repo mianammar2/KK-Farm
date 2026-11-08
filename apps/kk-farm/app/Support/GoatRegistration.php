@@ -50,7 +50,9 @@ final class GoatRegistration
         foreach ($definitions as $d) {
             $required = $d->required || in_array($d->key, FieldCatalog::STRUCTURAL, true);
             $field = $d->builtin ? $d->key : "custom_fields.{$d->key}";
-            $rules[$field] = [$required ? 'required' : 'nullable', ...self::typeRules($d)];
+            // D-053: a bought or transferred-in goat often has no known birth date, so it is required only for farm-born goats.
+            $presence = $d->key === 'birth_date' ? ['nullable', 'required_if:origin,born_on_farm'] : [$required ? 'required' : 'nullable'];
+            $rules[$field] = [...$presence, ...self::typeRules($d)];
         }
 
         return $rules;
@@ -133,7 +135,7 @@ final class GoatRegistration
                 'sex' => $data['sex'],
                 'breed_id' => $data['breed_id'],
                 'pen_id' => $data['pen_id'],
-                'birth_date' => $data['birth_date'],
+                'birth_date' => $data['birth_date'] ?? null,
                 'birth_date_is_estimate' => (bool) ($data['birth_date_is_estimate'] ?? false),
                 'origin' => $data['origin'],
                 'sire_id' => $data['sire_id'] ?? null,

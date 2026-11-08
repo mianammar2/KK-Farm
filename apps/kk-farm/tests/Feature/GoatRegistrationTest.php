@@ -217,7 +217,7 @@ class GoatRegistrationTest extends TestCase
         $doe = $this->goat('DOE-1', 'female');
         $caretaker = $this->user('caretaker');
 
-        $this->actingAs($caretaker)->post('/goats', [])->assertSessionHasErrors(['sex', 'breed_id', 'pen_id', 'birth_date', 'origin']);
+        $this->actingAs($caretaker)->post('/goats', [])->assertSessionHasErrors(['sex', 'breed_id', 'pen_id', 'origin']);
         $this->actingAs($caretaker)->post('/goats', $this->payload(['animal_class' => 'banana']))->assertSessionHasErrors(['animal_class']);
         $this->actingAs($caretaker)->post('/goats', $this->payload(['sire_id' => $doe->id]))->assertSessionHasErrors(['sire_id']);
         $this->actingAs($caretaker)->post('/goats', $this->payload(['birth_date' => now()->addDay()->toDateString()]))->assertSessionHasErrors(['birth_date']);
@@ -527,5 +527,24 @@ class GoatRegistrationTest extends TestCase
 
         $this->assertSame(27, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
         $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 27)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
+    }
+
+    public function test_a_bought_goat_may_have_no_birth_date_but_a_farm_born_goat_must(): void
+    {
+        $caretaker = $this->user('caretaker');
+
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['birth_date' => '', 'origin' => 'born_on_farm']))->assertSessionHasErrors(['birth_date']);
+        $this->assertSame(0, Animal::count());
+
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['birth_date' => '', 'origin' => 'purchased', 'tag_id' => 'BUY-1']))->assertSessionHasNoErrors();
+        $this->actingAs($caretaker)->post('/goats', $this->payload(['birth_date' => '', 'origin' => 'transferred_in', 'tag_id' => 'IN-1']))->assertSessionHasNoErrors();
+        $bought = Animal::where('farm_number', 'BUY-1')->firstOrFail();
+        $this->assertNull($bought->birth_date);
+        $this->assertNull($bought->effectiveAge());
+        $this->actingAs($caretaker)->get("/goats/{$bought->id}")->assertOk();
+        $owner = $this->user('ceo');
+        foreach (['/', '/goats', '/reports', '/breeding', '/sheds'] as $page) {
+            $this->actingAs($owner)->get($page)->assertOk();
+        }
     }
 }

@@ -32,6 +32,8 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     }, []);
 
     // D-046: Female Status only for females, Kid Stage only for kids.
+    // D-053: only a farm-born goat must have a birth date.
+    const isRequired = (f: FieldDef) => (f.key === 'birth_date' ? form.data.origin === 'born_on_farm' : f.required);
     const age = form.data.age_category || ageCategory(form.data.birth_date, classification);
     const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
     const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid);
@@ -194,9 +196,9 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                             {section.fields.filter((f) => !hidden(f)).map((f) => (
                                 <div key={f.key} className={f.type === 'long_text' ? 'md:col-span-2' : undefined}>
                                     <Field
-                                        label={`${f.label}${f.required ? ' *' : ''}`}
+                                        label={`${f.label}${isRequired(f) ? ' *' : ''}`}
                                         error={error(f)}
-                                        hint={f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
+                                        hint={f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? 'Optional for a bought or transferred goat. Leave empty if unknown.' : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
                                     >{control(f)}</Field>
                                 </div>
                             ))}

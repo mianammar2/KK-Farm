@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 final class FieldCatalog
 {
     /** Fields the registration cannot work without. They cannot be switched off or made optional. */
-    public const STRUCTURAL = ['sex', 'breed_id', 'pen_id', 'origin', 'birth_date'];
+    public const STRUCTURAL = ['sex', 'breed_id', 'pen_id', 'origin', 'birth_date']; // birth_date is required only for farm-born goats (D-053)
 
     /** Pakistani breeds with the KK Farms ERP labels (D-046). Farms add more in Settings. */
     public const BREEDS = ['Beetal', 'Makhi Cheeni (Beetal Variety)', 'Teddy', 'Nachi', 'Dera Din Panah (DDP)', 'Kamori', 'Gulabi', 'Barbari', 'Crossbreed', 'Other'];
@@ -46,7 +46,7 @@ final class FieldCatalog
             ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Identity', 'help' => 'Set automatically from the breed when you save (for example BT-0001). Type a number only to use a different one.'],
             ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Identity'],
             ['key' => 'sex', 'label' => 'Gender', 'type' => 'select', 'section' => 'Identity', 'required' => true],
-            ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth and origin', 'required' => true],
+            ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth and origin', 'required' => true, 'help' => 'Required for farm-born goats. For a bought goat leave it empty if unknown.'],
             ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth and origin'],
             ['key' => 'birth_weight_kg', 'label' => 'Birth Weight Kg', 'type' => 'number', 'section' => 'Birth and origin'],
             ['key' => 'origin', 'label' => 'Origin Type', 'type' => 'select', 'section' => 'Birth and origin', 'required' => true],
