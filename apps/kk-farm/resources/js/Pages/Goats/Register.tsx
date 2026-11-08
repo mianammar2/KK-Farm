@@ -62,6 +62,8 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid)
         || (farmBorn && ['acquired_on', 'source_farm', 'purchase_cost_pkr', 'birth_date_is_estimate'].includes(f.key))
         || (!farmBorn && f.key === 'birth_weight_kg')
+        // D-064: parentage is known only for goats born on the farm.
+        || (!farmBorn && ['sire_id', 'dam_id', 'breed_purity', 'cross_breeds'].includes(f.key))
         || (form.data.origin === 'transferred_in' && f.key === 'purchase_cost_pkr');
     const suggested = suggestCategory(form.data.sex, age, form.data.animal_purpose);
     const category = form.data.animal_class || suggested;
@@ -259,8 +261,13 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             ) : null}
             {!canAssignTags ? <div className="mb-4"><Note>Your role cannot assign RFID tags, so the tag field is switched off. You can still register the goat.</Note></div> : null}
 
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/goats', { forceFormData: true }); }} className="space-y-4">
-                {shown.map((section, index) => (
+            <form onSubmit={(e) => {
+                e.preventDefault();
+                // Parentage hidden for a bought or transferred goat: never send values left over from an earlier choice.
+                form.transform((d: Record<string, any>) => (d.origin === 'born_on_farm' ? d : { ...d, sire_id: '', dam_id: '', sire_tag: '', dam_tag: '', breed_purity: '', cross_breeds: '' }));
+                form.post('/goats', { forceFormData: true });
+            }} className="space-y-4">
+                {shown.filter((section) => section.fields.some((f) => !hidden(f))).map((section, index) => (
                     <Fragment key={section.name}>
                     {index === 1 ? (
                         <Panel title="Profile picture" description="Take a photo with the camera, or choose one. Optional.">
