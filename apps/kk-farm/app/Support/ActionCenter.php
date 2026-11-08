@@ -97,6 +97,10 @@ final class ActionCenter
             $pens = \App\Models\Pen::with('shed')->whereIn('id', $board->keys())->get()->keyBy('id');
             $missed = $board->flatMap(fn ($meals, $penId) => collect($meals)->filter(fn ($m) => $m['status'] === 'missed')->map(fn ($m, $meal) => ['text' => $pens[$penId]?->fullName() ?? 'Pen', 'sub' => Feed::MEALS[$meal].' meal', 'url' => '/feeding']))->values();
             $add('feeding', 'feeding_missed', 'Feeding missed today', 'critical', 'Find out why and feed the pen.', '/feeding', $missed);
+            // D-086: a pen given more than its goats need (e.g. goats moved out after it was fed).
+            $over = $board->flatMap(fn ($meals, $penId) => collect($meals)->filter(fn ($m) => $m['balance']['state'] === 'over')
+                ->map(fn ($m, $meal) => ['text' => $pens[$penId]?->fullName() ?? 'Pen', 'sub' => Feed::MEALS[$meal].': '.round($m['givenKg'], 2).' KG given, plan '.round($m['plannedKg'], 2).' KG (+'.round($m['balance']['diff'], 2).' KG)', 'url' => '/feeding']))->values();
+            $add('feeding', 'feed_over', 'Pens fed more than they need', 'warning', 'Check the plan after goats moved, or record the leftover.', '/feeding', $over);
             $stock = Feed::stock();
             $low = FeedItem::where('active', true)->orderBy('name')->get()->filter(fn (FeedItem $i) => Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg) !== 'ok');
             // D-080: will the feed in store last? Need = every goat's intake % of body weight (or its fixed ration).

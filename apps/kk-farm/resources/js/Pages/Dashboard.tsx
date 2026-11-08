@@ -8,11 +8,12 @@ import type { Health, SharedProps } from '../types';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
-type Feeding = { meal: Meal; meals: Record<Meal, string>; times: Record<Meal, string>; plannedKg: number; givenKg: number; cost: number; lowStock: string[];
-    pens: Array<{ id: number; name: string; goats: number; onMilk: number; meals: Record<Meal, { status: FeedStatus; planned: number; given: number }> }> };
+type Balance = 'over' | 'short' | 'ok' | null;
+type Feeding = { meal: Meal; meals: Record<Meal, string>; times: Record<Meal, string>; plannedKg: number; givenKg: number; cost: number; lowStock: string[]; overPens: number;
+    pens: Array<{ id: number; name: string; goats: number; onMilk: number; dayPlanned: number; dayGiven: number; over: boolean; diff: number; meals: Record<Meal, { status: FeedStatus; planned: number; given: number; balance: Balance; diff: number }> }> };
 type ActionSummary = { key: string; label: string; count: number; severity: 'critical' | 'warning' | 'info' };
 type ReqGoat = { id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; kgMonth: number; min: number; max: number; feeds: string };
-type ReqPen = { id: number | null; name: string; kgDay: number; kgMonth: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
+type ReqPen = { id: number | null; name: string; kgDay: number; kgMonth: number; givenToday: number; balance: Balance; diff: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
 type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; kgMonth: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
 type Supply = { needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
@@ -64,7 +65,7 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
 export default function Dashboard({ shedBoard, canMove, requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
-    usePoll(30000, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
+    usePoll(10000, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
 
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
@@ -104,7 +105,7 @@ export default function Dashboard({ shedBoard, canMove, requirement, actions, st
     return (
         <>
             <Head title="Dashboard" />
-            <PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Updates by itself every 30 seconds.`} />
+            <PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Updates by itself every 10 seconds.`} />
 
             <ActionBanner actions={actions} />
 
@@ -228,6 +229,13 @@ const FEED_STATUS: Record<FeedStatus, { label: string; className: string }> = {
 };
 
 /** D-069: today's feeding on the dashboard — only pens that have goats, each meal's status and KG given of planned. */
+/** D-086: given against plan, in words and colour. */
+function BalanceTag({ balance, diff, className = '' }: { balance: Balance; diff: number; className?: string }) {
+    if (balance !== 'over' && balance !== 'short') return null;
+    const kgText = `${Math.abs(Math.round(diff * 100) / 100)} KG`;
+    return <span className={`inline-block rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${balance === 'over' ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'} ${className}`}>{balance === 'over' ? `Over by ${kgText}` : `Short ${kgText}`}</span>;
+}
+
 function FeedingToday({ feeding }: { feeding: Feeding }) {
     const meals = Object.keys(feeding.meals) as Meal[];
     const kg = (n: number) => `${Math.round(n * 10) / 10} KG`;
@@ -238,6 +246,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
         <Panel title="Feeding today" description={`${kg(feeding.givenKg)} given of ${kg(feeding.plannedKg)} planned · PKR ${feeding.cost.toLocaleString('en-PK')}`}
             actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Feed now</Link>}>
             {feeding.lowStock.length ? <p className="mb-3 rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">Low or out of stock: {feeding.lowStock.join(', ')}</p> : null}
+            {feeding.overPens ? <p className="mb-3 rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">{plural(feeding.overPens, 'pen was', 'pens were')} given more feed today than its goats need now. Plans follow the goats, so a move after feeding shows here.</p> : null}
             {feeding.pens.length ? (
                 <>
                 {/* Phones and the gun: one row per pen with its three meals side by side. */}
@@ -246,7 +255,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                         <li key={p.id} className="py-2.5">
                             <div className="flex items-baseline justify-between gap-2">
                                 <Link href="/feeding" className="font-mono font-semibold text-cobalt-900">{p.name}</Link>
-                                <span className="text-xs text-ink-soft">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''}</span>
+                                <span className="text-xs text-ink-soft">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''} · {kg(p.dayGiven)} / {kg(p.dayPlanned)} today</span>
                             </div>
                             <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                                 {meals.map((m) => {
@@ -255,6 +264,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                                         <div key={m} className={`rounded-tile px-2 py-1.5 ${m === feeding.meal ? 'ring-1 ring-cobalt-200' : ''} ${FEED_STATUS[x.status].className}`}>
                                             <div className="text-[11px] font-semibold">{feeding.meals[m]} · {FEED_STATUS[x.status].label}</div>
                                             <div className="text-[11px] opacity-80">{x.planned || x.given ? `${kg(x.given)} / ${kg(x.planned)}` : '—'}</div>
+                                            <BalanceTag balance={x.balance} diff={x.diff} className="mt-0.5 !px-1 !text-[10px]" />
                                         </div>
                                     );
                                 })}
@@ -275,7 +285,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                                 <tr key={p.id}>
                                     <td className="py-2 pr-3">
                                         <Link href="/feeding" className="font-mono font-semibold text-cobalt-900 hover:underline">{p.name}</Link>
-                                        <div className="text-xs text-ink-soft">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''}</div>
+                                        <div className="text-xs text-ink-soft">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''} · {kg(p.dayGiven)} / {kg(p.dayPlanned)} today</div>
                                     </td>
                                     {meals.map((m) => {
                                         const x = p.meals[m];
@@ -283,6 +293,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                                             <td key={m} className="px-2 py-2">
                                                 <span className={`inline-block rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${FEED_STATUS[x.status].className}`}>{FEED_STATUS[x.status].label}</span>
                                                 {x.planned || x.given ? <div className="mt-0.5 text-xs text-ink-soft">{kg(x.given)} / {kg(x.planned)}</div> : null}
+                                                <BalanceTag balance={x.balance} diff={x.diff} className="mt-0.5" />
                                             </td>
                                         );
                                     })}
@@ -362,7 +373,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
         <div className="rounded-tile border border-rule bg-tile">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-rule px-3 py-2">
                 <span className="font-mono text-sm font-semibold text-cobalt-900">{pen.name}</span>
-                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong> · {pen.kgMonth} KG this month · PKR {pen.cost.toLocaleString('en-PK')}</span>
+                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong> · given today {pen.givenToday} KG <BalanceTag balance={pen.balance} diff={pen.diff} /> · {pen.kgMonth} KG this month · PKR {pen.cost.toLocaleString('en-PK')}</span>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[46rem] text-sm">

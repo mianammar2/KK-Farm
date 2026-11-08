@@ -347,6 +347,29 @@ class FeedTest extends TestCase
         $this->assertEqualsWithDelta(0.0, Feed::stock()[$tmr->id], 0.001);
     }
 
+    public function test_moving_a_goat_after_feeding_shows_the_pen_overfed_everywhere(): void
+    {
+        $tmr = $this->item('TMR', 60, 100);
+        foreach (['D-1' => 50, 'D-2' => 50] as $n => $kg) {
+            \App\Models\WeightRecord::create(['animal_id' => Animal::where('farm_number', $n)->value('id'), 'measured_on' => now(), 'weight_kg' => $kg, 'measured_by' => 'x']);
+        }
+        // Morning plan for pen A: 100 KG × 2.5% × 40% = 1 KG (range 0.8–1.2). Given exactly that.
+        $this->actingAs($this->user('feeding'))->post('/feeding/record', ['pen_id' => $this->penA->id, 'meal' => 'morning', 'lines' => [['id' => (string) Str::uuid(), 'feed_item_id' => $tmr->id, 'offered_kg' => 1]]])->assertSessionHasNoErrors();
+        $this->assertSame('ok', Feed::board(now()->toDateString(), Feed::org())[$this->penA->id]['morning']['balance']['state']);
+
+        // D-2 moves to pen B: pen A now needs 0.5 KG (0.4–0.6) and was given 1 KG.
+        $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [Animal::where('farm_number', 'D-2')->value('id')], 'type' => 'transfer', 'to_pen_id' => $this->penB->id, 'moved_on' => now()->toDateString()])->assertSessionHasNoErrors();
+        $morning = Feed::board(now()->toDateString(), Feed::org())[$this->penA->id]['morning'];
+        $this->assertSame([0.5, 'over', 0.5], [$morning['plannedKg'], $morning['balance']['state'], $morning['balance']['diff']]);
+
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('board.0.balance', 'over')->where('board.0.diff', 0.5));
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('feeding.overPens', 1)->where('feeding.pens.0.meals.morning.balance', 'over')
+            ->where('requirement.sheds.0.pens.0.givenToday', 1)->where('requirement.sheds.0.pens.0.kgDay', 1.3));
+        $over = collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'feed_over');
+        $this->assertSame(['Shed 1-Pen A'], array_column($over['items'], 'text'));
+        $this->assertSame(['ok', 'short'], [Feed::balance(1, 0.8, 1.2, 1.1, 10)['state'], Feed::balance(1, 0.8, 1.2, 0.5, 10)['state']]);
+    }
+
     public function test_the_requirement_shows_this_month_and_the_shortage_to_month_end(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-11-21 06:00', 'UTC'));

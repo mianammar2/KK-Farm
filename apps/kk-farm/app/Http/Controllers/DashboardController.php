@@ -148,11 +148,16 @@ class DashboardController extends Controller
                 if (isset($compliance[$m['status']])) {
                     $compliance[$m['status']]++;
                 }
-                $out[$meal] = ['status' => $m['status'], 'planned' => $m['plannedKg'], 'given' => round($kg, 2)];
+                $out[$meal] = ['status' => $m['status'], 'planned' => $m['plannedKg'], 'given' => round($kg, 2), 'balance' => $m['balance']['state'], 'diff' => $m['balance']['diff']];
             }
             $first = reset($meals);
 
-            return ['id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'goats' => $first['headcount'], 'onMilk' => $first['onMilk'], 'meals' => $out];
+            $dayPlan = array_sum(array_column($meals, 'plannedKg'));
+            $dayGiven = array_sum(array_column($meals, 'givenKg'));
+            $day = \App\Support\Feed::balance($dayPlan, array_sum(array_column($meals, 'minKg')), array_sum(array_column($meals, 'maxKg')), $dayGiven, (float) \App\Support\Feed::org()->feed_tolerance_pct);
+
+            return ['id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'goats' => $first['headcount'], 'onMilk' => $first['onMilk'], 'meals' => $out,
+                'dayPlanned' => round($dayPlan, 2), 'dayGiven' => round($dayGiven, 2), 'over' => $day['state'] === 'over' || collect($out)->contains('balance', 'over'), 'diff' => $day['diff']];
         })->sortBy('name')->values();
 
         $stock = \App\Support\Feed::stock();
@@ -162,6 +167,7 @@ class DashboardController extends Controller
             'pens' => $rows, 'plannedKg' => round($planned, 1), 'givenKg' => round($given, 1), 'cost' => round($cost),
             'lowStock' => \App\Models\FeedItem::where('active', true)->get()->filter(fn ($i) => \App\Support\Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg) !== 'ok')->pluck('name')->values(),
             'compliance' => $compliance,
+            'overPens' => $rows->where('over', true)->count(),
         ];
     }
 
@@ -189,13 +195,18 @@ class DashboardController extends Controller
             return collect($lines)->map(fn ($kg, $id) => ['name' => $items[$id]->name ?? '?', 'kg' => round($kg, 1)])->sortByDesc('kg')->values()->all();
         };
 
-        $sheds = $goats->groupBy(fn ($g) => $g->pen?->shed_id ?? 0)->map(function ($inShed, $shedId) use ($req, $feedText, $cost, $sum, $md) {
+        // D-086: what each pen was given today against what its goats need now.
+        $givenToday = \App\Models\FeedUsage::current()->where('fed_on', \App\Support\Feed::now()->toDateString())->groupBy('pen_id')->selectRaw('pen_id, sum(offered_kg) as kg')->pluck('kg', 'pen_id');
+        $tol = (float) \App\Support\Feed::org()->feed_tolerance_pct;
+        $sheds = $goats->groupBy(fn ($g) => $g->pen?->shed_id ?? 0)->map(function ($inShed, $shedId) use ($req, $feedText, $cost, $sum, $md, $givenToday, $tol) {
             $shed = $inShed->first()->pen?->shed;
-            $pens = $inShed->groupBy(fn ($g) => $g->pen_id ?? 0)->map(function ($inPen) use ($req, $feedText, $cost, $md) {
+            $pens = $inShed->groupBy(fn ($g) => $g->pen_id ?? 0)->map(function ($inPen) use ($req, $feedText, $cost, $md, $givenToday, $tol) {
                 $rows = $inPen->map(fn ($g) => $req[$g->id] + ['id' => $g->id, 'number' => $g->farm_number])->sortBy('number')->values();
+                $given = round((float) ($givenToday[$inPen->first()->pen_id] ?? 0), 2);
+                $bal = \App\Support\Feed::balance($rows->sum('kgDay'), $rows->sum('min'), $rows->sum('max'), $given, $tol);
 
                 return [
-                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1), 'kgMonth' => round($rows->sum('kgDay') * $md, 1),
+                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1), 'kgMonth' => round($rows->sum('kgDay') * $md, 1), 'givenToday' => $given, 'balance' => $bal['state'], 'diff' => $bal['diff'],
                     'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
                     'goats' => $rows->map(fn ($r) => [
                         'id' => $r['id'], 'number' => $r['number'], 'group' => $r['group'], 'weight' => $r['weight'], 'state' => $r['state'], 'rule' => $r['rule'],

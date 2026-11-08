@@ -310,6 +310,26 @@ final class Feed
      *
      * @return Collection<int, array<string, mixed>> by pen id
      */
+    /**
+     * D-086: feed given against the plan, now (the plan follows the goats in the pen, so a move changes it at once).
+     * Over: more than the top of the planned range, or more than the farm's tolerance above a fixed plan.
+     * Short: something was given but less than the bottom of the range / tolerance. Nothing given is not "short" here
+     * (that is the meal status: due, late, missed).
+     *
+     * @return array{state: ?string, diff: float} state over|short|ok, diff = given − planned (KG)
+     */
+    public static function balance(float $planned, float $min, float $max, float $given, float $tolerancePct): array
+    {
+        $diff = round($given - $planned, 2);
+        if ($given <= 0) {
+            return ['state' => null, 'diff' => $diff];
+        }
+        $top = max($max, $planned * (1 + $tolerancePct / 100));
+        $bottom = $min > 0 && $min < $planned ? $min : $planned * (1 - $tolerancePct / 100);
+
+        return ['state' => $given > $top + 0.005 ? 'over' : ($given < $bottom - 0.005 ? 'short' : 'ok'), 'diff' => $diff];
+    }
+
     public static function board(string $date, Organization $org): Collection
     {
         $plans = self::plansOn($date);
@@ -324,10 +344,13 @@ final class Feed
                 $plan = $planned[$meal][$penId] ?? ['headcount' => 0, 'unplanned' => 0, 'noWeight' => 0, 'onMilk' => 0, 'auto' => 0, 'lines' => [], 'min' => [], 'max' => []];
                 $rows = $usage["$penId|$meal"] ?? collect();
                 $first = $rows->min('fed_at');
+                $given = round((float) $rows->sum('offered_kg'), 2);
                 $meals[$meal] = [
                     'headcount' => $plan['headcount'], 'unplanned' => $plan['unplanned'], 'noWeight' => $plan['noWeight'], 'onMilk' => $plan['onMilk'], 'auto' => $plan['auto'],
                     'lines' => $plan['lines'], 'min' => $plan['min'], 'max' => $plan['max'],
-                    'plannedKg' => round(array_sum($plan['lines']), 2), 'rows' => $rows,
+                    'plannedKg' => round(array_sum($plan['lines']), 2), 'rows' => $rows, 'givenKg' => $given,
+                    'minKg' => round(array_sum($plan['min']), 2), 'maxKg' => round(array_sum($plan['max']), 2),
+                    'balance' => self::balance(array_sum($plan['lines']), array_sum($plan['min']), array_sum($plan['max']), $given, (float) $org->feed_tolerance_pct),
                     'status' => self::mealStatus($date, $meal, $first ? Carbon::parse($first) : null, array_sum($plan['lines']), $org),
                 ];
             }

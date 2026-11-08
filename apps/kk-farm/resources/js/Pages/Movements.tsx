@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePoll } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -15,6 +15,7 @@ const TYPE_CLASS: Record<string, string> = { transfer: 'bg-cobalt-100 text-cobal
 
 /** D-076: workbook "Animal Movements": move one goat or a batch, or record exits; every movement is kept. */
 export default function Movements({ movements, goats, pens, types, month, canExit, saleCategories }: Props) {
+    usePoll(10000, { only: ['movements', 'goats', 'pens', 'month'] }); // D-086: live
     const [tab, setTab] = useState('record');
     const [filter, setFilter] = useState('');
     const [shown, setShown] = useState(20);

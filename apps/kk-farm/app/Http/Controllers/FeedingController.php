@@ -68,6 +68,8 @@ class FeedingController extends Controller
                 return [
                     'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'], 'onMilk' => $m['onMilk'], 'auto' => $m['auto'],
                     'plannedKg' => $m['plannedKg'], 'offeredKg' => round($m['rows']->sum('offered_kg'), 2), 'status' => $m['status'],
+                    'balance' => $m['balance']['state'], 'diff' => $m['balance']['diff'], 'minKg' => $m['minKg'], 'maxKg' => $m['maxKg'],
+                    'day' => $this->dayBalance($meals),
                     'meals' => collect($meals)->map(fn ($x) => $x['status']),
                     'lines' => $ids->map(fn ($id) => $line($id, (float) ($m['lines'][$id] ?? 0), $rows[$id] ?? null) + ['min' => (float) ($m['min'][$id] ?? 0), 'max' => (float) ($m['max'][$id] ?? 0), 'stock' => round(max(0, (float) ($stock[$id] ?? 0)), 2)])->values(),
                 ];
@@ -132,6 +134,17 @@ class FeedingController extends Controller
     }
 
     /** Record what one pen was given at one meal. Re-saving the same pen and meal corrects it (a new row supersedes the old). */
+    /** D-086: the whole day for a pen: planned and given over all meals, and whether it is over or short. */
+    private function dayBalance(array $meals): array
+    {
+        $org = Feed::org();
+        $planned = array_sum(array_column($meals, 'plannedKg'));
+        $given = array_sum(array_column($meals, 'givenKg'));
+        $b = Feed::balance($planned, array_sum(array_column($meals, 'minKg')), array_sum(array_column($meals, 'maxKg')), $given, (float) $org->feed_tolerance_pct);
+
+        return ['planned' => round($planned, 2), 'given' => round($given, 2), 'balance' => $b['state'], 'diff' => $b['diff']];
+    }
+
     public function record(Request $request): RedirectResponse
     {
         $data = $request->validate([

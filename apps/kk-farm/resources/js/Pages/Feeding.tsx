@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePoll } from '@inertiajs/react';
 import { Check, Clock, Plus, Trash2, Wheat } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -7,7 +7,7 @@ type Meal = 'morning' | 'midday' | 'evening';
 type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
 type Usage = { id: string; offered: number; refused: number | null; by: string; at: string };
 type Line = { feedItemId: number; code: string; name: string; planned: number; min: number; max: number; usage: Usage | null; stock: number };
-type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; onMilk: number; auto: number; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
+type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; onMilk: number; auto: number; balance: 'over' | 'short' | 'ok' | null; diff: number; minKg: number; maxKg: number; day: { planned: number; given: number; balance: 'over' | 'short' | 'ok' | null; diff: number }; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
 type Plan = { id: number; from: string; fromIso: string; status: string; basis: 'per_head' | 'body_weight'; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number | null; share: number | null }>; kgPerHead: number; costPerHead: number; costPerKg: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
 type Group = { id: number; name: string; criteria: string | null; head: number; current: Plan | null; upcoming: Plan | null; draft: Plan | null };
 type Item = { id: number; code: string; name: string; category: string; costPerKg: number; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number; value: number; status: 'ok' | 'low' | 'out' | 'negative'; daysLeft: number | null };
@@ -43,6 +43,8 @@ const STOCK: Record<Item['status'], { label: string; className: string }> = {
 };
 
 export default function Feeding(props: Props) {
+    // D-086: live. Moves on other screens change pen plans; this picks them up within 10 seconds.
+    usePoll(10000, { only: ['board', 'items', 'history'] });
     const { today, meal, meals, mealTimes, board, groups, items, can } = props;
     const [tab, setTab] = useState('now');
     const fed = board.filter((p) => p.status === 'done' || p.status === 'late').length;
@@ -102,12 +104,13 @@ function FeedNow({ meal, meals, mealTimes, board, items, groups, onTab }: Props 
                     <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open === pen.id} onClick={() => setOpen(open === pen.id ? null : pen.id)}>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-baseline gap-x-2"><span className="font-mono font-semibold text-cobalt-900">{pen.name}</span></div>
-                            <div className="text-sm text-ink-soft">{pen.headcount} goats · plan {kg(pen.plannedKg)}{pen.offeredKg ? ` · given ${kg(pen.offeredKg)}` : ''}{pen.auto ? ` · ${pen.auto} automatic` : ''}{pen.onMilk ? ` · ${pen.onMilk} kid${pen.onMilk === 1 ? '' : 's'} on milk` : ''}{pen.unplanned ? ` · ${pen.unplanned} not planned${pen.noWeight ? ` (${pen.noWeight} need a weight)` : ''}` : ''}</div>
+                            <div className="text-sm text-ink-soft">{pen.headcount} goats · plan {kg(pen.plannedKg)}{pen.offeredKg ? ` · given ${kg(pen.offeredKg)}` : ''}{pen.day.given ? ` · today ${kg(pen.day.given)} of ${kg(pen.day.planned)}` : ''}{pen.day.balance === 'over' ? ` (over by ${kg(pen.day.diff)})` : ''}{pen.auto ? ` · ${pen.auto} automatic` : ''}{pen.onMilk ? ` · ${pen.onMilk} kid${pen.onMilk === 1 ? '' : 's'} on milk` : ''}{pen.unplanned ? ` · ${pen.unplanned} not planned${pen.noWeight ? ` (${pen.noWeight} need a weight)` : ''}` : ''}</div>
                         </div>
                         <div className="flex items-center gap-1" aria-label="Meals today">{MEALS.map((m) => <span key={m} title={`${meals[m]}: ${STATUS[pen.meals[m]].label}`} className={cx('size-2.5 rounded-full', pen.meals[m] === 'done' ? 'bg-ok-700' : pen.meals[m] === 'late' ? 'bg-watch-400' : pen.meals[m] === 'missed' ? 'bg-crit-500' : 'bg-rule-strong')} />)}</div>
+                        {pen.balance === 'over' || pen.balance === 'short' ? <Chip className={pen.balance === 'over' ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'}>{pen.balance === 'over' ? 'Over' : 'Short'} {kg(Math.abs(pen.diff))}</Chip> : null}
                         <Chip className={STATUS[pen.status].className}>{STATUS[pen.status].label}</Chip>
                     </button>
-                    {open === pen.id ? <PenFeed key={`${pen.id}-${meal}-${pen.lines.map((l) => l.usage?.id).join()}`} pen={pen} meal={meal} items={items} onDone={() => setOpen(null)} /> : null}
+                    {open === pen.id ? <PenFeed key={`${pen.id}-${meal}-${pen.lines.map((l) => `${l.usage?.id}:${l.planned}`).join()}`} pen={pen} meal={meal} items={items} onDone={() => setOpen(null)} /> : null}
                 </section>
             ))}
         </div>

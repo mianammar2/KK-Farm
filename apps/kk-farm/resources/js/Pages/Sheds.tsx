@@ -1,4 +1,4 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/react';
 import { Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
@@ -20,6 +20,7 @@ const penCode = (n: number) => `P${String(n).padStart(2, '0')}`;
 type Editing = { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen } | null;
 
 export default function Sheds({ sheds, types, prefix, recent }: Props) {
+    usePoll(10000, { only: ['sheds', 'recent'] }); // D-086: live
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
     const active = sheds.filter((s) => s.status === 'active');
