@@ -13,10 +13,10 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 1 | Goat Register | Farm Manager · on intake | Scan → Goat Register form | ✅ |
 | 2 | Goat 360 Profile | Manager · any time | Goat page (scan opens it) | 🟡 |
 | 3 | Executive Dashboard | CEO · daily | Dashboard | 🟡 |
-| 4 | Breeding | Breeding Lead · on mating | Breeding | 🟡 |
-| 5 | Pregnancy Checks | Vet · at checks | Breeding → check | 🟡 |
-| 6 | Kidding | Breeding Lead · at birth | Breeding → kidding | 🟡 |
-| 7 | Weaning | Breeding Lead · at weaning | — | ❌ |
+| 4 | Breeding | Breeding Lead · on mating | Breeding → cycle | ✅ D-075 |
+| 5 | Pregnancy Checks | Vet · at checks | Breeding → mating → Pregnancy check | ✅ D-075 |
+| 6 | Kidding | Breeding Lead · at birth | Breeding → Kidding | ✅ D-075 |
+| 7 | Weaning | Breeding Lead · at weaning | Breeding → Weaning | ✅ D-075 |
 | 8 | Weight Log | Supervisor · scheduled | Weight & Growth | 🟡 |
 | 9 | Health Cases | Vet · onset and review | Health → Cases | ✅ D-073 |
 | 10 | Treatments | Vet / staff · each dose | Health → case → Add treatment | ✅ D-073 |
