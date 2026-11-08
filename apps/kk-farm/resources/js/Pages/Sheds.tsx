@@ -10,6 +10,9 @@ type Pen = { id: number; name: string; purpose: string; capacity: number | null;
 type Shed = { id: number; code: string; name: string; status: string; pens: Pen[] };
 type Props = { sheds: Shed[]; recent: Array<{ id: number; goat_id: string; number: string; summary: string; recorded_by: string }> };
 
+/** Same rule as Pen::standardName on the server (D-055): the part after the "Pen" prefix. */
+const penRest = (name: string) => name.replace(/^\s*(pen\b|p(?=\d))[\s\-:_]*/i, '').replace(/[\s\-_]*\bpen\s*$/i, '').trim();
+
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
 type Editing = { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen } | null;
 
@@ -152,7 +155,9 @@ function ShedForm({ shed, onDone }: { shed?: Shed; onDone: () => void }) {
 }
 
 function PenForm({ shed, pen, onDone }: { shed: Shed; pen?: Pen; onDone: () => void }) {
-    const form = useForm({ name: pen?.name ?? '', purpose: pen?.purpose ?? '', capacity: pen?.capacity ? String(pen.capacity) : '' });
+    // D-055: pens are always "Pen …"; the user types only the part after the prefix. A new pen suggests the next number.
+    const nextNumber = String(shed.pens.reduce((max, p) => Math.max(max, Number(penRest(p.name)) || 0), 0) + 1);
+    const form = useForm({ name: pen ? penRest(pen.name) : nextNumber, purpose: pen?.purpose ?? '', capacity: pen?.capacity ? String(pen.capacity) : '' });
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         form.transform((d) => ({ ...d, capacity: d.capacity === '' ? null : Number(d.capacity) }));
@@ -164,7 +169,12 @@ function PenForm({ shed, pen, onDone }: { shed: Shed; pen?: Pen; onDone: () => v
     return (
         <Panel title={pen ? `Edit ${pen.name}` : `Add a pen to ${shed.name}`} description={pen ? `${shed.name} · ${pen.count} goats` : undefined}>
             <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
-                <Field label="Pen name" error={form.errors.name}><input className="field" autoFocus value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Pen A" maxLength={60} required /></Field>
+                <Field label="Pen name" error={form.errors.name} hint={penRest(form.data.name) ? `Saved as “Pen ${penRest(form.data.name).length === 1 ? penRest(form.data.name).toUpperCase() : penRest(form.data.name)}”` : undefined}>
+                    <div className="flex items-stretch">
+                        <span className="grid place-items-center rounded-l-[4px] border border-r-0 border-rule bg-cobalt-100 px-3 text-sm font-semibold text-cobalt-800">Pen</span>
+                        <input className="field rounded-l-none" autoFocus value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="1, 2, A, Kids…" maxLength={55} required aria-label="Pen name after the Pen prefix" />
+                    </div>
+                </Field>
                 <Field label="Used for" error={form.errors.purpose}>
                     <input className="field" list="pen-purposes" value={form.data.purpose} onChange={(e) => form.setData('purpose', e.target.value)} placeholder="e.g. Pregnant does" maxLength={80} required />
                     <datalist id="pen-purposes">{['Breeding bucks', 'Breeding does', 'Pregnant does', 'Lactating does', 'Kids', 'Weaners', 'Growers', 'Fattening', 'Quarantine', 'Sick bay', 'All goats'].map((p) => <option key={p} value={p} />)}</datalist>

@@ -30,6 +30,6 @@ class DatabaseSeeder extends Seeder
         FieldCatalog::seedBreeds();
 
         $shed = Shed::create(['code' => 'SHED-1', 'name' => 'Shed 1', 'status' => 'active']);
-        Pen::create(['shed_id' => $shed->id, 'name' => 'Main pen', 'purpose' => 'All goats']);
+        Pen::create(['shed_id' => $shed->id, 'name' => 'Pen 1', 'purpose' => 'All goats']);
     }
 }

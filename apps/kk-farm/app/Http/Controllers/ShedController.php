@@ -94,8 +94,15 @@ class ShedController extends Controller
 
     private function penData(Request $request, Shed $shed, ?Pen $pen = null): array
     {
+        $request->merge(['name' => Pen::standardName($request->input('name'))]); // D-055
+
         return $request->validate([
-            'name' => ['required', 'string', 'max:60', Rule::unique('pens', 'name')->where('shed_id', $shed->id)->ignore($pen?->id)],
+            'name' => ['required', 'string', 'max:60', function (string $attr, mixed $value, \Closure $fail) use ($shed, $pen) {
+                // Unique within the shed whatever the case: "Pen a" and "Pen A" are the same pen.
+                if (Pen::where('shed_id', $shed->id)->whereRaw('lower(name) = lower(?)', [$value])->when($pen, fn ($q) => $q->whereKeyNot($pen->id))->exists()) {
+                    $fail("$value already exists in {$shed->name}.");
+                }
+            }],
             'purpose' => ['required', 'string', 'max:80'],
             'capacity' => ['nullable', 'integer', 'min:1', 'max:5000'],
         ]) + ['capacity' => null];

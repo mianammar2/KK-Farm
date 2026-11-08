@@ -206,7 +206,7 @@ class FarmRulesTest extends TestCase
         $second = Farm::nextFarmNumber();
 
         $this->assertNotSame($first, $second);
-        $this->assertGreaterThan((int) substr($first, 5), (int) substr($second, 5));
+        $this->assertGreaterThan((int) substr(strrchr($first, '-'), 1), (int) substr(strrchr($second, '-'), 1)); // KK-0099 → KK-0100
     }
 
     public function test_recording_a_kidding_registers_kids_linked_to_both_parents(): void
@@ -279,8 +279,11 @@ class FarmRulesTest extends TestCase
         $this->assertSame('SHED-2', $shed->code);
         $this->assertSame(Tenant::current(), $shed->org_id);
 
-        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'Pen A', 'purpose' => 'Kids', 'capacity' => 40])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'A', 'purpose' => 'Kids', 'capacity' => 40])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'pen a', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
         $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'Pen A', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'pen', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
+        $this->assertSame('Pen A', $shed->pens()->value('name'), 'the Pen prefix is added once');
         $pen = $shed->pens()->firstOrFail();
         $this->assertSame(40, $pen->capacity);
 
