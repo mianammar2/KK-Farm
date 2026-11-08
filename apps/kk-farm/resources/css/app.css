@@ -186,6 +186,18 @@
 .kk-pulse { animation: kk-pulse 1.8s ease-out infinite; will-change: transform, opacity; }
 .kk-fast .kk-ring { animation-duration: 1.1s; }
 .kk-fast .kk-sweep { animation-duration: 1s; }
+/* D-089: list animations. Rows rise in (opacity + transform only), cards lift on hover, critical dots beat. */
+@keyframes kk-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes kk-beat { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.45); opacity: 0.55; } }
+.kk-rise { animation: kk-rise 0.28s ease-out both; }
+.kk-beat { animation: kk-beat 1.2s ease-in-out infinite; }
+.kk-pill { transition: background-color 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.kk-lift { transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, border-color 0.15s; }
+@media (hover: hover) { .kk-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 16px -8px rgb(22 61 34 / 0.35); border-color: var(--color-turq-600); } }
+/* The gun: one quick fade, no lifting; the beat stays (one small dot). */
+.lite .kk-rise { animation: kk-rise 0.12s ease-out both; }
+.lite .kk-lift:hover { transform: none; box-shadow: none; }
+
 /* On the gun the radar stands still while waiting (no work for the processor) and animates only while reading. */
 .lite .kk-sweep { display: none; }
 .lite .kk-pulse { display: none; }

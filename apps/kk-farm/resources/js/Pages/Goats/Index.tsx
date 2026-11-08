@@ -1,12 +1,34 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Download, LayoutGrid, List, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { inScannerApp } from '../../lib/native';
 import GoatPortrait from '../../components/GoatPortrait';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
 type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string> };
 type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen';
+type Goat = Props['goats'][number];
+
+/**
+ * D-089: one colour per status, used for the filter pills, the bar on each row and the card edge.
+ * The most urgent status wins: left farm, critical, in treatment, watch, then pregnant, lactating, healthy.
+ */
+const TONES = {
+    critical: { label: 'Critical', bar: 'bg-crit-500', dot: 'bg-crit-500', pill: 'border-crit-500 bg-crit-100 text-crit-700', row: 'bg-crit-100/40' },
+    treatment: { label: 'In treatment', bar: 'bg-treat-400', dot: 'bg-treat-400', pill: 'border-treat-400 bg-treat-100 text-treat-700', row: 'bg-treat-100/30' },
+    watch: { label: 'Watch', bar: 'bg-watch-400', dot: 'bg-watch-400', pill: 'border-watch-400 bg-watch-100 text-watch-700', row: '' },
+    pregnant: { label: 'Pregnant', bar: 'bg-manganese-600', dot: 'bg-manganese-600', pill: 'border-manganese-600 bg-manganese-100 text-manganese-600', row: '' },
+    lactating: { label: 'Lactating', bar: 'bg-turq-600', dot: 'bg-turq-600', pill: 'border-turq-600 bg-turq-100 text-turq-800', row: '' },
+    healthy: { label: 'Healthy', bar: 'bg-ok-700', dot: 'bg-ok-700', pill: 'border-ok-700 bg-ok-100 text-ok-700', row: '' },
+    left: { label: 'Left farm', bar: 'bg-rule-strong', dot: 'bg-rule-strong', pill: 'border-rule-strong bg-glaze text-ink-soft', row: 'opacity-70' },
+} as const;
+type Tone = keyof typeof TONES;
+const toneOf = (g: Goat): Tone => g.status !== 'active' ? 'left' : g.health !== 'healthy' ? g.health : g.repro === 'pregnant' ? 'pregnant' : g.repro === 'lactating' ? 'lactating' : 'healthy';
+const LITE = inScannerApp();
+const PAGE = LITE ? 25 : 60; // rows drawn at once; the gun draws fewer (D-089)
+/** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
+const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
 
 export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
     const url = usePage().url;
@@ -19,7 +41,14 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
     const [pen, setPen] = useState('');
     const [health, setHealth] = useState('');
     const [status, setStatus] = useState('active');
-    const [view, setView] = useState<'table' | 'cards'>('table');
+    // Phones and the gun open on cards (a wide table needs sideways scrolling there); the choice is remembered.
+    const [view, setViewState] = useState<'table' | 'cards'>(() => {
+        try { const v = localStorage.getItem('kk.goats.view'); if (v === 'table' || v === 'cards') return v; } catch { /* storage off */ }
+        return LITE || window.matchMedia('(max-width: 640px)').matches ? 'cards' : 'table';
+    });
+    const setView = (v: 'table' | 'cards') => { setViewState(v); try { localStorage.setItem('kk.goats.view', v); } catch { /* storage off */ } };
+    const [tone, setTone] = useState<Tone | ''>('');
+    const [limit, setLimit] = useState(PAGE);
     const [sort, setSort] = useState<{ key: SortKey; up: boolean }>({ key: 'number', up: true });
     const [adding, setAdding] = useState(false);
 
@@ -28,7 +57,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
         const list = goats.filter((g) =>
             (!q || [g.number, g.name, g.tag, g.breed].some((v) => v?.toLowerCase().includes(q))) &&
             (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || g.health === health) &&
-            (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')),
+            (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone),
         );
         const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : (g[sort.key] ?? '') as string);
         return [...list].sort((a, b) => {
@@ -36,7 +65,10 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
             return sort.up ? order : -order;
         });
-    }, [goats, query, show, breed, sex, pen, health, status, sort]);
+    }, [goats, query, show, breed, sex, pen, health, status, sort, tone]);
+    const counts = useMemo(() => goats.reduce((c, g) => { const t = toneOf(g); c[t] = (c[t] ?? 0) + 1; return c; }, {} as Partial<Record<Tone, number>>), [goats]);
+    const shown = rows.slice(0, limit);
+    const pickTone = (t: Tone | '') => { setTone(t); setLimit(PAGE); if (t === 'left') setStatus('all'); };
 
     const sortBy = (key: SortKey) => setSort((s) => ({ key, up: s.key === key ? !s.up : true }));
     const Th = ({ id, label }: { id: SortKey; label: string }) => (
@@ -47,7 +79,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
             </button>
         </th>
     );
-    const clear = () => { setQuery(''); setShow(''); setBreed(''); setSex(''); setPen(''); setHealth(''); setStatus('active'); };
+    const clear = () => { setQuery(''); setShow(''); setBreed(''); setSex(''); setPen(''); setHealth(''); setStatus('active'); setTone(''); };
 
     return (
         <>
@@ -73,6 +105,19 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
             ) : null}
 
             {adding ? <AddGoat breeds={breeds} pens={pens} onDone={() => setAdding(false)} /> : null}
+
+            {/* D-089: status pills, each with its colour and count; tap to filter. */}
+            <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by status">
+                <button type="button" aria-pressed={!tone} onClick={() => pickTone('')} className={cx('kk-pill shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold', !tone ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900')}>
+                    All <span className="tabular-nums opacity-75">{goats.filter((g) => g.status === 'active').length}</span>
+                </button>
+                {(Object.keys(TONES) as Tone[]).filter((t) => counts[t]).map((t) => (
+                    <button key={t} type="button" aria-pressed={tone === t} onClick={() => pickTone(tone === t ? '' : t)}
+                        className={cx('kk-pill flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold', tone === t ? `${TONES[t].pill} ring-2 ring-offset-1 ring-current` : 'border-rule bg-tile text-cobalt-900')}>
+                        <span className={cx('size-2 rounded-full', TONES[t].dot, t === 'critical' && 'kk-beat')} aria-hidden />{TONES[t].label} <span className="tabular-nums opacity-75">{counts[t]}</span>
+                    </button>
+                ))}
+            </div>
 
             <Panel flush>
                 <div className="flex flex-wrap items-center gap-2 border-b border-rule p-3">
@@ -110,36 +155,52 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                         <table className="data-table min-w-[820px]">
                             <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Sex</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current tag</th></tr></thead>
                             <tbody>
-                                {rows.map((g) => (
-                                    <tr key={g.id}>
-                                        <td><GoatLabel goat={g} /></td>
-                                        <td>{g.breed}</td>
-                                        <td><SexIcon sex={g.sex} /></td>
-                                        <td className="whitespace-nowrap">{g.age}</td>
-                                        <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : 'None yet'}</td>
-                                        <td>{g.pen ?? '—'}</td>
-                                        <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">Left farm</span>}<ReproChip repro={g.repro} /></div></td>
-                                        <td className="text-sm text-ink-soft">{g.tag ?? 'No open tag'}</td>
-                                    </tr>
-                                ))}
+                                {shown.map((g, i) => {
+                                    const t = toneOf(g);
+                                    return (
+                                        <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors hover:bg-glaze', TONES[t].row)}>
+                                            <td className="relative">
+                                                <span aria-hidden className={cx('absolute inset-y-1.5 left-0 w-1 rounded-r-full', TONES[t].bar)} />
+                                                <div className="flex items-center gap-1.5 pl-1"><GoatLabel goat={g} />{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
+                                            </td>
+                                            <td>{g.breed}</td>
+                                            <td><SexIcon sex={g.sex} /></td>
+                                            <td className="whitespace-nowrap">{g.age}</td>
+                                            <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
+                                            <td className="font-mono text-sm">{g.pen ?? '—'}</td>
+                                            <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">Left farm</span>}<ReproChip repro={g.repro} /></div></td>
+                                            <td className="text-sm text-ink-soft">{g.tag ? <span className="font-mono">{g.tag}</span> : 'No tag'}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 ) : (
-                    <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                        {rows.map((g) => (
-                            <Link key={g.id} href={`/goats/${g.id}`} className="flex gap-3 rounded-tile border border-rule p-2.5 transition-colors hover:border-turq-600">
-                                {g.photo ? <img src={`/media/${g.photo}`} alt="" loading="lazy" className="size-20 rounded-tile object-cover" /> : <GoatPortrait number={g.number} coat={g.coat} sex={g.sex} size={80} />}
-                                <div className="min-w-0">
-                                    <div className="truncate font-semibold text-cobalt-900">{g.name ?? 'Unnamed'}</div>
-                                    <div className="truncate text-sm text-ink-soft">{g.number} · {g.breed}</div>
-                                    <div className="truncate text-sm text-ink-soft">{g.age}{g.weight ? ` · ${g.weight} KG` : ''}</div>
-                                    <div className="mt-1 flex flex-wrap gap-1"><HealthChip health={g.health} /><ReproChip repro={g.repro} /></div>
-                                </div>
-                            </Link>
-                        ))}
+                    <div className="grid gap-2 p-2 sm:grid-cols-2 sm:gap-3 sm:p-3 lg:grid-cols-3 2xl:grid-cols-4">
+                        {shown.map((g, i) => {
+                            const t = toneOf(g);
+                            return (
+                                <Link key={g.id} href={`/goats/${g.id}`} style={rise(i)}
+                                    className={cx('kk-rise kk-lift relative flex items-center gap-3 overflow-hidden rounded-tile border border-rule bg-tile py-2 pr-2.5 pl-3.5', TONES[t].row)}>
+                                    <span aria-hidden className={cx('absolute inset-y-0 left-0 w-1.5', TONES[t].bar)} />
+                                    {g.photo ? <img src={`/media/${g.photo}`} alt="" loading="lazy" className="size-14 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={g.number} coat={g.coat} sex={g.sex} size={56} />}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5"><span className="truncate font-semibold text-cobalt-900">{g.name ?? 'Unnamed'}</span><SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
+                                        <div className="truncate font-mono text-xs text-ink-soft">{g.number}</div>
+                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.age}{g.weight ? ` · ${g.weight} KG` : ''}</div>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">Left farm</span>}<ReproChip repro={g.repro} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
+                                    </div>
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
+                {rows.length > shown.length ? (
+                    <button type="button" onClick={() => setLimit((l) => l + PAGE)} className="w-full border-t border-rule px-4 py-3 text-sm font-semibold text-cobalt-800 hover:bg-glaze">
+                        Show {Math.min(PAGE, rows.length - shown.length)} more <span className="font-normal text-ink-soft">({rows.length - shown.length} left)</span>
+                    </button>
+                ) : null}
             </Panel>
         </>
     );
