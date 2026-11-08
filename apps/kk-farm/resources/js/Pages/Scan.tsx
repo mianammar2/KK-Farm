@@ -33,7 +33,7 @@ export default function Scan({ result, samples, goats }: Props) {
         <div>
             <div className="mb-1 text-sm text-ink-soft">{label}</div>
             <div className="flex flex-wrap gap-1.5">
-                {codes.map((c) => <button key={c} type="button" onClick={() => scan(c)} className="min-h-9 rounded-[4px] border border-rule bg-tile px-2 text-sm hover:border-turq-600">{c}</button>)}
+                {codes.map((c) => <button key={c} type="button" onClick={() => scan(c)} className="min-h-9 max-w-full break-all rounded-[4px] border border-rule bg-tile px-2 py-1 text-left font-mono text-sm hover:border-turq-600">{c}</button>)}
                 {!codes.length ? <span className="text-sm text-ink-faint">None available</span> : null}
             </div>
         </div>
