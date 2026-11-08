@@ -387,7 +387,7 @@ class GoatRegistrationTest extends TestCase
     {
         $manager = $this->user('manager');
         $cases = [
-            ['KID-M', 'male', now()->subMonths(2), null, 'kid', 'male_kid'],
+            ['KID-M', 'male', now()->subMonth(), null, 'kid', 'male_kid'],
             ['GRW-F', 'female', now()->subMonths(8), 'replacement', 'grower', 'replacement_female'],
             ['ADL-F', 'female', now()->subYears(2), 'breeding', 'adult', 'breeding_female'],
             ['FAT-M', 'male', now()->subMonths(9), 'fattening', 'grower', 'fattening_male'],
@@ -404,14 +404,14 @@ class GoatRegistrationTest extends TestCase
 
     public function test_a_kid_grows_into_a_grower_and_an_adult_by_itself_with_the_farms_age_boundaries(): void
     {
-        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['tag_id' => 'KID-1', 'sex' => 'female', 'birth_date' => now()->subMonths(2)->toDateString()]));
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['tag_id' => 'KID-1', 'sex' => 'female', 'birth_date' => now()->subMonth()->toDateString()]));
         $kid = Animal::where('farm_number', 'KID-1')->sole();
         $this->assertSame(['kid', 'female_kid'], [$kid->effectiveAge(), $kid->effectiveCategory()]);
 
-        $this->travel(2)->months();
-        $this->assertSame(['grower', 'growing_female'], [$kid->effectiveAge(), $kid->effectiveCategory()], 'KK Farms default: grower from 3 months');
-        $this->travel(9)->months();
-        $this->assertSame(['adult', 'breeding_female'], [$kid->effectiveAge(), $kid->effectiveCategory()], 'adult from 12 months');
+        $this->travel(1)->months();
+        $this->assertSame(['grower', 'growing_female'], [$kid->effectiveAge(), $kid->effectiveCategory()], 'KK Farms (D-067): grower from 2 months');
+        $this->travel(12)->months();
+        $this->assertSame(['adult', 'breeding_female'], [$kid->effectiveAge(), $kid->effectiveCategory()], 'adult from 14 months');
     }
 
     public function test_the_owner_sets_the_farms_age_boundaries(): void

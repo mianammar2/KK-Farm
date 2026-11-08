@@ -61,7 +61,7 @@ final class FieldCatalog
             ['key' => 'dam_id', 'label' => 'Dam Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'breed_purity', 'label' => 'Breed Purity', 'type' => 'select', 'section' => 'Parentage', 'help' => 'Set automatically when both parents are known.'],
             ['key' => 'cross_breeds', 'label' => 'Cross Details', 'type' => 'text', 'section' => 'Parentage', 'help' => 'For a crossbreed, for example Beetal × Teddy.'],
-            ['key' => 'age_category', 'label' => 'Age Category', 'type' => 'select', 'section' => 'Classification', 'help' => 'Worked out from the birth date if left empty.'],
+            ['key' => 'age_category', 'label' => 'Age Category', 'type' => 'select', 'section' => 'Classification', 'help' => 'Only when the birth date is unknown. Otherwise worked out from it and updated as the goat ages.'],
             ['key' => 'animal_purpose', 'label' => 'Animal Purpose', 'type' => 'select', 'section' => 'Classification'],
             ['key' => 'animal_class', 'label' => 'Goat Category', 'type' => 'select', 'section' => 'Classification', 'help' => 'Suggested from gender, age and purpose if left empty.'],
             ['key' => 'repro_status', 'label' => 'Female Status', 'type' => 'select', 'section' => 'Classification', 'help' => 'Reproductive status. Female goats only.'],

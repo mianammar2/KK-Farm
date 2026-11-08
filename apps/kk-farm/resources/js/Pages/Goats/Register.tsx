@@ -57,10 +57,12 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     // D-046: Female Status only for females, Kid Stage only for kids.
     // D-053: only a farm-born goat must have a birth date.
     const isRequired = (f: FieldDef) => (f.key === 'birth_date' ? form.data.origin === 'born_on_farm' : f.required);
-    const age = form.data.age_category || ageCategory(form.data.birth_date, classification);
+    // D-067: with a birth date the age category is automatic (and moves on as the goat ages); otherwise chosen by hand.
+    const age = form.data.birth_date ? ageCategory(form.data.birth_date, classification) : form.data.age_category;
     const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
     const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid)
-        || f.key === 'birth_date_is_estimate' // D-065: set automatically (estimate for bought goats, exact for farm-born)
+        || f.key === 'birth_date_is_estimate'
+        || (f.key === 'age_category' && Boolean(form.data.birth_date)) // D-065: set automatically (estimate for bought goats, exact for farm-born)
         || (farmBorn && ['acquired_on', 'source_farm', 'purchase_cost_pkr'].includes(f.key))
         || (!farmBorn && f.key === 'birth_weight_kg')
         // D-064: parentage is known only for goats born on the farm.

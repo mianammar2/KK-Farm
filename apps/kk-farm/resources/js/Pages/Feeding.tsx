@@ -7,15 +7,15 @@ type Meal = 'morning' | 'midday' | 'evening';
 type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
 type Usage = { id: string; offered: number; refused: number | null; by: string; at: string };
 type Line = { feedItemId: number; code: string; name: string; planned: number; usage: Usage | null };
-type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
-type Plan = { id: number; from: string; fromIso: string; status: string; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number }>; kgPerHead: number; costPerHead: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
+type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
+type Plan = { id: number; from: string; fromIso: string; status: string; basis: 'per_head' | 'body_weight'; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number | null; share: number | null }>; kgPerHead: number; costPerHead: number; costPerKg: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
 type Group = { id: number; name: string; criteria: string | null; head: number; current: Plan | null; upcoming: Plan | null; draft: Plan | null };
 type Item = { id: number; code: string; name: string; category: string; costPerKg: number; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number; value: number; status: 'ok' | 'low' | 'out' | 'negative'; daysLeft: number | null };
 type Movement = { id: number; on: string; item: string; type: string; qty: number; rate: number | null; party: string | null; reference: string | null; by: string };
 type History = { id: string; on: string; meal: Meal; pen: string; feed: string; headcount: number; planned: number; offered: number; refused: number | null; consumed: number; perHead: number | null; cost: number; by: string; corrected: boolean; off: boolean };
 type Props = {
     today: string; meal: Meal; meals: Record<Meal, string>; mealTimes: Record<Meal, string>;
-    settings: { late: number; window: number; tolerance: number; timezone: string };
+    settings: { late: number; window: number; tolerance: number; timezone: string; kidPct: number | null; growerPct: number; adultPct: number };
     board: PenRow[]; groups: Group[]; items: Item[]; movements: Movement[]; history: History[];
     categories: Record<string, string>; movementTypes: Record<string, { label: string; direction: number }>;
     can: { store: boolean; plan: boolean; approve: boolean; settings: boolean };
@@ -55,7 +55,7 @@ export default function Feeding(props: Props) {
         { id: 'rations', label: 'Rations', count: groups.filter((g) => g.draft).length || undefined },
         { id: 'store', label: 'Feed store', count: lowStock || undefined },
         { id: 'history', label: 'History' },
-        ...(can.settings ? [{ id: 'times', label: 'Meal times' }] : []),
+        ...(can.settings ? [{ id: 'times', label: 'Settings' }] : []),
     ];
 
     return (
@@ -102,7 +102,7 @@ function FeedNow({ meal, meals, mealTimes, board, items, groups, onTab }: Props 
                     <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open === pen.id} onClick={() => setOpen(open === pen.id ? null : pen.id)}>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-baseline gap-x-2"><span className="font-mono font-semibold text-cobalt-900">{pen.name}</span></div>
-                            <div className="text-sm text-ink-soft">{pen.headcount} goats · plan {kg(pen.plannedKg)}{pen.offeredKg ? ` · given ${kg(pen.offeredKg)}` : ''}{pen.unplanned ? ` · ${pen.unplanned} without ration` : ''}</div>
+                            <div className="text-sm text-ink-soft">{pen.headcount} goats · plan {kg(pen.plannedKg)}{pen.offeredKg ? ` · given ${kg(pen.offeredKg)}` : ''}{pen.unplanned ? ` · ${pen.unplanned} not planned${pen.noWeight ? ` (${pen.noWeight} need a weight)` : ''}` : ''}</div>
                         </div>
                         <div className="flex items-center gap-1" aria-label="Meals today">{MEALS.map((m) => <span key={m} title={`${meals[m]}: ${STATUS[pen.meals[m]].label}`} className={cx('size-2.5 rounded-full', pen.meals[m] === 'done' ? 'bg-ok-700' : pen.meals[m] === 'late' ? 'bg-watch-400' : pen.meals[m] === 'missed' ? 'bg-crit-500' : 'bg-rule-strong')} />)}</div>
                         <Chip className={STATUS[pen.status].className}>{STATUS[pen.status].label}</Chip>
@@ -171,14 +171,14 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
 
 // ---------- Rations ----------
 
-function Rations({ groups, items, can }: Props) {
+function Rations({ groups, items, can, settings }: Props) {
     const [editing, setEditing] = useState<Group | null>(null);
     const approve = (plan: Plan) => router.post(`/feeding/plans/${plan.id}/approve`, {}, { preserveScroll: true });
 
     return (
         <div className="space-y-3">
             <p className="text-sm text-ink-soft">Each goat is in a feeding group automatically, from its category, female status and health. A ration is kg per goat per day, split over the meals. A veterinarian approves each ration before it is used.</p>
-            {editing ? <RationForm key={editing.id} group={editing} items={items} onDone={() => setEditing(null)} /> : null}
+            {editing ? <RationForm key={editing.id} group={editing} items={items} settings={settings} onDone={() => setEditing(null)} /> : null}
             {groups.map((g) => (
                 <Panel key={g.id} title={`${g.name} · ${g.head} goats`} description={g.criteria ?? undefined}
                     actions={can.plan && editing?.id !== g.id ? <Button type="button" variant="secondary" onClick={() => setEditing(g)}>{g.draft ? 'Edit draft' : g.current ? 'Change ration' : 'Set ration'}</Button> : null}>
@@ -200,24 +200,28 @@ function PlanView({ plan, label }: { plan: Plan; label: string }) {
     return (
         <div>
             <div className="mb-1 flex flex-wrap items-center gap-2 text-sm"><Chip className={plan.status === 'approved' ? 'bg-ok-100 text-ok-700' : 'bg-watch-100 text-watch-700'}>{label}</Chip>
-                <span className="text-ink-soft">{kg(plan.kgPerHead)} per goat per day · {pkr(plan.costPerHead)} · meals {plan.split.morning}/{plan.split.midday}/{plan.split.evening}%</span></div>
-            <ul className="flex flex-wrap gap-1.5">{plan.lines.map((l) => <li key={l.feedItemId} className="rounded-[4px] border border-rule px-2 py-1 text-sm"><Wheat size={13} className="mr-1 inline text-turq-700" aria-hidden />{l.name} <span className="font-semibold">{l.kg} kg</span></li>)}</ul>
+                <span className="text-ink-soft">{plan.basis === 'body_weight' ? `% of body weight a day · ${pkr(plan.costPerKg)} per kg of mix` : `${kg(plan.kgPerHead)} per goat per day · ${pkr(plan.costPerHead)}`} · meals {plan.split.morning}/{plan.split.midday}/{plan.split.evening}%</span></div>
+            <ul className="flex flex-wrap gap-1.5">{plan.lines.map((l) => <li key={l.feedItemId} className="rounded-[4px] border border-rule px-2 py-1 text-sm"><Wheat size={13} className="mr-1 inline text-turq-700" aria-hidden />{l.name} <span className="font-semibold">{plan.basis === 'body_weight' ? `${l.share}%` : `${l.kg} kg`}</span></li>)}</ul>
             {plan.approvedBy ? <p className="mt-1 text-xs text-ink-faint">Approved by {plan.approvedBy} on {plan.approvedOn}</p> : null}
             {plan.notes ? <p className="mt-1 text-sm text-ink-soft">{plan.notes}</p> : null}
         </div>
     );
 }
 
-function RationForm({ group, items, onDone }: { group: Group; items: Item[]; onDone: () => void }) {
+function RationForm({ group, items, settings, onDone }: { group: Group; items: Item[]; settings: Props['settings']; onDone: () => void }) {
     const base = group.draft ?? group.current;
     const todayIso = new Date().toISOString().slice(0, 10);
     const form = useForm({
         feeding_group_id: group.id,
         effective_from: group.draft?.fromIso ?? todayIso,
         split_morning: base?.split.morning ?? 40, split_midday: base?.split.midday ?? 20, split_evening: base?.split.evening ?? 40,
-        lines: base?.lines.map((l) => ({ feed_item_id: l.feedItemId, kg_per_head: String(l.kg) })) ?? [{ feed_item_id: items.find((i) => i.active)?.id ?? 0, kg_per_head: '' }],
+        // D-067: fixed kg per goat, or a % of each goat's body weight split over the feeds by share.
+        basis: (base?.basis ?? 'body_weight') as 'per_head' | 'body_weight',
+        lines: base?.lines.map((l) => ({ feed_item_id: l.feedItemId, kg_per_head: String(l.kg ?? l.share ?? '') })) ?? [{ feed_item_id: items.find((i) => i.active)?.id ?? 0, kg_per_head: '' }],
         notes: group.draft?.notes ?? '',
     });
+    const byWeight = form.data.basis === 'body_weight';
+    const shareTotal = form.data.lines.reduce((s, l) => s + Number(l.kg_per_head || 0), 0);
     const errors = form.errors as Record<string, string>;
     const total = Number(form.data.split_morning) + Number(form.data.split_midday) + Number(form.data.split_evening);
     const setLine = (i: number, key: 'feed_item_id' | 'kg_per_head', v: string) => form.setData('lines', form.data.lines.map((l, j) => (j === i ? { ...l, [key]: key === 'feed_item_id' ? Number(v) : v } : l)));
@@ -228,18 +232,31 @@ function RationForm({ group, items, onDone }: { group: Group; items: Item[]; onD
 
     return (
         <Panel title={`Ration for ${group.name}`} description="Saved as a draft. It is used once a veterinarian approves it.">
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/feeding/plans', { preserveScroll: true, onSuccess: onDone }); }} className="space-y-3">
+            <form onSubmit={(e) => {
+                e.preventDefault();
+                form.transform((d) => ({ ...d, lines: d.lines.map((l) => (d.basis === 'body_weight' ? { feed_item_id: l.feed_item_id, share_pct: l.kg_per_head } : { feed_item_id: l.feed_item_id, kg_per_head: l.kg_per_head })) }));
+                form.post('/feeding/plans', { preserveScroll: true, onSuccess: onDone });
+            }} className="space-y-3">
+                <Field label="How much each goat gets">
+                    <select className="field" value={form.data.basis} onChange={(e) => form.setData('basis', e.target.value as 'per_head' | 'body_weight')}>
+                        <option value="body_weight">% of body weight a day (growers {settings.growerPct}%, adults {settings.adultPct}%{settings.kidPct ? `, kids ${settings.kidPct}%` : ''})</option>
+                        <option value="per_head">Fixed kg per goat a day</option>
+                    </select>
+                </Field>
+                {byWeight ? <p className="text-sm text-ink-soft">Each goat gets its latest weight × the % for its age, split over the feeds below by share. A goat needs a weight to be planned.</p> : null}
                 <div className="space-y-2">
                     {form.data.lines.map((l, i) => (
                         <div key={i} className="grid grid-cols-[minmax(0,1fr)_7rem_auto] items-end gap-2">
                             <Field label={i === 0 ? 'Feed' : ''} error={errors[`lines.${i}.feed_item_id`]}><select className="field" value={l.feed_item_id} onChange={(e) => setLine(i, 'feed_item_id', e.target.value)}>{items.filter((it) => it.active || it.id === l.feed_item_id).map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}</select></Field>
-                            <Field label={i === 0 ? 'kg / goat / day' : ''} error={errors[`lines.${i}.kg_per_head`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.001" value={l.kg_per_head} onChange={(e) => setLine(i, 'kg_per_head', e.target.value)} /></Field>
+                            <Field label={i === 0 ? (byWeight ? 'Share %' : 'kg / goat / day') : ''} error={errors[`lines.${i}.kg_per_head`] ?? errors[`lines.${i}.share_pct`]}><input className="field" type="number" inputMode="decimal" min={0} step={byWeight ? '1' : '0.001'} value={l.kg_per_head} onChange={(e) => setLine(i, 'kg_per_head', e.target.value)} /></Field>
                             <button type="button" aria-label="Remove feed" className="mb-1 grid size-11 place-items-center rounded-tile text-ink-soft hover:bg-crit-100 hover:text-crit-700" onClick={() => form.setData('lines', form.data.lines.filter((_, j) => j !== i))}><Trash2 size={16} aria-hidden /></button>
                         </div>
                     ))}
                     {errors.lines ? <p className="text-sm text-crit-700">{errors.lines}</p> : null}
                     <Button type="button" variant="quiet" onClick={() => form.setData('lines', [...form.data.lines, { feed_item_id: items.find((it) => it.active && !form.data.lines.some((x) => x.feed_item_id === it.id))?.id ?? items[0].id, kg_per_head: '' }])}><Plus size={15} className="mr-1 inline" aria-hidden />Add feed</Button>
-                    <p className="text-sm text-ink-soft">{kg(perHead)} per goat per day · {pkr(cost)} per goat per day · {pkr(cost * group.head)} a day for {group.head} goats</p>
+                    {byWeight
+                        ? <p className={cx('text-sm', Math.abs(shareTotal - 100) < 0.01 ? 'text-ok-700' : 'text-crit-700')}>Shares add up to {shareTotal}%{Math.abs(shareTotal - 100) < 0.01 ? '' : ' (must be 100%)'} · {pkr(cost / 100)} per kg of the mix. Example: a 30 kg adult gets {kg(30 * settings.adultPct / 100)} a day.</p>
+                        : <p className="text-sm text-ink-soft">{kg(perHead)} per goat per day · {pkr(cost)} per goat per day · {pkr(cost * group.head)} a day for {group.head} goats</p>}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                     {MEALS.map((m) => (
@@ -253,7 +270,7 @@ function RationForm({ group, items, onDone }: { group: Group; items: Item[]; onD
                     <Field label="Starts on" error={errors.effective_from}><input className="field" type="date" value={form.data.effective_from} onChange={(e) => form.setData('effective_from', e.target.value)} /></Field>
                     <Field label="Notes" error={errors.notes}><input className="field" value={form.data.notes} onChange={(e) => form.setData('notes', e.target.value)} placeholder="e.g. nutritionist advice" /></Field>
                 </div>
-                <div className="flex gap-2"><Button type="submit" disabled={form.processing || total !== 100}>Save draft</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
+                <div className="flex gap-2"><Button type="submit" disabled={form.processing || total !== 100 || (byWeight && Math.abs(shareTotal - 100) >= 0.01)}>Save draft</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
             </form>
         </Panel>
     );
@@ -389,16 +406,22 @@ function HistoryTab({ history, meals }: Props) {
 // ---------- Meal times ----------
 
 function MealTimes({ mealTimes, settings, meals }: Props) {
-    const form = useForm({ morning: mealTimes.morning, midday: mealTimes.midday, evening: mealTimes.evening, late: settings.late, window: settings.window, tolerance: settings.tolerance });
+    const form = useForm({ morning: mealTimes.morning, midday: mealTimes.midday, evening: mealTimes.evening, late: settings.late, window: settings.window, tolerance: settings.tolerance,
+        kid_pct: settings.kidPct === null ? '' : String(settings.kidPct), grower_pct: String(settings.growerPct), adult_pct: String(settings.adultPct) });
     const errors = form.errors as Record<string, string>;
 
     return (
-        <Panel title="Meal times" description={`Feeding is marked late or missed from these times (${settings.timezone}).`} className="max-w-xl">
+        <Panel title="Feeding settings" description={`Meal times mark feeding late or missed (${settings.timezone}). Intake % is used by body-weight rations.`} className="max-w-xl">
             <form onSubmit={(e) => { e.preventDefault(); form.post('/feeding/settings', { preserveScroll: true }); }} className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">{MEALS.map((m) => <Field key={m} label={meals[m]} error={errors[m]}><input className="field" type="time" value={form.data[m]} onChange={(e) => form.setData(m, e.target.value)} /></Field>)}</div>
                 <Field label="Late after (minutes)" error={errors.late} hint="Feed given this long after the meal time counts as late."><input className="field" type="number" min={5} max={240} value={form.data.late} onChange={(e) => form.setData('late', Number(e.target.value))} /></Field>
                 <Field label="Missed after (minutes)" error={errors.window} hint="With nothing recorded this long after the meal time, the meal is missed."><input className="field" type="number" min={30} max={720} value={form.data.window} onChange={(e) => form.setData('window', Number(e.target.value))} /></Field>
                 <Field label="Flag when given differs from plan by more than (%)" error={errors.tolerance}><input className="field" type="number" min={1} max={50} value={form.data.tolerance} onChange={(e) => form.setData('tolerance', Number(e.target.value))} /></Field>
+                <div className="grid grid-cols-3 gap-2">
+                    <Field label="Kid % / day" error={errors.kid_pct} hint="Empty: kids not fed by weight"><input className="field" type="number" inputMode="decimal" step="0.1" min={0} value={form.data.kid_pct} onChange={(e) => form.setData('kid_pct', e.target.value)} /></Field>
+                    <Field label="Grower % / day" error={errors.grower_pct}><input className="field" type="number" inputMode="decimal" step="0.1" min={0} value={form.data.grower_pct} onChange={(e) => form.setData('grower_pct', e.target.value)} /></Field>
+                    <Field label="Adult % / day" error={errors.adult_pct}><input className="field" type="number" inputMode="decimal" step="0.1" min={0} value={form.data.adult_pct} onChange={(e) => form.setData('adult_pct', e.target.value)} /></Field>
+                </div>
                 <Button type="submit" disabled={form.processing}>Save</Button>
             </form>
         </Panel>

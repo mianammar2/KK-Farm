@@ -40,9 +40,9 @@ final class Classification
     public const AGE_CATEGORIES = ['kid' => 'Kid', 'grower' => 'Grower', 'adult' => 'Adult'];
 
     /** Default months at which a goat counts as a grower, then an adult (KK Farms). Each farm can change them. */
-    public const GROWER_FROM_MONTHS = 3;
+    public const GROWER_FROM_MONTHS = 2; // D-067: kid until 2 months
 
-    public const ADULT_FROM_MONTHS = 12;
+    public const ADULT_FROM_MONTHS = 14; // D-067: grower 2–14 months, adult from 14
 
     /** @var array<string, array{0: int, 1: int}> */
     private static array $cache = [];

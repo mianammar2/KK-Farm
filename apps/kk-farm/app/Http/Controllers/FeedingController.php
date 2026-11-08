@@ -54,14 +54,15 @@ class FeedingController extends Controller
             'meal' => $meal,
             'meals' => Feed::MEALS,
             'mealTimes' => Feed::mealTimes($org),
-            'settings' => ['late' => $org->meal_late_minutes, 'window' => $org->meal_window_minutes, 'tolerance' => $org->feed_tolerance_pct, 'timezone' => $org->timezone],
+            'settings' => ['late' => $org->meal_late_minutes, 'window' => $org->meal_window_minutes, 'tolerance' => $org->feed_tolerance_pct, 'timezone' => $org->timezone,
+                'kidPct' => $org->kid_intake_pct !== null ? (float) $org->kid_intake_pct : null, 'growerPct' => (float) $org->grower_intake_pct, 'adultPct' => (float) $org->adult_intake_pct],
             'board' => $board->map(function (array $meals, int $penId) use ($pens, $meal, $line) {
                 $m = $meals[$meal];
                 $rows = $m['rows']->keyBy('feed_item_id');
                 $ids = collect(array_keys($m['lines']))->merge($rows->keys())->unique();
 
                 return [
-                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'],
+                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'],
                     'plannedKg' => $m['plannedKg'], 'offeredKg' => round($m['rows']->sum('offered_kg'), 2), 'status' => $m['status'],
                     'meals' => collect($meals)->map(fn ($x) => $x['status']),
                     'lines' => $ids->map(fn ($id) => $line($id, (float) ($m['lines'][$id] ?? 0), $rows[$id] ?? null))->values(),
@@ -102,11 +103,12 @@ class FeedingController extends Controller
         $inForce = Feed::plansOn($today);
         $head = Feed::groupIds(\App\Models\Animal::active()->get())->countBy();
         $show = fn (?RationPlan $p) => $p ? [
-            'id' => $p->id, 'from' => $p->effective_from->format('j M Y'), 'fromIso' => $p->effective_from->toDateString(), 'status' => $p->status,
+            'id' => $p->id, 'from' => $p->effective_from->format('j M Y'), 'fromIso' => $p->effective_from->toDateString(), 'status' => $p->status, 'basis' => $p->basis,
             'split' => ['morning' => $p->split_morning, 'midday' => $p->split_midday, 'evening' => $p->split_evening],
-            'lines' => $p->lines->map(fn ($l) => ['feedItemId' => $l->feed_item_id, 'name' => $l->item->name, 'code' => $l->item->code, 'kg' => $l->kg_per_head]),
+            'lines' => $p->lines->map(fn ($l) => ['feedItemId' => $l->feed_item_id, 'name' => $l->item->name, 'code' => $l->item->code, 'kg' => $l->kg_per_head, 'share' => $l->share_pct]),
+            'costPerKg' => round($p->lines->sum(fn ($l) => ($l->share_pct ?? 0) * $l->item->cost_per_kg_minor) / 10000, 2), // body-weight rations: PKR per kg of the mix
             'kgPerHead' => round($p->lines->sum('kg_per_head'), 3),
-            'costPerHead' => round($p->lines->sum(fn ($l) => $l->kg_per_head * $l->item->cost_per_kg_minor) / 100, 2),
+            'costPerHead' => round($p->lines->sum(fn ($l) => ($l->kg_per_head ?? 0) * $l->item->cost_per_kg_minor) / 100, 2),
             'notes' => $p->notes, 'createdBy' => $p->created_by, 'approvedBy' => $p->approved_by, 'approvedOn' => $p->approved_at?->format('j M Y'),
         ] : null;
 
@@ -298,23 +300,33 @@ class FeedingController extends Controller
             'split_morning' => ['required', 'integer', 'between:0,100'],
             'split_midday' => ['required', 'integer', 'between:0,100'],
             'split_evening' => ['required', 'integer', 'between:0,100'],
+            'basis' => ['nullable', Rule::in(['per_head', 'body_weight'])],
             'lines' => ['required', 'array', 'min:1', 'max:20'],
             'lines.*.feed_item_id' => ['required', 'integer', 'distinct', 'exists:feed_items,id'],
-            'lines.*.kg_per_head' => ['required', 'numeric', 'gt:0', 'max:50'],
+            'lines.*.kg_per_head' => ['nullable', 'required_unless:basis,body_weight', 'numeric', 'gt:0', 'max:50'],
+            'lines.*.share_pct' => ['nullable', 'required_if:basis,body_weight', 'numeric', 'gt:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:300'],
         ], ['lines.*.feed_item_id.distinct' => 'Each feed can appear only once.'], self::ATTRIBUTES);
         if ($data['split_morning'] + $data['split_midday'] + $data['split_evening'] !== 100) {
             throw ValidationException::withMessages(['split_morning' => 'Morning, midday and evening must add up to 100%.']);
         }
+        $basis = $data['basis'] ?? 'per_head';
+        if ($basis === 'body_weight' && abs(collect($data['lines'])->sum('share_pct') - 100) > 0.01) {
+            throw ValidationException::withMessages(['lines' => 'The feed shares must add up to 100%.']);
+        }
         $group = FeedingGroup::findOrFail($data['feeding_group_id']);
 
-        DB::transaction(function () use ($data, $group, $request) {
+        DB::transaction(function () use ($data, $group, $request, $basis) {
             RationPlan::where('feeding_group_id', $group->id)->where('status', 'draft')->delete();
             $plan = RationPlan::create([
                 'feeding_group_id' => $group->id, 'effective_from' => $data['effective_from'], 'split_morning' => $data['split_morning'], 'split_midday' => $data['split_midday'],
-                'split_evening' => $data['split_evening'], 'notes' => $data['notes'] ?? null, 'created_by' => $request->user()->name,
+                'split_evening' => $data['split_evening'], 'notes' => $data['notes'] ?? null, 'created_by' => $request->user()->name, 'basis' => $basis,
             ]);
-            $plan->lines()->createMany(collect($data['lines'])->map(fn ($l) => ['feed_item_id' => $l['feed_item_id'], 'kg_per_head' => $l['kg_per_head']])->all());
+            $plan->lines()->createMany(collect($data['lines'])->map(fn ($l) => [
+                'feed_item_id' => $l['feed_item_id'],
+                'kg_per_head' => $basis === 'per_head' ? $l['kg_per_head'] : null,
+                'share_pct' => $basis === 'body_weight' ? $l['share_pct'] : null,
+            ])->all());
         });
         Farm::log($request->user(), "Drafted a ration for {$group->name}", '/feeding');
 
@@ -339,13 +351,17 @@ class FeedingController extends Controller
             'morning' => $time, 'midday' => [...$time, 'after:morning'], 'evening' => [...$time, 'after:midday'],
             'late' => ['required', 'integer', 'between:5,240'], 'window' => ['required', 'integer', 'between:30,720', 'gte:late'],
             'tolerance' => ['required', 'integer', 'between:1,50'],
+            'kid_pct' => ['nullable', 'numeric', 'between:0.1,10'],
+            'grower_pct' => ['required', 'numeric', 'between:0.1,10'],
+            'adult_pct' => ['required', 'numeric', 'between:0.1,10'],
         ]);
         Organization::whereKey($request->user()->org_id)->update([
             'meal_times' => json_encode(['morning' => $data['morning'], 'midday' => $data['midday'], 'evening' => $data['evening']]),
             'meal_late_minutes' => $data['late'], 'meal_window_minutes' => $data['window'], 'feed_tolerance_pct' => $data['tolerance'],
+            'kid_intake_pct' => $data['kid_pct'] ?? null, 'grower_intake_pct' => $data['grower_pct'], 'adult_intake_pct' => $data['adult_pct'],
         ]);
-        Farm::log($request->user(), 'Changed meal times', '/feeding');
+        Farm::log($request->user(), 'Changed feeding settings', '/feeding');
 
-        return back()->with('success', 'Meal times saved.');
+        return back()->with('success', 'Feeding settings saved.');
     }
 }

@@ -63,7 +63,7 @@ export default function GoatShow(props: Props) {
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} kg` : 'No weighing yet')}
                             {fact('Recent daily gain', goat.adg !== null ? `${goat.adg} g/day` : '—')}
-                            {fact('Location', goat.pen ? `${goat.shed}, ${goat.pen}` : '—')}
+                            {fact('Pen', goat.pen ?? '—')}
                             {fact('RFID tag', tags.find((t) => !t.to)?.code ?? 'No open tag')}
                         </dl>
                         {onFarm ? (

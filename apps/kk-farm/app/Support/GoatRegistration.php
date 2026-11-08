@@ -161,7 +161,7 @@ final class GoatRegistration
                 'acquired_on' => $data['acquired_on'] ?? null,
                 'source_farm' => $data['source_farm'] ?? null,
                 'animal_class' => $data['animal_class'] ?? null,
-                'age_category' => $data['age_category'] ?? null,
+                'age_category' => empty($data['birth_date']) ? ($data['age_category'] ?? null) : null, // D-067: automatic from the birth date
                 'animal_purpose' => $data['animal_purpose'] ?? null,
                 'kid_stage' => $data['kid_stage'] ?? null,
                 'breed_purity' => $data['breed_purity'] ?? null,

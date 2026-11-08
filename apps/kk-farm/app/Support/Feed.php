@@ -92,21 +92,46 @@ final class Feed
     /**
      * What each pen should get at a meal.
      *
-     * @return Collection<int, array{headcount: int, unplanned: int, lines: array<int, float>}> by pen id; lines are kg by feed item id
+     * A per-head ration gives each goat kg_per_head of each feed. A body-weight ration (D-067) gives each goat
+     * latest weight × the intake % for its age (grower 2%, adult 3% by default) per day, split over the feeds by share.
+     * Goats without a ration — or, on a body-weight ration, without a weight or an intake % for their age — are unplanned.
+     *
+     * @return Collection<int, array{headcount: int, unplanned: int, noWeight: int, lines: array<int, float>}> by pen id; lines are kg by feed item id
      */
     public static function plannedByPen(string $meal, Carbon|string $date, ?Collection $plans = null): Collection
     {
         $plans ??= self::plansOn($date);
+        $org = self::org();
         $animals = Animal::active()->whereNotNull('pen_id')->get();
         $groups = self::groupIds($animals);
+        $weights = self::latestWeights();
 
-        return $animals->groupBy('pen_id')->map(function (Collection $goats) use ($groups, $plans, $meal) {
+        return $animals->groupBy('pen_id')->map(function (Collection $goats) use ($groups, $plans, $meal, $org, $weights) {
             $lines = [];
             $unplanned = 0;
+            $noWeight = 0;
             foreach ($goats as $goat) {
                 $plan = $plans[$groups[$goat->id]] ?? null;
                 if (! $plan || $plan->lines->isEmpty()) {
                     $unplanned++;
+
+                    continue;
+                }
+                if ($plan->basis === 'body_weight') {
+                    $pct = self::intakePct($goat, $org);
+                    $weight = $weights[$goat->id] ?? null;
+                    if (! $pct || ! $weight) {
+                        $unplanned++;
+                        if (! $weight) {
+                            $noWeight++;
+                        }
+
+                        continue;
+                    }
+                    $dayKg = $weight * $pct / 100;
+                    foreach ($plan->lines as $line) {
+                        $lines[$line->feed_item_id] = ($lines[$line->feed_item_id] ?? 0) + $dayKg * $line->share_pct / 100 * $plan->split($meal) / 100;
+                    }
 
                     continue;
                 }
@@ -115,8 +140,27 @@ final class Feed
                 }
             }
 
-            return ['headcount' => $goats->count(), 'unplanned' => $unplanned, 'lines' => array_map(fn ($kg) => round($kg, 2), $lines)];
+            return ['headcount' => $goats->count(), 'unplanned' => $unplanned, 'noWeight' => $noWeight, 'lines' => array_map(fn ($kg) => round($kg, 2), $lines)];
         });
+    }
+
+    /** @return Collection<string, float> each goat's most recent weight in kg */
+    public static function latestWeights(): Collection
+    {
+        return DB::table('weight_records')->selectRaw('distinct on (animal_id) animal_id, weight_kg')
+            ->orderBy('animal_id')->orderByDesc('measured_on')->orderByDesc('id')->pluck('weight_kg', 'animal_id')->map(fn ($kg) => (float) $kg);
+    }
+
+    /** Daily intake as % of body weight for the goat's age (unknown age counts as adult). Null = no body-weight ration for that age. */
+    public static function intakePct(Animal $goat, Organization $org): ?float
+    {
+        $pct = match ($goat->effectiveAge()) {
+            'kid' => $org->kid_intake_pct,
+            'grower' => $org->grower_intake_pct,
+            default => $org->adult_intake_pct,
+        };
+
+        return $pct !== null ? (float) $pct : null;
     }
 
     /** @return Collection<int, float> kg in store by feed item id */
@@ -154,11 +198,11 @@ final class Feed
         return $penIds->mapWithKeys(function ($penId) use ($planned, $usage, $date, $org) {
             $meals = [];
             foreach (array_keys(self::MEALS) as $meal) {
-                $plan = $planned[$meal][$penId] ?? ['headcount' => 0, 'unplanned' => 0, 'lines' => []];
+                $plan = $planned[$meal][$penId] ?? ['headcount' => 0, 'unplanned' => 0, 'noWeight' => 0, 'lines' => []];
                 $rows = $usage["$penId|$meal"] ?? collect();
                 $first = $rows->min('fed_at');
                 $meals[$meal] = [
-                    'headcount' => $plan['headcount'], 'unplanned' => $plan['unplanned'], 'lines' => $plan['lines'],
+                    'headcount' => $plan['headcount'], 'unplanned' => $plan['unplanned'], 'noWeight' => $plan['noWeight'], 'lines' => $plan['lines'],
                     'plannedKg' => round(array_sum($plan['lines']), 2), 'rows' => $rows,
                     'status' => self::mealStatus($date, $meal, $first ? Carbon::parse($first) : null, array_sum($plan['lines']), $org),
                 ];

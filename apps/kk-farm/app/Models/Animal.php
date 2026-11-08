@@ -13,10 +13,13 @@ class Animal extends Model
 
     protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
 
-    /** Age category: chosen by hand, or worked out from the birth date today (D-047). */
+    /**
+     * Age category, worked out from the birth date today so it moves on by itself as the goat ages (D-067).
+     * A category chosen by hand is used only when the birth date is unknown.
+     */
     public function effectiveAge(): ?string
     {
-        return $this->age_category ?: \App\Support\Classification::ageCategory($this->birth_date);
+        return $this->birth_date ? \App\Support\Classification::ageCategory($this->birth_date) : $this->age_category;
     }
 
     /** Goat category: chosen by hand, or suggested from gender, age today and purpose (D-047). */

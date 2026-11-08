@@ -10,7 +10,7 @@ class RationPlanLine extends Model
 
     public $timestamps = false;
 
-    protected $casts = ['kg_per_head' => 'float'];
+    protected $casts = ['kg_per_head' => 'float', 'share_pct' => 'float'];
 
     public function item()
     {

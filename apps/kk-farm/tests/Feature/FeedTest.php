@@ -254,4 +254,43 @@ class FeedTest extends TestCase
         $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $otherItem->id, 'offered_kg' => 1]])->assertSessionHasErrors('lines.0.feed_item_id');
         $this->assertSame(0, FeedUsage::count());
     }
+
+    public function test_age_bands_are_kid_under_2_months_grower_to_14_and_adult_after_and_move_on_by_themselves(): void
+    {
+        $at = fn (int $months) => (new Animal(['birth_date' => now()->subMonths($months)->subDay()]))->effectiveAge();
+        $this->assertSame(['kid', 'grower', 'grower', 'adult'], [$at(1), $at(2), $at(13), $at(14)]);
+
+        // A category chosen by hand is ignored once the birth date is known: the goat ages automatically.
+        $this->assertSame('adult', (new Animal(['birth_date' => now()->subMonths(20), 'age_category' => 'kid']))->effectiveAge());
+        $this->assertSame('kid', (new Animal(['birth_date' => null, 'age_category' => 'kid']))->effectiveAge());
+    }
+
+    public function test_a_body_weight_ration_feeds_2_percent_to_growers_and_3_percent_to_adults(): void
+    {
+        $straw = $this->item('WS', 30);
+        $conc = $this->item('CONC', 120);
+        $grower = $this->goat('G-1', $this->penA, ['animal_class' => 'breeding_female', 'birth_date' => now()->subMonths(6)]);
+        $adult = Animal::where('farm_number', 'D-1')->first(); // 2 years old
+        \App\Models\WeightRecord::create(['animal_id' => $grower->id, 'measured_on' => now(), 'weight_kg' => 20, 'measured_by' => 'x']);
+        \App\Models\WeightRecord::create(['animal_id' => $adult->id, 'measured_on' => now()->subMonth(), 'weight_kg' => 35, 'measured_by' => 'x']);
+        \App\Models\WeightRecord::create(['animal_id' => $adult->id, 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']); // the latest weight counts
+
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', [
+            'feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
+            'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50,
+            'lines' => [['feed_item_id' => $straw->id, 'share_pct' => 75], ['feed_item_id' => $conc->id, 'share_pct' => 20]],
+        ])->assertSessionHasErrors('lines');
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', [
+            'feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
+            'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50,
+            'lines' => [['feed_item_id' => $straw->id, 'share_pct' => 75], ['feed_item_id' => $conc->id, 'share_pct' => 25]],
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
+
+        $pen = Feed::plannedByPen('morning', now())[$this->penA->id];
+        // grower 20 kg × 2% = 0.4 kg/day, adult 40 kg × 3% = 1.2 kg/day; D-2 has no weight. Morning gets 50%: 0.8 kg.
+        $this->assertEqualsWithDelta(0.6, $pen['lines'][$straw->id], 0.001);
+        $this->assertEqualsWithDelta(0.2, $pen['lines'][$conc->id], 0.001);
+        $this->assertSame([1, 1], [$pen['unplanned'], $pen['noWeight']]);
+    }
 }
