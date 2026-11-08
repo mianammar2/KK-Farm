@@ -6,13 +6,13 @@ import PhotoPicker from '../../components/PhotoPicker';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
 
-type Choice = { value: string | number; label: string; next?: string; breed?: number | null; code?: string; shed?: number; shedName?: string };
+type Choice = { value: string | number; label: string; next?: string; nextNumber?: number; breed?: number | null; code?: string; shed?: number; shedName?: string };
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
 type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[] };
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
 export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, canAssignTags, untagged }: Props) {
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
@@ -198,7 +198,10 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             default:
                 if (f.key === 'tag_id') {
                     // D-041: the Tag ID follows from the breed. Show what it will be; typing overrides it.
-                    const next = (lookups.breed_id ?? []).find((b) => String(b.value) === String(form.data.breed_id ?? ''))?.next;
+                    // D-059: breed code, the purchase date (birth date for farm-born, today if empty) as DD-MM-YY, the breed's number.
+                    const breed = (lookups.breed_id ?? []).find((b) => String(b.value) === String(form.data.breed_id ?? ''));
+                    const iso: string = (farmBorn ? form.data.birth_date : form.data.acquired_on) || TODAY;
+                    const next = breed?.code && breed.nextNumber ? `${breed.code}-${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(2, 4)}-${String(breed.nextNumber).padStart(4, '0')}` : breed?.next;
                     return (
                         <div>
                             <input className="field font-mono" value={v} onChange={(e) => set(f, e.target.value.toUpperCase())} placeholder={next ? `${next} (automatic)` : 'Choose a breed first'} autoComplete="off" />

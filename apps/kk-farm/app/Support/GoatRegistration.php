@@ -37,6 +37,14 @@ final class GoatRegistration
     }
 
     /** @param Collection<int, FieldDefinition> $definitions */
+    /** D-059: the date in the Tag ID: purchase/arrival date for a bought goat, birth date for a farm-born one, else today. */
+    public static function tagDate(array $data): Carbon
+    {
+        $date = ($data['origin'] ?? null) === 'born_on_farm' ? ($data['birth_date'] ?? null) : ($data['acquired_on'] ?? null);
+
+        return $date ? Carbon::parse($date) : Feed::now();
+    }
+
     public static function rules(Collection $definitions): array
     {
         $rules = [
@@ -130,7 +138,7 @@ final class GoatRegistration
 
             $animal = Animal::create([
                 // D-041: a blank Tag ID is generated from the breed (BT-0001 ...). A typed one is kept as entered.
-                'farm_number' => trim((string) ($data['tag_id'] ?? '')) ?: Breed::findOrFail($data['breed_id'])->issueTagId(),
+                'farm_number' => trim((string) ($data['tag_id'] ?? '')) ?: Breed::findOrFail($data['breed_id'])->issueTagId(self::tagDate($data)),
                 'name' => $data['name'] ?? null,
                 'sex' => $data['sex'],
                 'breed_id' => $data['breed_id'],

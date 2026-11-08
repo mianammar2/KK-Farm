@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -52,14 +53,18 @@ class Breed extends Model
     }
 
     /** The Tag ID the next goat of this breed would get. A preview only: the number is reserved on save. */
-    public function nextTagId(): string
+    public function nextTagId(Carbon|string|null $date = null): string
     {
-        return self::formatTagId($this->code, $this->last_number + 1);
+        return self::formatTagId($this->code, $this->last_number + 1, $date);
     }
 
-    public static function formatTagId(string $code, int $number): string
+    /**
+     * D-059: breed code, date and the breed's running number, e.g. TD-14-10-26-0003 for a Teddy bought on
+     * 14 October 2026. The number keeps counting per breed (it never restarts), so a Tag ID is never reused.
+     */
+    public static function formatTagId(string $code, int $number, Carbon|string|null $date = null): string
     {
-        return sprintf('%s-%04d', $code, $number);
+        return sprintf('%s-%s-%04d', $code, ($date ? Carbon::parse($date) : (\App\Support\Tenant::current() ? \App\Support\Feed::now() : now()))->format('d-m-y'), $number); // today on the farm's clock
     }
 
     /**
@@ -67,12 +72,12 @@ class Breed extends Model
      * so two people registering at the same moment never get the same number. Numbers already used by a
      * goat (for example typed by hand) are skipped.
      */
-    public function issueTagId(): string
+    public function issueTagId(Carbon|string|null $date = null): string
     {
-        return DB::transaction(function () {
+        return DB::transaction(function () use ($date) {
             do {
                 $row = DB::selectOne('UPDATE breeds SET last_number = last_number + 1, updated_at = now() WHERE id = ? RETURNING code, last_number', [$this->id]);
-                $tagId = self::formatTagId($row->code, $row->last_number);
+                $tagId = self::formatTagId($row->code, $row->last_number, $date);
             } while (Animal::where('farm_number', $tagId)->exists());
 
             $this->last_number = $row->last_number;
