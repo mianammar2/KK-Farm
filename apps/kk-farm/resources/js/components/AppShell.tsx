@@ -1,7 +1,7 @@
 import BrandMark from './BrandMark';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
-    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, Wheat, X, ArrowLeftRight, BellRing } from 'lucide-react';
+    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Wheat, X, ArrowLeftRight, BellRing } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -41,6 +41,7 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
         heading: 'Business',
         items: [
             { href: '/finance', label: 'Expenses & Finance', module: 'finance', icon: Wallet },
+            { href: '/finance/books', label: 'Accounts (books)', module: 'finance', icon: BookOpen },
             { href: '/reports', label: 'Reports', module: 'reports', icon: BarChart3 },
             { href: '/settings', label: 'Settings', module: 'settings', icon: Settings },
         ],
@@ -72,7 +73,7 @@ function NavList({ path, modules, onNavigate }: { path: string; modules: string[
                         <div className="px-2.5 pb-1 text-xs font-semibold text-cobalt-200">{group.heading}</div>
                         <ul className="space-y-0.5">
                             {items.map((item) => {
-                                const active = item.href === '/' ? path === '/' : path.startsWith(item.href);
+                                const active = item.href === '/' ? path === '/' : path.startsWith(item.href) && !(item.href === '/finance' && path.startsWith('/finance/books'));
                                 return (
                                     <li key={item.href}>
                                         <Link

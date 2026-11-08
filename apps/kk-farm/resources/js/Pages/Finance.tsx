@@ -5,12 +5,14 @@ import { Button, Chip, cx, Field, monthLabel, PageHeader, Panel, pkr, pkrShort, 
 
 type Entry = { id: number; direction: 'in' | 'out'; category: string; amount: number; on: string; counterparty: string | null; description: string | null; by: string; reversed: boolean; isReversal: boolean; payment: 'paid' | 'pending' | 'partial'; paidBy: string | null; reference: string | null; goatId: string | null; goat: string | null };
 type SaleRow = { id: number; on: string; category: string; goatId: string | null; what: string | null; buyer: string | null; gross: number; fee: number; net: number; receipt: string | null; by: string };
-type Props = { summary: Record<string, number>; monthly: Array<{ month: string; income: number; spend: number }>; categories: Array<{ name: string; value: number }>; entries: Entry[]; categoryOptions: string[]; sales: SaleRow[]; goats: Array<{ id: string; farm_number: string }>; pending: number };
+type Props = { summary: Record<string, number>; monthly: Array<{ month: string; income: number; spend: number }>; categories: Array<{ name: string; value: number }>; entries: Entry[]; categoryOptions: string[]; sales: SaleRow[]; goats: Array<{ id: string; farm_number: string }>; pending: number; accounts: Array<{ id: number; label: string; type: string; money: boolean }> };
 
-export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales, goats, pending }: Props) {
+export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales, goats, pending, accounts }: Props) {
     const [direction, setDirection] = useState('');
     const [category, setCategory] = useState('');
-    const form = useForm({ direction: 'out', category: categoryOptions[0], amount: '', counterparty: '', description: '', occurred_on: new Date().toLocaleDateString('en-CA'), payment_status: 'paid', paid_by: '', reference: '', animal_id: '' });
+    const moneyAccounts = accounts.filter((a) => a.money);
+    const pickable = (d: string) => accounts.filter((a) => (d === 'in' ? a.type === 'income' : a.type === 'expense'));
+    const form = useForm({ direction: 'out', account_id: String(pickable('out')[0]?.id ?? ''), money_account_id: String(moneyAccounts[0]?.id ?? ''), paid_now: '', amount: '', counterparty: '', description: '', occurred_on: new Date().toLocaleDateString('en-CA'), payment_status: 'paid', paid_by: '', reference: '', animal_id: '' });
     const rows = entries.filter((e) => (!direction || e.direction === direction) && (!category || e.category === category));
 
     const trend = useMemo(() => ({
@@ -39,7 +41,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
     return (
         <>
             <Head title="Expenses & Finance" />
-            <PageHeader title="Expenses & finance" description="Only the CEO and finance roles can open this. Entries are never edited: a correction is a reversing entry." />
+            <PageHeader title="Expenses & finance" description="Only the CEO and finance roles can open this. Every entry posts a balanced double-entry journal; a correction is a reversing entry." actions={<Link href="/finance/books" className="text-sm font-semibold text-turq-800 hover:underline">Accounts (books)</Link>} />
             <StatRow>
                 <Stat label="This month in" value={pkrShort(summary.monthIn)} />
                 <Stat label="This month out" value={pkrShort(summary.monthOut)} />
@@ -82,8 +84,8 @@ export default function Finance({ summary, monthly, categories, entries, categor
                 </Panel>
                 <Panel title="Record an entry">
                     <form onSubmit={(e) => { e.preventDefault(); form.post('/finance/entries', { preserveScroll: true, onSuccess: () => form.reset('amount', 'counterparty', 'description') }); }} className="space-y-3">
-                        <Field label="Type"><select className="field" value={form.data.direction} onChange={(e) => form.setData('direction', e.target.value)}><option value="out">Money out</option><option value="in">Money in</option></select></Field>
-                        <Field label="Category"><select className="field" value={form.data.category} onChange={(e) => form.setData('category', e.target.value)}>{categoryOptions.map((c) => <option key={c}>{c}</option>)}</select></Field>
+                        <Field label="Type"><select className="field" value={form.data.direction} onChange={(e) => form.setData({ ...form.data, direction: e.target.value, account_id: String(pickable(e.target.value)[0]?.id ?? '') })}><option value="out">Money out</option><option value="in">Money in</option></select></Field>
+                        <Field label={form.data.direction === 'in' ? 'Income account' : 'Expense account'} error={(form.errors as Record<string, string>).account_id}><select className="field" value={form.data.account_id} onChange={(e) => form.setData('account_id', e.target.value)}>{pickable(form.data.direction).map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field>
                         <Field label="Amount (PKR)" error={form.errors.amount}><input inputMode="decimal" className="field" value={form.data.amount} onChange={(e) => form.setData('amount', e.target.value)} /></Field>
                         <Field label={form.data.direction === 'out' ? 'Vendor' : 'Payer'}><input className="field" value={form.data.counterparty} onChange={(e) => form.setData('counterparty', e.target.value)} /></Field>
                         {form.data.direction === 'out' ? (
@@ -92,6 +94,8 @@ export default function Finance({ summary, monthly, categories, entries, categor
                                 <Field label="Paid by"><input className="field" value={form.data.paid_by} onChange={(e) => form.setData('paid_by', e.target.value)} /></Field>
                             </div>
                         ) : null}
+                        {form.data.direction === 'out' && form.data.payment_status === 'partial' ? <Field label="Paid now (PKR)" error={(form.errors as Record<string, string>).paid_now}><input inputMode="decimal" className="field" value={form.data.paid_now} onChange={(e) => form.setData('paid_now', e.target.value)} /></Field> : null}
+                        {form.data.direction === 'in' || form.data.payment_status !== 'pending' ? <Field label={form.data.direction === 'in' ? 'Received into' : 'Paid from'}><select className="field" value={form.data.money_account_id} onChange={(e) => form.setData('money_account_id', e.target.value)}>{moneyAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field> : null}
                         <Field label="For a goat (optional)"><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}><option value="">Whole farm</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
                         <Field label="Invoice / reference"><input className="field" value={form.data.reference} onChange={(e) => form.setData('reference', e.target.value)} /></Field>
                         <Field label="Date" error={form.errors.occurred_on}><input type="date" className="field" value={form.data.occurred_on} onChange={(e) => form.setData('occurred_on', e.target.value)} /></Field>

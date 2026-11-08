@@ -29,6 +29,17 @@ final class Feed
 
     public const DEFAULT_TIMES = ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00'];
 
+    /** D-084: meal split (%) for the automatic plan of goats without an approved ration. */
+    public const DEFAULT_SPLIT = ['morning' => 40, 'midday' => 20, 'evening' => 40];
+
+    /** D-084: the feed an automatic plan is put on: the active feed with the most in store (first by code when none has stock). */
+    public static function defaultFeedId(): ?int
+    {
+        $stock = self::stock();
+
+        return FeedItem::where('active', true)->orderBy('code')->get()->sortByDesc(fn (FeedItem $i) => $stock[$i->id] ?? 0)->first()?->id;
+    }
+
     /** Workbook ration groups, plus Growers and Fattening for KK Farms' categories. code => [name, who is in it]. */
     public const GROUPS = [
         'kids' => ['Kids', 'Kids (male and female) until weaning and grower age'],
@@ -105,14 +116,16 @@ final class Feed
         $animals = Animal::active()->whereNotNull('pen_id')->get();
         $groups = self::groupIds($animals);
         $weights = self::latestWeights();
+        $defaultFeed = self::defaultFeedId();
 
-        return $animals->groupBy('pen_id')->map(function (Collection $goats) use ($groups, $plans, $meal, $org, $weights) {
+        return $animals->groupBy('pen_id')->map(function (Collection $goats) use ($groups, $plans, $meal, $org, $weights, $defaultFeed) {
             $lines = [];
             $low = [];
             $high = [];
             $unplanned = 0;
             $noWeight = 0;
             $onMilk = 0;
+            $auto = 0;
             $add = function (int $item, float $kg, float $min, float $max) use (&$lines, &$low, &$high) {
                 $lines[$item] = ($lines[$item] ?? 0) + $kg;
                 $low[$item] = ($low[$item] ?? 0) + $min;
@@ -128,7 +141,20 @@ final class Feed
                     continue;
                 }
                 if (! $plan || $plan->lines->isEmpty()) {
+                    // D-084: no approved ration: the automatic plan is weight × the farm's intake % for the goat's age, on the default feed.
+                    $weight = $weights[$goat->id] ?? null;
+                    if ($range && $weight && $defaultFeed) {
+                        [$min, $max] = $range;
+                        $f = $weight / 100 * self::DEFAULT_SPLIT[$meal] / 100;
+                        $add($defaultFeed, $f * ($min + $max) / 2, $f * $min, $f * $max);
+                        $auto++;
+
+                        continue;
+                    }
                     $unplanned++;
+                    if (! $weight) {
+                        $noWeight++;
+                    }
 
                     continue;
                 }
@@ -159,7 +185,7 @@ final class Feed
             $round = fn (array $a) => array_map(fn ($kg) => round($kg, 2), $a);
 
             return [
-                'headcount' => $goats->count(), 'unplanned' => $unplanned, 'noWeight' => $noWeight, 'onMilk' => $onMilk,
+                'headcount' => $goats->count(), 'unplanned' => $unplanned, 'noWeight' => $noWeight, 'onMilk' => $onMilk, 'auto' => $auto,
                 'lines' => $round($lines), 'min' => $round($low), 'max' => $round($high),
             ];
         });
@@ -295,11 +321,11 @@ final class Feed
         return $penIds->mapWithKeys(function ($penId) use ($planned, $usage, $date, $org) {
             $meals = [];
             foreach (array_keys(self::MEALS) as $meal) {
-                $plan = $planned[$meal][$penId] ?? ['headcount' => 0, 'unplanned' => 0, 'noWeight' => 0, 'onMilk' => 0, 'lines' => [], 'min' => [], 'max' => []];
+                $plan = $planned[$meal][$penId] ?? ['headcount' => 0, 'unplanned' => 0, 'noWeight' => 0, 'onMilk' => 0, 'auto' => 0, 'lines' => [], 'min' => [], 'max' => []];
                 $rows = $usage["$penId|$meal"] ?? collect();
                 $first = $rows->min('fed_at');
                 $meals[$meal] = [
-                    'headcount' => $plan['headcount'], 'unplanned' => $plan['unplanned'], 'noWeight' => $plan['noWeight'], 'onMilk' => $plan['onMilk'],
+                    'headcount' => $plan['headcount'], 'unplanned' => $plan['unplanned'], 'noWeight' => $plan['noWeight'], 'onMilk' => $plan['onMilk'], 'auto' => $plan['auto'],
                     'lines' => $plan['lines'], 'min' => $plan['min'], 'max' => $plan['max'],
                     'plannedKg' => round(array_sum($plan['lines']), 2), 'rows' => $rows,
                     'status' => self::mealStatus($date, $meal, $first ? Carbon::parse($first) : null, array_sum($plan['lines']), $org),

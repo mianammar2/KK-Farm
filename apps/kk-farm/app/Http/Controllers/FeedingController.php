@@ -60,16 +60,16 @@ class FeedingController extends Controller
                     'grower' => [(float) $org->grower_intake_min_pct, (float) $org->grower_intake_max_pct],
                     'adult' => [(float) $org->adult_intake_min_pct, (float) $org->adult_intake_max_pct],
                 ]],
-            'board' => $board->map(function (array $meals, int $penId) use ($pens, $meal, $line) {
+            'board' => $board->map(function (array $meals, int $penId) use ($pens, $meal, $line, $stock) {
                 $m = $meals[$meal];
                 $rows = $m['rows']->keyBy('feed_item_id');
                 $ids = collect(array_keys($m['lines']))->merge($rows->keys())->unique();
 
                 return [
-                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'], 'onMilk' => $m['onMilk'],
+                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'], 'onMilk' => $m['onMilk'], 'auto' => $m['auto'],
                     'plannedKg' => $m['plannedKg'], 'offeredKg' => round($m['rows']->sum('offered_kg'), 2), 'status' => $m['status'],
                     'meals' => collect($meals)->map(fn ($x) => $x['status']),
-                    'lines' => $ids->map(fn ($id) => $line($id, (float) ($m['lines'][$id] ?? 0), $rows[$id] ?? null) + ['min' => (float) ($m['min'][$id] ?? 0), 'max' => (float) ($m['max'][$id] ?? 0)])->values(),
+                    'lines' => $ids->map(fn ($id) => $line($id, (float) ($m['lines'][$id] ?? 0), $rows[$id] ?? null) + ['min' => (float) ($m['min'][$id] ?? 0), 'max' => (float) ($m['max'][$id] ?? 0), 'stock' => round(max(0, (float) ($stock[$id] ?? 0)), 2)])->values(),
                 ];
             })->sortBy([['shed', 'asc'], ['name', 'asc']])->values(),
             'groups' => $this->groups(),
@@ -150,6 +150,21 @@ class FeedingController extends Controller
 
         DB::transaction(function () use ($data, $today, $plan, $costs, $request) {
             $current = FeedUsage::current()->where(['fed_on' => $today, 'meal' => $data['meal'], 'pen_id' => $data['pen_id']])->lockForUpdate()->get()->keyBy('feed_item_id');
+            // D-084: never give more than the store holds. A correction only needs stock for the extra KG on top of what was already given.
+            FeedItem::whereIn('id', array_column($data['lines'], 'feed_item_id'))->lockForUpdate()->get();
+            $stock = Feed::stock();
+            $short = [];
+            foreach ($data['lines'] as $i => $l) {
+                $extra = (float) $l['offered_kg'] - (float) ($current[$l['feed_item_id']]?->offered_kg ?? 0);
+                $have = max(0, (float) ($stock[$l['feed_item_id']] ?? 0));
+                if ($extra > $have + 0.0001 && ! FeedUsage::whereKey($l['id'])->exists()) {
+                    $name = FeedItem::find($l['feed_item_id'])?->name ?? 'this feed';
+                    $short["lines.$i.offered_kg"] = 'Only '.rtrim(rtrim(number_format($have + (float) ($current[$l['feed_item_id']]?->offered_kg ?? 0), 2, '.', ''), '0'), '.')." KG of {$name} available. Record a purchase in Feed store first.";
+                }
+            }
+            if ($short) {
+                throw \Illuminate\Validation\ValidationException::withMessages($short);
+            }
             foreach ($data['lines'] as $l) {
                 if (FeedUsage::whereKey($l['id'])->exists()) {
                     continue; // the same entry sent twice (offline retry)

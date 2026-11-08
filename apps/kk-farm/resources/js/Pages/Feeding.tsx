@@ -6,8 +6,8 @@ import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow,
 type Meal = 'morning' | 'midday' | 'evening';
 type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
 type Usage = { id: string; offered: number; refused: number | null; by: string; at: string };
-type Line = { feedItemId: number; code: string; name: string; planned: number; min: number; max: number; usage: Usage | null };
-type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; onMilk: number; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
+type Line = { feedItemId: number; code: string; name: string; planned: number; min: number; max: number; usage: Usage | null; stock: number };
+type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; onMilk: number; auto: number; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
 type Plan = { id: number; from: string; fromIso: string; status: string; basis: 'per_head' | 'body_weight'; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number | null; share: number | null }>; kgPerHead: number; costPerHead: number; costPerKg: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
 type Group = { id: number; name: string; criteria: string | null; head: number; current: Plan | null; upcoming: Plan | null; draft: Plan | null };
 type Item = { id: number; code: string; name: string; category: string; costPerKg: number; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number; value: number; status: 'ok' | 'low' | 'out' | 'negative'; daysLeft: number | null };
@@ -66,7 +66,7 @@ export default function Feeding(props: Props) {
                 <Stat label={`${meals[meal]} meal`} value={`${fed}/${expected}`} note="pens fed" tone={expected && fed === expected ? 'good' : undefined} />
                 <Stat label="Planned / given" value={kg(board.reduce((s, p) => s + p.offeredKg, 0))} note={`of ${kg(board.reduce((s, p) => s + p.plannedKg, 0))} planned`} />
                 <Stat label="Feeds low or out" value={lowStock} tone={lowStock ? 'alert' : undefined} note={`${items.filter((i) => i.active).length} feeds in store`} />
-                <Stat label="Goats with no ration" value={unplanned} tone={unplanned ? 'alert' : undefined} note="need an approved ration" />
+                <Stat label="Goats not planned" value={unplanned} tone={unplanned ? 'alert' : undefined} note={`need a weight · ${board.reduce((s, p) => s + p.auto, 0)} planned automatically`} />
             </StatRow>
             <Tabs tabs={tabs} value={tab} onChange={setTab} />
             {tab === 'now' ? <FeedNow {...props} onTab={setTab} /> : null}
@@ -95,14 +95,14 @@ function FeedNow({ meal, meals, mealTimes, board, items, groups, onTab }: Props 
                 ))}
             </div>
             {!items.length ? <Note>No feeds yet. Add your feeds in the <button type="button" className="font-semibold underline" onClick={() => onTab('store')}>Feed store</button> first.</Note> : null}
-            {items.length && noRations ? <Note>No approved ration yet, so nothing is planned. Set rations in the <button type="button" className="font-semibold underline" onClick={() => onTab('rations')}>Rations</button> tab; a vet approves them.</Note> : null}
+            {items.length && noRations ? <Note>No approved ration yet, so each goat is planned automatically: body weight × the farm's intake % for its age (grower 3–4%, adult 2–3%), split 40/20/40 over the meals. You can change the KG given. For a ration of your own, use the <button type="button" className="font-semibold underline" onClick={() => onTab('rations')}>Rations</button> tab.</Note> : null}
             {!board.length ? <Empty title="No goats in any pen">Goats appear here once they are registered into a pen.</Empty> : null}
             {board.map((pen) => (
                 <section key={pen.id} className="rounded-tile border border-rule bg-tile shadow-tile">
                     <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open === pen.id} onClick={() => setOpen(open === pen.id ? null : pen.id)}>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-baseline gap-x-2"><span className="font-mono font-semibold text-cobalt-900">{pen.name}</span></div>
-                            <div className="text-sm text-ink-soft">{pen.headcount} goats · plan {kg(pen.plannedKg)}{pen.offeredKg ? ` · given ${kg(pen.offeredKg)}` : ''}{pen.onMilk ? ` · ${pen.onMilk} kid${pen.onMilk === 1 ? '' : 's'} on milk` : ''}{pen.unplanned ? ` · ${pen.unplanned} not planned${pen.noWeight ? ` (${pen.noWeight} need a weight)` : ''}` : ''}</div>
+                            <div className="text-sm text-ink-soft">{pen.headcount} goats · plan {kg(pen.plannedKg)}{pen.offeredKg ? ` · given ${kg(pen.offeredKg)}` : ''}{pen.auto ? ` · ${pen.auto} automatic` : ''}{pen.onMilk ? ` · ${pen.onMilk} kid${pen.onMilk === 1 ? '' : 's'} on milk` : ''}{pen.unplanned ? ` · ${pen.unplanned} not planned${pen.noWeight ? ` (${pen.noWeight} need a weight)` : ''}` : ''}</div>
                         </div>
                         <div className="flex items-center gap-1" aria-label="Meals today">{MEALS.map((m) => <span key={m} title={`${meals[m]}: ${STATUS[pen.meals[m]].label}`} className={cx('size-2.5 rounded-full', pen.meals[m] === 'done' ? 'bg-ok-700' : pen.meals[m] === 'late' ? 'bg-watch-400' : pen.meals[m] === 'missed' ? 'bg-crit-500' : 'bg-rule-strong')} />)}</div>
                         <Chip className={STATUS[pen.status].className}>{STATUS[pen.status].label}</Chip>
@@ -132,6 +132,9 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
     };
     const set = (i: number, key: 'offered' | 'refused', value: string) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, [key]: value } : l)));
     const first = pen.lines.find((l) => l.usage)?.usage;
+    // D-084: what can be given = what is in store + what this meal already took (a correction only needs the extra).
+    const available = (l: (typeof lines)[number]) => Math.round((Math.max(0, items.find((x) => x.id === l.feedItemId)?.stock ?? l.stock ?? 0) + (l.usage?.offered ?? 0)) * 100) / 100;
+    const overStock = (l: (typeof lines)[number]) => editing && Number(l.offered || 0) > available(l) + 0.0001;
 
     return (
         <div className="border-t border-rule px-4 py-3">
@@ -140,14 +143,14 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
             <div className="space-y-2">
                 {lines.map((l, i) => (
                     <div key={l.feedItemId} className="grid grid-cols-[minmax(0,1fr)_6.5rem_6.5rem] items-end gap-2">
-                        <div className="min-w-0 pb-2"><div className="truncate font-medium text-cobalt-900">{l.name}</div><div className="text-xs text-ink-soft">Plan {kg(l.planned)}{l.max > l.min ? ` (${kg(l.min)}–${kg(l.max)})` : ''}</div></div>
-                        <Field label="Given KG" error={errors[`lines.${i}.offered_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={!editing} value={l.offered} onChange={(e) => set(i, 'offered', e.target.value)} /></Field>
+                        <div className="min-w-0 pb-2"><div className="truncate font-medium text-cobalt-900">{l.name}</div><div className="text-xs text-ink-soft">Plan {kg(l.planned)}{l.max > l.min ? ` (${kg(l.min)}–${kg(l.max)})` : ''}</div><div className={cx('text-xs', overStock(l) ? 'font-semibold text-crit-700' : 'text-ink-faint')}>In store {kg(available(l))}</div></div>
+                        <Field label="Given KG" error={errors[`lines.${i}.offered_kg`] ?? (overStock(l) ? `Only ${kg(available(l))} in store` : undefined)}><input className="field" type="number" inputMode="decimal" min={0} max={available(l)} step="0.1" disabled={!editing} value={l.offered} onChange={(e) => set(i, 'offered', e.target.value)} /></Field>
                         <Field label="Leftover KG" error={errors[`lines.${i}.refused_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={editing || !l.usage} placeholder={l.usage ? '0' : '—'} value={l.refused} onChange={(e) => set(i, 'refused', e.target.value)} /></Field>
                     </div>
                 ))}
             </div>
             {editing && others.length ? (
-                <select className="field mt-2" value="" aria-label="Add another feed" onChange={(e) => { const it = items.find((x) => x.id === Number(e.target.value)); if (it) setLines((ls) => [...ls, { feedItemId: it.id, code: it.code, name: it.name, planned: 0, min: 0, max: 0, usage: null, offered: '', refused: '' }]); }}>
+                <select className="field mt-2" value="" aria-label="Add another feed" onChange={(e) => { const it = items.find((x) => x.id === Number(e.target.value)); if (it) setLines((ls) => [...ls, { feedItemId: it.id, code: it.code, name: it.name, planned: 0, min: 0, max: 0, usage: null, stock: it.stock, offered: '', refused: '' }]); }}>
                     <option value="">+ Add another feed…</option>
                     {others.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
@@ -155,7 +158,7 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
             <div className="mt-3 flex flex-wrap gap-2">
                 {editing ? (
                     <>
-                        <Button type="button" onClick={save} disabled={form.processing || !lines.length}>{recorded ? 'Save changes' : 'Save feed given'}</Button>
+                        <Button type="button" onClick={save} disabled={form.processing || !lines.length || lines.some(overStock)}>{recorded ? 'Save changes' : 'Save feed given'}</Button>
                         {recorded ? <Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button> : null}
                     </>
                 ) : (

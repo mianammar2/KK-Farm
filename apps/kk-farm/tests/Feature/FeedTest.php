@@ -205,7 +205,7 @@ class FeedTest extends TestCase
 
     public function test_only_the_feed_store_roles_change_feeds_and_stock(): void
     {
-        $straw = $this->item('WS', 30);
+        $straw = $this->item('WS', 30, 100);
         $caretaker = $this->user('caretaker');
 
         $this->actingAs($caretaker)->post('/feeding/items', ['code' => 'X', 'name' => 'X', 'category' => 'other', 'cost_per_kg' => 1])->assertForbidden();
@@ -267,7 +267,7 @@ class FeedTest extends TestCase
 
     public function test_a_body_weight_ration_feeds_growers_3_to_4_percent_and_adults_2_to_3_percent(): void
     {
-        $straw = $this->item('WS', 30);
+        $straw = $this->item('WS', 30, 100);
         $conc = $this->item('CONC', 120);
         $grower = $this->goat('G-1', $this->penA, ['animal_class' => 'breeding_female', 'birth_date' => now()->subMonths(6)]);
         $adult = Animal::where('farm_number', 'D-1')->first(); // 2 years old
@@ -321,6 +321,30 @@ class FeedTest extends TestCase
             ->where('requirement.kgDay', 1)->where('requirement.cost', 30)->where('requirement.milk', 1)->where('requirement.missing', 1)
             ->where('requirement.sheds.0.name', 'Shed 1')->where('requirement.sheds.0.pens.0.name', 'Shed 1-Pen A')
             ->where('requirement.sheds.0.pens.0.goats.0.number', 'D-1')->where('requirement.sheds.0.pens.0.goats.0.feeds', 'Feed WS 1'));
+    }
+
+    public function test_without_a_ration_the_plan_is_automatic_from_weight_and_feed_given_cannot_exceed_stock(): void
+    {
+        $tmr = $this->item('TMR', 60, 2);
+        foreach (['D-1' => 50, 'D-2' => 30] as $n => $kg) {
+            \App\Models\WeightRecord::create(['animal_id' => Animal::where('farm_number', $n)->value('id'), 'measured_on' => now(), 'weight_kg' => $kg, 'measured_by' => 'x']);
+        }
+
+        // 80 KG of adults × 2.5% = 2 KG a day; morning is 40% = 0.8 KG on the feed in store.
+        $plan = Feed::plannedByPen('morning', now())[$this->penA->id];
+        $this->assertSame([2, 0, [$tmr->id => 0.8]], [$plan['auto'], $plan['unplanned'], $plan['lines']]);
+        $this->assertSame([$tmr->id => 0.64], $plan['min'], '2% of 80 KG × 40%');
+
+        $care = $this->user('feeding');
+        $send = fn (float $kg) => $this->actingAs($care)->post('/feeding/record', ['pen_id' => $this->penA->id, 'meal' => 'morning', 'lines' => [['id' => (string) Str::uuid(), 'feed_item_id' => $tmr->id, 'offered_kg' => $kg]]]);
+        $send(2.5)->assertSessionHasErrors(['lines.0.offered_kg' => 'Only 2 KG of Feed TMR available. Record a purchase in Feed store first.']);
+        $this->assertSame(0, FeedUsage::count());
+
+        $send(1.5)->assertSessionHasNoErrors(); // a custom amount above the 0.8 KG plan, within stock
+        $this->assertEqualsWithDelta(0.5, Feed::stock()[$tmr->id], 0.001);
+        $send(2.5)->assertSessionHasErrors('lines.0.offered_kg');
+        $send(2.0)->assertSessionHasNoErrors(); // the correction only needs the extra 0.5 KG
+        $this->assertEqualsWithDelta(0.0, Feed::stock()[$tmr->id], 0.001);
     }
 
     public function test_the_requirement_shows_this_month_and_the_shortage_to_month_end(): void

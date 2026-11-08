@@ -125,6 +125,12 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/finance/entries/{entry}/reverse', [FinanceController::class, 'reverse']);
         Route::post('/finance/sales', [FinanceController::class, 'sale']);
         Route::post('/finance/entries/{entry}/paid', [FinanceController::class, 'markPaid']);
+        // D-083: double-entry books
+        Route::get('/finance/books', [\App\Http\Controllers\BooksController::class, 'index']);
+        Route::post('/finance/journals', [\App\Http\Controllers\BooksController::class, 'storeJournal']);
+        Route::post('/finance/journals/{journal}/reverse', [\App\Http\Controllers\BooksController::class, 'reverseJournal']);
+        Route::post('/finance/accounts', [\App\Http\Controllers\BooksController::class, 'storeAccount']);
+        Route::post('/finance/accounts/{account}', [\App\Http\Controllers\BooksController::class, 'updateAccount']);
     });
 
     Route::get('/reports', ReportController::class)->middleware('module:reports');

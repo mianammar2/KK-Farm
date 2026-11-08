@@ -103,7 +103,7 @@ final class Movements
 
         return DB::transaction(function () use ($data, $by, $gross, $fee, $description) {
             $ledger = LedgerEntry::create([
-                'direction' => 'in', 'category' => ($data['category'] ?? 'other') === 'product' ? 'Product sale' : 'Animal sale', 'amount' => ($gross - $fee) / 100,
+                'direction' => 'in', 'category' => ($data['category'] ?? 'other') === 'product' ? 'Product sale' : 'Animal sale', 'amount' => ($gross - $fee) / 100, 'fee' => $fee ? $fee / 100 : null, 'money_account_id' => $data['money_account_id'] ?? null,
                 'occurred_on' => $data['sold_on'], 'counterparty' => $data['buyer'] ?? null, 'description' => $description ?? ($data['item'] ?? 'Sale'),
                 'animal_id' => $data['animal_id'] ?? null, 'recorded_by' => $by->name,
             ]);
