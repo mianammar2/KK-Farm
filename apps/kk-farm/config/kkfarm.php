@@ -41,6 +41,7 @@ return [
         'finance' => ['ceo', 'finance'],
         'reports' => ['ceo', 'manager', 'finance'],
         'settings' => ['ceo'],
+        'sensors' => ['ceo', 'manager', 'vet'], // D-087: devices, readings, sensor alerts
     ],
 
     // Hard gates from SECURITY_AND_RBAC.md: these never come from a configurable override.
@@ -53,6 +54,7 @@ return [
         'manage_feed_store' => ['ceo', 'manager', 'feeding'], // D-054: feed items and stock
         'plan_rations' => ['ceo', 'manager', 'vet'], // D-054: draft a ration; approve_feeding_plan approves it
         'manage_medicine_store' => ['ceo', 'manager', 'vet'], // D-074: medicines, receipts, disposals
+        'manage_devices' => ['ceo', 'manager'], // D-087: add devices, issue their keys
     ],
 
     // Demonstration assumption (Q-PB-2): the real value is confirmed by the veterinarians.

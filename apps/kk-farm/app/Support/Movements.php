@@ -28,6 +28,9 @@ final class Movements
         if ($animal->status !== 'active') {
             throw ValidationException::withMessages(['animal_id' => "{$animal->farm_number} is no longer on the farm."]);
         }
+        if ($to->kind === 'open_area') {
+            throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is an open area: send goats out to it instead. Their home pen stays the same."]);
+        }
         if ((int) $animal->pen_id === (int) $to->id) {
             return null;
         }

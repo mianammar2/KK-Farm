@@ -1,7 +1,7 @@
 import BrandMark from './BrandMark';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
-    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Wheat, X, ArrowLeftRight, BellRing } from 'lucide-react';
+    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -42,6 +42,7 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
         items: [
             { href: '/finance', label: 'Expenses & Finance', module: 'finance', icon: Wallet },
             { href: '/finance/books', label: 'Accounts (books)', module: 'finance', icon: BookOpen },
+            { href: '/sensors', label: 'Sensors & cameras', module: 'sensors', icon: Cpu },
             { href: '/reports', label: 'Reports', module: 'reports', icon: BarChart3 },
             { href: '/settings', label: 'Settings', module: 'settings', icon: Settings },
         ],

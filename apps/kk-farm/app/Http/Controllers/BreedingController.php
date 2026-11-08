@@ -75,7 +75,7 @@ class BreedingController extends Controller
             'does' => Animal::active()->where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'bucks' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'goats' => Animal::orderBy('farm_number')->get(['id', 'farm_number', 'name']),
-            'pens' => Pen::with('shed')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
+            'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'settings' => ['gestation' => $org->gestation_days, 'check' => $org->pregnancy_check_days, 'alert' => $org->kidding_alert_days, 'weaning' => $org->weaning_age_days],
             'options' => ['methods' => Mating::METHODS, 'checkMethods' => PregnancyCheck::METHODS, 'results' => PregnancyCheck::RESULTS, 'assisted' => Kidding::ASSISTED, 'weanMethods' => Weaning::METHODS],
         ]);

@@ -386,7 +386,7 @@ final class Feed
 
     public static function now(?Organization $org = null): Carbon
     {
-        return now()->setTimezone(($org ?? self::org())->timezone ?: 'Asia/Karachi');
+        return now((($org ?? self::org())->timezone) ?: 'Asia/Karachi'); // a new instance: never changes the shared (test) clock
     }
 
     /** @return array<string, string> meal => "HH:MM" */

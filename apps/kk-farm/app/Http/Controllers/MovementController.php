@@ -34,7 +34,7 @@ class MovementController extends Controller
                 'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'pen' => $a->pen?->fullName(), 'penId' => $a->pen_id,
                 'withdrawal' => isset($withdrawal[$a->id]['meat']) && $withdrawal[$a->id]['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal[$a->id]['meat'])->format('j M') : null,
             ]),
-            'pens' => Pen::with('shed')->whereHas('shed', fn ($q) => $q->where('status', 'active'))->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
+            'pens' => Pen::with('shed')->where('kind', 'pen')->whereHas('shed', fn ($q) => $q->where('status', 'active'))->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'types' => collect(AnimalMovement::TYPES)->map(fn ($t) => ['label' => $t[0], 'exit' => $t[1]]),
             'month' => AnimalMovement::where('moved_on', '>=', now()->startOfMonth())->groupBy('type')->selectRaw('type, count(*) as n')->pluck('n', 'type'),
             'canExit' => $request->user()->passes('exit_animal'),

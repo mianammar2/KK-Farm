@@ -79,7 +79,7 @@ final class GoatRegistration
                 'rfid_epc' => ['string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
                 'tag_id' => ['string', 'max:40', Rule::unique('animals', 'farm_number')],
                 'breed_id' => ['integer', 'exists:breeds,id'],
-                'pen_id' => ['integer', 'exists:pens,id'],
+                'pen_id' => ['integer', Rule::exists('pens', 'id')->where('kind', 'pen')], // D-087: a home pen, never an open area
                 'sire_id' => ['uuid', 'exists:animals,id'],
                 'dam_id' => ['uuid', 'exists:animals,id'],
                 'birth_date', 'acquired_on' => ['date', 'before_or_equal:today'],

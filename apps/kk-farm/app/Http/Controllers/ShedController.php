@@ -24,7 +24,7 @@ class ShedController extends Controller
             'sheds' => Shed::with(['pens' => fn ($q) => $q->orderBy('name'), 'pens.animals' => fn ($q) => $q->active()->orderBy('farm_number')])->orderBy('name')->get()->map(fn (Shed $s) => [
                 'id' => $s->id, 'code' => $s->code, 'name' => $s->name, 'status' => $s->status, 'type' => $s->type, 'typeName' => $s->typeName(), 'purpose' => $s->purpose(),
                 'pens' => $s->pens->map(fn (Pen $p) => [
-                    'id' => $p->id, 'name' => "{$s->name}-{$p->name}", 'code' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity, 'count' => $p->animals->count(),
+                    'id' => $p->id, 'name' => "{$s->name}-{$p->name}", 'code' => $p->name, 'kind' => $p->kind, 'purpose' => $p->purpose, 'capacity' => $p->capacity, 'count' => $p->animals->count(),
                     'goats' => $p->animals->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'sex' => $a->sex, 'health' => $a->health_status, 'repro' => $a->repro_state]),
                 ]),
             ]),
@@ -113,7 +113,8 @@ class ShedController extends Controller
 
     private function penData(Request $request, Shed $shed, ?Pen $pen = null): array
     {
-        $request->merge(['name' => Pen::standardName($request->input('name'))]); // D-057: stored as P01, shown as SHED-P01
+        $area = ($pen?->kind ?? $request->input('kind')) === 'open_area';
+        $request->merge(['name' => $area ? Pen::standardAreaName($request->input('name')) : Pen::standardName($request->input('name'))]); // D-057: P01; D-087: OA01
 
         return $request->validate([
             'name' => ['required', 'string', 'max:60', function (string $attr, mixed $value, \Closure $fail) use ($shed, $pen) {
@@ -124,7 +125,7 @@ class ShedController extends Controller
             }],
             'purpose' => ['required', 'string', 'max:80'],
             'capacity' => ['nullable', 'integer', 'min:1', 'max:5000'],
-        ], ['name.required' => 'Enter the pen number, e.g. 1 for P01.']) + ['capacity' => null];
+        ], ['name.required' => $area ? 'Enter the open area number, e.g. 1 for OA01.' : 'Enter the pen number, e.g. 1 for P01.']) + ['capacity' => null] + ($pen ? [] : ['kind' => $area ? 'open_area' : 'pen']);
     }
 
     public function transfer(Request $request): RedirectResponse

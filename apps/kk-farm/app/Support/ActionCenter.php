@@ -118,6 +118,21 @@ final class ActionCenter
                 $low->map(fn (FeedItem $i) => ['text' => $i->name, 'sub' => round($stock[$i->id] ?? 0, 1).' KG · reorder at '.round($i->reorder_level_kg).' KG', 'url' => '/feeding'])->values());
         }
 
+        // ---- Sensors and open areas (D-087) ----
+        if ($user->canModule('sensors')) {
+            $alerts = \App\Models\SensorAlert::with(['animal', 'pen.shed'])->where('status', 'open')->orderByDesc('id')->get();
+            $add('sensors', 'sensor_alerts', 'Sensor alerts', $alerts->contains('severity', 'critical') ? 'critical' : 'warning', 'Check the goat or the pen; acknowledge or resolve the alert.', '/sensors',
+                $alerts->map(fn ($a) => ['text' => $a->title, 'sub' => \App\Models\SensorAlert::KINDS[$a->kind] ?? $a->kind, 'url' => $a->animal_id ? "/goats/{$a->animal_id}" : '/sensors'])->values());
+            $quiet = \App\Models\Device::where('status', 'active')->where(fn ($q) => $q->whereNull('last_seen_at')->orWhere('last_seen_at', '<', now()->subHours(\App\Support\Sensors::DEFAULTS['offline_hours'])))->orderBy('code')->get();
+            $add('sensors', 'devices_offline', 'Devices not reporting', 'warning', 'Check power and network at the device.', '/sensors',
+                $quiet->map(fn ($d) => ['text' => "{$d->code} {$d->name}", 'sub' => 'Last seen '.($d->last_seen_at?->diffForHumans() ?? 'never'), 'url' => '/sensors'])->values());
+        }
+        if ($user->canModule('sheds')) {
+            $long = \App\Support\Sensors::outNow()->filter(fn ($p) => $p->at->lt(now()->subHours(\App\Support\Sensors::DEFAULTS['out_hours_max'])));
+            $add('sheds', 'out_too_long', 'Goats out in an open area too long', 'warning', 'Bring them in, or check the gate reader missed them coming back.', '/',
+                $long->map(fn ($p) => ['text' => $p->animal->farm_number, 'sub' => 'Out in '.($p->area?->fullName() ?? 'open area').' since '.$p->at->diffForHumans(), 'url' => "/goats/{$p->animal_id}"])->values());
+        }
+
         // ---- Herd data ----
         $goats = Animal::with('pen')->active()->orderBy('farm_number')->get();
         $tags = HerdStats::tagsFor($goats);

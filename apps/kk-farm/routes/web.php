@@ -133,6 +133,17 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/finance/accounts/{account}', [\App\Http\Controllers\BooksController::class, 'updateAccount']);
     });
 
+    // D-087: sensors, cameras, scales, gates; open areas
+    Route::middleware('module:sensors')->group(function (): void {
+        Route::get('/sensors', [\App\Http\Controllers\SensorsController::class, 'index']);
+        Route::post('/sensors/devices', [\App\Http\Controllers\SensorsController::class, 'store']);
+        Route::post('/sensors/devices/{device}', [\App\Http\Controllers\SensorsController::class, 'update']);
+        Route::post('/sensors/devices/{device}/key', [\App\Http\Controllers\SensorsController::class, 'newKey']);
+        Route::post('/sensors/devices/{device}/test', [\App\Http\Controllers\SensorsController::class, 'test']);
+        Route::post('/sensors/alerts/{alert}', [\App\Http\Controllers\SensorsController::class, 'alert']);
+    });
+    Route::post('/presence', [\App\Http\Controllers\SensorsController::class, 'presence'])->middleware('module:sheds');
+
     Route::get('/reports', ReportController::class)->middleware('module:reports');
 
     Route::middleware('module:settings')->group(function (): void {

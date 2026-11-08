@@ -37,7 +37,7 @@ class GoatController extends Controller
             'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]]),
             'showLabels' => \App\Support\HerdStats::LABELS,
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
-            'pens' => Pen::with('shed')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
+            'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
     }
 
@@ -134,7 +134,7 @@ class GoatController extends Controller
                 ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('j M Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('j M Y')]),
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
-            'pens' => Pen::with('shed')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
+            'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
     }
 
