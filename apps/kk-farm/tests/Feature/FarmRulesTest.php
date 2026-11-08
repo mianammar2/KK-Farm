@@ -178,20 +178,7 @@ class FarmRulesTest extends TestCase
         $this->actingAs($caretaker)->post('/health/records/'.HealthRecord::first()->id.'/close')->assertForbidden();
     }
 
-    public function test_feeding_plans_take_effect_only_after_veterinary_approval(): void
-    {
-        $group = FeedingGroup::create(['name' => 'New group', 'criteria' => 'x', 'ration' => [], 'plan_status' => 'pending_approval']);
-        $log = ['group_id' => $group->id, 'session' => 'morning', 'status' => 'done'];
-
-        $this->actingAs($this->user('feeding'))->post('/feeding/log', $log)->assertStatus(422);
-        $this->assertSame(0, FeedingLog::count());
-
-        $this->actingAs($this->user('manager'))->post("/feeding/groups/{$group->id}/approve")->assertForbidden();
-        $this->actingAs($this->user('vet'))->post("/feeding/groups/{$group->id}/approve")->assertRedirect();
-
-        $this->actingAs($this->user('caretaker'))->post('/feeding/log', $log)->assertRedirect();
-        $this->assertSame(1, FeedingLog::count());
-    }
+    // Ration approval by a veterinarian (R-6) is covered by FeedTest::test_rations_need_meals_totalling_100_and_a_vet_to_approve (D-054).
 
     public function test_finance_corrections_are_reversing_entries_and_never_edits(): void
     {

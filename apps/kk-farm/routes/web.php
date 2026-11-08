@@ -73,8 +73,14 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware('module:feeding')->group(function (): void {
         Route::get('/feeding', [FeedingController::class, 'index']);
-        Route::post('/feeding/log', [FeedingController::class, 'log']);
-        Route::post('/feeding/groups/{group}/approve', [FeedingController::class, 'approve']);
+        Route::post('/feeding/record', [FeedingController::class, 'record']);
+        Route::post('/feeding/leftover', [FeedingController::class, 'leftover']);
+        Route::post('/feeding/items', [FeedingController::class, 'storeItem']);
+        Route::post('/feeding/items/{item}', [FeedingController::class, 'updateItem']);
+        Route::post('/feeding/stock', [FeedingController::class, 'stock']);
+        Route::post('/feeding/plans', [FeedingController::class, 'storePlan']);
+        Route::post('/feeding/plans/{plan}/approve', [FeedingController::class, 'approve']);
+        Route::post('/feeding/settings', [FeedingController::class, 'settings']);
     });
 
     Route::middleware('module:sheds')->group(function (): void {

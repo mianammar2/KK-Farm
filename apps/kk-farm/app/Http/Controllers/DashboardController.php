@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\Animal;
-use App\Models\FeedingGroup;
-use App\Models\FeedingLog;
 use App\Models\HealthRecord;
 use App\Models\LedgerEntry;
 use App\Models\Mating;
@@ -41,7 +39,7 @@ class DashboardController extends Controller
         $kiddings = Mating::with('dam')->where('status', 'pregnant')->orderBy('expected_kidding_on')->limit(5)->get()
             ->map(fn (Mating $m) => ['goatId' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'on' => $m->expected_kidding_on->format('j M'), 'days' => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false)]);
 
-        $feedingDone = FeedingLog::where('fed_on', $today)->count();
+        $feeding = \App\Support\Feed::todayCompliance(\App\Support\Feed::org()); // D-054: meals due so far today, across pens
 
         return Inertia::render('Dashboard', [
             'stats' => [
@@ -53,8 +51,8 @@ class DashboardController extends Controller
                 'overdueCare' => $overdue,
                 'tasksDone' => Task::where('due_on', $today)->where('status', 'done')->count(),
                 'tasksTotal' => Task::where('due_on', $today)->count(),
-                'feedingDone' => $feedingDone,
-                'feedingTotal' => FeedingGroup::count() * 2,
+                'feedingDone' => $feeding['done'] + $feeding['late'],
+                'feedingTotal' => $feeding['expected'],
             ],
             'herd' => $this->herdCategories(),
             'wall' => $wall,

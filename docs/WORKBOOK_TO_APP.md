@@ -21,11 +21,11 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 9 | Health Cases | Vet · onset and review | Health | 🟡 |
 | 10 | Treatments | Vet / staff · each dose | — | ❌ (safety) |
 | 11 | Preventive Care | Vet · per health plan | Health (one record type) | 🟡 |
-| 12 | Feed Items | Feed store · setup | — | ❌ |
-| 13 | Ration Plans | Nutritionist · diet change | Feeding (group rations) | 🟡 |
-| 14 | Feed Usage | Feed lead · 3 meals daily | Feeding (done/missed only) | 🟡 |
-| 15 | Feeding Compliance | Feed lead · 3 meals daily | becomes automatic | ❌ |
-| 16 | Stock Movements | Storekeeper · each transaction | — | ❌ |
+| 12 | Feed Items | Feed store · setup | Feeding → Feed store | ✅ D-054 |
+| 13 | Ration Plans | Nutritionist · diet change | Feeding → Rations | ✅ D-054 |
+| 14 | Feed Usage | Feed lead · 3 meals daily | Feeding → Feed now | ✅ D-054 |
+| 15 | Feeding Compliance | Feed lead · 3 meals daily | automatic (Feed now, dashboard) | ✅ D-054 |
+| 16 | Stock Movements | Storekeeper · each transaction | Feeding → Feed store | ✅ D-054 |
 | 17 | Medicine Stock | Vet store · setup | — | ❌ |
 | 18 | Medicine Movements | Vet store · each issue | — | ❌ |
 | 19 | Animal Movements | Farm Manager · per event | Sheds (move) + goat exit | 🟡 |

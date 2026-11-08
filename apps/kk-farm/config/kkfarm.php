@@ -50,6 +50,8 @@ return [
         'exit_animal' => ['ceo', 'manager'],
         'assign_tags' => ['ceo', 'manager', 'caretaker'],
         'manage_sheds' => ['ceo', 'manager'], // D-051: add and rename sheds and pens
+        'manage_feed_store' => ['ceo', 'manager', 'feeding'], // D-054: feed items and stock
+        'plan_rations' => ['ceo', 'manager', 'vet'], // D-054: draft a ration; approve_feeding_plan approves it
     ],
 
     // Demonstration assumption (Q-PB-2): the real value is confirmed by the veterinarians.

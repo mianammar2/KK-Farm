@@ -1,0 +1,257 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Animal;
+use App\Models\Breed;
+use App\Models\FeedingGroup;
+use App\Models\FeedItem;
+use App\Models\FeedUsage;
+use App\Models\LedgerEntry;
+use App\Models\Organization;
+use App\Models\Pen;
+use App\Models\RationPlan;
+use App\Models\Shed;
+use App\Models\User;
+use App\Support\Feed;
+use App\Support\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+/** D-054: feed store, rations, feeding per pen and meal, stock and compliance. */
+class FeedTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Pen $penA;
+
+    private Pen $penB;
+
+    private Breed $breed;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+        // 07:30 in Pakistan (UTC+5): the morning meal (07:00) has started.
+        Carbon::setTestNow(Carbon::parse('2026-11-10 02:30:00', 'UTC'));
+        Tenant::set(Organization::create(['name' => 'Feed Farm', 'slug' => 'feed-farm'])->id);
+        $this->breed = Breed::create(['name' => 'Beetal', 'default_gestation_days' => 150]);
+        $shed = Shed::create(['code' => 'SHED-1', 'name' => 'Shed 1']);
+        $this->penA = Pen::create(['shed_id' => $shed->id, 'name' => 'Pen A', 'purpose' => 'Does']);
+        $this->penB = Pen::create(['shed_id' => $shed->id, 'name' => 'Pen B', 'purpose' => 'Kids']);
+        foreach (['D-1', 'D-2'] as $n) {
+            $this->goat($n, $this->penA, ['animal_class' => 'breeding_female']);
+        }
+        $this->goat('K-1', $this->penB, ['animal_class' => 'female_kid', 'birth_date' => now()->subMonth()]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
+    private function goat(string $number, Pen $pen, array $extra = []): Animal
+    {
+        return Animal::create($extra + ['farm_number' => $number, 'sex' => 'female', 'breed_id' => $this->breed->id, 'birth_date' => now()->subYears(2), 'origin' => 'purchased', 'pen_id' => $pen->id]);
+    }
+
+    private function user(string $role): User
+    {
+        return User::firstOrCreate(['email' => "$role@feed.test"], ['name' => "Test $role", 'password' => 'x', 'role' => $role, 'org_id' => Tenant::current()]);
+    }
+
+    private function item(string $code, int $costPkr, float $opening = 0): FeedItem
+    {
+        $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => $code, 'name' => "Feed $code", 'category' => 'concentrate', 'cost_per_kg' => $costPkr, 'reorder_level_kg' => 50, 'opening_kg' => $opening])->assertSessionHasNoErrors();
+
+        return FeedItem::where('code', $code)->firstOrFail();
+    }
+
+    private function group(string $code): FeedingGroup
+    {
+        return FeedingGroup::where('code', $code)->firstOrFail();
+    }
+
+    /** Draft and approve: breeding does get 1.5 kg straw + 0.5 kg concentrate a day, 40/20/40 over the meals. */
+    private function approvedDoeRation(FeedItem $straw, FeedItem $conc): RationPlan
+    {
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', [
+            'feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(),
+            'split_morning' => 40, 'split_midday' => 20, 'split_evening' => 40,
+            'lines' => [['feed_item_id' => $straw->id, 'kg_per_head' => 1.5], ['feed_item_id' => $conc->id, 'kg_per_head' => 0.5]],
+        ])->assertSessionHasNoErrors();
+        $plan = RationPlan::latest('id')->firstOrFail();
+        $this->actingAs($this->user('vet'))->post("/feeding/plans/{$plan->id}/approve")->assertSessionHasNoErrors();
+
+        return $plan->fresh();
+    }
+
+    private function feed(Pen $pen, array $lines, string $meal = 'morning', string $role = 'feeding')
+    {
+        return $this->actingAs($this->user($role))->post('/feeding/record', ['pen_id' => $pen->id, 'meal' => $meal, 'lines' => $lines]);
+    }
+
+    public function test_goats_fall_into_feeding_groups_from_their_classification(): void
+    {
+        $codes = Animal::orderBy('farm_number')->get()->mapWithKeys(fn ($a) => [$a->farm_number => Feed::groupCode($a)]);
+        $this->assertSame(['D-1' => 'breeding_does', 'D-2' => 'breeding_does', 'K-1' => 'kids'], $codes->all());
+
+        Animal::where('farm_number', 'D-1')->update(['repro_status' => 'pregnant']);
+        Animal::where('farm_number', 'D-2')->update(['health_flag' => 'quarantine']);
+        $this->assertSame('pregnant_does', Feed::groupCode(Animal::where('farm_number', 'D-1')->first()));
+        $this->assertSame('quarantine', Feed::groupCode(Animal::where('farm_number', 'D-2')->first()));
+    }
+
+    public function test_planned_feed_comes_from_the_goats_in_the_pen_and_only_an_approved_ration(): void
+    {
+        $straw = $this->item('WS', 30);
+        $conc = $this->item('CONC', 120);
+
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', [
+            'feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(),
+            'split_morning' => 40, 'split_midday' => 20, 'split_evening' => 40, 'lines' => [['feed_item_id' => $straw->id, 'kg_per_head' => 1.5]],
+        ]);
+        $this->assertSame([], Feed::plannedByPen('morning', now())[$this->penA->id]['lines'], 'a draft ration plans nothing');
+
+        $this->approvedDoeRation($straw, $conc);
+        $planned = Feed::plannedByPen('morning', now());
+        // 2 does × 1.5 kg × 40% = 1.2 kg straw, 2 × 0.5 × 40% = 0.4 kg concentrate
+        $this->assertEquals([$straw->id => 1.2, $conc->id => 0.4], $planned[$this->penA->id]['lines']);
+        $this->assertSame(2, $planned[$this->penA->id]['headcount']);
+        $this->assertSame(1, $planned[$this->penB->id]['unplanned'], 'the kid has no ration yet');
+
+        // Moving a goat changes both pens' plans: headcount is never typed.
+        Animal::where('farm_number', 'D-2')->update(['pen_id' => $this->penB->id]);
+        $planned = Feed::plannedByPen('morning', now());
+        $this->assertEquals([$straw->id => 0.6, $conc->id => 0.2], $planned[$this->penA->id]['lines']);
+        $this->assertEquals([$straw->id => 0.6, $conc->id => 0.2], $planned[$this->penB->id]['lines']);
+    }
+
+    public function test_feeding_reduces_stock_and_a_retry_or_correction_never_counts_twice(): void
+    {
+        $straw = $this->item('WS', 30, 100);
+        $conc = $this->item('CONC', 120, 20);
+        $this->approvedDoeRation($straw, $conc);
+
+        $line = ['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 1.4];
+        $this->feed($this->penA, [$line, ['id' => (string) Str::uuid(), 'feed_item_id' => $conc->id, 'offered_kg' => 0.4]])->assertSessionHasNoErrors();
+        $this->feed($this->penA, [$line])->assertSessionHasNoErrors(); // the same entry sent again
+        $this->assertSame(2, FeedUsage::count());
+        $this->assertEqualsWithDelta(98.6, Feed::stock()[$straw->id], 0.001);
+
+        $usage = FeedUsage::where('feed_item_id', $straw->id)->firstOrFail();
+        $this->assertEqualsWithDelta(1.2, $usage->planned_kg, 0.001);
+        $this->assertSame(2, $usage->headcount);
+        $this->assertSame(3000, $usage->unit_cost_minor);
+
+        // Correction: a new row supersedes the old one, the old row is untouched.
+        $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 1.0]])->assertSessionHasNoErrors();
+        $this->assertSame(3, FeedUsage::count());
+        $this->assertEqualsWithDelta(1.4, $usage->fresh()->offered_kg, 0.001);
+        $this->assertEqualsWithDelta(99.0, Feed::stock()[$straw->id], 0.001);
+        $this->assertSame(2, FeedUsage::current()->count());
+    }
+
+    public function test_leftover_is_a_correction_and_cannot_exceed_what_was_given(): void
+    {
+        $straw = $this->item('WS', 30, 100);
+        $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 2]])->assertSessionHasNoErrors();
+        $usage = FeedUsage::firstOrFail();
+
+        $this->actingAs($this->user('feeding'))->post('/feeding/leftover', ['lines' => [['id' => (string) Str::uuid(), 'usage_id' => $usage->id, 'refused_kg' => 3]]])->assertSessionHasErrors('lines.0.refused_kg');
+        $this->actingAs($this->user('feeding'))->post('/feeding/leftover', ['lines' => [['id' => (string) Str::uuid(), 'usage_id' => $usage->id, 'refused_kg' => 0.5]]])->assertSessionHasNoErrors();
+
+        $current = FeedUsage::current()->sole();
+        $this->assertSame($usage->id, $current->supersedes_id);
+        $this->assertEqualsWithDelta(1.5, $current->consumedKg(), 0.001);
+        $this->assertTrue($current->fed_at->equalTo($usage->fed_at), 'the meal time stays the time it was fed');
+        $this->assertEqualsWithDelta(98.0, Feed::stock()[$straw->id], 0.001, 'refused feed still left the store');
+    }
+
+    public function test_a_purchase_adds_stock_records_the_expense_and_sets_the_cost(): void
+    {
+        $straw = $this->item('WS', 30, 10);
+        $this->actingAs($this->user('feeding'))->post('/feeding/stock', ['feed_item_id' => $straw->id, 'type' => 'purchase', 'qty_kg' => 500, 'rate' => 32.5, 'moved_on' => now()->toDateString(), 'party' => 'Mandi', 'reference' => 'INV-9'])->assertSessionHasNoErrors();
+
+        $this->assertEqualsWithDelta(510, Feed::stock()[$straw->id], 0.001);
+        $this->assertSame(3250, $straw->fresh()->cost_per_kg_minor);
+        $expense = LedgerEntry::sole();
+        $this->assertSame(['out', 'Feed Purchase', 16250.0], [$expense->direction, $expense->category, (float) $expense->amount]);
+
+        $this->actingAs($this->user('feeding'))->post('/feeding/stock', ['feed_item_id' => $straw->id, 'type' => 'adjustment', 'qty_kg' => 5, 'moved_on' => now()->toDateString()])->assertSessionHasErrors('direction');
+        $this->actingAs($this->user('feeding'))->post('/feeding/stock', ['feed_item_id' => $straw->id, 'type' => 'write_off', 'qty_kg' => 20, 'moved_on' => now()->toDateString()])->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(490, Feed::stock()[$straw->id], 0.001);
+        $this->assertSame(1, LedgerEntry::count(), 'only purchases create an expense');
+    }
+
+    public function test_rations_need_meals_totalling_100_and_a_vet_to_approve(): void
+    {
+        $straw = $this->item('WS', 30);
+        $payload = ['feeding_group_id' => $this->group('kids')->id, 'effective_from' => now()->toDateString(), 'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 40, 'lines' => [['feed_item_id' => $straw->id, 'kg_per_head' => 0.3]]];
+
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', $payload)->assertSessionHasErrors('split_morning');
+        $this->actingAs($this->user('caretaker'))->post('/feeding/plans', ['split_evening' => 50] + $payload)->assertForbidden();
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', ['split_evening' => 50] + $payload)->assertSessionHasNoErrors();
+        $plan = RationPlan::sole();
+
+        $this->actingAs($this->user('manager'))->post("/feeding/plans/{$plan->id}/approve")->assertForbidden();
+        $this->actingAs($this->user('vet'))->post("/feeding/plans/{$plan->id}/approve")->assertSessionHasNoErrors();
+        $this->assertSame('approved', $plan->fresh()->status);
+    }
+
+    public function test_only_the_feed_store_roles_change_feeds_and_stock(): void
+    {
+        $straw = $this->item('WS', 30);
+        $caretaker = $this->user('caretaker');
+
+        $this->actingAs($caretaker)->post('/feeding/items', ['code' => 'X', 'name' => 'X', 'category' => 'other', 'cost_per_kg' => 1])->assertForbidden();
+        $this->actingAs($caretaker)->post('/feeding/stock', ['feed_item_id' => $straw->id, 'type' => 'receipt', 'qty_kg' => 1, 'moved_on' => now()->toDateString()])->assertForbidden();
+        $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 1]], 'morning', 'caretaker')->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'ws', 'name' => 'Dup', 'category' => 'other', 'cost_per_kg' => 1])->assertSessionHasErrors('code');
+    }
+
+    public function test_meals_are_done_late_or_missed_from_the_time_feed_was_recorded(): void
+    {
+        $straw = $this->item('WS', 30, 100);
+        $conc = $this->item('CONC', 120, 100);
+        $this->approvedDoeRation($straw, $conc);
+        $kids = $this->group('kids');
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $kids->id, 'effective_from' => now()->toDateString(), 'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => $conc->id, 'kg_per_head' => 0.2]]]);
+        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::where('status', 'draft')->value('id').'/approve');
+        $org = Feed::org();
+
+        $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 1.2]]); // 07:30, on time
+        $board = Feed::board('2026-11-10', $org);
+        $this->assertSame('done', $board[$this->penA->id]['morning']['status']);
+        $this->assertSame('due', $board[$this->penB->id]['morning']['status']);
+        $this->assertSame('upcoming', $board[$this->penA->id]['midday']['status']);
+        $this->assertSame('none', $board[$this->penB->id]['midday']['status'], 'kids get 0% at midday');
+
+        Carbon::setTestNow(Carbon::parse('2026-11-10 05:30:00', 'UTC')); // 10:30 local: morning window (180 min) is over
+        $this->assertSame('missed', Feed::board('2026-11-10', $org)[$this->penB->id]['morning']['status']);
+        $this->feed($this->penB, [['id' => (string) Str::uuid(), 'feed_item_id' => $conc->id, 'offered_kg' => 0.1]]);
+        $this->assertSame('late', Feed::board('2026-11-10', $org)[$this->penB->id]['morning']['status']);
+        $this->assertSame(['expected' => 2, 'done' => 1, 'late' => 1, 'missed' => 0], Feed::todayCompliance($org));
+
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertOk();
+        $this->actingAs($this->user('ceo'))->get('/')->assertOk();
+    }
+
+    public function test_a_farm_cannot_feed_into_another_farms_pen_or_feed(): void
+    {
+        $mine = Tenant::current();
+        Tenant::set(Organization::create(['name' => 'Other', 'slug' => 'other'])->id);
+        $otherPen = Pen::create(['shed_id' => Shed::create(['code' => 'S', 'name' => 'S'])->id, 'name' => 'Theirs', 'purpose' => 'x']);
+        $otherItem = FeedItem::create(['code' => 'WS', 'name' => 'Their straw', 'category' => 'roughage']);
+        Tenant::set($mine);
+        $straw = $this->item('WS', 30);
+
+        $this->feed($otherPen, [['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 1]])->assertSessionHasErrors('pen_id');
+        $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $otherItem->id, 'offered_kg' => 1]])->assertSessionHasErrors('lines.0.feed_item_id');
+        $this->assertSame(0, FeedUsage::count());
+    }
+}
