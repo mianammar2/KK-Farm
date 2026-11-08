@@ -63,7 +63,7 @@ class Breed extends Model
 
     /**
      * D-061: breed code, date as DDMMYY, origin letter (P bought, T transferred, B born) and the breed's running
-     * number with two digits, e.g. TD-141026-P-03 for a Teddy bought on 14 October 2026. The number keeps counting
+     * number with two digits, e.g. TD-141026P-03 for a Teddy bought on 14 October 2026. The number keeps counting
      * per breed (it never restarts; after 99 it simply grows to 100), so a Tag ID is never reused. Without a known
      * origin the letter is left out.
      */
@@ -73,7 +73,7 @@ class Breed extends Model
 
         $day = ($date ? Carbon::parse($date) : (\App\Support\Tenant::current() ? \App\Support\Feed::now() : now()))->format('dmy'); // today on the farm's clock
 
-        return sprintf('%s-%s-%s%02d', $code, $day, $letter ? "$letter-" : '', $number);
+        return sprintf('%s-%s%s-%02d', $code, $day, $letter ?? '', $number); // D-062: date and origin joined
     }
 
     /**
