@@ -45,6 +45,12 @@ final class GoatRegistration
         return $date ? Carbon::parse($date) : Feed::now();
     }
 
+    /** D-065: height is entered in inches and kept in centimetres. */
+    private static function heightCm(array $data): ?float
+    {
+        return isset($data['height_in']) && $data['height_in'] !== '' ? round((float) $data['height_in'] * 2.54, 1) : null;
+    }
+
     public static function rules(Collection $definitions): array
     {
         $rules = [
@@ -79,7 +85,7 @@ final class GoatRegistration
                 'birth_date', 'acquired_on' => ['date', 'before_or_equal:today'],
                 'birth_weight_kg' => ['numeric', 'between:0.1,12'],
                 'latest_weight_kg' => ['numeric', 'between:0.5,150'],
-                'height_cm' => ['numeric', 'between:10,200'],
+                'height_in' => ['numeric', 'between:4,80'],
                 'purchase_cost_pkr' => ['numeric', 'min:0', 'max:100000000'],
                 'name', 'source_farm' => ['string', 'max:60'],
                 default => null,
@@ -145,7 +151,8 @@ final class GoatRegistration
                 'breed_id' => $data['breed_id'],
                 'pen_id' => $data['pen_id'],
                 'birth_date' => $data['birth_date'] ?? null,
-                'birth_date_is_estimate' => (bool) ($data['birth_date_is_estimate'] ?? false),
+                // D-065: a bought or transferred goat's birth date is always an estimate; a farm-born one is exact.
+                'birth_date_is_estimate' => ($data['origin'] ?? null) !== 'born_on_farm' && ! empty($data['birth_date']),
                 'origin' => $data['origin'],
                 'sire_id' => $data['sire_id'] ?? null,
                 'dam_id' => $data['dam_id'] ?? null,
@@ -165,7 +172,7 @@ final class GoatRegistration
                 'health_status' => self::HEALTH[$data['health_flag'] ?? 'healthy'] ?? 'healthy',
                 'ownership' => $data['ownership'] ?? null,
                 'birth_weight_kg' => $data['birth_weight_kg'] ?? null,
-                'height_cm' => $data['height_cm'] ?? null,
+                'height_cm' => self::heightCm($data),
                 'purchase_cost_minor' => isset($data['purchase_cost_pkr']) ? (int) round($data['purchase_cost_pkr'] * 100) : null,
                 'notes' => $data['notes'] ?? null,
                 'custom_fields' => $data['custom_fields'] ?? [],
@@ -188,7 +195,7 @@ final class GoatRegistration
             }
 
             if (isset($data['latest_weight_kg'])) {
-                WeightRecord::create(['animal_id' => $animal->id, 'measured_on' => now(), 'weight_kg' => $data['latest_weight_kg'], 'height_cm' => $data['height_cm'] ?? null, 'context' => 'registration', 'measured_by' => $user->name]);
+                WeightRecord::create(['animal_id' => $animal->id, 'measured_on' => now(), 'weight_kg' => $data['latest_weight_kg'], 'height_cm' => self::heightCm($data), 'context' => 'registration', 'measured_by' => $user->name]);
             }
 
             $origin = ['purchased' => 'Purchased and registered', 'transferred_in' => 'Transferred in and registered'][$data['origin']] ?? 'Born on the farm';

@@ -96,7 +96,7 @@ export default function GoatShow(props: Props) {
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
-                                {goat.height !== null ? fact('Height', `${goat.height} cm`) : null}
+                                {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
                                 {fact('Sire', parentLink(goat.sire))}
                                 {fact('Dam', parentLink(goat.dam))}

@@ -568,13 +568,13 @@ class GoatRegistrationTest extends TestCase
     {
         $this->actingAs($this->user('manager'))->post('/goats', $this->payload([
             'origin' => 'purchased', 'acquired_on' => now()->toDateString(), 'birth_date' => now()->subMonths(18)->toDateString(), 'birth_date_is_estimate' => true,
-            'latest_weight_kg' => 32.5, 'height_cm' => 61,
+            'latest_weight_kg' => 32.5, 'height_in' => 24,
         ]))->assertSessionHasNoErrors();
 
         $goat = Animal::with('latestWeight')->sole();
         $this->assertTrue($goat->birth_date_is_estimate);
-        $this->assertEquals(61.0, (float) $goat->height_cm);
+        $this->assertEquals(61.0, (float) $goat->height_cm, '24 inches is kept as 61 cm');
         $this->assertEquals([32.5, 61.0], [(float) $goat->latestWeight->weight_kg, (float) $goat->latestWeight->height_cm]);
-        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['tag_id' => 'X-1', 'height_cm' => 500]))->assertSessionHasErrors('height_cm');
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['tag_id' => 'X-1', 'height_in' => 500]))->assertSessionHasErrors('height_in');
     }
 }

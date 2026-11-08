@@ -16,7 +16,7 @@ const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toIS
 
 export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, canAssignTags, untagged }: Props) {
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
-    const [estAge, setEstAge] = useState({ years: '', months: '' });
+    const [estMonths, setEstMonths] = useState('');
     const form = useForm<Record<string, any>>({
         rfid_epc: epc ?? '',
         birth_date_is_estimate: false,
@@ -35,7 +35,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             // D-063: a bought goat's birthday is rarely known, so ask its estimated age just before the birth date.
             const at = fields.findIndex((f) => f.key === 'birth_date');
             if (at < 0 || !form.data.origin) return fields;
-            const age: FieldDef = { key: 'estimated_age', label: 'Estimated Age', type: 'age', section: fields[at].section, help: null, builtin: true, required: false, options: null };
+            const age: FieldDef = { key: 'estimated_age', label: 'Estimated Age (months)', type: 'age', section: fields[at].section, help: null, builtin: true, required: false, options: null };
             return [...fields.slice(0, at), age, ...fields.slice(at)];
         }
         const birth = fields.find((f) => f.key === 'birth_date');
@@ -60,7 +60,8 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     const age = form.data.age_category || ageCategory(form.data.birth_date, classification);
     const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
     const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid)
-        || (farmBorn && ['acquired_on', 'source_farm', 'purchase_cost_pkr', 'birth_date_is_estimate'].includes(f.key))
+        || f.key === 'birth_date_is_estimate' // D-065: set automatically (estimate for bought goats, exact for farm-born)
+        || (farmBorn && ['acquired_on', 'source_farm', 'purchase_cost_pkr'].includes(f.key))
         || (!farmBorn && f.key === 'birth_weight_kg')
         // D-064: parentage is known only for goats born on the farm.
         || (!farmBorn && ['sire_id', 'dam_id', 'breed_purity', 'cross_breeds'].includes(f.key))
@@ -177,21 +178,20 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
         const optional = f.required ? undefined : <option value="">Not set</option>;
         switch (f.type) {
             case 'age': {
-                // Estimated age → estimated birth date (today minus the age), marked as an estimate.
-                const change = (key: 'years' | 'months', raw: string) => {
-                    const next = { ...estAge, [key]: raw.replace(/[^0-9]/g, '') };
-                    setEstAge(next);
-                    const years = Number(next.years || 0), months = Number(next.months || 0);
-                    if (!years && !months) return;
+                // D-065: estimated age in months → estimated birth date (today minus the months).
+                const change = (raw: string) => {
+                    const months = raw.replace(/[^0-9]/g, '').slice(0, 3);
+                    setEstMonths(months);
+                    if (!Number(months)) return;
                     const d = new Date(`${TODAY}T12:00:00`);
-                    d.setMonth(d.getMonth() - (years * 12 + months));
-                    form.setData((data: Record<string, any>) => ({ ...data, birth_date: d.toISOString().slice(0, 10), birth_date_is_estimate: true }));
+                    d.setMonth(d.getMonth() - Number(months));
+                    form.setData((data: Record<string, any>) => ({ ...data, birth_date: d.toISOString().slice(0, 10) }));
                 };
                 return (
-                    <div className="grid grid-cols-2 gap-2">
-                        <label className="flex items-center gap-2"><input className="field" inputMode="numeric" maxLength={2} value={estAge.years} onChange={(e) => change('years', e.target.value)} placeholder="0" aria-label="Years" /><span className="text-sm text-ink-soft">years</span></label>
-                        <label className="flex items-center gap-2"><input className="field" inputMode="numeric" maxLength={2} value={estAge.months} onChange={(e) => change('months', e.target.value)} placeholder="0" aria-label="Months" /><span className="text-sm text-ink-soft">months</span></label>
-                    </div>
+                    <label className="flex items-center gap-2">
+                        <input className="field" inputMode="numeric" maxLength={3} value={estMonths} onChange={(e) => change(e.target.value)} placeholder="e.g. 8" aria-label="Estimated age in months" />
+                        <span className="text-sm text-ink-soft">months</span>
+                    </label>
                 );
             }
             case 'scan':
@@ -264,7 +264,10 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             <form onSubmit={(e) => {
                 e.preventDefault();
                 // Parentage hidden for a bought or transferred goat: never send values left over from an earlier choice.
-                form.transform((d: Record<string, any>) => (d.origin === 'born_on_farm' ? d : { ...d, sire_id: '', dam_id: '', sire_tag: '', dam_tag: '', breed_purity: '', cross_breeds: '' }));
+                // D-065: a farm-born goat's birth date is exact; a bought goat's is an estimate.
+                form.transform((d: Record<string, any>) => (d.origin === 'born_on_farm'
+                    ? { ...d, birth_date_is_estimate: false }
+                    : { ...d, birth_date_is_estimate: Boolean(d.birth_date), sire_id: '', dam_id: '', sire_tag: '', dam_tag: '', breed_purity: '', cross_breeds: '' }));
                 form.post('/goats', { forceFormData: true });
             }} className="space-y-4">
                 {shown.filter((section) => section.fields.some((f) => !hidden(f))).map((section, index) => (
@@ -274,7 +277,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                             <PhotoPicker value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
                         </Panel>
                     ) : null}
-                    <Panel title={section.name}>
+                    <Panel title={section.name === 'Birth' && !farmBorn ? 'Aging' : section.name}>
                         {section.name === 'Parentage' && damMating ? (
                             <div className="mb-3"><Note>From the mating on {damMating.matedOn}{damMating.sire ? ` with ${damMating.sire}` : ''}{damMating.expectedLabel ? `, expected kidding ${damMating.expectedLabel}` : ''}. The sire, breed and kidding are filled in from it.</Note></div>
                         ) : null}
@@ -287,7 +290,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                                     <Field
                                         label={`${labelFor(f)}${isRequired(f) ? ' *' : ''}`}
                                         error={error(f)}
-                                        hint={f.key === 'estimated_age' ? 'The birth date below is worked out from it.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date && form.data.birth_date_is_estimate ? 'Estimated from the age. Change it if you know the real date.' : 'Optional. Enter the estimated age above, or the date if known.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
+                                        hint={f.key === 'estimated_age' ? 'The birth date is worked out from it and saved as an estimate.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date ? 'Estimated from the age. Change it if you know a better date.' : 'Optional. Enter the estimated age, or a date.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
                                     >{control(f)}</Field>
                                 </div>
                             ))}

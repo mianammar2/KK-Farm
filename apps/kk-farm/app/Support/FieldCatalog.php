@@ -56,7 +56,7 @@ final class FieldCatalog
             ['key' => 'birth_weight_kg', 'label' => 'Birth Weight Kg', 'type' => 'number', 'section' => 'Birth'],
             // D-063: weight and height follow the birth date (or the estimated age of a bought goat).
             ['key' => 'latest_weight_kg', 'label' => 'Weight Kg', 'type' => 'number', 'section' => 'Birth', 'help' => 'Saved as the first weighing in the goat\'s weight log.'],
-            ['key' => 'height_cm', 'label' => 'Height cm', 'type' => 'number', 'section' => 'Birth', 'help' => 'At the shoulder (withers). Saved with the first weighing.'],
+            ['key' => 'height_in', 'label' => 'Height (inches)', 'type' => 'number', 'section' => 'Birth', 'help' => 'At the shoulder (withers). Saved with the first weighing.'], // D-065: entered in inches, stored in cm
             ['key' => 'sire_id', 'label' => 'Sire Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'dam_id', 'label' => 'Dam Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'breed_purity', 'label' => 'Breed Purity', 'type' => 'select', 'section' => 'Parentage', 'help' => 'Set automatically when both parents are known.'],
