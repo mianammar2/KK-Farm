@@ -2,6 +2,7 @@ import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart, { axis } from '../components/Chart';
+import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
 import { Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 
@@ -16,7 +17,7 @@ type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay
 type Supply = { needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
 type Requirement = { supply: Supply; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
-type Props = { requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
+type Props = { shedBoard: ShedBoardData | null; canMove: boolean; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
@@ -60,10 +61,10 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ shedBoard, canMove, requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
-    usePoll(30000, { only: ['requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
+    usePoll(30000, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
 
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
@@ -130,6 +131,8 @@ export default function Dashboard({ requirement, actions, stats, feeding, herd, 
                     ) : <p className="text-sm text-ink-soft">Classify goats on their record to see them by category.</p>}
                 </Panel>
             ) : <div className="mt-4"><Empty title="No goats yet">Scan a tag or open the Goat Register to add the first goat.</Empty></div>}
+
+            {shedBoard ? <ShedBoard board={shedBoard} canMove={canMove} /> : null}
 
             <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
                 {feeding ? <FeedingToday feeding={feeding} /> : <div />}

@@ -80,6 +80,8 @@ class DashboardController extends Controller
             'missing' => $missing,
             'feeding' => $user->canModule('feeding') ? $feedToday : null,
             'requirement' => $user->canModule('feeding') ? $this->feedRequirement($goats) : null,
+            'shedBoard' => $user->canModule('sheds') || $user->canModule('goats') ? $this->shedBoard($goats) : null,
+            'canMove' => $user->canModule('sheds'),
             'attention' => $attention,
             'kiddings' => $kiddings,
             'activity' => fn () => Activity::latest()->limit(20)
@@ -91,6 +93,29 @@ class DashboardController extends Controller
                 ->selectRaw("to_char(measured_on, 'YYYY-MM') as month, round(avg(weight_kg)::numeric, 1)::float as kg")->groupBy('month')->orderBy('month')->get(),
             'finance' => $user->canModule('finance') ? $this->financeSummary() : null,
         ]);
+    }
+
+    /**
+     * D-085: every shed with all its pens (empty ones too, so goats can be moved into them) and the goats in each pen,
+     * plus goats that have no pen. Moves go through Movements::transfer, so each one is a movement row and a life event.
+     */
+    private function shedBoard(\Illuminate\Support\Collection $goats): array
+    {
+        $weights = \App\Support\Feed::latestWeights();
+        $card = fn (Animal $a) => [
+            'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'age' => $a->effectiveAge(), 'ageLabel' => $a->ageLabel(),
+            'flag' => $a->health_flag, 'weight' => isset($weights[$a->id]) ? round($weights[$a->id], 1) : null,
+        ];
+        $byPen = $goats->groupBy(fn ($g) => $g->pen_id ?? 0);
+        $sheds = \App\Models\Shed::with(['pens' => fn ($q) => $q->orderBy('name')])->orderBy('name')->get()->map(fn (\App\Models\Shed $s) => [
+            'id' => $s->id, 'name' => $s->name, 'typeName' => $s->typeName(),
+            'pens' => $s->pens->map(fn (\App\Models\Pen $p) => [
+                'id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity,
+                'goats' => ($byPen[$p->id] ?? collect())->map($card)->values()->all(),
+            ])->values()->all(),
+        ])->values()->all();
+
+        return ['sheds' => $sheds, 'noPen' => ($byPen[0] ?? collect())->map($card)->values()->all()];
     }
 
     /** @return array<int, array{month: string, in: float, out: float}> */

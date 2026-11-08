@@ -50,6 +50,28 @@ class MovementsSalesTest extends TestCase
         return User::firstOrCreate(['email' => "$role@move.test"], ['name' => "Test $role", 'password' => 'x', 'role' => $role, 'org_id' => Tenant::current()]);
     }
 
+    public function test_the_dashboard_shows_every_shed_and_pen_with_its_goats_and_moves_them(): void
+    {
+        $g1 = $this->goat('G-1');
+        $g2 = $this->goat('G-2');
+        $loose = Animal::create(['farm_number' => 'L-1', 'sex' => 'male', 'breed_id' => $g1->breed_id, 'birth_date' => now()->subYear(), 'origin' => 'purchased']);
+        $manager = $this->user('manager');
+
+        $this->actingAs($manager)->get('/')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->where('canMove', true)
+            ->where('shedBoard.sheds.0.pens.0.code', 'P01')->has('shedBoard.sheds.0.pens.0.goats', 2)
+            ->where('shedBoard.sheds.0.pens.1.code', 'P02')->has('shedBoard.sheds.0.pens.1.goats', 0)
+            ->where('shedBoard.noPen.0.number', 'L-1'));
+
+        // What the board sends when goats are dropped on another pen.
+        $this->actingAs($manager)->post('/movements', ['animal_ids' => [$g2->id, $loose->id], 'type' => 'transfer', 'to_pen_id' => $this->b->id, 'moved_on' => now()->toDateString(), 'reason' => 'Moved on the dashboard'])->assertSessionHasNoErrors();
+        $this->assertSame([$this->a->id, $this->b->id, $this->b->id], [$g1->fresh()->pen_id, $g2->fresh()->pen_id, $loose->fresh()->pen_id]);
+        $this->assertSame(2, \App\Models\AnimalMovement::where('reason', 'Moved on the dashboard')->count());
+        $this->actingAs($manager)->get('/')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->has('shedBoard.sheds.0.pens.1.goats', 2)->where('shedBoard.noPen', []));
+
+        $this->actingAs($this->user('finance'))->get('/')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->where('canMove', false));
+        $this->actingAs($this->user('finance'))->post('/movements', ['animal_ids' => [$g1->id], 'type' => 'transfer', 'to_pen_id' => $this->b->id, 'moved_on' => now()->toDateString()])->assertForbidden();
+    }
+
     public function test_a_batch_of_goats_moves_to_a_pen_with_one_movement_each(): void
     {
         $g1 = $this->goat('G-1');
