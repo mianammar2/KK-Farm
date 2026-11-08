@@ -36,7 +36,7 @@ export default function Dashboard({ stats, herd, wall, attention, kiddings, acti
             grid: { left: 8, right: 34, top: 6, bottom: 6, containLabel: true },
             xAxis: { type: 'value', show: false },
             yAxis: { ...axis.category(rows.map((b) => b.name)), axisLine: { show: false } },
-            series: [{ type: 'bar', barMaxWidth: 18, data: rows.map((b) => b.value), itemStyle: { color: '#1f3f9e', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', color: '#14306f', fontWeight: 600 } }],
+            series: [{ type: 'bar', barMaxWidth: 18, data: rows.map((b) => b.value), itemStyle: { color: '#1d5c2e', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', color: '#163d22', fontWeight: 600 } }],
         };
     }, [breeds]);
 
@@ -47,8 +47,8 @@ export default function Dashboard({ stats, herd, wall, attention, kiddings, acti
         xAxis: axis.category(finance.map((f) => monthLabel(f.month))),
         yAxis: axis.value((v) => `${v / 1000}k`),
         series: [
-            { name: 'Income', type: 'bar', data: finance.map((f) => f.in), itemStyle: { color: '#1f9a96', borderRadius: [3, 3, 0, 0] } },
-            { name: 'Spending', type: 'bar', data: finance.map((f) => f.out), itemStyle: { color: '#1f3f9e', borderRadius: [3, 3, 0, 0] } },
+            { name: 'Income', type: 'bar', data: finance.map((f) => f.in), itemStyle: { color: '#1d5c2e', borderRadius: [3, 3, 0, 0] } },
+            { name: 'Spending', type: 'bar', data: finance.map((f) => f.out), itemStyle: { color: '#b8892b', borderRadius: [3, 3, 0, 0] } },
         ],
     } : null), [finance]);
 

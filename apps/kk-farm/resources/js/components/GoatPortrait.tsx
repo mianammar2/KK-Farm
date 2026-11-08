@@ -34,7 +34,7 @@ export default function GoatPortrait({ number, coat, sex, size = 40, className =
             hornCurve: sex === 'male' ? 16 : 8,
             hasBlaze: h % 3 !== 0,
             hasBeard: sex === 'male' || h % 5 === 0,
-            ground: ['#dbe7f6', '#d6f0ee', '#e6e0f3', '#f2ead9'][(h >>> 23) % 4],
+            ground: ['#e3ecd9', '#f1ead2', '#e6eedf', '#f4ecdc'][(h >>> 23) % 4],
         };
     }, [number, coat, sex]);
     const { c } = art;

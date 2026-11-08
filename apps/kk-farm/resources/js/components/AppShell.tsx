@@ -1,3 +1,4 @@
+import BrandMark from './BrandMark';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, Wheat, X,
@@ -48,14 +49,10 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
 function Brand() {
     return (
         <Link href="/" className="flex items-center gap-2.5 px-2 text-white">
-            <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden>
-                <rect width="32" height="32" rx="6" fill="#33c3bd" />
-                <path d="M16 5l3.2 7.8L27 16l-7.8 3.2L16 27l-3.2-7.8L5 16l7.8-3.2z" fill="#14306f" />
-                <circle cx="16" cy="16" r="3" fill="#fff" />
-            </svg>
+            <BrandMark size={40} />
             <span className="leading-tight">
-                <span className="block text-base font-bold tracking-tight">KK Farm</span>
-                <span className="block text-xs text-cobalt-200">Livestock platform</span>
+                <span className="block text-base font-bold tracking-wide">KK <span className="text-turq-400">FARMS</span></span>
+                <span className="block whitespace-nowrap text-[10px] tracking-tight text-cobalt-200">Innovative today, sustainable tomorrow</span>
             </span>
         </Link>
     );

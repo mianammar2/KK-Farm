@@ -133,7 +133,7 @@ class MainActivity : Activity() {
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                     if (request.isForMainFrame) {
                         Log.w(TAG, "load failed ${request.url}: ${error.description}")
-                        showSettings("Cannot reach KK Farm at $server (${error.description}). Check the Wi-Fi or mobile data, then tap Retry.")
+                        showSettings("Cannot reach KK Farms at $server (${error.description}). Check the Wi-Fi or mobile data, then tap Retry.")
                     }
                 }
             }
@@ -141,7 +141,7 @@ class MainActivity : Activity() {
         // A thin loading bar along the top, like a native app, instead of a blank screen while pages load.
         progress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
-            progressTintList = android.content.res.ColorStateList.valueOf(0xFF33C3BD.toInt())
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFFC9A23F.toInt()) // KK Farms gold
             layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (3 * resources.displayMetrics.density).toInt())
         }
         setContentView(android.widget.FrameLayout(this).apply { addView(web); addView(progress) })
@@ -317,11 +317,11 @@ class MainActivity : Activity() {
         val actionField = EditText(this).apply { setText(action); hint = DEFAULT_ACTION }
         val extraField = EditText(this).apply { setText(extraKey); hint = DEFAULT_EXTRA }
         val triggerSwitch = android.widget.CheckBox(this).apply {
-            text = "Open KK Farm when the trigger is pressed"
+            text = "Open KK Farms when the trigger is pressed"
             isChecked = prefs.getBoolean(KEY_OPEN_ON_TRIGGER, true)
         }
         val overlayNote = TextView(this).apply {
-            text = "Needs \"Display over other apps\" for KK Farm. Tap here to allow it."
+            text = "Needs \"Display over other apps\" for KK Farms. Tap here to allow it."
             setTextColor(0xFFB3261E.toInt())
             setPadding(0, pad / 3, 0, 0)
             visibility = if (android.provider.Settings.canDrawOverlays(this@MainActivity)) android.view.View.GONE else android.view.View.VISIBLE
@@ -331,7 +331,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, 0)
             if (problem != null) addView(TextView(context).apply { text = problem; setPadding(0, 0, 0, pad / 2) })
-            addView(TextView(context).apply { text = "KK Farm address" })
+            addView(TextView(context).apply { text = "KK Farms address" })
             addView(serverField)
             addView(TextView(context).apply { text = "InfoWedge broadcast action" })
             addView(actionField)
@@ -341,7 +341,7 @@ class MainActivity : Activity() {
             addView(overlayNote)
         }
         AlertDialog.Builder(this)
-            .setTitle("KK Farm settings")
+            .setTitle("KK Farms settings")
             .setView(layout)
             .setPositiveButton("Save") { _, _ ->
                 prefs.edit()

@@ -1,3 +1,4 @@
+import BrandMark from './BrandMark';
 import { Link, router } from '@inertiajs/react';
 import { ChevronLeft, ClipboardList, HeartPulse, KeyRound, LayoutGrid, LogOut, MoreHorizontal, ScanLine, Search, X, CalendarCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -27,7 +28,7 @@ export function pageTitle(path: string, items: NavItem[]): string {
         if (re.test(path)) return title;
     }
     const item = items.find((i) => (i.href === '/' ? path === '/' : path.startsWith(i.href)));
-    return item?.label ?? 'KK Farm';
+    return item?.label ?? 'KK Farms';
 }
 
 export function AppBar({ path, items, right }: { path: string; items: NavItem[]; right: ReactNode }) {
@@ -42,7 +43,7 @@ export function AppBar({ path, items, right }: { path: string; items: NavItem[];
                     <button type="button" aria-label="Back" onClick={back} className="grid size-11 place-items-center rounded-full active:bg-white/15"><ChevronLeft size={24} /></button>
                 ) : (
                     <span className="grid size-11 place-items-center" aria-hidden>
-                        <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="8" fill="#33c3bd" /><path d="M16 5l3.2 7.8L27 16l-7.8 3.2L16 27l-3.2-7.8L5 16l7.8-3.2z" fill="#14306f" /><circle cx="16" cy="16" r="3" fill="#fff" /></svg>
+                        <BrandMark size={34} />
                     </span>
                 )}
                 <AnimatePresence mode="wait" initial={false}>

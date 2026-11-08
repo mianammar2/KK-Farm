@@ -18,7 +18,7 @@ export default function Reports({ breeds, ages, exits, breeding, sires, costs }:
         tooltip: { trigger: 'axis' },
         xAxis: axis.category(ages.map((a) => a.band)),
         yAxis: axis.value(),
-        series: [{ type: 'bar', barMaxWidth: 46, data: ages.map((a) => a.value), itemStyle: { color: '#1f3f9e', borderRadius: [3, 3, 0, 0] } }],
+        series: [{ type: 'bar', barMaxWidth: 46, data: ages.map((a) => a.value), itemStyle: { color: '#1d5c2e', borderRadius: [3, 3, 0, 0] } }],
     }), [ages]);
 
     const breedChart = useMemo(() => ({
@@ -28,8 +28,8 @@ export default function Reports({ breeds, ages, exits, breeding, sires, costs }:
         xAxis: axis.category(breeds.map((b) => b.name)),
         yAxis: axis.value(),
         series: [
-            { name: 'Female', type: 'bar', stack: 'sex', data: breeds.map((b) => b.female), itemStyle: { color: '#6d3fa8' } },
-            { name: 'Male', type: 'bar', stack: 'sex', barMaxWidth: 46, data: breeds.map((b) => b.male), itemStyle: { color: '#1f9a96' } },
+            { name: 'Female', type: 'bar', stack: 'sex', data: breeds.map((b) => b.female), itemStyle: { color: '#b8892b' } },
+            { name: 'Male', type: 'bar', stack: 'sex', barMaxWidth: 46, data: breeds.map((b) => b.male), itemStyle: { color: '#1d5c2e' } },
         ],
     }), [breeds]);
 

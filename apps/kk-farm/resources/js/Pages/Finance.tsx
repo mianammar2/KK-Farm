@@ -19,8 +19,8 @@ export default function Finance({ summary, monthly, categories, entries, categor
         xAxis: axis.category(monthly.map((m) => monthLabel(m.month))),
         yAxis: axis.value((v) => `${v / 1000}k`),
         series: [
-            { name: 'Income', type: 'bar', data: monthly.map((m) => m.income), itemStyle: { color: '#1f9a96', borderRadius: [3, 3, 0, 0] } },
-            { name: 'Spending', type: 'bar', data: monthly.map((m) => m.spend), itemStyle: { color: '#1f3f9e', borderRadius: [3, 3, 0, 0] } },
+            { name: 'Income', type: 'bar', data: monthly.map((m) => m.income), itemStyle: { color: '#1d5c2e', borderRadius: [3, 3, 0, 0] } },
+            { name: 'Spending', type: 'bar', data: monthly.map((m) => m.spend), itemStyle: { color: '#b8892b', borderRadius: [3, 3, 0, 0] } },
         ],
     }), [monthly]);
 
@@ -31,7 +31,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
             grid: { left: 8, right: 58, top: 6, bottom: 6, containLabel: true },
             xAxis: { type: 'value', show: false },
             yAxis: { ...axis.category(rows.map((c) => c.name)), axisLine: { show: false } },
-            series: [{ type: 'bar', barMaxWidth: 18, data: rows.map((c) => c.value), itemStyle: { color: '#1f3f9e', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', color: '#14306f', fontWeight: 600, formatter: (p: { value: number }) => pkrShort(p.value).replace('PKR ', '') } }],
+            series: [{ type: 'bar', barMaxWidth: 18, data: rows.map((c) => c.value), itemStyle: { color: '#1d5c2e', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', color: '#163d22', fontWeight: 600, formatter: (p: { value: number }) => pkrShort(p.value).replace('PKR ', '') } }],
         };
     }, [categories]);
 

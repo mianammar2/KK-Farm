@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ splash screen: KK Farm mark on cobalt while the app starts. -->
+    <!-- Android 12+ splash screen: KK Farms emblem on brand green while the app starts. -->
     <style name="KKFarm" parent="@android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#14306F</item>
+        <item name="android:statusBarColor">#163D22</item>
         <item name="android:navigationBarColor">#FFFFFF</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowBackground">@android:color/white</item>
-        <item name="android:colorAccent">#33C3BD</item>
-        <item name="android:windowSplashScreenBackground">#14306F</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="android:colorAccent">#C9A23F</item>
+        <item name="android:windowSplashScreenBackground">#163D22</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_brand</item>
     </style>
 </resources>

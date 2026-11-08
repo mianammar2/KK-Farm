@@ -15,7 +15,7 @@ type PageModule = { default: ComponentType & { layout?: unknown } };
 const pages = import.meta.glob<PageModule>('./Pages/**/*.tsx');
 
 createInertiaApp({
-    title: (title) => (title ? `${title} · KK Farm` : 'KK Farm'),
+    title: (title) => (title ? `${title} · KK Farms` : 'KK Farms'),
     resolve: async (name) => {
         const page = await pages[`./Pages/${name}.tsx`]();
         if (name !== 'Login' && page.default.layout === undefined) {
@@ -30,5 +30,5 @@ createInertiaApp({
             </MotionConfig>,
         );
     },
-    progress: { color: '#33c3bd', delay: 120 },
+    progress: { color: '#c9a23f', delay: 120 },
 });

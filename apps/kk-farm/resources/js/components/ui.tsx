@@ -43,7 +43,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'quiet' | 'danger' };
 
 const BUTTON: Record<NonNullable<ButtonProps['variant']>, string> = {
-    primary: 'bg-turq-700 text-white hover:bg-turq-800 active:bg-turq-800',
+    primary: 'bg-cobalt-800 text-white hover:bg-cobalt-900 active:bg-cobalt-900', // D-068: brand green; gold is kept for highlights
     secondary: 'bg-tile text-cobalt-800 border border-rule-strong hover:bg-cobalt-100',
     quiet: 'text-cobalt-700 hover:bg-cobalt-100',
     danger: 'bg-tile text-crit-700 border border-crit-500/40 hover:bg-crit-100',

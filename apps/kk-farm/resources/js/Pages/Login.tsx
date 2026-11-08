@@ -1,7 +1,6 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
-import { useMemo } from 'react';
-import GoatPortrait from '../components/GoatPortrait';
+import BrandMark from '../components/BrandMark';
 import { Button, Field } from '../components/ui';
 import type { SharedProps } from '../types';
 
@@ -15,28 +14,27 @@ const SCOPE: Record<string, string> = {
     finance: 'Expenses, income, reports',
 };
 
-const COATS = ['black', 'spotted', 'brown', 'boer', 'tan', 'white'];
 
 export default function Login({ demoLogin }: { demoLogin: boolean }) {
     const { roles } = usePage<SharedProps>().props;
     // Remember is on by default: the RFID gun should not ask staff to sign in every day.
     const form = useForm({ login: '', password: '', remember: true });
-    const tiles = useMemo(() => Array.from({ length: 48 }, (_, i) => ({ number: `DEMO-${i * 7 + 3}`, coat: COATS[(i * 5) % COATS.length], sex: i % 3 ? 'female' : 'male' })), []);
 
     return (
         <div className="grid min-h-dvh lg:grid-cols-[1fr_30rem]">
             <Head title="Sign in" />
-            <div className="relative hidden overflow-hidden bg-cobalt-900 lg:block" aria-hidden>
-                <div className="grid h-full grid-cols-8 content-center gap-2 p-8 opacity-90">
-                    {tiles.map((t) => (
-                        <GoatPortrait key={t.number} number={t.number} coat={t.coat} sex={t.sex} size={84} className="h-auto w-full" />
-                    ))}
-                </div>
+            {/* D-068: brand panel with the KK Farms logo on its own cream background. */}
+            <div className="relative hidden place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,var(--color-tile),var(--color-glaze)_60%,var(--color-cobalt-100))] lg:grid" aria-hidden>
+                <img src="/brand/kk-farms-logo.png" alt="" className="w-[min(70%,28rem)] drop-shadow-sm" decoding="async" />
+                <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-r from-cobalt-800 via-cobalt-700 to-turq-600" />
             </div>
             <main className="flex flex-col justify-center bg-tile px-6 py-10 sm:px-10">
-                <div className="mb-7">
-                    <h1 className="text-3xl font-bold tracking-tight text-cobalt-900">KK Farm</h1>
-                    <p className="mt-1 text-ink-soft">Every goat, one permanent record.</p>
+                <div className="mb-7 flex items-center gap-3">
+                    <BrandMark size={56} className="lg:hidden" />
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-cobalt-900">KK <span className="text-turq-700">Farms</span></h1>
+                        <p className="mt-1 text-ink-soft">Every goat, one permanent record.</p>
+                    </div>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); form.post('/login', { onFinish: () => form.reset('password') }); }} className="space-y-3">
                     <Field label="Username or email" error={form.errors.login}><input className="field" autoComplete="username" autoCapitalize="none" spellCheck={false} value={form.data.login} onChange={(e) => form.setData('login', e.target.value)} autoFocus /></Field>

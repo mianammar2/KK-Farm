@@ -8,28 +8,30 @@
 @theme {
     --font-sans: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
 
-    --color-glaze: oklch(0.975 0.008 245);
-    --color-tile: oklch(0.995 0.003 245);
-    --color-rule: oklch(0.905 0.018 250);
-    --color-rule-strong: oklch(0.82 0.03 252);
+    /* D-068: KK Farms brand — deep forest green (the "K", leaf and waves) and harvest gold, on warm neutrals.
+       Token names are kept (cobalt = brand green, turq = gold accent) so every screen picks the palette up. */
+    --color-glaze: oklch(0.975 0.008 100);
+    --color-tile: oklch(0.996 0.004 100);
+    --color-rule: oklch(0.905 0.016 115);
+    --color-rule-strong: oklch(0.82 0.028 120);
 
-    --color-ink: oklch(0.27 0.05 262);
-    --color-ink-soft: oklch(0.45 0.045 258);
-    --color-ink-faint: oklch(0.54 0.04 256);
+    --color-ink: oklch(0.26 0.04 150);
+    --color-ink-soft: oklch(0.44 0.035 145);
+    --color-ink-faint: oklch(0.54 0.03 140);
 
-    --color-cobalt-950: oklch(0.2 0.075 265);
-    --color-cobalt-900: oklch(0.27 0.11 265);
-    --color-cobalt-800: oklch(0.33 0.135 265);
-    --color-cobalt-700: oklch(0.4 0.16 265);
-    --color-cobalt-600: oklch(0.48 0.17 263);
-    --color-cobalt-200: oklch(0.87 0.05 262);
-    --color-cobalt-100: oklch(0.935 0.025 262);
+    --color-cobalt-950: oklch(0.21 0.055 152);
+    --color-cobalt-900: oklch(0.29 0.08 152);
+    --color-cobalt-800: oklch(0.36 0.095 150);
+    --color-cobalt-700: oklch(0.43 0.11 148);
+    --color-cobalt-600: oklch(0.51 0.12 145);
+    --color-cobalt-200: oklch(0.88 0.05 140);
+    --color-cobalt-100: oklch(0.945 0.025 135);
 
-    --color-turq-800: oklch(0.42 0.08 195);
-    --color-turq-700: oklch(0.5 0.095 195);
-    --color-turq-600: oklch(0.58 0.105 193);
-    --color-turq-400: oklch(0.76 0.115 190);
-    --color-turq-100: oklch(0.945 0.035 190);
+    --color-turq-800: oklch(0.44 0.09 75);
+    --color-turq-700: oklch(0.52 0.1 78);
+    --color-turq-600: oklch(0.63 0.115 82);
+    --color-turq-400: oklch(0.79 0.12 88);
+    --color-turq-100: oklch(0.955 0.04 92);
 
     --color-manganese-600: oklch(0.48 0.13 305);
     --color-manganese-100: oklch(0.94 0.03 305);
@@ -47,8 +49,8 @@
     --color-crit-100: oklch(0.94 0.04 25);
 
     --radius-tile: 6px;
-    --shadow-tile: 0 1px 2px oklch(0.27 0.05 262 / 0.06), 0 6px 16px -10px oklch(0.27 0.11 265 / 0.22);
-    --shadow-float: 0 12px 34px -12px oklch(0.2 0.075 265 / 0.38);
+    --shadow-tile: 0 1px 2px oklch(0.26 0.04 150 / 0.06), 0 6px 16px -10px oklch(0.29 0.08 152 / 0.22);
+    --shadow-float: 0 12px 34px -12px oklch(0.21 0.055 152 / 0.38);
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 

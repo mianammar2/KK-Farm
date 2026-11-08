@@ -21,7 +21,7 @@ import android.util.Log
  *  - Pressing the trigger while another app is on screen brings KK Farm to the front on the Scan screen.
  *
  * Android lets a background app open a screen only with "Display over other apps", so that permission is
- * granted to KK Farm on the gun. The service runs as a foreground service ("KK Farm is ready to scan") and
+ * granted to KK Farm on the gun. The service runs as a foreground service ("KK Farms is ready to scan") and
  * starts again after a reboot (BootReceiver).
  */
 class ScannerService : Service() {
@@ -85,7 +85,7 @@ class ScannerService : Service() {
         val tap = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_scan)
-            .setContentTitle("KK Farm is ready to scan")
+            .setContentTitle("KK Farms is ready to scan")
             .setContentText("Pull the trigger at a goat's ear tag")
             .setContentIntent(tap)
             .setOngoing(true)
