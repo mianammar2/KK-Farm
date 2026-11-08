@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Animal;
+use App\Models\Organization;
 use App\Models\Pen;
 use App\Models\Shed;
 use App\Support\Farm;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,52 +21,69 @@ class ShedController extends Controller
     public function index(): Response
     {
         return Inertia::render('Sheds', [
-            'sheds' => Shed::with(['pens' => fn ($q) => $q->orderBy('name'), 'pens.animals' => fn ($q) => $q->active()->orderBy('farm_number')])->orderBy('code')->get()->map(fn (Shed $s) => [
-                'id' => $s->id, 'code' => $s->code, 'name' => $s->name, 'status' => $s->status,
+            'sheds' => Shed::with(['pens' => fn ($q) => $q->orderBy('name'), 'pens.animals' => fn ($q) => $q->active()->orderBy('farm_number')])->orderBy('name')->get()->map(fn (Shed $s) => [
+                'id' => $s->id, 'code' => $s->code, 'name' => $s->name, 'status' => $s->status, 'type' => $s->type, 'typeName' => $s->typeName(), 'purpose' => $s->purpose(),
                 'pens' => $s->pens->map(fn (Pen $p) => [
                     'id' => $p->id, 'name' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity, 'count' => $p->animals->count(),
                     'goats' => $p->animals->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'sex' => $a->sex, 'health' => $a->health_status, 'repro' => $a->repro_state]),
                 ]),
             ]),
+            'types' => collect(Shed::TYPES)->map(fn ($t, $code) => ['code' => $code, 'name' => $t[0], 'purpose' => $t[1]])->values(),
+            'prefix' => $this->prefix(),
             'recent' => DB::table('animal_events')->join('animals', 'animals.id', '=', 'animal_events.animal_id')->where('type', 'move')->orderByDesc('occurred_at')->limit(8)
                 ->get(['animal_events.id', 'animals.id as goat_id', 'animals.farm_number as number', 'summary', 'occurred_at', 'recorded_by']),
         ]);
     }
 
-    /** D-051: the owner or manager sets up the farm's own sheds. The code (SHED-n) is issued automatically. */
+    private function prefix(): string
+    {
+        return Organization::whereKey(Tenant::current())->value('shed_prefix') ?: 'KKF';
+    }
+
+    /** D-056: the user picks the unit type; the name and code are issued as PREFIX-TYPE-NN (e.g. KKF-BDU-01). */
     public function store(Request $request): RedirectResponse
     {
         abort_unless($request->user()->passes('manage_sheds'), 403);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:60', 'unique:sheds,name'],
+            'type' => ['required', Rule::in(array_keys(Shed::TYPES))],
             'status' => ['required', Rule::in(['active', 'planned'])],
-        ]);
+        ], [], ['type' => 'unit type']);
 
-        $n = Shed::count() + 1;
-        while (Shed::where('code', "SHED-$n")->exists()) {
-            $n++;
-        }
-        Shed::create($data + ['code' => "SHED-$n"]);
-        Farm::log($request->user(), "Added shed {$data['name']}", '/sheds');
+        $shed = DB::transaction(function () use ($data) {
+            DB::statement('LOCK TABLE sheds IN SHARE ROW EXCLUSIVE MODE'); // two people adding the same unit type at once get different numbers
+            $name = Shed::nextName($this->prefix(), $data['type']);
 
-        return back()->with('success', "{$data['name']} added.");
+            return Shed::create($data + ['name' => $name, 'code' => $name]);
+        });
+        Farm::log($request->user(), "Added shed {$shed->name} ({$shed->typeName()})", '/sheds');
+
+        return back()->with('success', "{$shed->name} · {$shed->typeName()} added.");
     }
 
+    /** Changing the unit type gives the shed the next name of the new type; its pens and goats stay. */
     public function update(Request $request, Shed $shed): RedirectResponse
     {
         abort_unless($request->user()->passes('manage_sheds'), 403);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:60', Rule::unique('sheds', 'name')->ignore($shed->id)],
+            'type' => ['required', Rule::in(array_keys(Shed::TYPES))],
             'status' => ['required', Rule::in(['active', 'planned'])],
-        ]);
+        ], [], ['type' => 'unit type']);
         if ($data['status'] === 'planned' && Animal::active()->whereIn('pen_id', $shed->pens()->pluck('id'))->exists()) {
             throw ValidationException::withMessages(['status' => 'Move the goats out before marking this shed as planned.']);
         }
 
-        $shed->update($data);
-        Farm::log($request->user(), "Updated shed {$shed->name}", '/sheds');
+        $old = $shed->name;
+        DB::transaction(function () use ($shed, $data) {
+            if ($data['type'] !== $shed->type) {
+                DB::statement('LOCK TABLE sheds IN SHARE ROW EXCLUSIVE MODE');
+                $name = Shed::nextName($this->prefix(), $data['type'], $shed->id);
+                $data += ['name' => $name, 'code' => $name, 'previous_name' => $shed->previous_name ?? "{$shed->name}|{$shed->code}"];
+            }
+            $shed->update($data);
+        });
+        Farm::log($request->user(), $old === $shed->name ? "Updated shed {$shed->name}" : "Changed shed $old to {$shed->name} ({$shed->typeName()})", '/sheds');
 
-        return back()->with('success', "{$shed->name} saved.");
+        return back()->with('success', $old === $shed->name ? "{$shed->name} saved." : "$old is now {$shed->name} · {$shed->typeName()}.");
     }
 
     public function storePen(Request $request, Shed $shed): RedirectResponse

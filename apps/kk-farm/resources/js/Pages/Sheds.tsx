@@ -7,8 +7,9 @@ import type { Health, SharedProps } from '../types';
 
 type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null };
 type Pen = { id: number; name: string; purpose: string; capacity: number | null; count: number; goats: Goat[] };
-type Shed = { id: number; code: string; name: string; status: string; pens: Pen[] };
-type Props = { sheds: Shed[]; recent: Array<{ id: number; goat_id: string; number: string; summary: string; recorded_by: string }> };
+type Shed = { id: number; code: string; name: string; status: string; type: string | null; typeName: string | null; purpose: string | null; pens: Pen[] };
+type UnitType = { code: string; name: string; purpose: string };
+type Props = { sheds: Shed[]; types: UnitType[]; prefix: string; recent: Array<{ id: number; goat_id: string; number: string; summary: string; recorded_by: string }> };
 
 /** Same rule as Pen::standardName on the server (D-055): the part after the "Pen" prefix. */
 const penRest = (name: string) => name.replace(/^\s*(pen\b|p(?=\d))[\s\-:_]*/i, '').replace(/[\s\-_]*\bpen\s*$/i, '').trim();
@@ -16,7 +17,7 @@ const penRest = (name: string) => name.replace(/^\s*(pen\b|p(?=\d))[\s\-:_]*/i, 
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
 type Editing = { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen } | null;
 
-export default function Sheds({ sheds, recent }: Props) {
+export default function Sheds({ sheds, types, prefix, recent }: Props) {
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
     const active = sheds.filter((s) => s.status === 'active');
@@ -42,7 +43,7 @@ export default function Sheds({ sheds, recent }: Props) {
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="space-y-4">
-                    {editing ? <Editor key={JSON.stringify([editing.kind, editing.shed?.id, editing.kind === 'pen' ? editing.pen?.id : null])} editing={editing} onDone={() => setEditing(null)} /> : null}
+                    {editing ? <Editor key={JSON.stringify([editing.kind, editing.shed?.id, editing.kind === 'pen' ? editing.pen?.id : null])} editing={editing} sheds={sheds} types={types} prefix={prefix} onDone={() => setEditing(null)} /> : null}
 
                     {canManage && !editing ? (
                         <div className="xl:hidden"><Button type="button" variant="secondary" className="w-full" onClick={() => setEditing({ kind: 'shed' })}><Plus className="mr-1 inline size-4" aria-hidden />Add shed</Button></div>
@@ -54,7 +55,7 @@ export default function Sheds({ sheds, recent }: Props) {
                         <Panel
                             key={shed.id}
                             title={shed.name}
-                            description={`${shed.code}${shed.status === 'planned' ? ' · planned' : ''} · ${shed.pens.length} pen${shed.pens.length === 1 ? '' : 's'}`}
+                            description={`${shed.typeName ? `${shed.typeName} · ${shed.purpose}` : 'No unit type yet: edit to choose one'}${shed.status === 'planned' ? ' · planned' : ''} · ${shed.pens.length} pen${shed.pens.length === 1 ? '' : 's'}`}
                             actions={canManage ? (
                                 <div className="flex gap-1">
                                     {editButton(`Edit ${shed.name}`, () => setEditing({ kind: 'shed', shed }))}
@@ -103,7 +104,7 @@ export default function Sheds({ sheds, recent }: Props) {
                         <Panel title="Move a goat">
                             <form onSubmit={(e) => { e.preventDefault(); form.post('/sheds/transfer', { preserveScroll: true }); }} className="space-y-3">
                                 <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</select></Field>
-                                <Field label="To pen" error={form.errors.pen_id}><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)}>{active.map((s) => <optgroup key={s.id} label={s.name}>{s.pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</optgroup>)}</select></Field>
+                                <Field label="To pen" error={form.errors.pen_id}><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)}>{active.map((s) => <optgroup key={s.id} label={s.typeName ? `${s.name} · ${s.typeName}` : s.name}>{s.pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</optgroup>)}</select></Field>
                                 <Button type="submit" className="w-full" disabled={form.processing}>Move goat</Button>
                             </form>
                         </Panel>
@@ -122,12 +123,23 @@ export default function Sheds({ sheds, recent }: Props) {
     );
 }
 
-function Editor({ editing, onDone }: { editing: NonNullable<Editing>; onDone: () => void }) {
-    return editing.kind === 'shed' ? <ShedForm shed={editing.shed} onDone={onDone} /> : <PenForm shed={editing.shed} pen={editing.pen} onDone={onDone} />;
+function Editor({ editing, sheds, types, prefix, onDone }: { editing: NonNullable<Editing>; sheds: Shed[]; types: UnitType[]; prefix: string; onDone: () => void }) {
+    return editing.kind === 'shed' ? <ShedForm shed={editing.shed} sheds={sheds} types={types} prefix={prefix} onDone={onDone} /> : <PenForm shed={editing.shed} pen={editing.pen} onDone={onDone} />;
 }
 
-function ShedForm({ shed, onDone }: { shed?: Shed; onDone: () => void }) {
-    const form = useForm({ name: shed?.name ?? '', status: shed?.status ?? 'active' });
+/** D-056: the user chooses what the shed is for; its name is PREFIX-TYPE-NN, e.g. KKF-BDU-01. */
+function ShedForm({ shed, sheds, types, prefix, onDone }: { shed?: Shed; sheds: Shed[]; types: UnitType[]; prefix: string; onDone: () => void }) {
+    const form = useForm({ type: shed?.type ?? '', status: shed?.status ?? 'active' });
+    const chosen = types.find((t) => t.code === form.data.type);
+    const preview = (() => {
+        if (!chosen) return null;
+        if (shed && shed.type === chosen.code) return shed.name;
+        const pattern = `${prefix}-${chosen.code}-`.toUpperCase();
+        const used = sheds.filter((x) => x.id !== shed?.id && x.name.toUpperCase().startsWith(pattern)).map((x) => Number(x.name.slice(pattern.length)));
+        let n = 1;
+        while (used.includes(n)) n++;
+        return `${pattern}${String(n).padStart(2, '0')}`;
+    })();
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         const options = { preserveScroll: true, onSuccess: onDone };
@@ -136,17 +148,29 @@ function ShedForm({ shed, onDone }: { shed?: Shed; onDone: () => void }) {
     };
 
     return (
-        <Panel title={shed ? `Edit ${shed.name}` : 'Add a shed'} description={shed ? shed.code : 'A code like SHED-2 is given automatically.'}>
+        <Panel title={shed ? `Edit ${shed.name}` : 'Add a shed'} description="Choose what the shed is used for. The name is given automatically.">
             <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-                <Field label="Shed name" error={form.errors.name}><input className="field" autoFocus value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Shed 2, Kid shed" maxLength={60} required /></Field>
+                <Field label="Used for (unit type)" error={form.errors.type}>
+                    <select className="field" autoFocus value={form.data.type} onChange={(e) => form.setData('type', e.target.value)} required>
+                        {!form.data.type ? <option value="">Choose…</option> : null}
+                        {types.map((t) => <option key={t.code} value={t.code}>{t.name} ({t.code})</option>)}
+                    </select>
+                </Field>
                 <Field label="Status" error={form.errors.status}>
                     <select className="field" value={form.data.status} onChange={(e) => form.setData('status', e.target.value)}>
                         <option value="active">In use</option>
                         <option value="planned">Planned (not built yet)</option>
                     </select>
                 </Field>
+                {chosen ? (
+                    <div className="rounded-tile border border-turq-400 bg-turq-100 px-3 py-2 sm:col-span-2">
+                        <div className="font-mono text-lg font-bold text-cobalt-900">{preview}</div>
+                        <div className="text-sm text-cobalt-800">{chosen.name} · {chosen.purpose}</div>
+                        {shed && shed.type && shed.type !== chosen.code ? <div className="mt-1 text-sm text-watch-700">{shed.name} will be renamed. Its pens and goats stay where they are.</div> : null}
+                    </div>
+                ) : null}
                 <div className="flex gap-2 sm:col-span-2">
-                    <Button type="submit" disabled={form.processing}>{shed ? 'Save shed' : 'Add shed'}</Button>
+                    <Button type="submit" disabled={form.processing || !chosen}>{shed ? 'Save shed' : `Add ${preview ?? 'shed'}`}</Button>
                     <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
                 </div>
             </form>
@@ -157,7 +181,7 @@ function ShedForm({ shed, onDone }: { shed?: Shed; onDone: () => void }) {
 function PenForm({ shed, pen, onDone }: { shed: Shed; pen?: Pen; onDone: () => void }) {
     // D-055: pens are always "Pen …"; the user types only the part after the prefix. A new pen suggests the next number.
     const nextNumber = String(shed.pens.reduce((max, p) => Math.max(max, Number(penRest(p.name)) || 0), 0) + 1);
-    const form = useForm({ name: pen ? penRest(pen.name) : nextNumber, purpose: pen?.purpose ?? '', capacity: pen?.capacity ? String(pen.capacity) : '' });
+    const form = useForm({ name: pen ? penRest(pen.name) : nextNumber, purpose: pen?.purpose ?? shed.purpose ?? '', capacity: pen?.capacity ? String(pen.capacity) : '' });
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         form.transform((d) => ({ ...d, capacity: d.capacity === '' ? null : Number(d.capacity) }));

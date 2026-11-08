@@ -274,10 +274,21 @@ class FarmRulesTest extends TestCase
     {
         $manager = $this->user('manager');
 
-        $this->actingAs($manager)->post('/sheds', ['name' => 'Kid shed', 'status' => 'active'])->assertRedirect()->assertSessionHasNoErrors();
-        $shed = Shed::where('name', 'Kid shed')->firstOrFail();
-        $this->assertSame('SHED-2', $shed->code);
+        // D-056: the unit type is chosen and the name issued: KKF-BDU-01, then KKF-BDU-02.
+        $this->actingAs($manager)->post('/sheds', ['type' => 'BDU', 'status' => 'active'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/sheds', ['type' => 'BDU', 'status' => 'active'])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/sheds', ['type' => 'KDU', 'status' => 'planned'])->assertSessionHasNoErrors();
+        $this->assertSame(['KKF-BDU-01', 'KKF-BDU-02', 'KKF-KDU-01'], Shed::whereNotNull('type')->orderBy('id')->pluck('name')->all());
+        $shed = Shed::where('name', 'KKF-BDU-01')->firstOrFail();
+        $this->assertSame(['KKF-BDU-01', 'Breeder Doe Unit'], [$shed->code, $shed->typeName()]);
         $this->assertSame(Tenant::current(), $shed->org_id);
+        $this->actingAs($manager)->post('/sheds', ['type' => 'XYZ', 'status' => 'active'])->assertSessionHasErrors('type');
+
+        // Changing the type renames the shed to the next free name of the new type; the freed number is reused.
+        $this->actingAs($manager)->patch("/sheds/{$shed->id}", ['type' => 'KDU', 'status' => 'active'])->assertSessionHasNoErrors();
+        $this->assertSame('KKF-KDU-02', $shed->fresh()->name);
+        $this->actingAs($manager)->post('/sheds', ['type' => 'BDU', 'status' => 'active'])->assertSessionHasNoErrors();
+        $this->assertTrue(Shed::where('name', 'KKF-BDU-01')->exists());
 
         $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'A', 'purpose' => 'Kids', 'capacity' => 40])->assertSessionHasNoErrors();
         $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'pen a', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
@@ -290,7 +301,7 @@ class FarmRulesTest extends TestCase
         $this->actingAs($manager)->patch("/pens/{$pen->id}", ['name' => 'Pen A1', 'purpose' => 'Weaners', 'capacity' => null])->assertSessionHasNoErrors();
         $this->assertSame(['Pen A1', 'Weaners', null], [$pen->fresh()->name, $pen->fresh()->purpose, $pen->fresh()->capacity]);
 
-        $this->actingAs($manager)->post('/sheds', ['name' => 'Kid shed', 'status' => 'active'])->assertSessionHasErrors('name');
+
     }
 
     public function test_pen_capacity_and_shed_status_respect_goats_already_housed(): void
@@ -300,7 +311,7 @@ class FarmRulesTest extends TestCase
         $this->goat('T-0102');
 
         $this->actingAs($manager)->patch("/pens/{$this->pen->id}", ['name' => 'Pen T', 'purpose' => 'Kids', 'capacity' => 1])->assertSessionHasErrors('capacity');
-        $this->actingAs($manager)->patch("/sheds/{$this->pen->shed_id}", ['name' => 'Test Shed', 'status' => 'planned'])->assertSessionHasErrors('status');
+        $this->actingAs($manager)->patch("/sheds/{$this->pen->shed_id}", ['type' => 'BDU', 'status' => 'planned'])->assertSessionHasErrors('status');
     }
 
     public function test_only_the_owner_and_manager_change_the_shed_layout(): void
@@ -308,7 +319,7 @@ class FarmRulesTest extends TestCase
         $caretaker = $this->user('caretaker');
 
         $this->actingAs($caretaker)->get('/sheds')->assertOk();
-        $this->actingAs($caretaker)->post('/sheds', ['name' => 'X', 'status' => 'active'])->assertForbidden();
+        $this->actingAs($caretaker)->post('/sheds', ['type' => 'BDU', 'status' => 'active'])->assertForbidden();
         $this->actingAs($caretaker)->post("/sheds/{$this->pen->shed_id}/pens", ['name' => 'X', 'purpose' => 'Kids'])->assertForbidden();
         $this->actingAs($caretaker)->patch("/pens/{$this->pen->id}", ['name' => 'X', 'purpose' => 'Kids'])->assertForbidden();
     }
