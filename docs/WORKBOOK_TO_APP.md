@@ -1,5 +1,7 @@
 # How every workbook sheet is managed in the app
 
+> **Status 2026-11-09:** every working sheet of the workbook is built (D-054 … D-078). Not in the workbook but planned: headcount by RFID pen count, push notifications, per-tenant branding, Excel import.
+
 2026-11-08 · Source: `KK_Farms_360_Goat_Management_System.xlsx` (25 sheets, read column by column) · Status of each sheet checked against the app as deployed (commit a769462).
 
 **The one big change from Excel:** the workbook asks people to type the same fact in several places and keep them in sync by hand ("after kidding, manually update the doe's status in Goat Register", "animal sales must also update Goat Register and Animal Movements", "never duplicate Feed Usage as an OUT movement"). In the app **each fact is entered once, as an event, and everything else is calculated from it**: status, stock, headcount, alerts, dashboards. Grey "calculated" columns in Excel become automatic. "Tag Audit" columns disappear, because the app only lets you pick goats that exist (by scan or search).
@@ -11,8 +13,8 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | # | Sheet | Who / when (from START HERE) | App screen | Status |
 |---|---|---|---|---|
 | 1 | Goat Register | Farm Manager · on intake | Scan → Goat Register form | ✅ |
-| 2 | Goat 360 Profile | Manager · any time | Goat page (scan opens it) | 🟡 |
-| 3 | Executive Dashboard | CEO · daily | Dashboard | 🟡 |
+| 2 | Goat 360 Profile | Manager · any time | Goat page (scan opens it): pedigree, cases, withdrawal, weights, movements | ✅ |
+| 3 | Executive Dashboard | CEO · daily | Dashboard: categories, feeding today, actions, charts | ✅ D-070/071/077 |
 | 4 | Breeding | Breeding Lead · on mating | Breeding → cycle | ✅ D-075 |
 | 5 | Pregnancy Checks | Vet · at checks | Breeding → mating → Pregnancy check | ✅ D-075 |
 | 6 | Kidding | Breeding Lead · at birth | Breeding → Kidding | ✅ D-075 |
@@ -33,7 +35,7 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 21 | Sales | Accounts · each sale | Movements (goats) + Finance → Sales (products) | ✅ D-076 |
 | 22 | Tasks | Farm Manager · daily | Tasks & Daily Work | ✅ D-078 |
 | 23 | Action Center | Farm Manager · every morning | Action Center + dashboard banner | ✅ D-077 |
-| 24 | Settings | Owner · as needed | Settings | 🟡 |
+| 24 | Settings | Owner · as needed | Settings (ages, fields, users, departments) + Breeding → Settings + Feeding → Settings | ✅ |
 | 25 | START HERE | — | not needed (the app guides) | — |
 
 ---
