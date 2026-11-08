@@ -94,6 +94,23 @@ class Animal extends Model
         return $this->hasMany(AnimalPhoto::class)->latest();
     }
 
+    /** D-071: the register's health flag and the health screens' status are kept in step, whichever one is changed. */
+    public const FLAG_TO_STATUS = ['healthy' => 'healthy', 'monitor' => 'watch', 'recovering' => 'watch', 'sick' => 'treatment', 'quarantine' => 'treatment'];
+
+    public const STATUS_TO_FLAG = ['healthy' => 'healthy', 'watch' => 'monitor', 'treatment' => 'sick', 'critical' => 'sick'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $a) {
+            if ($a->isDirty('health_flag') && $a->health_flag) {
+                $a->health_status = self::FLAG_TO_STATUS[$a->health_flag] ?? 'healthy';
+            } elseif ($a->isDirty('health_status') || ! $a->health_flag) {
+                $a->health_flag = self::STATUS_TO_FLAG[$a->health_status ?? 'healthy'] ?? 'healthy';
+                $a->health_status ??= 'healthy';
+            }
+        });
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');

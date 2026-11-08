@@ -5,13 +5,16 @@ import GoatPortrait from '../../components/GoatPortrait';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
-type Props = { goats: GoatCard[]; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }> };
+type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string> };
 type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen';
 
-export default function GoatsIndex({ goats, breeds, pens }: Props) {
+export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
     const url = usePage().url;
-    const [query, setQuery] = useState(() => new URLSearchParams(url.split('?')[1] ?? '').get('q') ?? '');
-    const [breed, setBreed] = useState('');
+    const params = new URLSearchParams(url.split('?')[1] ?? '');
+    const [query, setQuery] = useState(() => params.get('q') ?? '');
+    // D-071: opened from a dashboard number or tile, e.g. /goats?show=pregnant or /goats?breed=Teddy
+    const [show, setShow] = useState(() => params.get('show') ?? '');
+    const [breed, setBreed] = useState(() => params.get('breed') ?? '');
     const [sex, setSex] = useState('');
     const [pen, setPen] = useState('');
     const [health, setHealth] = useState('');
@@ -24,7 +27,7 @@ export default function GoatsIndex({ goats, breeds, pens }: Props) {
         const q = query.trim().toLowerCase();
         const list = goats.filter((g) =>
             (!q || [g.number, g.name, g.tag, g.breed].some((v) => v?.toLowerCase().includes(q))) &&
-            (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || g.health === health) &&
+            (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || g.health === health) &&
             (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')),
         );
         const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : (g[sort.key] ?? '') as string);
@@ -33,7 +36,7 @@ export default function GoatsIndex({ goats, breeds, pens }: Props) {
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
             return sort.up ? order : -order;
         });
-    }, [goats, query, breed, sex, pen, health, status, sort]);
+    }, [goats, query, show, breed, sex, pen, health, status, sort]);
 
     const sortBy = (key: SortKey) => setSort((s) => ({ key, up: s.key === key ? !s.up : true }));
     const Th = ({ id, label }: { id: SortKey; label: string }) => (
@@ -44,7 +47,7 @@ export default function GoatsIndex({ goats, breeds, pens }: Props) {
             </button>
         </th>
     );
-    const clear = () => { setQuery(''); setBreed(''); setSex(''); setPen(''); setHealth(''); setStatus('active'); };
+    const clear = () => { setQuery(''); setShow(''); setBreed(''); setSex(''); setPen(''); setHealth(''); setStatus('active'); };
 
     return (
         <>
@@ -59,6 +62,15 @@ export default function GoatsIndex({ goats, breeds, pens }: Props) {
                     </>
                 }
             />
+
+            {show && showLabels[show] ? (
+                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-tile border border-cobalt-200 bg-cobalt-100 px-3 py-2 text-sm">
+                    <span className="text-ink-soft">Showing</span>
+                    <span className="font-semibold text-cobalt-900">{showLabels[show]}</span>
+                    <span className="text-ink-soft">· {rows.length} goat{rows.length === 1 ? '' : 's'}</span>
+                    <button type="button" onClick={() => setShow('')} className="ml-auto font-semibold text-cobalt-800 hover:underline">Show all goats</button>
+                </div>
+            ) : null}
 
             {adding ? <AddGoat breeds={breeds} pens={pens} onDone={() => setAdding(false)} /> : null}
 

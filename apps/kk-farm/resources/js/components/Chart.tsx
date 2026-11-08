@@ -17,7 +17,9 @@ const BASE = {
 };
 
 /** ECharts with the SVG renderer: crisp on phones and light on memory. */
-export default function Chart({ option, height = 240, label }: { option: Record<string, unknown>; height?: number; label: string }) {
+export default function Chart({ option, height = 240, label, onSelect }: { option: Record<string, unknown>; height?: number; label: string; onSelect?: (name: string) => void }) {
+    const select = useRef(onSelect);
+    select.current = onSelect;
     const element = useRef<HTMLDivElement>(null);
     const chart = useRef<echarts.ECharts | null>(null);
 
@@ -27,6 +29,8 @@ export default function Chart({ option, height = 240, label }: { option: Record<
         }
         const instance = echarts.init(element.current, undefined, { renderer: 'svg' });
         chart.current = instance;
+        // D-071: a click on a bar or point opens the matching list (when the page passes onSelect).
+        instance.on('click', (params: { name?: string }) => { if (select.current && params.name) select.current(params.name); });
         const observer = new ResizeObserver(() => instance.resize());
         observer.observe(element.current);
         return () => {
@@ -40,7 +44,7 @@ export default function Chart({ option, height = 240, label }: { option: Record<
         chart.current?.setOption({ ...BASE, animation, animationDuration: 400, ...option }, true);
     }, [option]);
 
-    return <div ref={element} role="img" aria-label={label} style={{ height, width: '100%' }} />;
+    return <div ref={element} role="img" aria-label={label} style={{ height, width: '100%', cursor: onSelect ? 'pointer' : undefined }} />;
 }
 
 export const axis = {

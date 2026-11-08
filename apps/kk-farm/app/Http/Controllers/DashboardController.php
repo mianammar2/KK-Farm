@@ -9,6 +9,7 @@ use App\Models\LedgerEntry;
 use App\Models\Mating;
 use App\Models\Pen;
 use App\Models\Task;
+use App\Support\HerdStats;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -21,19 +22,37 @@ class DashboardController extends Controller
         $user = $request->user();
         $today = now()->toDateString();
 
-        // D-070: one source for the headline numbers, the same rules as "Herd by category".
-        $goats = Animal::active()->get(['id', 'sex', 'birth_date', 'age_category', 'animal_class', 'animal_purpose', 'repro_status', 'repro_state', 'health_flag', 'health_status', 'kid_stage']);
-        $unwell = $goats->filter(fn (Animal $a) => in_array($a->health_flag, ['monitor', 'sick', 'quarantine', 'recovering'], true) || ($a->health_status && $a->health_status !== 'healthy'))->count();
-        $pregnant = $goats->filter(fn (Animal $a) => $a->sex === 'female' && (in_array($a->repro_status, ['pregnant', 'expected_kidding'], true) || $a->repro_state === 'pregnant'))->count();
+        // D-071: every number comes from HerdStats, the same rules the Goat Registry filters with (/goats?show=KEY).
+        $goats = Animal::with(['pen.shed'])->active()->orderBy('farm_number')->get();
+        $tags = HerdStats::tagsFor($goats);
+        $counts = collect(array_keys(HerdStats::LABELS))->mapWithKeys(fn ($k) => [$k => $tags->filter(fn ($t) => in_array($k, $t, true))->count()]);
+        $byId = $goats->keyBy('id');
+        $card = fn (Animal $a) => ['goatId' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'sex' => $a->sex, 'health' => $a->health_status, 'flag' => $a->health_flag];
 
         $overdue = HealthRecord::whereIn('kind', ['vaccination', 'deworming'])->where('next_due_on', '<', $today)
             ->whereHas('animal', fn ($q) => $q->active())->distinct('animal_id')->count('animal_id');
 
-        $attention = HealthRecord::with('animal')->where('status', 'open')->whereHas('animal', fn ($q) => $q->active())
-            ->orderByRaw("case severity when 'high' then 0 when 'medium' then 1 else 2 end")->orderByDesc('occurred_on')->limit(6)->get()
-            ->map(fn (HealthRecord $r) => ['id' => $r->id, 'goatId' => $r->animal_id, 'number' => $r->animal->farm_number, 'name' => $r->animal->name, 'coat' => $r->animal->coat, 'sex' => $r->animal->sex, 'health' => $r->animal->health_status, 'title' => $r->title, 'on' => $r->occurred_on->format('j M')]);
+        // Needs attention = goats whose health is not Healthy, with their latest open report. Open reports on goats
+        // marked Healthy are counted separately ("to review"), so a Healthy goat is never listed as needing attention.
+        $open = HealthRecord::where('status', 'open')->whereIn('animal_id', $goats->modelKeys())->orderByDesc('occurred_on')->orderByDesc('id')->get()->groupBy('animal_id');
+        $attentionIds = $tags->filter(fn ($t) => in_array('attention', $t, true))->keys();
+        $attention = $attentionIds->map(fn ($id) => $card($byId[$id]) + [
+            'title' => $open[$id][0]->title ?? null, 'on' => isset($open[$id]) ? $open[$id][0]->occurred_on->format('j M') : null,
+        ])->values();
+        $toReview = $open->keys()->diff($attentionIds)->sum(fn ($id) => $open[$id]->count());
 
-        $kiddings = Mating::with('dam')->where('status', 'pregnant')->orderBy('expected_kidding_on')->limit(5)->get()
+        // Goats missing what the farm needs to manage them, and where each record came from.
+        $origins = DB::table('animal_events')->where('type', 'origin')->whereIn('animal_id', $goats->modelKeys())->orderBy('occurred_at')->get()->unique('animal_id')->keyBy('animal_id');
+        $missing = $tags->filter(fn ($t) => in_array('missing', $t, true))->keys()->map(function ($id) use ($byId, $tags, $origins, $card) {
+            $o = $origins[$id] ?? null;
+
+            return $card($byId[$id]) + [
+                'missing' => array_values(array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight'], $tags[$id]))),
+                'source' => $o ? $o->summary.' · '.$o->recorded_by.' · '.\Illuminate\Support\Carbon::parse($o->occurred_at)->format('j M') : 'Added '.$byId[$id]->created_at->format('j M'),
+            ];
+        })->values();
+
+        $kiddings = Mating::with('dam')->where('status', 'pregnant')->orderBy('expected_kidding_on')->limit(20)->get()
             ->map(fn (Mating $m) => ['goatId' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'on' => $m->expected_kidding_on->format('j M'), 'days' => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false)]);
 
         $feedToday = $this->feedingToday(); // D-069: feed section, pens that have goats
@@ -44,19 +63,23 @@ class DashboardController extends Controller
                 'goats' => $goats->count(),
                 'does' => $goats->where('sex', 'female')->count(),
                 'bucks' => $goats->where('sex', 'male')->count(),
-                'pregnant' => $pregnant,
-                'unwell' => $unwell,
+                'pregnant' => $counts['pregnant'],
+                'unwell' => $counts['attention'],
+                'noPen' => $counts['no_pen'],
+                'missing' => $counts['missing'],
+                'toReview' => $toReview,
                 'overdueCare' => $overdue,
                 'tasksDone' => Task::where('due_on', $today)->where('status', 'done')->count(),
                 'tasksTotal' => Task::where('due_on', $today)->count(),
                 'feedingDone' => $feeding['done'] + $feeding['late'],
                 'feedingTotal' => $feeding['expected'],
             ],
-            'herd' => $this->herdCategories($goats),
+            'herd' => collect(['total', ...HerdStats::CATEGORIES])->map(fn ($k) => ['key' => $k, 'label' => HerdStats::LABELS[$k], 'value' => $counts[$k]])->values(),
+            'missing' => $missing,
             'feeding' => $user->canModule('feeding') ? $feedToday : null,
             'attention' => $attention,
             'kiddings' => $kiddings,
-            'activity' => fn () => Activity::latest()->limit(8)
+            'activity' => fn () => Activity::latest()->limit(20)
                 ->when(! $user->canModule('finance'), fn ($q) => $q->where('audience', 'farm'))->get()
                 ->map(fn (Activity $a) => ['id' => $a->id, 'actor' => $a->actor, 'role' => $a->role, 'action' => $a->action, 'url' => $a->url, 'ago' => $a->created_at->diffForHumans(short: true)]),
             'breeds' => DB::table('animals')->join('breeds', 'breeds.id', '=', 'animals.breed_id')->where('status', 'active')
@@ -65,42 +88,6 @@ class DashboardController extends Controller
                 ->selectRaw("to_char(measured_on, 'YYYY-MM') as month, round(avg(weight_kg)::numeric, 1)::float as kg")->groupBy('month')->orderBy('month')->get(),
             'finance' => $user->canModule('finance') ? $this->financeSummary() : null,
         ]);
-    }
-
-    /**
-     * CEO dashboard categories (D-046), counted over goats on the farm. A goat without a category yet is
-     * counted as a kid from its age category and gender, so the numbers are useful before every goat is classified.
-     *
-     * @return list<array{key: string, label: string, value: int}>
-     */
-    private function herdCategories(\Illuminate\Support\Collection $goats): array
-    {
-        // Worked out per goat with the live category (D-047): fine for thousands of goats, and never stale.
-        $count = fn (callable $test) => $goats->filter($test)->count();
-        $cat = fn (Animal $a) => $a->effectiveCategory();
-        $female = fn (Animal $a) => $a->sex === 'female';
-
-        $values = [
-            'total' => $goats->count(),
-            'breeding_males' => $count(fn ($a) => $cat($a) === 'breeding_male'),
-            'breeding_females' => $count(fn ($a) => $cat($a) === 'breeding_female'),
-            'pregnant' => $count(fn ($a) => $female($a) && (in_array($a->repro_status, ['pregnant', 'expected_kidding'], true) || $a->repro_state === 'pregnant')),
-            'ready' => $count(fn ($a) => $female($a) && $a->repro_status === 'ready'),
-            'male_kids' => $count(fn ($a) => $cat($a) === 'male_kid'),
-            'female_kids' => $count(fn ($a) => $cat($a) === 'female_kid'),
-            'growing' => $count(fn ($a) => in_array($cat($a), ['growing_male', 'growing_female', 'replacement_male', 'replacement_female'], true)),
-            'lactating' => $count(fn ($a) => $female($a) && (in_array($a->repro_status, ['lactating', 'nursing'], true) || $a->repro_state === 'lactating')),
-            'sick' => $count(fn ($a) => $a->health_flag === 'sick' || $a->health_status === 'critical'),
-            'treatment' => $count(fn ($a) => $a->health_status === 'treatment' || $a->health_flag === 'quarantine'),
-            'for_sale' => $count(fn ($a) => $a->animal_purpose === 'sale' || in_array($cat($a), ['fattening_male', 'cull'], true) || $a->kid_stage === 'sale_selected'),
-        ];
-
-        return collect([
-            'total' => 'Total Goats', 'breeding_males' => 'Breeding Male Goats', 'breeding_females' => 'Breeding Female Goats',
-            'pregnant' => 'Pregnant Females', 'ready' => 'Ready for Breeding', 'male_kids' => 'Male Kids', 'female_kids' => 'Female Kids',
-            'growing' => 'Growing Goats', 'lactating' => 'Lactating Females', 'sick' => 'Sick Goats', 'treatment' => 'Goats Under Treatment',
-            'for_sale' => 'Goats Ready for Sale',
-        ])->map(fn (string $label, string $key) => ['key' => $key, 'label' => $label, 'value' => $values[$key]])->values()->all();
     }
 
     /** @return array<int, array{month: string, in: float, out: float}> */

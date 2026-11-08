@@ -30,9 +30,12 @@ class GoatController extends Controller
 {
     public function index(): Response
     {
+        $goats = Animal::with(['breed', 'pen.shed', 'latestWeight', 'photos', 'openAssignment.tag'])->orderBy('farm_number')->get();
+        $tags = \App\Support\HerdStats::tagsFor($goats); // D-071: the dashboard links here with ?show=KEY
+
         return Inertia::render('Goats/Index', [
-            'goats' => Animal::with(['breed', 'pen', 'latestWeight', 'photos', 'openAssignment.tag'])->orderBy('farm_number')->get()
-                ->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code]),
+            'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]]),
+            'showLabels' => \App\Support\HerdStats::LABELS,
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
             'pens' => Pen::with('shed')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);

@@ -378,4 +378,41 @@ class FarmRulesTest extends TestCase
         $this->actingAs($owner)->post('/settings/users', ['name' => 'Milker', 'login' => 'milker', 'role' => 'caretaker', 'department_id' => $dairy, 'password' => 'temporary1'])->assertSessionHasNoErrors();
         $this->assertSame($dairy, User::where('email', 'milker')->value('department_id'));
     }
+
+    public function test_the_dashboard_counts_match_its_lists_and_a_healthy_goat_never_needs_attention(): void
+    {
+        $owner = $this->user('ceo');
+        $healthy = $this->goat('H-1');
+        $watch = $this->goat('W-1');
+        $watch->update(['health_flag' => 'monitor']);
+        $this->assertSame('watch', $watch->fresh()->health_status, 'the flag and the status move together');
+        $healthy->update(['health_status' => 'watch']);
+        $this->assertSame('monitor', $healthy->fresh()->health_flag);
+        $healthy->update(['health_flag' => 'healthy']);
+        HealthRecord::create(['animal_id' => $healthy->id, 'kind' => 'observation', 'occurred_on' => now(), 'title' => 'need some care', 'recorded_by' => 'x', 'recorded_role' => 'Caretaker', 'status' => 'open']);
+        $loose = $this->goat('L-1');
+        $loose->update(['pen_id' => null]);
+        Farm::event($loose, 'origin', 'Born on the farm to H-1', 'Test vet');
+
+        $this->actingAs($owner)->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('stats.goats', 3)->where('stats.unwell', 1)->where('stats.noPen', 1)->where('stats.toReview', 1)
+            ->has('attention', 1)->where('attention.0.number', 'W-1')
+            ->where('missing', fn ($m) => collect($m)->contains(fn ($x) => $x['number'] === 'L-1' && in_array('Not in a pen', $x['missing'], true) && str_contains($x['source'], 'Born on the farm to H-1'))));
+
+        $this->actingAs($owner)->get('/goats?show=attention')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('attention', $g['tags'], true))->pluck('number')->values()->all() === ['W-1'])
+            ->where('showLabels.no_pen', 'Not in a pen'));
+    }
+
+    public function test_kids_from_a_kidding_go_into_their_mothers_pen(): void
+    {
+        $vet = $this->user('vet');
+        $doe = $this->goat('DOE-9');
+        $buck = $this->goat('BUCK-9', 'male');
+        $mating = Mating::create(['dam_id' => $doe->id, 'sire_id' => $buck->id, 'mated_on' => now()->subDays(150), 'method' => 'natural', 'expected_kidding_on' => now(), 'status' => 'pregnant', 'recorded_by' => 'x']);
+
+        $this->actingAs($vet)->post("/breeding/matings/{$mating->id}/kidding", ['alive' => 1, 'stillborn' => 0, 'females' => 1])->assertSessionHasNoErrors();
+        $kid = Animal::where('dam_id', $doe->id)->sole();
+        $this->assertSame([$doe->pen_id, 'healthy'], [$kid->pen_id, $kid->health_flag]);
+    }
 }

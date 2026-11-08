@@ -86,7 +86,8 @@ class BreedingController extends Controller
         $kids = DB::transaction(function () use ($mating, $data, $request) {
             $dam = $mating->dam;
             $sire = $mating->sire;
-            $kidsPen = Pen::where('purpose', 'Kids')->value('id');
+            // D-071: kids stay with their mother; a farm "Kids" pen only when the doe has no pen.
+            $kidsPen = $dam->pen_id ?? Pen::where('purpose', 'Kids')->value('id');
             $breedId = $sire && $sire->breed_id === $dam->breed_id ? $dam->breed_id : Breed::where('name', 'Crossbred')->value('id') ?? $dam->breed_id;
 
             Kidding::create(['dam_id' => $dam->id, 'mating_id' => $mating->id, 'kidded_on' => now(), 'born_alive' => $data['alive'], 'stillborn' => $data['stillborn'], 'recorded_by' => $request->user()->name]);
