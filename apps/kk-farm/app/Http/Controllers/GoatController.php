@@ -108,6 +108,7 @@ class GoatController extends Controller
             'goat' => $animal->card() + [
                 'origin' => $animal->origin, 'birthDate' => $animal->birth_date?->format('j M Y'), 'estimated' => $animal->birth_date_is_estimate, 'height' => $animal->height_cm !== null ? round((float) $animal->height_cm / 2.54, 1) : null, // inches (D-065)
                 'shed' => $animal->pen?->shed?->name, 'penPurpose' => $animal->pen?->purpose, 'feedingGroup' => $animal->feedingGroup?->name ?? FeedingGroup::where('code', \App\Support\Feed::groupCode($animal))->value('name'), // D-054: automatic group
+                'withdrawal' => \App\Support\Withdrawal::summary($animal), // D-073
                 'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('j M Y'), 'adg' => Farm::adg($weights),
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
                 'identity' => $animal->id,
@@ -120,6 +121,12 @@ class GoatController extends Controller
                 ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('j M Y'), 'to' => $r->valid_to?->format('j M Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
             'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => $e->summary, 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('j M Y')]),
+            // D-073: health cases with their treatment doses
+            'cases' => \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->orderByDesc('onset_on')->get()->map(fn ($c) => [
+                'id' => $c->id, 'label' => $c->label(), 'condition' => $c->condition, 'status' => \App\Models\HealthCase::STATUSES[$c->status], 'active' => in_array($c->status, \App\Models\HealthCase::ACTIVE, true),
+                'severity' => \App\Models\HealthCase::SEVERITIES[$c->severity], 'onset' => $c->onset_on->format('j M Y'), 'resolved' => $c->resolved_on?->format('j M Y'), 'diagnosis' => $c->diagnosis,
+                'treatments' => $c->treatments->map(fn ($t) => ['id' => $t->id, 'on' => $t->given_on->format('j M'), 'text' => "{$t->product} {$t->dose}", 'meat' => $t->meat_clear_on?->format('j M Y'), 'milk' => $t->milk_clear_on?->format('j M Y'), 'by' => $t->recorded_by])->values(),
+            ]),
             'health' => $animal->healthRecords()->limit(40)->get()->map(fn ($h) => ['id' => $h->id, 'kind' => $h->kind, 'title' => $h->title, 'notes' => $h->notes, 'severity' => $h->severity, 'by' => $h->recorded_by, 'role' => $h->recorded_role, 'on' => $h->occurred_on->format('j M Y'), 'next' => $h->next_due_on?->format('j M Y'), 'status' => $h->status]),
             'pedigree' => Farm::pedigree($animal),
             'offspring' => $offspring->map(fn (Animal $a) => $a->card()),
@@ -173,6 +180,11 @@ class GoatController extends Controller
         abort_unless($request->user()->passes('exit_animal'), 403);
         $data = $request->validate(['reason' => ['required', Rule::in(['sold', 'gifted', 'sacrificed', 'died'])]]);
         abort_unless($animal->status === 'active', 422);
+        // D-073 safety: a goat under meat withdrawal cannot leave for meat (sold, gifted or sacrificed).
+        $withdrawal = \App\Support\Withdrawal::forAnimal($animal->id);
+        if ($withdrawal['meat'] && $data['reason'] !== 'died') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['reason' => "{$animal->farm_number} is under meat withdrawal until {$withdrawal['meat']->format('j M Y')} (veterinary treatment). It cannot be sold, gifted or sacrificed before then."]);
+        }
 
         DB::transaction(function () use ($animal, $data, $request): void {
             Farm::closeOpenTag($animal, $data['reason'], $request->user());

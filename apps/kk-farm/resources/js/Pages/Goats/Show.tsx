@@ -8,13 +8,14 @@ import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 
-type Goat = GoatCard & { origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Goat = GoatCard & { withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
     tags: Array<{ code: string; from: string; to: string | null; reason: string; closed: string | null; by: string }>;
     weights: Array<{ on: string; kg: number }>;
     timeline: Array<{ id: number; type: string; summary: string; by: string; on: string }>;
+    cases: Array<{ id: number; label: string; condition: string; status: string; active: boolean; severity: string; onset: string; resolved: string | null; diagnosis: string | null; treatments: Array<{ id: number; on: string; text: string; meat: string | null; milk: string | null; by: string }> }>;
     health: Array<{ id: number; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; status: string }>;
     pedigree: PedigreeNode;
     offspring: GoatCard[];
@@ -27,7 +28,7 @@ type Props = {
 const TYPE_COLOR: Record<string, string> = { origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, pedigree, offspring, matings, kiddings, cost, pens } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens } = props;
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('overview');
     const [panel, setPanel] = useState<string | null>(null);
@@ -48,6 +49,14 @@ export default function GoatShow(props: Props) {
     return (
         <>
             <Head title={goat.name ?? goat.number} />
+            {/* D-073: withdrawal from the veterinarian's treatment dates. */}
+            {goat.withdrawal ? (
+                <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 rounded-tile border border-crit-500/40 bg-crit-100 px-4 py-3 text-crit-700">
+                    <strong>Under withdrawal.</strong>
+                    {goat.withdrawal.meat ? <span>Do not sell, gift or sacrifice before {goat.withdrawal.meat}.</span> : null}
+                    {goat.withdrawal.milk ? <span>Do not use milk before {goat.withdrawal.milk}.</span> : null}
+                </div>
+            ) : null}
             <section className="mb-4 overflow-hidden rounded-tile border border-rule bg-tile shadow-tile">
                 <div className="flex flex-col gap-4 p-4 sm:flex-row">
                     {profile ? <img src={`/media/${profile.id}`} alt={`Profile of ${goat.number}`} className="size-36 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}
@@ -83,7 +92,7 @@ export default function GoatShow(props: Props) {
             <Tabs
                 value={tab}
                 onChange={setTab}
-                tabs={[{ id: 'overview', label: 'Overview' }, { id: 'timeline', label: 'Lifecycle', count: timeline.length }, { id: 'health', label: 'Health', count: health.length }, { id: 'breeding', label: 'Breeding & pedigree' }, { id: 'photos', label: 'Photos', count: photos.length }, { id: 'tags', label: 'RFID history', count: tags.length }]}
+                tabs={[{ id: 'overview', label: 'Overview' }, { id: 'timeline', label: 'Lifecycle', count: timeline.length }, { id: 'health', label: 'Health', count: cases.length + health.length }, { id: 'breeding', label: 'Breeding & pedigree' }, { id: 'photos', label: 'Photos', count: photos.length }, { id: 'tags', label: 'RFID history', count: tags.length }]}
             />
 
             {tab === 'overview' ? (
@@ -126,6 +135,29 @@ export default function GoatShow(props: Props) {
                             </li>
                         ))}
                     </ol>
+                </Panel>
+            ) : null}
+
+            {tab === 'health' && cases.length ? (
+                <Panel flush title="Health cases" description="Episodes and the treatments given, with the veterinarian's clear dates" className="mb-4">
+                    <ul className="divide-y divide-rule">
+                        {cases.map((c) => (
+                            <li key={c.id} className="px-4 py-2.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-mono text-xs text-ink-soft">{c.label}</span>
+                                    <span className="font-semibold text-cobalt-900">{c.condition}</span>
+                                    <Chip className={c.active ? 'bg-treat-100 text-treat-700' : 'bg-glaze text-ink-soft'}>{c.status}</Chip>
+                                    <span className="text-sm text-ink-soft">{c.severity} · since {c.onset}{c.resolved ? ` · ended ${c.resolved}` : ''}</span>
+                                </div>
+                                {c.diagnosis ? <p className="text-sm">{c.diagnosis}</p> : null}
+                                {c.treatments.length ? (
+                                    <ul className="mt-1 space-y-0.5 text-sm text-ink-soft">
+                                        {c.treatments.map((t) => <li key={t.id}>{t.on} · <span className="text-ink">{t.text}</span>{t.meat ? ` · meat clear ${t.meat}` : ''}{t.milk ? ` · milk clear ${t.milk}` : ''} · {t.by}</li>)}
+                                    </ul>
+                                ) : null}
+                            </li>
+                        ))}
+                    </ul>
                 </Panel>
             ) : null}
 

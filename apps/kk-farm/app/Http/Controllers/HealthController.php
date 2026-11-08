@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Animal;
+use App\Models\HealthCase;
 use App\Models\HealthRecord;
+use App\Models\Treatment;
+use App\Support\Withdrawal;
+use Illuminate\Validation\ValidationException;
 use App\Support\Farm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,21 +26,156 @@ class HealthController extends Controller
             'on' => $r->occurred_on->format('j M Y'), 'next' => $r->next_due_on?->format('j M Y'),
         ];
         $care = HealthRecord::with('animal')->whereIn('kind', ['vaccination', 'deworming'])->whereBetween('next_due_on', [now()->subDays(60), now()->addDays(21)])
-            ->whereHas('animal', fn ($q) => $q->active())->orderBy('next_due_on')->limit(14)->get();
+            ->whereHas('animal', fn ($q) => $q->active())->orderBy('next_due_on')->limit(30)->get();
+        $withdrawal = Withdrawal::active();
+        $goatsById = Animal::whereIn('id', $withdrawal->keys())->get()->keyBy('id');
+        $cases = HealthCase::with(['animal', 'treatments'])->where(fn ($q) => $q->whereIn('status', HealthCase::ACTIVE)->orWhere('resolved_on', '>=', now()->subDays(30)))
+            ->orderByRaw("case status when 'open' then 0 when 'under_treatment' then 1 when 'monitoring' then 2 else 3 end")
+            ->orderByRaw("case severity when 'emergency' then 0 when 'high' then 1 when 'moderate' then 2 else 3 end")->orderByDesc('onset_on')->get();
+        $today = now()->startOfDay();
 
         return Inertia::render('Health', [
-            'open' => HealthRecord::with('animal')->where('status', 'open')->orderByRaw("case severity when 'high' then 0 when 'medium' then 1 else 2 end")->orderByDesc('occurred_on')->get()->map($row),
+            'cases' => $cases->map(fn (HealthCase $c) => $this->caseRow($c, $withdrawal[$c->animal_id] ?? null)),
+            // Concerns reported by staff (and older records) that no case covers yet.
+            'reports' => HealthRecord::with('animal')->where('status', 'open')->whereNotIn('id', HealthCase::whereNotNull('report_id')->pluck('report_id'))
+                ->orderByDesc('occurred_on')->get()->map($row),
             'care' => $care->map(fn (HealthRecord $r) => $row($r) + ['overdue' => $r->next_due_on->isPast()]),
-            'recent' => HealthRecord::with('animal')->whereIn('kind', ['examination', 'treatment', 'observation'])->where('status', 'closed')->latest()->limit(10)->get()->map($row),
+            'withdrawal' => $withdrawal->map(fn ($w, $id) => [
+                'goatId' => $id, 'number' => $goatsById[$id]->farm_number ?? '?', 'name' => $goatsById[$id]->name ?? null, 'coat' => $goatsById[$id]->coat ?? 'brown', 'sex' => $goatsById[$id]->sex ?? 'female',
+                'meat' => $w['meat'] ? \Illuminate\Support\Carbon::parse($w['meat'])->format('j M Y') : null, 'milk' => $w['milk'] ? \Illuminate\Support\Carbon::parse($w['milk'])->format('j M Y') : null,
+            ])->values(),
             'counts' => [
-                'open' => HealthRecord::where('status', 'open')->count(),
-                'critical' => Animal::active()->where('health_status', 'critical')->count(),
-                'treatment' => Animal::active()->where('health_status', 'treatment')->count(),
-                'watch' => Animal::active()->where('health_status', 'watch')->count(),
+                'active' => $cases->whereIn('status', HealthCase::ACTIVE)->count(),
+                'emergency' => $cases->whereIn('status', HealthCase::ACTIVE)->whereIn('severity', ['emergency', 'high'])->count(),
+                'isolated' => $cases->whereIn('status', HealthCase::ACTIVE)->where('isolated', true)->count(),
+                'doses' => Treatment::whereNotNull('next_dose_on')->where('next_dose_on', '<=', $today->copy()->addDays(2))->whereHas('healthCase', fn ($q) => $q->whereIn('status', HealthCase::ACTIVE))->count(),
+                'withdrawal' => $withdrawal->count(),
                 'overdue' => HealthRecord::whereIn('kind', ['vaccination', 'deworming'])->where('next_due_on', '<', now())->whereHas('animal', fn ($q) => $q->active())->distinct('animal_id')->count('animal_id'),
             ],
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
+            'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
         ]);
+    }
+
+    private function caseRow(HealthCase $c, ?array $withdrawal): array
+    {
+        $today = now()->startOfDay();
+        $next = $c->treatments->whereNotNull('next_dose_on')->sortByDesc('given_on')->first()?->next_dose_on;
+
+        return [
+            'id' => $c->id, 'label' => $c->label(), 'goatId' => $c->animal_id, 'number' => $c->animal->farm_number, 'name' => $c->animal->name, 'coat' => $c->animal->coat, 'sex' => $c->animal->sex,
+            'onset' => $c->onset_on->format('j M Y'), 'condition' => $c->condition, 'symptoms' => $c->symptoms, 'severity' => $c->severity, 'isolated' => $c->isolated,
+            'status' => $c->status, 'active' => in_array($c->status, HealthCase::ACTIVE, true), 'vet' => $c->vet, 'diagnosis' => $c->diagnosis, 'notes' => $c->notes,
+            'resolved' => $c->resolved_on?->format('j M Y'), 'age' => $c->ageDays(), 'by' => $c->recorded_by,
+            'nextDose' => $next?->format('j M'), 'doseAlert' => $next && in_array($c->status, HealthCase::ACTIVE, true) ? ($next->lessThan($today) ? 'overdue' : ($next->lessThanOrEqualTo($today->copy()->addDays(2)) ? 'soon' : null)) : null,
+            'withdrawal' => $withdrawal ? ['meat' => $withdrawal['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal['meat'])->format('j M') : null, 'milk' => $withdrawal['milk'] ? \Illuminate\Support\Carbon::parse($withdrawal['milk'])->format('j M') : null] : null,
+            'treatments' => $c->treatments->map(fn (Treatment $t) => [
+                'id' => $t->id, 'on' => $t->given_on->format('j M Y'), 'product' => $t->product, 'dose' => $t->dose, 'route' => Treatment::ROUTES[$t->route] ?? $t->route,
+                'frequency' => $t->frequency, 'days' => $t->days_prescribed, 'next' => $t->next_dose_on?->format('j M Y'),
+                'meat' => $t->meat_clear_on?->format('j M Y'), 'milk' => $t->milk_clear_on?->format('j M Y'), 'cost' => $t->cost_minor !== null ? $t->cost_minor / 100 : null, 'by' => $t->recorded_by, 'notes' => $t->notes,
+            ])->values(),
+        ];
+    }
+
+    /** D-073: the goat's health flag follows its cases: active case = Sick (Quarantine if isolated), monitoring = Recovering. */
+    private function syncHealth(Animal $animal): void
+    {
+        $active = HealthCase::where('animal_id', $animal->id)->whereIn('status', HealthCase::ACTIVE)->get();
+        $flag = match (true) {
+            $active->contains('isolated', true) => 'quarantine',
+            $active->whereIn('status', ['open', 'under_treatment'])->isNotEmpty() => 'sick',
+            $active->isNotEmpty() => 'recovering',
+            HealthRecord::where('animal_id', $animal->id)->where('status', 'open')->exists() => 'monitor',
+            default => 'healthy',
+        };
+        $animal->update(['health_flag' => $flag]);
+    }
+
+    /** Opens a case (optionally from a reported concern, which it then covers). Veterinarian only. */
+    public function openCase(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian opens a health case.');
+        $data = $request->validate([
+            'animal_id' => ['required', 'exists:animals,id'], 'onset_on' => ['required', 'date', 'before_or_equal:today'],
+            'condition' => ['required', 'string', 'max:120'], 'symptoms' => ['nullable', 'string', 'max:1000'],
+            'severity' => ['required', Rule::in(array_keys(HealthCase::SEVERITIES))], 'isolated' => ['boolean'],
+            'diagnosis' => ['nullable', 'string', 'max:1000'], 'notes' => ['nullable', 'string', 'max:1000'],
+            'report_id' => ['nullable', 'exists:health_records,id'],
+        ]);
+        $animal = Animal::findOrFail($data['animal_id']);
+
+        $case = DB::transaction(function () use ($data, $animal, $request) {
+            DB::statement('LOCK TABLE health_cases IN SHARE ROW EXCLUSIVE MODE');
+            $case = HealthCase::create($data + ['case_no' => (int) HealthCase::max('case_no') + 1, 'vet' => $request->user()->name, 'recorded_by' => $request->user()->name, 'isolated' => (bool) ($data['isolated'] ?? false)]);
+            if (! empty($data['report_id'])) {
+                HealthRecord::whereKey($data['report_id'])->update(['status' => 'closed']);
+            }
+            Farm::event($animal, 'health', "Health case {$case->label()} opened: {$case->condition} (".HealthCase::SEVERITIES[$case->severity].($case->isolated ? ', isolated' : '').')', $request->user()->name);
+            $this->syncHealth($animal);
+
+            return $case;
+        });
+        Farm::log($request->user(), "Opened health case {$case->label()} for {$animal->farm_number}", '/health');
+
+        return back()->with('success', "Case {$case->label()} opened for {$animal->farm_number}.");
+    }
+
+    public function updateCase(Request $request, HealthCase $case): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian updates a health case.');
+        $data = $request->validate([
+            'status' => ['required', Rule::in(array_keys(HealthCase::STATUSES))], 'isolated' => ['boolean'],
+            'diagnosis' => ['nullable', 'string', 'max:1000'], 'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $resolved = in_array($data['status'], ['recovered', 'closed', 'deceased'], true);
+
+        DB::transaction(function () use ($case, $data, $resolved, $request) {
+            $before = $case->status;
+            $case->update($data + ['resolved_on' => $resolved ? ($case->resolved_on ?? now()) : null, 'isolated' => (bool) ($data['isolated'] ?? $case->isolated)]);
+            if ($before !== $case->status) {
+                Farm::event($case->animal, 'health', "Health case {$case->label()}: ".HealthCase::STATUSES[$case->status], $request->user()->name);
+            }
+            $this->syncHealth($case->animal);
+        });
+        Farm::log($request->user(), "Updated health case {$case->label()}", '/health');
+        $note = $data['status'] === 'deceased' ? ' Record the death on the goat page (Record exit → Died).' : '';
+
+        return back()->with('success', "{$case->label()} saved.{$note}");
+    }
+
+    /**
+     * A dose given under a case. The meat and milk clear dates are the veterinarian's own (D-006): the vet must type
+     * them, or tick that the product has no withdrawal, so a date is never left out by accident.
+     */
+    public function addTreatment(Request $request, HealthCase $case): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian records a treatment.');
+        abort_unless(in_array($case->status, HealthCase::ACTIVE, true), 422, 'This case is closed. Open a new case for a new episode.');
+        $data = $request->validate([
+            'given_on' => ['required', 'date', 'before_or_equal:today'], 'product' => ['required', 'string', 'max:120'], 'dose' => ['required', 'string', 'max:40'],
+            'route' => ['required', Rule::in(array_keys(Treatment::ROUTES))], 'frequency' => ['nullable', 'string', 'max:60'],
+            'days_prescribed' => ['nullable', 'integer', 'between:1,365'], 'next_dose_on' => ['nullable', 'date', 'after_or_equal:given_on'],
+            'meat_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'], 'milk_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'],
+            'no_withdrawal' => ['boolean'], 'cost' => ['nullable', 'numeric', 'min:0', 'max:10000000'], 'notes' => ['nullable', 'string', 'max:500'],
+        ], [], ['meat_clear_on' => 'meat clear date', 'milk_clear_on' => 'milk clear date', 'next_dose_on' => 'next dose date', 'given_on' => 'date given']);
+        if (empty($data['meat_clear_on']) && empty($data['milk_clear_on']) && empty($data['no_withdrawal'])) {
+            throw ValidationException::withMessages(['meat_clear_on' => 'Enter the meat and milk clear dates from the product label, or tick "No withdrawal for this product".']);
+        }
+
+        DB::transaction(function () use ($case, $data, $request) {
+            Treatment::create(collect($data)->except(['no_withdrawal', 'cost'])->all() + [
+                'health_case_id' => $case->id, 'animal_id' => $case->animal_id, 'cost_minor' => isset($data['cost']) ? (int) round($data['cost'] * 100) : null, 'recorded_by' => $request->user()->name,
+            ]);
+            if ($case->status === 'open') {
+                $case->update(['status' => 'under_treatment']);
+            }
+            $clear = array_filter(['meat clear '.($data['meat_clear_on'] ?? '') => ! empty($data['meat_clear_on']), 'milk clear '.($data['milk_clear_on'] ?? '') => ! empty($data['milk_clear_on'])]);
+            Farm::event($case->animal, 'health', "Treatment ({$case->label()}): {$data['product']} {$data['dose']}".($clear ? ' · '.implode(', ', array_keys($clear)) : ' · no withdrawal'), $request->user()->name);
+            $this->syncHealth($case->animal);
+        });
+        Farm::log($request->user(), "Treated {$case->animal->farm_number}: {$data['product']}", '/health');
+
+        return back()->with('success', 'Treatment saved.'.(! empty($data['meat_clear_on']) ? ' Meat withdrawal until '.\Illuminate\Support\Carbon::parse($data['meat_clear_on'])->format('j M Y').'.' : ''));
     }
 
     public function observe(Request $request): RedirectResponse
@@ -86,9 +225,7 @@ class HealthController extends Controller
 
         DB::transaction(function () use ($record, $request): void {
             $record->update(['status' => 'closed']);
-            if (! HealthRecord::where('animal_id', $record->animal_id)->where('status', 'open')->exists()) {
-                $record->animal->update(['health_status' => 'healthy']);
-            }
+            $this->syncHealth($record->animal); // D-073: stays Sick while a case is still active
             Farm::event($record->animal, 'health', "Case closed: {$record->title}", $request->user()->name);
         });
         Farm::log($request->user(), "Closed a health case for {$record->animal->farm_number}", "/goats/{$record->animal_id}");

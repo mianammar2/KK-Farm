@@ -35,7 +35,7 @@ class ScanController extends Controller
             $result = [
                 'code' => $code,
                 'state' => ! $tag ? 'unknown' : ($open ? 'assigned' : ($tag->status === 'lost' ? 'lost' : 'free')),
-                'goat' => $open?->animal->card(),
+                'goat' => $open ? $open->animal->card() + ['withdrawal' => \App\Support\Withdrawal::summary($open->animal)] : null,
                 'since' => $open?->valid_from->format('j M Y'),
                 'history' => $past->map(fn (RfidAssignment $a) => ['id' => $a->animal_id, 'number' => $a->animal->farm_number, 'to' => $a->valid_to?->format('j M Y'), 'reason' => $a->reason_unassigned])->values(),
             ];

@@ -8,7 +8,7 @@ import GoatPortrait from '../components/GoatPortrait';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
 import type { GoatCard, Option } from '../types';
 
-type Result = { code: string; state: 'assigned' | 'free' | 'lost' | 'unknown'; goat: GoatCard | null; since: string | null; history: Array<{ id: string; number: string; to: string | null; reason: string | null }> };
+type Result = { code: string; state: 'assigned' | 'free' | 'lost' | 'unknown'; goat: (GoatCard & { withdrawal?: { meat: string | null; milk: string | null } | null }) | null; since: string | null; history: Array<{ id: string; number: string; to: string | null; reason: string | null }> };
 type Props = { result: Result | null; samples: { assigned: string[]; free: string[]; new: string[] }; untagged: Option[]; goats: Option[] };
 
 // Inside the KK Farm Android app on the RFID gun (its user agent carries "KKFarmScanner").
@@ -95,7 +95,7 @@ function Idle({ scanning }: { scanning?: boolean }) {
     );
 }
 
-function Found({ goat, result }: { goat: GoatCard; result: Result }) {
+function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Result }) {
     useEffect(() => haptic(40), [result.code]);
     const remove = useForm({ animal_id: goat.id, reason: 'lost' });
     // Releasing a tag cannot be undone from here, so it takes two deliberate taps.
@@ -111,6 +111,11 @@ function Found({ goat, result }: { goat: GoatCard; result: Result }) {
                     <p className="text-ink-soft">{goat.number} · {goat.breed} · {goat.age}</p>
                     <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} kg` : ''}</p>
                     <div className="mt-1 flex gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} /></div>
+                    {goat.withdrawal ? (
+                        <p role="alert" className="mt-2 rounded-tile bg-crit-100 px-2.5 py-1.5 text-sm font-semibold text-crit-700">
+                            Under withdrawal{goat.withdrawal.meat ? ` · no sale before ${goat.withdrawal.meat}` : ''}{goat.withdrawal.milk ? ` · no milk before ${goat.withdrawal.milk}` : ''}
+                        </p>
+                    ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
                         <Link href={`/goats/${goat.id}`}><Button>Open full record</Button></Link>
                     </div>

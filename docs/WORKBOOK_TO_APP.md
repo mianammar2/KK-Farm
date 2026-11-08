@@ -18,8 +18,8 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 6 | Kidding | Breeding Lead · at birth | Breeding → kidding | 🟡 |
 | 7 | Weaning | Breeding Lead · at weaning | — | ❌ |
 | 8 | Weight Log | Supervisor · scheduled | Weight & Growth | 🟡 |
-| 9 | Health Cases | Vet · onset and review | Health | 🟡 |
-| 10 | Treatments | Vet / staff · each dose | — | ❌ (safety) |
+| 9 | Health Cases | Vet · onset and review | Health → Cases | ✅ D-073 |
+| 10 | Treatments | Vet / staff · each dose | Health → case → Add treatment | ✅ D-073 |
 | 11 | Preventive Care | Vet · per health plan | Health (one record type) | 🟡 |
 | 12 | Feed Items | Feed store · setup | Feeding → Feed store | ✅ D-054 |
 | 13 | Ration Plans | Nutritionist · diet change | Feeding → Rations | ✅ D-054 |
