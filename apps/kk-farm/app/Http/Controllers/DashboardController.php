@@ -19,15 +19,12 @@ class DashboardController extends Controller
     public function __invoke(Request $request): Response
     {
         $user = $request->user();
-        $active = Animal::active();
         $today = now()->toDateString();
 
-        $wall = Pen::with(['shed', 'animals' => fn ($q) => $q->active()->orderBy('farm_number')])->orderBy('name')->get()->map(fn (Pen $pen) => [
-            'id' => $pen->id, 'name' => $pen->fullName(), 'purpose' => $pen->purpose, 'capacity' => $pen->capacity,
-            'goats' => $pen->animals->map(fn (Animal $a) => [
-                'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'coat' => $a->coat, 'health' => $a->health_status, 'repro' => $a->repro_state,
-            ]),
-        ]);
+        // D-070: one source for the headline numbers, the same rules as "Herd by category".
+        $goats = Animal::active()->get(['id', 'sex', 'birth_date', 'age_category', 'animal_class', 'animal_purpose', 'repro_status', 'repro_state', 'health_flag', 'health_status', 'kid_stage']);
+        $unwell = $goats->filter(fn (Animal $a) => in_array($a->health_flag, ['monitor', 'sick', 'quarantine', 'recovering'], true) || ($a->health_status && $a->health_status !== 'healthy'))->count();
+        $pregnant = $goats->filter(fn (Animal $a) => $a->sex === 'female' && (in_array($a->repro_status, ['pregnant', 'expected_kidding'], true) || $a->repro_state === 'pregnant'))->count();
 
         $overdue = HealthRecord::whereIn('kind', ['vaccination', 'deworming'])->where('next_due_on', '<', $today)
             ->whereHas('animal', fn ($q) => $q->active())->distinct('animal_id')->count('animal_id');
@@ -44,20 +41,19 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'stats' => [
-                'goats' => (clone $active)->count(),
-                'does' => (clone $active)->where('sex', 'female')->count(),
-                'bucks' => (clone $active)->where('sex', 'male')->count(),
-                'pregnant' => (clone $active)->where('repro_state', 'pregnant')->count(),
-                'unwell' => (clone $active)->where('health_status', '!=', 'healthy')->count(),
+                'goats' => $goats->count(),
+                'does' => $goats->where('sex', 'female')->count(),
+                'bucks' => $goats->where('sex', 'male')->count(),
+                'pregnant' => $pregnant,
+                'unwell' => $unwell,
                 'overdueCare' => $overdue,
                 'tasksDone' => Task::where('due_on', $today)->where('status', 'done')->count(),
                 'tasksTotal' => Task::where('due_on', $today)->count(),
                 'feedingDone' => $feeding['done'] + $feeding['late'],
                 'feedingTotal' => $feeding['expected'],
             ],
-            'herd' => $this->herdCategories(),
+            'herd' => $this->herdCategories($goats),
             'feeding' => $user->canModule('feeding') ? $feedToday : null,
-            'wall' => $wall,
             'attention' => $attention,
             'kiddings' => $kiddings,
             'activity' => fn () => Activity::latest()->limit(8)
@@ -77,10 +73,9 @@ class DashboardController extends Controller
      *
      * @return list<array{key: string, label: string, value: int}>
      */
-    private function herdCategories(): array
+    private function herdCategories(\Illuminate\Support\Collection $goats): array
     {
         // Worked out per goat with the live category (D-047): fine for thousands of goats, and never stale.
-        $goats = Animal::active()->get(['id', 'sex', 'birth_date', 'age_category', 'animal_class', 'animal_purpose', 'repro_status', 'repro_state', 'health_flag', 'health_status', 'kid_stage']);
         $count = fn (callable $test) => $goats->filter($test)->count();
         $cat = fn (Animal $a) => $a->effectiveCategory();
         $female = fn (Animal $a) => $a->sex === 'female';
