@@ -117,7 +117,7 @@ class Animal extends Model
             'coat' => $this->coat,
             'breed' => $this->breed?->name,
             'age' => $this->ageLabel(),
-            'pen' => $this->pen?->name,
+            'pen' => $this->pen?->fullName(),
             'penId' => $this->pen_id,
             'status' => $this->status,
             'health' => $this->health_status,

@@ -290,16 +290,18 @@ class FarmRulesTest extends TestCase
         $this->actingAs($manager)->post('/sheds', ['type' => 'BDU', 'status' => 'active'])->assertSessionHasNoErrors();
         $this->assertTrue(Shed::where('name', 'KKF-BDU-01')->exists());
 
-        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'A', 'purpose' => 'Kids', 'capacity' => 40])->assertSessionHasNoErrors();
-        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'pen a', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
-        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'Pen A', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
-        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'pen', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
-        $this->assertSame('Pen A', $shed->pens()->value('name'), 'the Pen prefix is added once');
+        // D-057: pens are numbered P01, P02 … and shown with the shed: KKF-KDU-02-P01.
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => '1', 'purpose' => 'Kids', 'capacity' => 40])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'P01', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'pen 01', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
+        $this->actingAs($manager)->post("/sheds/{$shed->id}/pens", ['name' => 'Main', 'purpose' => 'Weaners'])->assertSessionHasErrors('name');
+        $this->assertSame('P01', $shed->pens()->value('name'));
+        $this->assertSame("{$shed->fresh()->name}-P01", $shed->pens()->first()->fullName());
         $pen = $shed->pens()->firstOrFail();
         $this->assertSame(40, $pen->capacity);
 
-        $this->actingAs($manager)->patch("/pens/{$pen->id}", ['name' => 'Pen A1', 'purpose' => 'Weaners', 'capacity' => null])->assertSessionHasNoErrors();
-        $this->assertSame(['Pen A1', 'Weaners', null], [$pen->fresh()->name, $pen->fresh()->purpose, $pen->fresh()->capacity]);
+        $this->actingAs($manager)->patch("/pens/{$pen->id}", ['name' => '7', 'purpose' => 'Weaners', 'capacity' => null])->assertSessionHasNoErrors();
+        $this->assertSame(['P07', 'Weaners', null], [$pen->fresh()->name, $pen->fresh()->purpose, $pen->fresh()->capacity]);
 
 
     }
@@ -310,7 +312,7 @@ class FarmRulesTest extends TestCase
         $this->goat('T-0101');
         $this->goat('T-0102');
 
-        $this->actingAs($manager)->patch("/pens/{$this->pen->id}", ['name' => 'Pen T', 'purpose' => 'Kids', 'capacity' => 1])->assertSessionHasErrors('capacity');
+        $this->actingAs($manager)->patch("/pens/{$this->pen->id}", ['name' => '1', 'purpose' => 'Kids', 'capacity' => 1])->assertSessionHasErrors('capacity');
         $this->actingAs($manager)->patch("/sheds/{$this->pen->shed_id}", ['type' => 'BDU', 'status' => 'planned'])->assertSessionHasErrors('status');
     }
 

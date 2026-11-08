@@ -101,7 +101,7 @@ function FeedNow({ meal, meals, mealTimes, board, items, groups, onTab }: Props 
                 <section key={pen.id} className="rounded-tile border border-rule bg-tile shadow-tile">
                     <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open === pen.id} onClick={() => setOpen(open === pen.id ? null : pen.id)}>
                         <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-baseline gap-x-2"><span className="font-semibold text-cobalt-900">{pen.name}</span>{pen.shed ? <span className="text-sm text-ink-soft">{pen.shed}</span> : null}</div>
+                            <div className="flex flex-wrap items-baseline gap-x-2"><span className="font-mono font-semibold text-cobalt-900">{pen.name}</span></div>
                             <div className="text-sm text-ink-soft">{pen.headcount} goats · plan {kg(pen.plannedKg)}{pen.offeredKg ? ` · given ${kg(pen.offeredKg)}` : ''}{pen.unplanned ? ` · ${pen.unplanned} without ration` : ''}</div>
                         </div>
                         <div className="flex items-center gap-1" aria-label="Meals today">{MEALS.map((m) => <span key={m} title={`${meals[m]}: ${STATUS[pen.meals[m]].label}`} className={cx('size-2.5 rounded-full', pen.meals[m] === 'done' ? 'bg-ok-700' : pen.meals[m] === 'late' ? 'bg-watch-400' : pen.meals[m] === 'missed' ? 'bg-crit-500' : 'bg-rule-strong')} />)}</div>

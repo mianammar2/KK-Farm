@@ -22,8 +22,8 @@ class DashboardController extends Controller
         $active = Animal::active();
         $today = now()->toDateString();
 
-        $wall = Pen::with(['animals' => fn ($q) => $q->active()->orderBy('farm_number')])->orderBy('name')->get()->map(fn (Pen $pen) => [
-            'id' => $pen->id, 'name' => $pen->name, 'purpose' => $pen->purpose, 'capacity' => $pen->capacity,
+        $wall = Pen::with(['shed', 'animals' => fn ($q) => $q->active()->orderBy('farm_number')])->orderBy('name')->get()->map(fn (Pen $pen) => [
+            'id' => $pen->id, 'name' => $pen->fullName(), 'purpose' => $pen->purpose, 'capacity' => $pen->capacity,
             'goats' => $pen->animals->map(fn (Animal $a) => [
                 'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'coat' => $a->coat, 'health' => $a->health_status, 'repro' => $a->repro_state,
             ]),

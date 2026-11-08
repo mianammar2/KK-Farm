@@ -6,13 +6,15 @@ import { Button, Chip, cx, Empty, Field, PageHeader, Panel } from '../components
 import type { Health, SharedProps } from '../types';
 
 type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null };
-type Pen = { id: number; name: string; purpose: string; capacity: number | null; count: number; goats: Goat[] };
+type Pen = { id: number; name: string; code: string; purpose: string; capacity: number | null; count: number; goats: Goat[] };
 type Shed = { id: number; code: string; name: string; status: string; type: string | null; typeName: string | null; purpose: string | null; pens: Pen[] };
 type UnitType = { code: string; name: string; purpose: string };
 type Props = { sheds: Shed[]; types: UnitType[]; prefix: string; recent: Array<{ id: number; goat_id: string; number: string; summary: string; recorded_by: string }> };
 
 /** Same rule as Pen::standardName on the server (D-055): the part after the "Pen" prefix. */
-const penRest = (name: string) => name.replace(/^\s*(pen\b|p(?=\d))[\s\-:_]*/i, '').replace(/[\s\-_]*\bpen\s*$/i, '').trim();
+/** D-057: the pen number from what was typed or stored ("P01", "pen 1", "1" → 1); 0 when there is none. */
+const penNumber = (text: string) => { const rest = text.replace(/^\s*(pen\b|p)[\s\-:_]*/i, '').replace(/[\s\-_]*\bpen\s*$/i, '').trim(); return /^\d+$/.test(rest) ? Number(rest) : 0; };
+const penCode = (n: number) => `P${String(n).padStart(2, '0')}`;
 
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
 type Editing = { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen } | null;
@@ -180,8 +182,8 @@ function ShedForm({ shed, sheds, types, prefix, onDone }: { shed?: Shed; sheds: 
 
 function PenForm({ shed, pen, onDone }: { shed: Shed; pen?: Pen; onDone: () => void }) {
     // D-055: pens are always "Pen …"; the user types only the part after the prefix. A new pen suggests the next number.
-    const nextNumber = String(shed.pens.reduce((max, p) => Math.max(max, Number(penRest(p.name)) || 0), 0) + 1);
-    const form = useForm({ name: pen ? penRest(pen.name) : nextNumber, purpose: pen?.purpose ?? shed.purpose ?? '', capacity: pen?.capacity ? String(pen.capacity) : '' });
+    const nextNumber = String(shed.pens.reduce((max, p) => Math.max(max, penNumber(p.code)), 0) + 1);
+    const form = useForm({ name: pen ? String(penNumber(pen.code) || '') : nextNumber, purpose: pen?.purpose ?? shed.purpose ?? '', capacity: pen?.capacity ? String(pen.capacity) : '' });
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         form.transform((d) => ({ ...d, capacity: d.capacity === '' ? null : Number(d.capacity) }));
@@ -191,12 +193,12 @@ function PenForm({ shed, pen, onDone }: { shed: Shed; pen?: Pen; onDone: () => v
     };
 
     return (
-        <Panel title={pen ? `Edit ${pen.name}` : `Add a pen to ${shed.name}`} description={pen ? `${shed.name} · ${pen.count} goats` : undefined}>
+        <Panel title={pen ? `Edit ${pen.name}` : `Add a pen to ${shed.name}`} description={pen ? `${pen.count} goats` : undefined}>
             <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
-                <Field label="Pen name" error={form.errors.name} hint={penRest(form.data.name) ? `Saved as “Pen ${penRest(form.data.name).length === 1 ? penRest(form.data.name).toUpperCase() : penRest(form.data.name)}”` : undefined}>
+                <Field label="Pen number" error={form.errors.name} hint={penNumber(form.data.name) ? `Full name: ${shed.name}-${penCode(penNumber(form.data.name))}` : 'Numbers only, e.g. 1 for P01'}>
                     <div className="flex items-stretch">
-                        <span className="grid place-items-center rounded-l-[4px] border border-r-0 border-rule bg-cobalt-100 px-3 text-sm font-semibold text-cobalt-800">Pen</span>
-                        <input className="field rounded-l-none" autoFocus value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="1, 2, A, Kids…" maxLength={55} required aria-label="Pen name after the Pen prefix" />
+                        <span className="grid place-items-center whitespace-nowrap rounded-l-[4px] border border-r-0 border-rule bg-cobalt-100 px-2 font-mono text-sm font-semibold text-cobalt-800">{shed.name}-P</span>
+                        <input className="field min-w-0 rounded-l-none font-mono" autoFocus inputMode="numeric" value={form.data.name} onChange={(e) => form.setData('name', e.target.value.replace(/[^0-9]/g, ''))} placeholder="01" maxLength={3} required aria-label={`Pen number after ${shed.name}-P`} />
                     </div>
                 </Field>
                 <Field label="Used for" error={form.errors.purpose}>

@@ -34,7 +34,7 @@ class GoatController extends Controller
             'goats' => Animal::with(['breed', 'pen', 'latestWeight', 'photos', 'openAssignment.tag'])->orderBy('farm_number')->get()
                 ->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code]),
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
-            'pens' => Pen::orderBy('name')->get(['id', 'name', 'purpose']),
+            'pens' => Pen::with('shed')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
     }
 
@@ -56,7 +56,7 @@ class GoatController extends Controller
                 'breed_id' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['value' => $b->id, 'label' => $b->name, 'next' => $b->nextTagId()]),
                 // Shed and pen are two linked dropdowns: choosing a shed lists only its pens. Planned sheds are not offered.
                 'pen_id' => Pen::with('shed')->whereHas('shed', fn ($q) => $q->where('status', 'active'))->orderBy('name')->get()
-                    ->map(fn (Pen $p) => ['value' => $p->id, 'label' => $p->name.($p->purpose ? " · {$p->purpose}" : ''), 'shed' => $p->shed_id, 'shedName' => trim($p->shed?->name.($p->shed?->typeName() ? ' · '.$p->shed->typeName() : ''))]),
+                    ->map(fn (Pen $p) => ['value' => $p->id, 'label' => $p->fullName().($p->purpose ? " · {$p->purpose}" : ''), 'shed' => $p->shed_id, 'shedName' => trim($p->shed?->name.($p->shed?->typeName() ? ' · '.$p->shed->typeName() : ''))]),
                 'sire_id' => Animal::where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
                 'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
             ],
@@ -124,7 +124,7 @@ class GoatController extends Controller
                 ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('j M Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('j M Y')]),
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
-            'pens' => Pen::orderBy('name')->get(['id', 'name', 'purpose']),
+            'pens' => Pen::with('shed')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
     }
 
@@ -191,7 +191,7 @@ class GoatController extends Controller
             fputcsv($out, ['Synthetic demonstration data']);
             fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Pen', 'Status', 'Health', 'Latest kg']);
             Animal::with(['breed', 'pen', 'latestWeight'])->orderBy('farm_number')->each(function (Animal $a) use ($out): void {
-                fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->pen?->name, $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
+                fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
             });
             fclose($out);
         }, 'kk-farm-goat-register-demo.csv', ['Content-Type' => 'text/csv']);

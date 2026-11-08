@@ -20,8 +20,8 @@ class TaskController extends Controller
         $me = $request->user();
 
         return Inertia::render('Tasks', [
-            'tasks' => Task::with(['employee', 'pen', 'department', 'user'])->where('due_on', '>=', now()->subDay()->toDateString())->orderByRaw("case priority when 'high' then 0 else 1 end")->orderBy('id')->get()->map(fn (Task $t) => [
-                'id' => $t->id, 'title' => $t->title, 'type' => $t->type, 'priority' => $t->priority, 'status' => $t->status, 'pen' => $t->pen?->name,
+            'tasks' => Task::with(['employee', 'pen.shed', 'department', 'user'])->where('due_on', '>=', now()->subDay()->toDateString())->orderByRaw("case priority when 'high' then 0 else 1 end")->orderBy('id')->get()->map(fn (Task $t) => [
+                'id' => $t->id, 'title' => $t->title, 'type' => $t->type, 'priority' => $t->priority, 'status' => $t->status, 'pen' => $t->pen?->fullName(),
                 'assignee' => $t->user?->name ?? $t->employee?->name, 'department' => $t->department?->name,
                 'mine' => $t->user_id === $me->id || ($t->user_id === null && $t->department_id !== null && $t->department_id === $me->department_id),
                 'due' => $t->due_on->format('j M'), 'completedBy' => $t->completed_by, 'completedAt' => $t->completed_at?->format('g:i A'),
@@ -29,7 +29,7 @@ class TaskController extends Controller
             'departments' => Department::orderBy('name')->get(['id', 'name']),
             'users' => User::where('org_id', $me->org_id)->where('active', true)->orderBy('name')->get(['id', 'name', 'role', 'department_id'])
                 ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'role' => $u->roleLabel(), 'department' => $u->department_id]),
-            'pens' => Pen::orderBy('name')->get(['id', 'name']),
+            'pens' => Pen::with('shed')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
         ]);
     }
 

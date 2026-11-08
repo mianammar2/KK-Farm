@@ -24,7 +24,7 @@ class ShedController extends Controller
             'sheds' => Shed::with(['pens' => fn ($q) => $q->orderBy('name'), 'pens.animals' => fn ($q) => $q->active()->orderBy('farm_number')])->orderBy('name')->get()->map(fn (Shed $s) => [
                 'id' => $s->id, 'code' => $s->code, 'name' => $s->name, 'status' => $s->status, 'type' => $s->type, 'typeName' => $s->typeName(), 'purpose' => $s->purpose(),
                 'pens' => $s->pens->map(fn (Pen $p) => [
-                    'id' => $p->id, 'name' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity, 'count' => $p->animals->count(),
+                    'id' => $p->id, 'name' => "{$s->name}-{$p->name}", 'code' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity, 'count' => $p->animals->count(),
                     'goats' => $p->animals->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'sex' => $a->sex, 'health' => $a->health_status, 'repro' => $a->repro_state]),
                 ]),
             ]),
@@ -92,9 +92,9 @@ class ShedController extends Controller
         $data = $this->penData($request, $shed);
 
         $shed->pens()->create($data);
-        Farm::log($request->user(), "Added pen {$data['name']} to {$shed->name}", '/sheds');
+        Farm::log($request->user(), "Added pen {$shed->name}-{$data['name']}", '/sheds');
 
-        return back()->with('success', "{$data['name']} added to {$shed->name}.");
+        return back()->with('success', "{$shed->name}-{$data['name']} added.");
     }
 
     public function updatePen(Request $request, Pen $pen): RedirectResponse
@@ -106,25 +106,25 @@ class ShedController extends Controller
         }
 
         $pen->update($data);
-        Farm::log($request->user(), "Updated pen {$pen->name}", '/sheds');
+        Farm::log($request->user(), "Updated pen {$pen->fullName()}", '/sheds');
 
-        return back()->with('success', "{$pen->name} saved.");
+        return back()->with('success', "{$pen->fullName()} saved.");
     }
 
     private function penData(Request $request, Shed $shed, ?Pen $pen = null): array
     {
-        $request->merge(['name' => Pen::standardName($request->input('name'))]); // D-055
+        $request->merge(['name' => Pen::standardName($request->input('name'))]); // D-057: stored as P01, shown as SHED-P01
 
         return $request->validate([
             'name' => ['required', 'string', 'max:60', function (string $attr, mixed $value, \Closure $fail) use ($shed, $pen) {
-                // Unique within the shed whatever the case: "Pen a" and "Pen A" are the same pen.
+                // One P01 per shed.
                 if (Pen::where('shed_id', $shed->id)->whereRaw('lower(name) = lower(?)', [$value])->when($pen, fn ($q) => $q->whereKeyNot($pen->id))->exists()) {
-                    $fail("$value already exists in {$shed->name}.");
+                    $fail("{$shed->name}-$value already exists.");
                 }
             }],
             'purpose' => ['required', 'string', 'max:80'],
             'capacity' => ['nullable', 'integer', 'min:1', 'max:5000'],
-        ]) + ['capacity' => null];
+        ], ['name.required' => 'Enter the pen number, e.g. 1 for P01.']) + ['capacity' => null];
     }
 
     public function transfer(Request $request): RedirectResponse
@@ -135,16 +135,16 @@ class ShedController extends Controller
         abort_unless($animal->status === 'active', 422, 'This goat is no longer on the farm.');
         $pen = Pen::findOrFail($data['pen_id']);
         if ($animal->pen_id === $pen->id) {
-            return back()->with('success', "{$animal->farm_number} is already in {$pen->name}.");
+            return back()->with('success', "{$animal->farm_number} is already in {$pen->fullName()}.");
         }
 
         DB::transaction(function () use ($animal, $pen, $request): void {
-            $from = $animal->pen?->name ?? 'no pen';
+            $from = $animal->pen?->fullName() ?? 'no pen';
             $animal->update(['pen_id' => $pen->id]);
-            Farm::event($animal, 'move', "Moved from $from to {$pen->name}", $request->user()->name);
+            Farm::event($animal, 'move', "Moved from $from to {$pen->fullName()}", $request->user()->name);
         });
-        Farm::log($request->user(), "Moved {$animal->farm_number} to {$pen->name}", "/goats/{$animal->id}");
+        Farm::log($request->user(), "Moved {$animal->farm_number} to {$pen->fullName()}", "/goats/{$animal->id}");
 
-        return back()->with('success', "{$animal->farm_number} moved to {$pen->name}.");
+        return back()->with('success', "{$animal->farm_number} moved to {$pen->fullName()}.");
     }
 }

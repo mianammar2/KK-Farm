@@ -61,7 +61,7 @@ class FeedingController extends Controller
                 $ids = collect(array_keys($m['lines']))->merge($rows->keys())->unique();
 
                 return [
-                    'id' => $penId, 'name' => $pens[$penId]->name ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'],
+                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'],
                     'plannedKg' => $m['plannedKg'], 'offeredKg' => round($m['rows']->sum('offered_kg'), 2), 'status' => $m['status'],
                     'meals' => collect($meals)->map(fn ($x) => $x['status']),
                     'lines' => $ids->map(fn ($id) => $line($id, (float) ($m['lines'][$id] ?? 0), $rows[$id] ?? null))->values(),
@@ -78,9 +78,9 @@ class FeedingController extends Controller
                 'id' => $m->id, 'on' => $m->moved_on->format('j M'), 'item' => $m->item->name, 'type' => FeedStockMovement::TYPES[$m->type][0] ?? $m->type,
                 'qty' => $m->qty_kg, 'rate' => $m->rate_minor !== null ? $m->rate_minor / 100 : null, 'party' => $m->party, 'reference' => $m->reference, 'by' => $m->recorded_by,
             ]),
-            'history' => FeedUsage::current()->with(['item', 'pen'])->where('fed_on', '>=', Carbon::parse($today)->subDays(13)->toDateString())
+            'history' => FeedUsage::current()->with(['item', 'pen.shed'])->where('fed_on', '>=', Carbon::parse($today)->subDays(13)->toDateString())
                 ->orderByDesc('fed_at')->limit(300)->get()->map(fn (FeedUsage $u) => [
-                    'id' => $u->id, 'on' => $u->fed_on->format('j M'), 'meal' => $u->meal, 'pen' => $u->pen->name, 'feed' => $u->item->name, 'headcount' => $u->headcount,
+                    'id' => $u->id, 'on' => $u->fed_on->format('j M'), 'meal' => $u->meal, 'pen' => $u->pen->fullName(), 'feed' => $u->item->name, 'headcount' => $u->headcount,
                     'planned' => $u->planned_kg, 'offered' => $u->offered_kg, 'refused' => $u->refused_kg, 'consumed' => round($u->consumedKg(), 2),
                     'perHead' => $u->headcount ? round($u->consumedKg() / $u->headcount, 3) : null, 'cost' => round($u->offered_kg * $u->unit_cost_minor / 100),
                     'by' => $u->fed_by, 'corrected' => $u->supersedes_id !== null,
@@ -157,9 +157,9 @@ class FeedingController extends Controller
                 ]);
             }
         });
-        Farm::log($request->user(), Feed::MEALS[$data['meal']]." feed recorded for {$pen->name}", '/feeding');
+        Farm::log($request->user(), Feed::MEALS[$data['meal']]." feed recorded for {$pen->fullName()}", '/feeding');
 
-        return back()->with('success', "{$pen->name}: ".strtolower(Feed::MEALS[$data['meal']]).' feed saved.');
+        return back()->with('success', "{$pen->fullName()}: ".strtolower(Feed::MEALS[$data['meal']]).' feed saved.');
     }
 
     /** Leftover weighed after the meal. Stored as a correction of the usage row, never by editing it. */
