@@ -41,17 +41,19 @@ final class FieldCatalog
     public static function defaults(): array
     {
         return [
-            ['key' => 'rfid_epc', 'label' => 'RFID EPC', 'type' => 'scan', 'section' => 'Identity', 'help' => 'Filled by the scanner. Scan a tag, or type the code.'],
-            ['key' => 'breed_id', 'label' => 'Breed', 'type' => 'lookup', 'section' => 'Identity', 'required' => true],
-            ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Identity', 'help' => 'Set automatically from the breed when you save (for example BT-0001). Type a number only to use a different one.'],
-            ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Identity'],
-            ['key' => 'sex', 'label' => 'Gender', 'type' => 'select', 'section' => 'Identity', 'required' => true],
-            ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth and origin', 'required' => true, 'help' => 'Required for farm-born goats. For a bought goat leave it empty if unknown.'],
-            ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth and origin'],
-            ['key' => 'birth_weight_kg', 'label' => 'Birth Weight Kg', 'type' => 'number', 'section' => 'Birth and origin'],
-            ['key' => 'origin', 'label' => 'Origin Type', 'type' => 'select', 'section' => 'Birth and origin', 'required' => true],
-            ['key' => 'acquired_on', 'label' => 'Acquired Date', 'type' => 'date', 'section' => 'Birth and origin'],
-            ['key' => 'source_farm', 'label' => 'Source Farm', 'type' => 'text', 'section' => 'Birth and origin'],
+            // D-058: the register asks in the farm's order: origin first, then breed, the purchase date, and the Tag ID from the breed.
+            ['key' => 'origin', 'label' => 'Origin Type', 'type' => 'select', 'section' => 'Origin and identity', 'required' => true],
+            ['key' => 'breed_id', 'label' => 'Breed', 'type' => 'lookup', 'section' => 'Origin and identity', 'required' => true],
+            ['key' => 'acquired_on', 'label' => 'Purchase Date', 'type' => 'date', 'section' => 'Origin and identity', 'help' => 'The day the goat arrived on the farm.'],
+            ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Origin and identity', 'help' => 'Set automatically from the breed when you save (for example BT-0001). Type a number only to use a different one.'],
+            ['key' => 'rfid_epc', 'label' => 'RFID EPC', 'type' => 'scan', 'section' => 'Origin and identity', 'help' => 'Filled by the scanner. Scan a tag, or type the code.'],
+            ['key' => 'sex', 'label' => 'Gender', 'type' => 'select', 'section' => 'Origin and identity', 'required' => true],
+            ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Origin and identity'],
+            ['key' => 'source_farm', 'label' => 'Source Farm', 'type' => 'text', 'section' => 'Origin and identity'],
+            ['key' => 'purchase_cost_pkr', 'label' => 'Purchase Cost PKR', 'type' => 'number', 'section' => 'Origin and identity'],
+            ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth', 'required' => true, 'help' => 'Required for farm-born goats. For a bought goat leave it empty if unknown.'],
+            ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth'],
+            ['key' => 'birth_weight_kg', 'label' => 'Birth Weight Kg', 'type' => 'number', 'section' => 'Birth'],
             ['key' => 'sire_id', 'label' => 'Sire Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'dam_id', 'label' => 'Dam Tag', 'type' => 'lookup', 'section' => 'Parentage'],
             ['key' => 'breed_purity', 'label' => 'Breed Purity', 'type' => 'select', 'section' => 'Parentage', 'help' => 'Set automatically when both parents are known.'],
@@ -65,8 +67,7 @@ final class FieldCatalog
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],
             ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing and weight', 'required' => true],
             ['key' => 'latest_weight_kg', 'label' => 'Latest Weight Kg', 'type' => 'number', 'section' => 'Housing and weight', 'help' => 'Saved as the first weighing in the goat\'s weight log.'],
-            ['key' => 'purchase_cost_pkr', 'label' => 'Purchase Cost PKR', 'type' => 'number', 'section' => 'Ownership and cost'],
-            ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership and cost'],
+            ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership'],
             ['key' => 'notes', 'label' => 'Notes', 'type' => 'long_text', 'section' => 'Notes'],
         ];
     }

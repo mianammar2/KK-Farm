@@ -99,7 +99,8 @@ class GoatRegistrationTest extends TestCase
     {
         $this->actingAs($this->user('caretaker'))->get('/goats/register?epc='.self::EPC)->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 27)
-                ->where('fields.0.key', 'rfid_epc')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'tag_id')
+                // D-058: Origin Type, Breed, Purchase Date, then the Tag ID from the breed.
+                ->where('fields.0.key', 'origin')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'acquired_on')->where('fields.2.label', 'Purchase Date')->where('fields.3.key', 'tag_id')
                 ->where('fields', function ($fields) {
                     $by = collect($fields)->keyBy('key');
                     $labels = fn (string $key) => collect($by[$key]['options'])->pluck('label')->all();

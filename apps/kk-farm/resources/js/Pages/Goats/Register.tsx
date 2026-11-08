@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Copy, ScanLine, Sparkles, Tag } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import PhotoPicker from '../../components/PhotoPicker';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
@@ -26,18 +26,35 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     });
     const assign = useForm({ tag: epc ?? '', animal_id: '', reason: 'initial' });
 
-    const sections = fields.reduce<Array<{ name: string; fields: FieldDef[] }>>((acc, f) => {
+    // D-058: the form asks Origin Type first. A farm-born kid's Birth Date takes the place of the purchase date,
+    // right after the breed, so the Tag ID always comes after the date.
+    const farmBorn = form.data.origin === 'born_on_farm';
+    const ordered = (() => {
+        if (!farmBorn) return fields;
+        const birth = fields.find((f) => f.key === 'birth_date');
+        const at = fields.findIndex((f) => f.key === 'breed_id');
+        if (!birth || at < 0) return fields;
+        const rest = fields.filter((f) => f.key !== 'birth_date');
+        rest.splice(rest.findIndex((f) => f.key === 'breed_id') + 1, 0, { ...birth, section: fields[at].section });
+        return rest;
+    })();
+    const sections = ordered.reduce<Array<{ name: string; fields: FieldDef[] }>>((acc, f) => {
         const group = acc.find((s) => s.name === f.section);
         group ? group.fields.push(f) : acc.push({ name: f.section, fields: [f] });
         return acc;
     }, []);
+    const started = Boolean(form.data.origin);
+    const shown = started ? sections : sections.filter((s) => s.fields.some((f) => f.key === 'origin')).map((s) => ({ ...s, fields: s.fields.filter((f) => f.key === 'origin') }));
+    const labelFor = (f: FieldDef) => (f.key === 'acquired_on' && form.data.origin === 'transferred_in' && f.label === 'Purchase Date' ? 'Arrival Date' : f.label);
 
     // D-046: Female Status only for females, Kid Stage only for kids.
     // D-053: only a farm-born goat must have a birth date.
     const isRequired = (f: FieldDef) => (f.key === 'birth_date' ? form.data.origin === 'born_on_farm' : f.required);
     const age = form.data.age_category || ageCategory(form.data.birth_date, classification);
     const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
-    const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid);
+    const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid)
+        || (farmBorn && ['acquired_on', 'source_farm', 'purchase_cost_pkr'].includes(f.key))
+        || (form.data.origin === 'transferred_in' && f.key === 'purchase_cost_pkr');
     const suggested = suggestCategory(form.data.sex, age, form.data.animal_purpose);
     const category = form.data.animal_class || suggested;
     const breedName = (lookups.breed_id ?? []).find((b) => String(b.value) === String(form.data.breed_id ?? ''))?.label;
@@ -212,11 +229,14 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             {!canAssignTags ? <div className="mb-4"><Note>Your role cannot assign RFID tags, so the tag field is switched off. You can still register the goat.</Note></div> : null}
 
             <form onSubmit={(e) => { e.preventDefault(); form.post('/goats', { forceFormData: true }); }} className="space-y-4">
-                <Panel title="Profile picture" description="Take a photo with the camera, or choose one. Optional.">
-                    <PhotoPicker value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
-                </Panel>
-                {sections.map((section) => (
-                    <Panel key={section.name} title={section.name}>
+                {shown.map((section, index) => (
+                    <Fragment key={section.name}>
+                    {index === 1 ? (
+                        <Panel title="Profile picture" description="Take a photo with the camera, or choose one. Optional.">
+                            <PhotoPicker value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
+                        </Panel>
+                    ) : null}
+                    <Panel title={section.name}>
                         {section.name === 'Parentage' && damMating ? (
                             <div className="mb-3"><Note>From the mating on {damMating.matedOn}{damMating.sire ? ` with ${damMating.sire}` : ''}{damMating.expectedLabel ? `, expected kidding ${damMating.expectedLabel}` : ''}. The sire, breed and kidding are filled in from it.</Note></div>
                         ) : null}
@@ -227,18 +247,20 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                             {section.fields.filter((f) => !hidden(f)).map((f) => (
                                 <div key={f.key} className={f.type === 'long_text' ? 'md:col-span-2' : undefined}>
                                     <Field
-                                        label={`${f.label}${isRequired(f) ? ' *' : ''}`}
+                                        label={`${labelFor(f)}${isRequired(f) ? ' *' : ''}`}
                                         error={error(f)}
                                         hint={f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? 'Optional for a bought or transferred goat. Leave empty if unknown.' : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
                                     >{control(f)}</Field>
                                 </div>
                             ))}
                         </div>
+                        {!started ? <p className="mt-3 text-sm text-ink-soft">Choose how the goat came to the farm. The rest of the form follows from it.</p> : null}
                         {section.name === 'Classification' ? <GeneratedClassification text={summary} /> : null}
                     </Panel>
+                    </Fragment>
                 ))}
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button type="submit" disabled={form.processing}>{form.processing ? 'Saving' : 'Register goat'}</Button>
+                    <Button type="submit" disabled={form.processing || !started}>{form.processing ? 'Saving' : 'Register goat'}</Button>
                     <Link href="/goats"><Button type="button" variant="secondary">Cancel</Button></Link>
                     {Object.keys(form.errors).length ? <span className="text-sm font-medium text-crit-700">Please fix the highlighted fields.</span> : null}
                 </div>
