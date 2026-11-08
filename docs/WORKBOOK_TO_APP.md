@@ -32,7 +32,7 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 20 | Expenses | Accounts · each transaction | Finance | 🟡 |
 | 21 | Sales | Accounts · each sale | Movements (goats) + Finance → Sales (products) | ✅ D-076 |
 | 22 | Tasks | Farm Manager · daily | Tasks & Daily Work | 🟡 |
-| 23 | Action Center | Farm Manager · every morning | — | ❌ |
+| 23 | Action Center | Farm Manager · every morning | Action Center + dashboard banner | ✅ D-077 |
 | 24 | Settings | Owner · as needed | Settings | 🟡 |
 | 25 | START HERE | — | not needed (the app guides) | — |
 

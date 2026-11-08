@@ -9,7 +9,8 @@ type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
 type Feeding = { meal: Meal; meals: Record<Meal, string>; times: Record<Meal, string>; plannedKg: number; givenKg: number; cost: number; lowStock: string[];
     pens: Array<{ id: number; name: string; goats: number; onMilk: number; meals: Record<Meal, { status: FeedStatus; planned: number; given: number }> }> };
-type Props = { feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
+type ActionSummary = { key: string; label: string; count: number; severity: 'critical' | 'warning' | 'info' };
+type Props = { actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
@@ -53,10 +54,10 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
-    usePoll(30000, { only: ['stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
+    usePoll(30000, { only: ['actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
 
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} kg` },
@@ -97,6 +98,8 @@ export default function Dashboard({ stats, feeding, herd, attention, missing, ki
         <>
             <Head title="Dashboard" />
             <PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Updates by itself every 30 seconds.`} />
+
+            <ActionBanner actions={actions} />
 
             <StatRow>
                 <StatLink href="/goats" label="Goats on farm" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : `${plural(stats.does, 'female', 'females')}, ${plural(stats.bucks, 'male', 'males')}`} tone={stats.noPen ? 'alert' : undefined} />
@@ -285,5 +288,24 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                 </>
             ) : <p className="text-sm text-ink-soft">No goats in any pen yet.</p>}
         </Panel>
+    );
+}
+
+/** D-077: the Action Center in one line: how many things need action, the first few, one tap to the list. */
+function ActionBanner({ actions }: { actions: ActionSummary[] }) {
+    const urgent = actions.filter((a) => a.severity !== 'info');
+    const critical = actions.some((a) => a.severity === 'critical');
+    if (!urgent.length) {
+        return <Link href="/actions" className="mb-4 flex items-center gap-2 rounded-tile border border-ok-700/30 bg-ok-100 px-4 py-2.5 text-sm font-semibold text-ok-700">Nothing needs action right now <span className="ml-auto font-normal underline">Action Center</span></Link>;
+    }
+    return (
+        <Link href="/actions" className={`mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-tile border px-4 py-3 transition-colors ${critical ? 'border-crit-500/40 bg-crit-100 hover:bg-crit-100/70' : 'border-watch-400/60 bg-watch-100 hover:bg-watch-100/70'}`}>
+            <span className={`font-bold ${critical ? 'text-crit-700' : 'text-watch-700'}`}>{urgent.length} {urgent.length === 1 ? 'thing needs' : 'things need'} action today</span>
+            <span className="flex flex-wrap gap-1.5">
+                {urgent.slice(0, 4).map((a) => <span key={a.key} className="rounded-[4px] bg-tile/80 px-1.5 py-0.5 text-xs font-semibold text-ink">{a.label} · {a.count}</span>)}
+                {urgent.length > 4 ? <span className="text-xs text-ink-soft">+{urgent.length - 4} more</span> : null}
+            </span>
+            <span className="ml-auto flex items-center gap-1 text-sm font-semibold text-cobalt-900">Open Action Center <ChevronRight size={15} aria-hidden /></span>
+        </Link>
     );
 }

@@ -74,6 +74,8 @@ class DashboardController extends Controller
                 'feedingDone' => $feeding['done'] + $feeding['late'],
                 'feedingTotal' => $feeding['expected'],
             ],
+            // D-077: the Action Center in one line on the dashboard.
+            'actions' => fn () => collect(\App\Support\ActionCenter::items($user))->map(fn ($i) => ['key' => $i['key'], 'label' => $i['label'], 'count' => $i['count'], 'severity' => $i['severity']])->values(),
             'herd' => collect(['total', ...HerdStats::CATEGORIES])->map(fn ($k) => ['key' => $k, 'label' => HerdStats::LABELS[$k], 'value' => $counts[$k]])->values(),
             'missing' => $missing,
             'feeding' => $user->canModule('feeding') ? $feedToday : null,

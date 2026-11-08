@@ -34,6 +34,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
 
+    Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
+
     Route::middleware('module:goats')->group(function (): void {
         Route::get('/goats', [GoatController::class, 'index']);
         Route::get('/goats/export', [GoatController::class, 'export']);

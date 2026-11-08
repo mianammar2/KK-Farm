@@ -1,7 +1,7 @@
 import BrandMark from './BrandMark';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
-    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, Wheat, X, ArrowLeftRight } from 'lucide-react';
+    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, Wheat, X, ArrowLeftRight, BellRing } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -14,6 +14,7 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
         heading: 'Herd',
         items: [
             { href: '/', label: 'Dashboard', module: 'dashboard', icon: LayoutGrid },
+            { href: '/actions', label: 'Action Center', module: 'dashboard', icon: BellRing },
             { href: '/goats', label: 'Goat Registry', module: 'goats', icon: ClipboardList },
             { href: '/scan', label: 'RFID Scan', module: 'scan', icon: Radio },
         ],
