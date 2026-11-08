@@ -6,7 +6,7 @@ import PhotoPicker from '../../components/PhotoPicker';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
 
-type Choice = { value: string | number; label: string; next?: string; breed?: number | null; code?: string };
+type Choice = { value: string | number; label: string; next?: string; breed?: number | null; code?: string; shed?: number; shedName?: string };
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
@@ -15,6 +15,7 @@ type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, C
 const TODAY = new Date().toISOString().slice(0, 10);
 
 export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, canAssignTags, untagged }: Props) {
+    const [penShed, setPenShed] = useState<number | undefined>(undefined);
     const form = useForm<Record<string, any>>({
         rfid_epc: epc ?? '',
         birth_date_is_estimate: false,
@@ -114,6 +115,33 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             </div>
         );
     };
+    /** Shed / Pen as two linked dropdowns: pick the shed, then only that shed's pens are listed. */
+    const penInput = (f: FieldDef): ReactNode => {
+        const pens = lookups.pen_id ?? [];
+        const sheds = [...new Map(pens.map((p) => [p.shed, p.shedName ?? 'Shed'])).entries()];
+        const pickedPen = pens.find((p) => String(p.value) === String(form.data.pen_id ?? ''));
+        const currentShed = pickedPen?.shed ?? penShed ?? (sheds.length === 1 ? sheds[0][0] : undefined);
+        const shedPens = pens.filter((p) => p.shed === currentShed);
+        const chooseShed = (id: string) => {
+            const shed = id ? Number(id) : undefined;
+            setPenShed(shed);
+            const only = pens.filter((p) => p.shed === shed);
+            set(f, only.length === 1 ? String(only[0].value) : '');
+        };
+        if (!pens.length) return <p className="text-sm text-ink-soft">No pens yet. Add a shed and its pens on the Sheds page first.</p>;
+        return (
+            <div className="grid grid-cols-2 gap-2">
+                <select className="field" aria-label="Shed" value={currentShed ?? ''} onChange={(e) => chooseShed(e.target.value)}>
+                    {currentShed === undefined ? <option value="">Choose shed…</option> : null}
+                    {sheds.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                </select>
+                <select className="field" aria-label="Pen" value={String(form.data.pen_id ?? '')} disabled={currentShed === undefined} onChange={(e) => set(f, e.target.value)}>
+                    {!pickedPen ? <option value="">{currentShed === undefined ? 'Choose a shed first' : 'Choose pen…'}</option> : null}
+                    {shedPens.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+            </div>
+        );
+    };
     const damMating = form.data.dam_id && form.data.origin === 'born_on_farm' ? damMatings[form.data.dam_id] : undefined;
     const error = (f: FieldDef) => (f.builtin ? form.errors[f.key] : form.errors[`custom_fields.${f.key}`]);
 
@@ -145,6 +173,9 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             case 'lookup':
                 if (f.key === 'sire_id' || f.key === 'dam_id') {
                     return parentInput(f);
+                }
+                if (f.key === 'pen_id') {
+                    return penInput(f);
                 }
                 return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{(lookups[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
             default:
