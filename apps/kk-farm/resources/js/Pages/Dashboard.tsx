@@ -6,7 +6,11 @@ import { motion } from 'motion/react';
 import { Empty, GoatLabel, HealthChip, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 
-type Props = { herd: Array<{ key: string; label: string; value: number }>;
+type Meal = 'morning' | 'midday' | 'evening';
+type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
+type Feeding = { meal: Meal; meals: Record<Meal, string>; times: Record<Meal, string>; plannedKg: number; givenKg: number; cost: number; lowStock: string[];
+    pens: Array<{ id: number; name: string; goats: number; onMilk: number; meals: Record<Meal, { status: FeedStatus; planned: number; given: number }> }> };
+type Props = { feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
     wall: WallPen[];
     attention: Array<{ id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: Health; title: string; on: string }>;
@@ -17,7 +21,7 @@ type Props = { herd: Array<{ key: string; label: string; value: number }>;
     finance: Array<{ month: string; in: number; out: number }> | null;
 };
 
-export default function Dashboard({ stats, herd, wall, attention, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ stats, feeding, herd, wall, attention, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
     usePoll(30000, { only: ['stats', 'herd', 'wall', 'attention', 'activity'] });
@@ -81,6 +85,8 @@ export default function Dashboard({ stats, herd, wall, attention, kiddings, acti
                 </div>
             </Panel>
 
+            {feeding ? <FeedingToday feeding={feeding} /> : null}
+
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
                 <Panel title="Herd wall" description="All goats on the farm, by pen">
                     <HerdWall pens={wall} />
@@ -139,5 +145,58 @@ function ActivityList({ activity }: { activity: Props['activity'] }) {
                 </li>
             ))}
         </ul>
+    );
+}
+
+const FEED_STATUS: Record<FeedStatus, { label: string; className: string }> = {
+    done: { label: 'Fed', className: 'bg-ok-100 text-ok-700' },
+    late: { label: 'Late', className: 'bg-watch-100 text-watch-700' },
+    missed: { label: 'Missed', className: 'bg-crit-100 text-crit-700' },
+    due: { label: 'Due', className: 'bg-cobalt-100 text-cobalt-800' },
+    upcoming: { label: 'Later', className: 'bg-glaze text-ink-soft' },
+    none: { label: '—', className: 'bg-glaze text-ink-faint' },
+};
+
+/** D-069: today's feeding on the dashboard — only pens that have goats, each meal's status and kg given of planned. */
+function FeedingToday({ feeding }: { feeding: Feeding }) {
+    const meals = Object.keys(feeding.meals) as Meal[];
+    const kg = (n: number) => `${Math.round(n * 10) / 10} kg`;
+
+    return (
+        <Panel title="Feeding today" description={`${kg(feeding.givenKg)} given of ${kg(feeding.plannedKg)} planned · PKR ${feeding.cost.toLocaleString('en-PK')}`}
+            className="mt-4" actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Feed now</Link>}>
+            {feeding.lowStock.length ? <p className="mb-3 rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">Low or out of stock: {feeding.lowStock.join(', ')}</p> : null}
+            {feeding.pens.length ? (
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[34rem] text-sm">
+                        <thead className="text-left text-ink-soft">
+                            <tr>
+                                <th className="py-1.5 pr-3 font-semibold">Pen</th>
+                                {meals.map((m) => <th key={m} className={`px-2 py-1.5 font-semibold ${m === feeding.meal ? 'text-cobalt-900' : ''}`}>{feeding.meals[m]} <span className="font-normal text-ink-faint">{feeding.times[m]}</span></th>)}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-rule">
+                            {feeding.pens.map((p) => (
+                                <tr key={p.id}>
+                                    <td className="py-2 pr-3">
+                                        <Link href="/feeding" className="font-mono font-semibold text-cobalt-900 hover:underline">{p.name}</Link>
+                                        <div className="text-xs text-ink-soft">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''}</div>
+                                    </td>
+                                    {meals.map((m) => {
+                                        const x = p.meals[m];
+                                        return (
+                                            <td key={m} className="px-2 py-2">
+                                                <span className={`inline-block rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${FEED_STATUS[x.status].className}`}>{FEED_STATUS[x.status].label}</span>
+                                                {x.planned || x.given ? <div className="mt-0.5 text-xs text-ink-soft">{kg(x.given)} / {kg(x.planned)}</div> : null}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : <p className="text-sm text-ink-soft">No goats in any pen yet.</p>}
+        </Panel>
     );
 }

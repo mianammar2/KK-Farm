@@ -39,7 +39,8 @@ class DashboardController extends Controller
         $kiddings = Mating::with('dam')->where('status', 'pregnant')->orderBy('expected_kidding_on')->limit(5)->get()
             ->map(fn (Mating $m) => ['goatId' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'on' => $m->expected_kidding_on->format('j M'), 'days' => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false)]);
 
-        $feeding = \App\Support\Feed::todayCompliance(\App\Support\Feed::org()); // D-054: meals due so far today, across pens
+        $feedToday = $this->feedingToday(); // D-069: feed section, pens that have goats
+        $feeding = $feedToday['compliance'];
 
         return Inertia::render('Dashboard', [
             'stats' => [
@@ -55,6 +56,7 @@ class DashboardController extends Controller
                 'feedingTotal' => $feeding['expected'],
             ],
             'herd' => $this->herdCategories(),
+            'feeding' => $user->canModule('feeding') ? $feedToday : null,
             'wall' => $wall,
             'attention' => $attention,
             'kiddings' => $kiddings,
@@ -113,5 +115,43 @@ class DashboardController extends Controller
             ->selectRaw("to_char(occurred_on, 'YYYY-MM') as month, sum(case when direction = 'in' then amount else 0 end)::float as income, sum(case when direction = 'out' then amount else 0 end)::float as spend")
             ->groupBy('month')->orderBy('month')->get()
             ->map(fn ($r) => ['month' => $r->month, 'in' => $r->income, 'out' => $r->spend])->all();
+    }
+
+    /** D-069: today's feeding for the dashboard: every pen that has goats, each meal's status, planned and given kg. */
+    private function feedingToday(): array
+    {
+        $org = \App\Support\Feed::org();
+        $today = \App\Support\Feed::now($org)->toDateString();
+        $board = \App\Support\Feed::board($today, $org);
+        $pens = \App\Models\Pen::with('shed')->whereIn('id', $board->keys())->get()->keyBy('id');
+        $compliance = ['expected' => 0, 'done' => 0, 'late' => 0, 'missed' => 0];
+        $planned = $given = $cost = 0.0;
+
+        $rows = $board->map(function (array $meals, int $penId) use ($pens, &$compliance, &$planned, &$given, &$cost) {
+            $out = [];
+            foreach ($meals as $meal => $m) {
+                $kg = (float) $m['rows']->sum('offered_kg');
+                $planned += $m['plannedKg'];
+                $given += $kg;
+                $cost += $m['rows']->sum(fn ($u) => $u->offered_kg * $u->unit_cost_minor / 100);
+                $compliance['expected'] += in_array($m['status'], ['done', 'late', 'missed', 'due'], true) ? 1 : 0;
+                if (isset($compliance[$m['status']])) {
+                    $compliance[$m['status']]++;
+                }
+                $out[$meal] = ['status' => $m['status'], 'planned' => $m['plannedKg'], 'given' => round($kg, 2)];
+            }
+            $first = reset($meals);
+
+            return ['id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'goats' => $first['headcount'], 'onMilk' => $first['onMilk'], 'meals' => $out];
+        })->sortBy('name')->values();
+
+        $stock = \App\Support\Feed::stock();
+
+        return [
+            'meal' => \App\Support\Feed::currentMeal($org), 'meals' => \App\Support\Feed::MEALS, 'times' => \App\Support\Feed::mealTimes($org),
+            'pens' => $rows, 'plannedKg' => round($planned, 1), 'givenKg' => round($given, 1), 'cost' => round($cost),
+            'lowStock' => \App\Models\FeedItem::where('active', true)->get()->filter(fn ($i) => \App\Support\Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg) !== 'ok')->pluck('name')->values(),
+            'compliance' => $compliance,
+        ];
     }
 }

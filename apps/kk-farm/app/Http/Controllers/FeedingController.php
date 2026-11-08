@@ -55,17 +55,21 @@ class FeedingController extends Controller
             'meals' => Feed::MEALS,
             'mealTimes' => Feed::mealTimes($org),
             'settings' => ['late' => $org->meal_late_minutes, 'window' => $org->meal_window_minutes, 'tolerance' => $org->feed_tolerance_pct, 'timezone' => $org->timezone,
-                'kidPct' => $org->kid_intake_pct !== null ? (float) $org->kid_intake_pct : null, 'growerPct' => (float) $org->grower_intake_pct, 'adultPct' => (float) $org->adult_intake_pct],
+                'intake' => [ // D-069: % of body weight a day, [min, max]; kids null = milk only
+                    'kid' => $org->kid_intake_min_pct !== null ? [(float) $org->kid_intake_min_pct, (float) $org->kid_intake_max_pct] : null,
+                    'grower' => [(float) $org->grower_intake_min_pct, (float) $org->grower_intake_max_pct],
+                    'adult' => [(float) $org->adult_intake_min_pct, (float) $org->adult_intake_max_pct],
+                ]],
             'board' => $board->map(function (array $meals, int $penId) use ($pens, $meal, $line) {
                 $m = $meals[$meal];
                 $rows = $m['rows']->keyBy('feed_item_id');
                 $ids = collect(array_keys($m['lines']))->merge($rows->keys())->unique();
 
                 return [
-                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'],
+                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'], 'onMilk' => $m['onMilk'],
                     'plannedKg' => $m['plannedKg'], 'offeredKg' => round($m['rows']->sum('offered_kg'), 2), 'status' => $m['status'],
                     'meals' => collect($meals)->map(fn ($x) => $x['status']),
-                    'lines' => $ids->map(fn ($id) => $line($id, (float) ($m['lines'][$id] ?? 0), $rows[$id] ?? null))->values(),
+                    'lines' => $ids->map(fn ($id) => $line($id, (float) ($m['lines'][$id] ?? 0), $rows[$id] ?? null) + ['min' => (float) ($m['min'][$id] ?? 0), 'max' => (float) ($m['max'][$id] ?? 0)])->values(),
                 ];
             })->sortBy([['shed', 'asc'], ['name', 'asc']])->values(),
             'groups' => $this->groups(),
@@ -85,7 +89,10 @@ class FeedingController extends Controller
                     'planned' => $u->planned_kg, 'offered' => $u->offered_kg, 'refused' => $u->refused_kg, 'consumed' => round($u->consumedKg(), 2),
                     'perHead' => $u->headcount ? round($u->consumedKg() / $u->headcount, 3) : null, 'cost' => round($u->offered_kg * $u->unit_cost_minor / 100),
                     'by' => $u->fed_by, 'corrected' => $u->supersedes_id !== null,
-                    'off' => $u->planned_kg > 0 && abs($u->offered_kg - $u->planned_kg) / $u->planned_kg * 100 > $org->feed_tolerance_pct,
+                    // D-069: outside the planned range (body-weight rations), otherwise more than the tolerance away from plan.
+                    'off' => $u->planned_min_kg !== null && $u->planned_max_kg > 0
+                        ? $u->offered_kg < $u->planned_min_kg || $u->offered_kg > $u->planned_max_kg
+                        : $u->planned_kg > 0 && abs($u->offered_kg - $u->planned_kg) / $u->planned_kg * 100 > $org->feed_tolerance_pct,
                 ]),
             'categories' => FeedItem::CATEGORIES,
             'movementTypes' => collect(FeedStockMovement::TYPES)->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
@@ -137,7 +144,7 @@ class FeedingController extends Controller
         ], [], self::ATTRIBUTES);
         $org = Feed::org();
         $today = Feed::now($org)->toDateString();
-        $plan = Feed::plannedByPen($data['meal'], $today)[$data['pen_id']] ?? ['headcount' => 0, 'lines' => []];
+        $plan = Feed::plannedByPen($data['meal'], $today)[$data['pen_id']] ?? ['headcount' => 0, 'lines' => [], 'min' => [], 'max' => []];
         $pen = Pen::findOrFail($data['pen_id']);
         $costs = FeedItem::pluck('cost_per_kg_minor', 'id');
 
@@ -154,6 +161,7 @@ class FeedingController extends Controller
                 FeedUsage::create([
                     'id' => $l['id'], 'fed_on' => $today, 'meal' => $data['meal'], 'pen_id' => $data['pen_id'], 'feed_item_id' => $l['feed_item_id'],
                     'headcount' => $plan['headcount'], 'planned_kg' => $plan['lines'][$l['feed_item_id']] ?? 0, 'offered_kg' => $l['offered_kg'],
+                    'planned_min_kg' => $plan['min'][$l['feed_item_id']] ?? null, 'planned_max_kg' => $plan['max'][$l['feed_item_id']] ?? null,
                     'refused_kg' => $previous?->refused_kg, 'unit_cost_minor' => $costs[$l['feed_item_id']] ?? 0,
                     'fed_at' => $previous?->fed_at ?? now(), 'fed_by' => $request->user()->name, 'supersedes_id' => $previous?->id,
                 ]);
@@ -351,14 +359,19 @@ class FeedingController extends Controller
             'morning' => $time, 'midday' => [...$time, 'after:morning'], 'evening' => [...$time, 'after:midday'],
             'late' => ['required', 'integer', 'between:5,240'], 'window' => ['required', 'integer', 'between:30,720', 'gte:late'],
             'tolerance' => ['required', 'integer', 'between:1,50'],
-            'kid_pct' => ['nullable', 'numeric', 'between:0.1,10'],
-            'grower_pct' => ['required', 'numeric', 'between:0.1,10'],
-            'adult_pct' => ['required', 'numeric', 'between:0.1,10'],
+            'kid_min' => ['nullable', 'required_with:kid_max', 'numeric', 'between:0.1,10'],
+            'kid_max' => ['nullable', 'required_with:kid_min', 'numeric', 'between:0.1,10', 'gte:kid_min'],
+            'grower_min' => ['required', 'numeric', 'between:0.1,10'],
+            'grower_max' => ['required', 'numeric', 'between:0.1,10', 'gte:grower_min'],
+            'adult_min' => ['required', 'numeric', 'between:0.1,10'],
+            'adult_max' => ['required', 'numeric', 'between:0.1,10', 'gte:adult_min'],
         ]);
         Organization::whereKey($request->user()->org_id)->update([
             'meal_times' => json_encode(['morning' => $data['morning'], 'midday' => $data['midday'], 'evening' => $data['evening']]),
             'meal_late_minutes' => $data['late'], 'meal_window_minutes' => $data['window'], 'feed_tolerance_pct' => $data['tolerance'],
-            'kid_intake_pct' => $data['kid_pct'] ?? null, 'grower_intake_pct' => $data['grower_pct'], 'adult_intake_pct' => $data['adult_pct'],
+            'kid_intake_min_pct' => $data['kid_min'] ?? null, 'kid_intake_max_pct' => $data['kid_max'] ?? null,
+            'grower_intake_min_pct' => $data['grower_min'], 'grower_intake_max_pct' => $data['grower_max'],
+            'adult_intake_min_pct' => $data['adult_min'], 'adult_intake_max_pct' => $data['adult_max'],
         ]);
         Farm::log($request->user(), 'Changed feeding settings', '/feeding');
 

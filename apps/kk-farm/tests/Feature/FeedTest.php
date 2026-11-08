@@ -122,7 +122,7 @@ class FeedTest extends TestCase
         // 2 does × 1.5 kg × 40% = 1.2 kg straw, 2 × 0.5 × 40% = 0.4 kg concentrate
         $this->assertEquals([$straw->id => 1.2, $conc->id => 0.4], $planned[$this->penA->id]['lines']);
         $this->assertSame(2, $planned[$this->penA->id]['headcount']);
-        $this->assertSame(1, $planned[$this->penB->id]['unplanned'], 'the kid has no ration yet');
+        $this->assertSame([0, 1], [$planned[$this->penB->id]['unplanned'], $planned[$this->penB->id]['onMilk']], 'the kid drinks milk: not counted as missing a ration (D-069)');
 
         // Moving a goat changes both pens' plans: headcount is never typed.
         Animal::where('farm_number', 'D-2')->update(['pen_id' => $this->penB->id]);
@@ -265,7 +265,7 @@ class FeedTest extends TestCase
         $this->assertSame('kid', (new Animal(['birth_date' => null, 'age_category' => 'kid']))->effectiveAge());
     }
 
-    public function test_a_body_weight_ration_feeds_2_percent_to_growers_and_3_percent_to_adults(): void
+    public function test_a_body_weight_ration_feeds_growers_3_to_4_percent_and_adults_2_to_3_percent(): void
     {
         $straw = $this->item('WS', 30);
         $conc = $this->item('CONC', 120);
@@ -288,9 +288,17 @@ class FeedTest extends TestCase
         $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
 
         $pen = Feed::plannedByPen('morning', now())[$this->penA->id];
-        // grower 20 kg × 2% = 0.4 kg/day, adult 40 kg × 3% = 1.2 kg/day; D-2 has no weight. Morning gets 50%: 0.8 kg.
-        $this->assertEqualsWithDelta(0.6, $pen['lines'][$straw->id], 0.001);
-        $this->assertEqualsWithDelta(0.2, $pen['lines'][$conc->id], 0.001);
+        // D-069: grower 20 kg × 3–4% = 0.6–0.8 kg/day, adult 40 kg × 2–3% = 0.8–1.2 kg/day, planned at the middle (0.7 + 1.0 = 1.7).
+        // D-2 has no weight. Morning gets 50%: 0.85 kg (0.7–1.0), straw 75%, concentrate 25%.
+        $this->assertEqualsWithDelta(0.64, $pen['lines'][$straw->id], 0.006);
+        $this->assertEqualsWithDelta(0.21, $pen['lines'][$conc->id], 0.006);
+        $this->assertEqualsWithDelta(0.525, $pen['min'][$straw->id], 0.006);
+        $this->assertEqualsWithDelta(0.75, $pen['max'][$straw->id], 0.006);
         $this->assertSame([1, 1], [$pen['unplanned'], $pen['noWeight']]);
+
+        // Feeding within the range is on plan; outside it is flagged.
+        $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 0.9]])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('history.0.off', true));
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('feeding.pens.0.name', 'Shed 1-Pen A')->where('feeding.pens.0.meals.morning.given', 0.9)->has('feeding.pens', 2));
     }
 }
