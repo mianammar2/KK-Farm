@@ -15,6 +15,9 @@ class Organization extends Model
     protected static function booted(): void
     {
         // A new organization starts with the standard goat registration fields (D-040).
-        static::created(fn (self $org) => \App\Support\FieldCatalog::seed($org->id));
+        static::created(function (self $org): void {
+            \App\Support\FieldCatalog::seed($org->id);
+            Department::seedDefaults($org->id); // D-052
+        });
     }
 }

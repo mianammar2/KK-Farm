@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { SharedProps } from '../../types';
 
-type U = { id: number; name: string; login: string; role: string; active: boolean; mustChange: boolean; lastLogin: string | null; me: boolean };
+type D = { id: number; name: string; users: number };
+type U = { id: number; name: string; login: string; role: string; active: boolean; department: number | null; mustChange: boolean; lastLogin: string | null; me: boolean };
 
 /** The owner decides who can sign in and with which role (D-044). */
-export default function Users({ users }: { users: U[] }) {
+export default function Users({ users, departments }: { users: U[]; departments: D[] }) {
     const { roles } = usePage<SharedProps>().props;
-    const add = useForm({ name: '', login: '', role: 'caretaker', password: '' });
+    const add = useForm({ name: '', login: '', role: 'caretaker', department_id: '', password: '' });
 
     return (
         <>
@@ -17,7 +18,7 @@ export default function Users({ users }: { users: U[] }) {
             <PageHeader title="Users and sign-in" description="Each person signs in with their own username and password, so every record shows who made it." actions={<Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>} />
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                 <Panel flush>
-                    <ul className="divide-y divide-rule">{users.map((u) => <UserRow key={`${u.id}-${u.role}-${u.active}`} user={u} roles={roles} />)}</ul>
+                    <ul className="divide-y divide-rule">{users.map((u) => <UserRow key={`${u.id}-${u.role}-${u.active}-${u.department}`} user={u} roles={roles} departments={departments} />)}</ul>
                 </Panel>
                 <div className="xl:sticky xl:top-4 xl:self-start">
                     <Panel title="Add a user">
@@ -25,18 +26,56 @@ export default function Users({ users }: { users: U[] }) {
                             <Field label="Name" error={add.errors.name}><input className="field" value={add.data.name} onChange={(e) => add.setData('name', e.target.value)} /></Field>
                             <Field label="Username or email" error={add.errors.login} hint="Letters, numbers and . _ @ + -"><input className="field" autoCapitalize="none" spellCheck={false} value={add.data.login} onChange={(e) => add.setData('login', e.target.value)} /></Field>
                             <Field label="Role" error={add.errors.role}><select className="field" value={add.data.role} onChange={(e) => add.setData('role', e.target.value)}>{Object.entries(roles).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                            <Field label="Department" error={add.errors.department_id} hint="Leave on automatic to use the role's usual department."><select className="field" value={add.data.department_id} onChange={(e) => add.setData('department_id', e.target.value)}><option value="">Automatic from role</option>{departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>
                             <Field label="Temporary password" error={add.errors.password} hint="At least 8 characters. They choose their own on first sign-in."><input className="field" type="text" autoComplete="off" value={add.data.password} onChange={(e) => add.setData('password', e.target.value)} /></Field>
                             <Button type="submit" disabled={add.processing}>Add user</Button>
                         </form>
                     </Panel>
+                    <Departments departments={departments} />
                 </div>
             </div>
         </>
     );
 }
 
-function UserRow({ user, roles }: { user: U; roles: Record<string, string> }) {
-    const form = useForm<{ role: string; active: boolean; password: string }>({ role: user.role, active: user.active, password: '' });
+/** D-052: the farm's departments. Tasks can go to a whole department or to one person in it. */
+function Departments({ departments }: { departments: D[] }) {
+    const form = useForm({ name: '' });
+    const [editing, setEditing] = useState<D | null>(null);
+    const rename = useForm({ name: '' });
+
+    return (
+        <div className="mt-4">
+            <Panel title="Departments" description="Tasks can be given to a whole department or to one person in it.">
+                <ul className="mb-3 divide-y divide-rule">
+                    {departments.map((d) => (
+                        <li key={d.id} className="flex items-center gap-2 py-2">
+                            {editing?.id === d.id ? (
+                                <form className="flex flex-1 items-start gap-2" onSubmit={(e) => { e.preventDefault(); rename.post(`/settings/departments/${d.id}`, { preserveScroll: true, onSuccess: () => setEditing(null) }); }}>
+                                    <div className="flex-1"><Field label="Name" error={rename.errors.name}><input className="field" autoFocus value={rename.data.name} onChange={(e) => rename.setData('name', e.target.value)} /></Field></div>
+                                    <Button type="submit" className="mt-6" disabled={rename.processing}>Save</Button>
+                                </form>
+                            ) : (
+                                <>
+                                    <span className="flex-1 font-medium text-cobalt-900">{d.name}</span>
+                                    <span className="text-sm text-ink-soft">{d.users} {d.users === 1 ? 'person' : 'people'}</span>
+                                    <button type="button" className="text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => { setEditing(d); rename.setData('name', d.name); rename.clearErrors(); }}>Rename</button>
+                                </>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+                <form onSubmit={(e) => { e.preventDefault(); form.post('/settings/departments', { preserveScroll: true, onSuccess: () => form.reset() }); }} className="flex items-start gap-2">
+                    <div className="flex-1"><Field label="New department" error={form.errors.name}><input className="field" placeholder="e.g. Dairy, Security" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} /></Field></div>
+                    <Button type="submit" className="mt-6" disabled={form.processing || !form.data.name.trim()}>Add</Button>
+                </form>
+            </Panel>
+        </div>
+    );
+}
+
+function UserRow({ user, roles, departments }: { user: U; roles: Record<string, string>; departments: D[] }) {
+    const form = useForm<{ role: string; active: boolean; password: string; department_id: string }>({ role: user.role, active: user.active, password: '', department_id: user.department ? String(user.department) : '' });
     const [reset, setReset] = useState(false);
     const save = () => form.post(`/settings/users/${user.id}`, { preserveScroll: true, onSuccess: () => { form.setData('password', ''); setReset(false); } });
 
@@ -52,6 +91,7 @@ function UserRow({ user, roles }: { user: U; roles: Record<string, string> }) {
             </div>
             <div className="mt-2 flex flex-wrap items-end gap-3">
                 <div className="w-52"><Field label="Role" error={form.errors.role}><select className="field" value={form.data.role} disabled={user.me} onChange={(e) => form.setData('role', e.target.value)}>{Object.entries(roles).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field></div>
+                <div className="w-44"><Field label="Department" error={form.errors.department_id}><select className="field" value={form.data.department_id} onChange={(e) => form.setData('department_id', e.target.value)}><option value="">None</option>{departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field></div>
                 {!user.me ? <label className="flex min-h-11 items-center gap-1.5 text-sm"><input type="checkbox" className="size-5" checked={form.data.active} onChange={(e) => form.setData('active', e.target.checked)} /> Can sign in</label> : null}
                 {reset ? <div className="w-56"><Field label="New temporary password" error={form.errors.password}><input className="field" type="text" autoComplete="off" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} /></Field></div> : !user.me ? <button type="button" className="min-h-11 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setReset(true)}>Reset password</button> : null}
                 <Button variant="secondary" disabled={form.processing || !form.isDirty} onClick={save}>Save</Button>

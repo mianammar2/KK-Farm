@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Department;
 use App\Models\User;
 use App\Support\Farm;
 use Illuminate\Http\RedirectResponse;
@@ -23,10 +24,30 @@ class UserController extends Controller
     {
         return Inertia::render('Settings/Users', [
             'users' => $this->scope($request)->orderBy('name')->get()->map(fn (User $u) => [
-                'id' => $u->id, 'name' => $u->name, 'login' => $u->email, 'role' => $u->role, 'active' => $u->active,
+                'id' => $u->id, 'name' => $u->name, 'login' => $u->email, 'role' => $u->role, 'active' => $u->active, 'department' => $u->department_id,
                 'mustChange' => $u->must_change_password, 'lastLogin' => $u->last_login_at?->format('j M Y, H:i'), 'me' => $u->is($request->user()),
             ]),
+            'departments' => Department::withCount(['users' => fn ($q) => $q->where('active', true)])->orderBy('name')->get()->map(fn (Department $d) => ['id' => $d->id, 'name' => $d->name, 'users' => $d->users_count]),
         ]);
+    }
+
+    /** D-052: the owner adds the farm's own departments (or renames one). */
+    public function storeDepartment(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:60', 'unique:departments,name']]);
+        Department::create($data);
+        Farm::log($request->user(), "Added department {$data['name']}", '/settings/users');
+
+        return back()->with('success', "{$data['name']} department added.");
+    }
+
+    public function updateDepartment(Request $request, Department $department): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:60', Rule::unique('departments', 'name')->ignore($department->id)]]);
+        $department->update($data);
+        Farm::log($request->user(), "Renamed department to {$data['name']}", '/settings/users');
+
+        return back()->with('success', 'Department renamed.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -36,10 +57,12 @@ class UserController extends Controller
             'login' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z0-9._@+-]+$/', Rule::unique('users', 'email')],
             'role' => ['required', Rule::in(array_keys(config('kkfarm.roles')))],
             'password' => ['required', 'string', 'min:8', 'max:200'],
+            'department_id' => ['nullable', 'exists:departments,id'],
         ]);
 
         $user = User::create([
             'name' => $data['name'], 'email' => strtolower($data['login']), 'role' => $data['role'], 'org_id' => $request->user()->org_id,
+            'department_id' => $data['department_id'] ?? Department::forRole($data['role']),
             'password' => Hash::make($data['password']), 'must_change_password' => true, 'active' => true,
         ]);
         Farm::log($request->user(), "Added user {$user->name} ({$user->roleLabel()})", '/settings/users');
@@ -54,13 +77,14 @@ class UserController extends Controller
             'role' => ['sometimes', Rule::in(array_keys(config('kkfarm.roles')))],
             'active' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'nullable', 'string', 'min:8', 'max:200'],
+            'department_id' => ['sometimes', 'nullable', 'exists:departments,id'],
         ]);
 
         if ($user->is($request->user()) && ((isset($data['active']) && ! $data['active']) || (isset($data['role']) && $data['role'] !== 'ceo'))) {
             throw ValidationException::withMessages(['role' => 'You cannot disable your own account or remove your own owner role.']);
         }
 
-        $changes = array_intersect_key($data, array_flip(['role', 'active']));
+        $changes = array_intersect_key($data, array_flip(['role', 'active', 'department_id']));
         if (! empty($data['password'])) {
             $changes += ['password' => Hash::make($data['password']), 'must_change_password' => true];
         }

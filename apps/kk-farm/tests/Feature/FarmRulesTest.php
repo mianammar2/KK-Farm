@@ -6,6 +6,7 @@ use App\Models\Animal;
 use App\Models\AnimalEvent;
 use App\Models\AnimalPhoto;
 use App\Models\Breed;
+use App\Models\Department;
 use App\Models\FeedingGroup;
 use App\Models\FeedingLog;
 use App\Models\HealthRecord;
@@ -16,6 +17,7 @@ use App\Models\Pen;
 use App\Models\RfidAssignment;
 use App\Models\RfidTag;
 use App\Models\Shed;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\WeightRecord;
 use App\Support\Farm;
@@ -332,5 +334,45 @@ class FarmRulesTest extends TestCase
         $this->actingAs($manager)->patch("/pens/{$other->id}", ['name' => 'Mine now', 'purpose' => 'Kids'])->assertNotFound();
         $this->actingAs($manager)->post("/sheds/{$other->shed_id}/pens", ['name' => 'Sneaky', 'purpose' => 'Kids'])->assertNotFound();
         $this->assertSame('Theirs', DB::table('pens')->where('id', $other->id)->value('name'));
+    }
+
+    public function test_a_task_goes_to_a_department_or_to_one_person(): void
+    {
+        $manager = $this->user('manager');
+        $feeding = Department::where('name', 'Feeding')->firstOrFail();
+        $worker = $this->user('feeding');
+        $worker->forceFill(['department_id' => $feeding->id])->save();
+
+        $this->actingAs($manager)->post('/tasks', ['title' => 'Fill troughs', 'type' => 'feeding', 'department_id' => $feeding->id, 'priority' => 'normal'])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/tasks', ['title' => 'Check MC-0001', 'type' => 'observation', 'user_id' => $worker->id, 'priority' => 'high'])->assertSessionHasNoErrors();
+        $this->assertSame($feeding->id, Task::where('title', 'Check MC-0001')->value('department_id'));
+        $this->actingAs($manager)->post('/tasks', ['title' => 'Nobody', 'type' => 'other', 'priority' => 'normal'])->assertSessionHasErrors(['department_id', 'user_id']);
+
+        $this->actingAs($worker)->get('/tasks')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('tasks.0.title', 'Check MC-0001')->where('tasks.0.assignee', $worker->name)->where('tasks.0.mine', true)
+            ->where('tasks.1.department', 'Feeding')->where('tasks.1.assignee', null)->where('tasks.1.mine', true));
+        $this->actingAs($manager)->get('/tasks')->assertInertia(fn (AssertableInertia $page) => $page->where('tasks.0.mine', false)->where('tasks.1.mine', false));
+    }
+
+    public function test_a_task_cannot_be_given_to_a_user_of_another_farm(): void
+    {
+        $manager = $this->user('manager');
+        $outsider = User::create(['name' => 'Outsider', 'email' => 'out@test.local', 'password' => 'x', 'role' => 'caretaker', 'org_id' => Organization::create(['name' => 'Other', 'slug' => 'other'])->id]);
+
+        $this->actingAs($manager)->post('/tasks', ['title' => 'X', 'type' => 'other', 'user_id' => $outsider->id, 'priority' => 'normal'])->assertSessionHasErrors('user_id');
+    }
+
+    public function test_the_owner_adds_departments_and_new_users_get_one_from_their_role(): void
+    {
+        $owner = $this->user('ceo');
+
+        $this->actingAs($owner)->post('/settings/departments', ['name' => 'Dairy'])->assertSessionHasNoErrors();
+        $this->actingAs($owner)->post('/settings/departments', ['name' => 'Dairy'])->assertSessionHasErrors('name');
+        $this->actingAs($owner)->post('/settings/users', ['name' => 'Vet One', 'login' => 'vet1', 'role' => 'vet', 'password' => 'temporary1'])->assertSessionHasNoErrors();
+        $this->assertSame('Veterinary', User::where('email', 'vet1')->first()->department->name);
+
+        $dairy = Department::where('name', 'Dairy')->value('id');
+        $this->actingAs($owner)->post('/settings/users', ['name' => 'Milker', 'login' => 'milker', 'role' => 'caretaker', 'department_id' => $dairy, 'password' => 'temporary1'])->assertSessionHasNoErrors();
+        $this->assertSame($dairy, User::where('email', 'milker')->value('department_id'));
     }
 }

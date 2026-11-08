@@ -15,6 +15,16 @@ class Task extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function pen()
     {
         return $this->belongsTo(Pen::class);

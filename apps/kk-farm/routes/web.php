@@ -112,6 +112,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/settings/users', [UserController::class, 'index']);
         Route::post('/settings/users', [UserController::class, 'store']);
         Route::post('/settings/users/{id}', [UserController::class, 'update'])->whereNumber('id');
+        Route::post('/settings/departments', [UserController::class, 'storeDepartment']);
+        Route::post('/settings/departments/{department}', [UserController::class, 'updateDepartment']);
         Route::get('/settings/fields', [FieldController::class, 'index']);
         Route::post('/settings/fields', [FieldController::class, 'store']);
         Route::post('/settings/fields/{field}', [FieldController::class, 'update']);

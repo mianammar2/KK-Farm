@@ -25,6 +25,11 @@ class User extends Authenticatable
         return in_array($this->role, config("kkfarm.gates.$gate", []), true);
     }
 
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
     public function roleLabel(): string
     {
         return config("kkfarm.roles.$this->role", $this->role);
