@@ -11,10 +11,22 @@ type Case = {
     onset: string; condition: string; symptoms: string | null; severity: string; isolated: boolean; status: string; active: boolean; vet: string | null; diagnosis: string | null; notes: string | null;
     resolved: string | null; age: number; by: string; nextDose: string | null; doseAlert: 'overdue' | 'soon' | null; withdrawal: { meat: string | null; milk: string | null } | null; treatments: Dose[];
 };
+type Medicine = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; qty: number; value: number; status: 'negative' | 'expired' | 'reorder' | 'expiring' | 'ok'; batches: Array<{ batch: string; expiry: string | null; expired: boolean; qty: number }> };
+type MedMove = { id: number; on: string; medicine: string; unit: string; type: string; qty: number; batch: string | null; expiry: string | null; by: string; party: string | null };
 type WithdrawalRow = { goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; meat: string | null; milk: string | null };
 type Props = {
     cases: Case[]; reports: Row[]; care: Row[]; withdrawal: WithdrawalRow[]; counts: Record<string, number>; goats: Option[];
     severities: Record<string, string>; statuses: Record<string, string>; routes: Record<string, string>;
+    medicines: Medicine[]; medicineMoves: MedMove[]; medicineCategories: Record<string, string>; medicineUnits: Record<string, string>;
+    medicineTypes: Record<string, { label: string; direction: number }>; medicineAlerts: number; canMedicine: boolean;
+};
+
+const MED_STATUS: Record<Medicine['status'], { label: string; className: string }> = {
+    negative: { label: 'Below zero', className: 'bg-crit-100 text-crit-700' },
+    expired: { label: 'Expired stock', className: 'bg-crit-100 text-crit-700' },
+    reorder: { label: 'Reorder', className: 'bg-watch-100 text-watch-700' },
+    expiring: { label: 'Expiring soon', className: 'bg-watch-100 text-watch-700' },
+    ok: { label: 'OK', className: 'bg-ok-100 text-ok-700' },
 };
 
 const asGoat = (r: { goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female' }) => ({ id: r.goatId, number: r.number, name: r.name, coat: r.coat, sex: r.sex });
@@ -50,7 +62,9 @@ export default function Health(props: Props) {
                         { id: 'reports', label: 'Reported concerns', count: reports.length },
                         { id: 'withdrawal', label: 'Withdrawal', count: withdrawal.length },
                         { id: 'care', label: 'Preventive care', count: care.length },
+                        { id: 'store', label: 'Medicine store', count: props.medicineAlerts || undefined },
                     ]} />
+                    {tab === 'store' ? <MedicineStore {...props} /> : null}
                     {tab === 'cases' ? (
                         <div className="space-y-3">
                             {cases.length ? cases.map((c) => <CaseCard key={c.id} c={c} isVet={isVet} {...props} />) : <Panel><Empty title="No health cases">{isVet ? 'Open a case from a reported concern or with the form.' : 'A veterinarian opens cases.'}</Empty></Panel>}
@@ -126,7 +140,7 @@ export default function Health(props: Props) {
     );
 }
 
-function CaseCard({ c, isVet, statuses, routes }: { c: Case; isVet: boolean } & Props) {
+function CaseCard({ c, isVet, statuses, routes, medicines }: { c: Case; isVet: boolean } & Props) {
     const [open, setOpen] = useState(c.active && c.doseAlert !== null);
     const [mode, setMode] = useState<'none' | 'dose' | 'status'>('none');
 
@@ -180,7 +194,7 @@ function CaseCard({ c, isVet, statuses, routes }: { c: Case; isVet: boolean } & 
                             <Button variant="secondary" onClick={() => setMode(mode === 'status' ? 'none' : 'status')}>Update case</Button>
                         </div>
                     ) : null}
-                    {mode === 'dose' ? <DoseForm c={c} routes={routes} onDone={() => setMode('none')} /> : null}
+                    {mode === 'dose' ? <DoseForm c={c} routes={routes} medicines={medicines} onDone={() => setMode('none')} /> : null}
                     {mode === 'status' ? <StatusForm c={c} statuses={statuses} onDone={() => setMode('none')} /> : null}
                 </div>
             ) : null}
@@ -188,12 +202,22 @@ function CaseCard({ c, isVet, statuses, routes }: { c: Case; isVet: boolean } & 
     );
 }
 
-function DoseForm({ c, routes, onDone }: { c: Case; routes: Record<string, string>; onDone: () => void }) {
-    const form = useForm({ given_on: today(), product: '', dose: '', route: 'injectable', frequency: '', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, cost: '', notes: '' });
+function DoseForm({ c, routes, medicines, onDone }: { c: Case; routes: Record<string, string>; medicines: Medicine[]; onDone: () => void }) {
+    const form = useForm({ medicine_id: '', qty_used: '', given_on: today(), product: '', dose: '', route: 'injectable', frequency: '', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, cost: '', notes: '' });
     const e = form.errors as Record<string, string>;
     return (
         <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/health/cases/${c.id}/treatments`, { preserveScroll: true, onSuccess: onDone }); }} className="grid gap-3 rounded-tile border border-rule p-3 sm:grid-cols-2">
-            <Field label="Medicine / product" error={e.product}><input className="field" value={form.data.product} onChange={(x) => form.setData('product', x.target.value)} /></Field>
+            <Field label="From the medicine store" error={e.medicine_id} hint="Issues it from stock, earliest expiry first">
+                <select className="field" value={form.data.medicine_id} onChange={(x) => form.setData('medicine_id', x.target.value)}>
+                    <option value="">Not from the store (type below)</option>
+                    {medicines.filter((m) => m.active).map((m) => <option key={m.id} value={m.id}>{m.name} · {m.qty} {m.unit} in stock</option>)}
+                </select>
+            </Field>
+            {form.data.medicine_id ? (
+                <Field label={`Quantity used (${medicines.find((m) => String(m.id) === form.data.medicine_id)?.unit ?? ''})`} error={e.qty_used}><input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={form.data.qty_used} onChange={(x) => form.setData('qty_used', x.target.value)} /></Field>
+            ) : (
+                <Field label="Medicine / product" error={e.product}><input className="field" value={form.data.product} onChange={(x) => form.setData('product', x.target.value)} /></Field>
+            )}
             <Field label="Dose + unit" error={e.dose} hint="e.g. 5 ml, 2 tablets"><input className="field" value={form.data.dose} onChange={(x) => form.setData('dose', x.target.value)} /></Field>
             <Field label="Route" error={e.route}><select className="field" value={form.data.route} onChange={(x) => form.setData('route', x.target.value)}>{Object.entries(routes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Date given" error={e.given_on}><input type="date" className="field" max={today()} value={form.data.given_on} onChange={(x) => form.setData('given_on', x.target.value)} /></Field>
@@ -274,6 +298,123 @@ function PreventiveForm({ goats }: { goats: Option[] }) {
                 <Field label="Product / finding" error={form.errors.title}><input className="field" value={form.data.title} onChange={(e) => form.setData('title', e.target.value)} /></Field>
                 <Field label="Next due" error={form.errors.next_due_on}><input type="date" className="field" value={form.data.next_due_on} onChange={(e) => form.setData('next_due_on', e.target.value)} /></Field>
                 <Button type="submit" className="w-full" disabled={form.processing}>Save</Button>
+            </form>
+        </Panel>
+    );
+}
+
+/** D-074: medicine store (workbook "Medicine Stock" and "Medicine Movements"). */
+function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineUnits, medicineTypes, canMedicine }: Props) {
+    const [open, setOpen] = useState<number | null>(null);
+    const [moves, setMoves] = useState(false);
+    return (
+        <div className="space-y-4">
+            <Panel title="Medicines in store" description="Quantity comes from receipts and issues. Treatments take the batch that expires first." flush>
+                {medicines.length ? (
+                    <ul className="divide-y divide-rule">
+                        {medicines.map((m) => (
+                            <li key={m.id} className={cx('px-4 py-2.5', !m.active && 'opacity-60')}>
+                                <button type="button" onClick={() => setOpen(open === m.id ? null : m.id)} className="flex w-full flex-wrap items-center gap-2 text-left" aria-expanded={open === m.id}>
+                                    <span className="font-semibold text-cobalt-900">{m.name}</span>
+                                    <span className="font-mono text-xs text-ink-soft">{m.code}</span>
+                                    <span className="text-sm text-ink-soft">{medicineCategories[m.category] ?? m.category}</span>
+                                    <span className="ml-auto flex items-center gap-2"><span className="font-semibold">{m.qty} {m.unit}</span><Chip className={MED_STATUS[m.status].className}>{MED_STATUS[m.status].label}</Chip><ChevronDown size={15} className={cx('text-ink-faint', open === m.id && 'rotate-180')} aria-hidden /></span>
+                                </button>
+                                <p className="text-xs text-ink-soft">Reorder at {m.reorder} {m.unit} · PKR {m.costPerUnit}/{m.unit} · worth PKR {m.value.toLocaleString('en-PK')}{m.storage ? ` · ${m.storage}` : ''}{m.supplier ? ` · ${m.supplier}` : ''}</p>
+                                {open === m.id ? (
+                                    <div className="mt-2 rounded-tile bg-glaze p-2 text-sm">
+                                        {m.batches.length ? (
+                                            <table className="w-full"><thead className="text-left text-ink-soft"><tr><th className="py-1 font-semibold">Batch / lot</th><th className="font-semibold">Expiry</th><th className="text-right font-semibold">In stock</th></tr></thead>
+                                                <tbody>{m.batches.map((b) => <tr key={b.batch}><td className="py-1 font-mono">{b.batch}</td><td className={b.expired ? 'font-semibold text-crit-700' : ''}>{b.expiry ?? '—'}{b.expired ? ' (expired)' : ''}</td><td className="text-right">{b.qty} {m.unit}</td></tr>)}</tbody></table>
+                                        ) : <p className="text-ink-soft">No batch numbers recorded.</p>}
+                                        {canMedicine ? <MedicineEdit m={m} categories={medicineCategories} /> : null}
+                                    </div>
+                                ) : null}
+                            </li>
+                        ))}
+                    </ul>
+                ) : <Empty title="No medicines yet">{canMedicine ? 'Add the medicines you keep, with the batch and expiry of what is on the shelf.' : 'The owner, manager or vet adds medicines.'}</Empty>}
+            </Panel>
+            {canMedicine ? (
+                <div className="grid gap-4 lg:grid-cols-2">
+                    {medicines.length ? <MedicineMoveForm medicines={medicines} types={medicineTypes} /> : null}
+                    <MedicineAdd categories={medicineCategories} units={medicineUnits} />
+                </div>
+            ) : null}
+            <Panel title="Stock movements" flush>
+                {medicineMoves.length ? (
+                    <ul className="divide-y divide-rule text-sm">
+                        {(moves ? medicineMoves : medicineMoves.slice(0, 5)).map((mv) => (
+                            <li key={mv.id} className="flex flex-wrap gap-x-2 px-4 py-2">
+                                <span className="w-14 text-ink-faint">{mv.on}</span><span className="font-medium">{mv.medicine}</span><span className="text-ink-soft">{mv.type}</span>
+                                <span className={cx('ml-auto font-semibold', mv.qty < 0 ? 'text-crit-700' : 'text-ok-700')}>{mv.qty > 0 ? '+' : ''}{mv.qty} {mv.unit}</span>
+                                <span className="w-full text-ink-faint">{[mv.batch ? `batch ${mv.batch}` : null, mv.expiry ? `expires ${mv.expiry}` : null, mv.party, mv.by].filter(Boolean).join(' · ')}</span>
+                            </li>
+                        ))}
+                        {medicineMoves.length > 5 ? <li><button type="button" onClick={() => setMoves(!moves)} className="w-full px-4 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">{moves ? 'Show less' : `Show ${medicineMoves.length - 5} more`}</button></li> : null}
+                    </ul>
+                ) : <p className="p-4 text-sm text-ink-soft">Receipts, disposals and treatments appear here.</p>}
+            </Panel>
+        </div>
+    );
+}
+
+function MedicineAdd({ categories, units }: { categories: Record<string, string>; units: Record<string, string> }) {
+    const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'ml', reorder_level: '', cost_per_unit: '', storage: '', supplier: '', opening_qty: '', batch: '', expiry_on: '' });
+    const e = form.errors as Record<string, string>;
+    return (
+        <Panel title="Add a medicine">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/medicines', { preserveScroll: true, onSuccess: () => form.reset() }); }} className="grid grid-cols-2 gap-3">
+                <Field label="Code" error={e.code} hint="e.g. OXY-LA"><input className="field font-mono uppercase" value={form.data.code} onChange={(x) => form.setData('code', x.target.value)} maxLength={20} /></Field>
+                <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
+                <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                <Field label="Stock unit" error={e.unit}><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                <Field label="Reorder at" error={e.reorder_level}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
+                <Field label="PKR per unit" error={e.cost_per_unit}><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
+                <Field label="Stock now" error={e.opening_qty}><input type="number" min={0} className="field" value={form.data.opening_qty} onChange={(x) => form.setData('opening_qty', x.target.value)} /></Field>
+                <Field label="Batch / lot" error={e.batch}><input className="field font-mono" value={form.data.batch} onChange={(x) => form.setData('batch', x.target.value)} /></Field>
+                <Field label="Expiry" error={e.expiry_on}><input type="date" className="field" value={form.data.expiry_on} onChange={(x) => form.setData('expiry_on', x.target.value)} /></Field>
+                <Field label="Storage" error={e.storage} hint="e.g. Fridge, Vet cabinet"><input className="field" value={form.data.storage} onChange={(x) => form.setData('storage', x.target.value)} /></Field>
+                <div className="col-span-2"><Button type="submit" disabled={form.processing}>Add medicine</Button></div>
+            </form>
+        </Panel>
+    );
+}
+
+function MedicineEdit({ m, categories }: { m: Medicine; categories: Record<string, string> }) {
+    const form = useForm({ name: m.name, category: m.category, reorder_level: String(m.reorder), cost_per_unit: String(m.costPerUnit), storage: m.storage ?? '', supplier: m.supplier ?? '', active: m.active });
+    return (
+        <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/health/medicines/${m.id}`, { preserveScroll: true }); }} className="mt-2 grid gap-2 border-t border-rule pt-2 sm:grid-cols-3">
+            <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
+            <Field label="Category"><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            <Field label={`Reorder at (${m.unit})`}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
+            <Field label="PKR per unit"><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
+            <Field label="Storage"><input className="field" value={form.data.storage} onChange={(x) => form.setData('storage', x.target.value)} /></Field>
+            <label className="flex items-center gap-2 pt-6 text-sm"><input type="checkbox" className="size-4" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> Still used</label>
+            <div className="sm:col-span-3"><Button type="submit" variant="secondary" disabled={form.processing}>Save</Button></div>
+        </form>
+    );
+}
+
+function MedicineMoveForm({ medicines, types }: { medicines: Medicine[]; types: Props['medicineTypes'] }) {
+    const form = useForm({ medicine_id: String(medicines.find((m) => m.active)?.id ?? medicines[0].id), type: 'purchase', direction: '', qty: '', batch: '', expiry_on: '', rate: '', moved_on: today(), party: '', reference: '', notes: '' });
+    const e = form.errors as Record<string, string>;
+    const type = types[form.data.type];
+    const unit = medicines.find((m) => String(m.id) === form.data.medicine_id)?.unit ?? '';
+    const incoming = type?.direction === 1 || (type?.direction === 0 && form.data.direction === 'in');
+    return (
+        <Panel title="Stock in / out" description="Purchases also go into Expenses. Treatments issue stock by themselves.">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/medicine-stock', { preserveScroll: true, onSuccess: () => form.reset('qty', 'batch', 'expiry_on', 'rate', 'party', 'reference', 'notes') }); }} className="grid grid-cols-2 gap-3">
+                <Field label="Medicine" error={e.medicine_id}><select className="field" value={form.data.medicine_id} onChange={(x) => form.setData('medicine_id', x.target.value)}>{medicines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.qty} {m.unit})</option>)}</select></Field>
+                <Field label="What happened" error={e.type}><select className="field" value={form.data.type} onChange={(x) => form.setData('type', x.target.value)}>{Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
+                {type?.direction === 0 ? <Field label="Stock goes" error={e.direction}><select className="field" value={form.data.direction} onChange={(x) => form.setData('direction', x.target.value)}><option value="">Choose…</option><option value="in">In</option><option value="out">Out</option></select></Field> : null}
+                <Field label={`Quantity (${unit})`} error={e.qty}><input type="number" min={0} step="0.1" className="field" value={form.data.qty} onChange={(x) => form.setData('qty', x.target.value)} /></Field>
+                <Field label="Batch / lot" error={e.batch}><input className="field font-mono" value={form.data.batch} onChange={(x) => form.setData('batch', x.target.value)} /></Field>
+                {incoming ? <Field label="Expiry" error={e.expiry_on}><input type="date" className="field" value={form.data.expiry_on} onChange={(x) => form.setData('expiry_on', x.target.value)} /></Field> : null}
+                {form.data.type === 'purchase' ? <Field label={`PKR per ${unit}`} error={e.rate}><input type="number" min={0} step="0.01" className="field" value={form.data.rate} onChange={(x) => form.setData('rate', x.target.value)} /></Field> : null}
+                <Field label="Date" error={e.moved_on}><input type="date" max={today()} className="field" value={form.data.moved_on} onChange={(x) => form.setData('moved_on', x.target.value)} /></Field>
+                <Field label="Supplier / party" error={e.party}><input className="field" value={form.data.party} onChange={(x) => form.setData('party', x.target.value)} /></Field>
+                <div className="col-span-2"><Button type="submit" className="w-full" disabled={form.processing}>Save</Button></div>
             </form>
         </Panel>
     );

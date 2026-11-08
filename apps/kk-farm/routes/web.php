@@ -67,6 +67,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/health/cases', [HealthController::class, 'openCase']);
         Route::post('/health/cases/{case}', [HealthController::class, 'updateCase']);
         Route::post('/health/cases/{case}/treatments', [HealthController::class, 'addTreatment']);
+        Route::post('/health/medicines', [\App\Http\Controllers\MedicineController::class, 'store']);
+        Route::post('/health/medicines/{medicine}', [\App\Http\Controllers\MedicineController::class, 'update']);
+        Route::post('/health/medicine-stock', [\App\Http\Controllers\MedicineController::class, 'movement']);
     });
 
     Route::middleware('module:weights')->group(function (): void {

@@ -26,8 +26,8 @@ Legend: ✅ built · 🟡 partly built (gaps listed) · ❌ not built yet
 | 14 | Feed Usage | Feed lead · 3 meals daily | Feeding → Feed now | ✅ D-054 |
 | 15 | Feeding Compliance | Feed lead · 3 meals daily | automatic (Feed now, dashboard) | ✅ D-054 |
 | 16 | Stock Movements | Storekeeper · each transaction | Feeding → Feed store | ✅ D-054 |
-| 17 | Medicine Stock | Vet store · setup | — | ❌ |
-| 18 | Medicine Movements | Vet store · each issue | — | ❌ |
+| 17 | Medicine Stock | Vet store · setup | Health → Medicine store | ✅ D-074 |
+| 18 | Medicine Movements | Vet store · each issue | Medicine store + treatments | ✅ D-074 |
 | 19 | Animal Movements | Farm Manager · per event | Sheds (move) + goat exit | 🟡 |
 | 20 | Expenses | Accounts · each transaction | Finance | 🟡 |
 | 21 | Sales | Accounts · each sale | Finance | 🟡 |

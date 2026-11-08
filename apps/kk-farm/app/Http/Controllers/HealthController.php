@@ -54,7 +54,37 @@ class HealthController extends Controller
             ],
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
-        ]);
+        ] + $this->medicineStore());
+    }
+
+    /** D-074: medicine store for the Health page. */
+    private function medicineStore(): array
+    {
+        $qty = \App\Support\MedicineStock::quantities();
+        $batches = \App\Support\MedicineStock::batches();
+        $medicines = \App\Models\Medicine::orderBy('name')->get()->map(function (\App\Models\Medicine $m) use ($qty, $batches) {
+            $b = $batches[$m->id] ?? collect();
+            $q = $qty[$m->id] ?? 0;
+
+            return [
+                'id' => $m->id, 'code' => $m->code, 'name' => $m->name, 'category' => $m->category, 'unit' => $m->unit, 'reorder' => $m->reorder_level,
+                'costPerUnit' => $m->cost_per_unit_minor / 100, 'storage' => $m->storage, 'supplier' => $m->supplier, 'active' => $m->active, 'qty' => $q,
+                'value' => round(max(0, $q) * $m->cost_per_unit_minor / 100), 'status' => \App\Support\MedicineStock::status($q, $m->reorder_level, $b),
+                'batches' => $b->map(fn ($x) => ['batch' => $x['batch'], 'expiry' => $x['expiry']?->format('j M Y'), 'expired' => $x['expiry']?->isPast() ?? false, 'qty' => $x['qty']])->values(),
+            ];
+        });
+
+        return [
+            'medicines' => $medicines,
+            'medicineMoves' => \App\Models\MedicineMovement::with('medicine')->orderByDesc('moved_on')->orderByDesc('id')->limit(40)->get()->map(fn ($mv) => [
+                'id' => $mv->id, 'on' => $mv->moved_on->format('j M'), 'medicine' => $mv->medicine->name, 'unit' => $mv->medicine->unit, 'type' => \App\Models\MedicineMovement::TYPES[$mv->type][0] ?? $mv->type,
+                'qty' => $mv->qty, 'batch' => $mv->batch, 'expiry' => $mv->expiry_on?->format('j M Y'), 'by' => $mv->recorded_by, 'party' => $mv->party,
+            ]),
+            'medicineCategories' => \App\Models\Medicine::CATEGORIES, 'medicineUnits' => \App\Models\Medicine::UNITS,
+            'medicineTypes' => collect(\App\Models\MedicineMovement::TYPES)->except(['opening', 'issue'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
+            'medicineAlerts' => $medicines->where('active', true)->whereIn('status', ['negative', 'expired', 'reorder', 'expiring'])->count(),
+            'canMedicine' => request()->user()->passes('manage_medicine_store'),
+        ];
     }
 
     private function caseRow(HealthCase $c, ?array $withdrawal): array
@@ -152,7 +182,8 @@ class HealthController extends Controller
         abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian records a treatment.');
         abort_unless(in_array($case->status, HealthCase::ACTIVE, true), 422, 'This case is closed. Open a new case for a new episode.');
         $data = $request->validate([
-            'given_on' => ['required', 'date', 'before_or_equal:today'], 'product' => ['required', 'string', 'max:120'], 'dose' => ['required', 'string', 'max:40'],
+            'medicine_id' => ['nullable', 'integer', 'exists:medicines,id'], 'qty_used' => ['nullable', 'required_with:medicine_id', 'numeric', 'gt:0', 'max:100000'],
+            'given_on' => ['required', 'date', 'before_or_equal:today'], 'product' => ['nullable', 'required_without:medicine_id', 'string', 'max:120'], 'dose' => ['required', 'string', 'max:40'],
             'route' => ['required', Rule::in(array_keys(Treatment::ROUTES))], 'frequency' => ['nullable', 'string', 'max:60'],
             'days_prescribed' => ['nullable', 'integer', 'between:1,365'], 'next_dose_on' => ['nullable', 'date', 'after_or_equal:given_on'],
             'meat_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'], 'milk_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'],
@@ -162,10 +193,23 @@ class HealthController extends Controller
             throw ValidationException::withMessages(['meat_clear_on' => 'Enter the meat and milk clear dates from the product label, or tick "No withdrawal for this product".']);
         }
 
-        DB::transaction(function () use ($case, $data, $request) {
-            Treatment::create(collect($data)->except(['no_withdrawal', 'cost'])->all() + [
+        // D-074: a stock medicine names the product, prices the dose and is issued from the store (earliest expiry first).
+        $medicine = ! empty($data['medicine_id']) ? \App\Models\Medicine::findOrFail($data['medicine_id']) : null;
+        if ($medicine) {
+            $data['product'] = $medicine->name;
+            $data['cost'] ??= $medicine->cost_per_unit_minor ? $data['qty_used'] * $medicine->cost_per_unit_minor / 100 : null;
+        }
+        $short = 0.0;
+
+        DB::transaction(function () use ($case, $data, $request, $medicine, &$short) {
+            $treatment = Treatment::create(collect($data)->except(['no_withdrawal', 'cost'])->all() + [
                 'health_case_id' => $case->id, 'animal_id' => $case->animal_id, 'cost_minor' => isset($data['cost']) ? (int) round($data['cost'] * 100) : null, 'recorded_by' => $request->user()->name,
             ]);
+            if ($medicine) {
+                $short = \App\Support\MedicineStock::issue($medicine, (float) $data['qty_used'], [
+                    'moved_on' => $data['given_on'], 'treatment_id' => $treatment->id, 'reference' => $case->label(), 'recorded_by' => $request->user()->name,
+                ]);
+            }
             if ($case->status === 'open') {
                 $case->update(['status' => 'under_treatment']);
             }
@@ -175,7 +219,9 @@ class HealthController extends Controller
         });
         Farm::log($request->user(), "Treated {$case->animal->farm_number}: {$data['product']}", '/health');
 
-        return back()->with('success', 'Treatment saved.'.(! empty($data['meat_clear_on']) ? ' Meat withdrawal until '.\Illuminate\Support\Carbon::parse($data['meat_clear_on'])->format('j M Y').'.' : ''));
+        $warning = $short > 0 ? " Warning: not enough in-date {$medicine->name} in the store ({$short} {$medicine->unit} short), so stock shows below zero. Record the receipt or check for expired packs." : '';
+
+        return back()->with('success', 'Treatment saved.'.$warning.(! empty($data['meat_clear_on']) ? ' Meat withdrawal until '.\Illuminate\Support\Carbon::parse($data['meat_clear_on'])->format('j M Y').'.' : ''));
     }
 
     public function observe(Request $request): RedirectResponse
