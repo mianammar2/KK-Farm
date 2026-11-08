@@ -62,15 +62,18 @@ class Breed extends Model
     public const ORIGIN_LETTERS = ['purchased' => 'P', 'transferred_in' => 'T', 'born_on_farm' => 'B'];
 
     /**
-     * D-059/D-060: breed code, origin letter (P bought, T transferred, B born), date and the breed's running number,
-     * e.g. TD-P-14-10-26-0003 for a Teddy bought on 14 October 2026. The number keeps counting per breed (it never
-     * restarts), so a Tag ID is never reused. Without a known origin the letter is left out.
+     * D-061: breed code, date as DDMMYY, origin letter (P bought, T transferred, B born) and the breed's running
+     * number with two digits, e.g. TD-141026-P-03 for a Teddy bought on 14 October 2026. The number keeps counting
+     * per breed (it never restarts; after 99 it simply grows to 100), so a Tag ID is never reused. Without a known
+     * origin the letter is left out.
      */
     public static function formatTagId(string $code, int $number, Carbon|string|null $date = null, ?string $origin = null): string
     {
         $letter = self::ORIGIN_LETTERS[$origin] ?? null;
 
-        return sprintf('%s-%s%s-%04d', $code, $letter ? "$letter-" : '', ($date ? Carbon::parse($date) : (\App\Support\Tenant::current() ? \App\Support\Feed::now() : now()))->format('d-m-y'), $number); // today on the farm's clock
+        $day = ($date ? Carbon::parse($date) : (\App\Support\Tenant::current() ? \App\Support\Feed::now() : now()))->format('dmy'); // today on the farm's clock
+
+        return sprintf('%s-%s-%s%02d', $code, $day, $letter ? "$letter-" : '', $number);
     }
 
     /**

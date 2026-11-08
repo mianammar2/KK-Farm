@@ -45,7 +45,7 @@ final class FieldCatalog
             ['key' => 'origin', 'label' => 'Origin Type', 'type' => 'select', 'section' => 'Origin and identity', 'required' => true],
             ['key' => 'breed_id', 'label' => 'Breed', 'type' => 'lookup', 'section' => 'Origin and identity', 'required' => true],
             ['key' => 'acquired_on', 'label' => 'Purchase Date', 'type' => 'date', 'section' => 'Origin and identity', 'help' => 'The day the goat arrived on the farm.'],
-            ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Origin and identity', 'help' => 'Set automatically: breed code, origin (P bought, T transferred, B born), purchase or birth date and number, for example TD-P-14-10-26-0003. Type one only to use a different Tag ID.'],
+            ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Origin and identity', 'help' => 'Set automatically: breed code, date (DDMMYY: purchase or birth date), origin (P bought, T transferred, B born) and number, for example TD-141026-P-03. Type one only to use a different Tag ID.'],
             ['key' => 'rfid_epc', 'label' => 'RFID EPC', 'type' => 'scan', 'section' => 'Origin and identity', 'help' => 'Filled by the scanner. Scan a tag, or type the code.'],
             ['key' => 'sex', 'label' => 'Gender', 'type' => 'select', 'section' => 'Origin and identity', 'required' => true],
             ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Origin and identity'],

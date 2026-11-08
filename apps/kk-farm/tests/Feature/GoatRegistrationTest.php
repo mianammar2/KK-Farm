@@ -157,9 +157,9 @@ class GoatRegistrationTest extends TestCase
         }
 
         // D-059: breed code, the date (here today: no purchase date given) and the breed's running number.
-        $d = now('Asia/Karachi')->format('d-m-y');
-        $this->assertSame(["BT-P-$d-0001", "BT-P-$d-0002", "BT-P-$d-0003", "KR-P-$d-0001", "TD-P-$d-0001"], Animal::orderBy('farm_number')->pluck('farm_number')->all());
-        $this->assertSame("BT-P-$d-0004", $this->breed->fresh()->nextTagId(null, 'purchased'));
+        $d = now('Asia/Karachi')->format('dmy');
+        $this->assertSame(["BT-$d-P-01", "BT-$d-P-02", "BT-$d-P-03", "KR-$d-P-01", "TD-$d-P-01"], Animal::orderBy('farm_number')->pluck('farm_number')->all());
+        $this->assertSame("BT-$d-P-04", $this->breed->fresh()->nextTagId(null, 'purchased'));
     }
 
     public function test_the_tag_id_carries_the_purchase_date_or_the_birth_date(): void
@@ -171,17 +171,17 @@ class GoatRegistrationTest extends TestCase
         $this->actingAs($manager)->post('/goats', $this->payload(['origin' => 'transferred_in', 'acquired_on' => '2026-11-05']))->assertSessionHasNoErrors();
 
         // D-060: P bought, T transferred, B born.
-        $this->assertSame(['BT-B-02-11-26-0002', 'BT-P-14-10-26-0001', 'BT-T-05-11-26-0003'], Animal::orderBy('farm_number')->pluck('farm_number')->all(), 'the number keeps counting per breed, whatever the date');
+        $this->assertSame(['BT-021126-B-02', 'BT-051126-T-03', 'BT-141026-P-01'], Animal::orderBy('farm_number')->pluck('farm_number')->all(), 'the number keeps counting per breed, whatever the date');
     }
 
     public function test_a_typed_tag_id_is_kept_and_generated_ids_skip_numbers_already_in_use(): void
     {
         $manager = $this->user('manager');
-        $d = now('Asia/Karachi')->format('d-m-y');
-        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => strtolower("bt-p-$d-0001")]))->assertSessionHasNoErrors();
+        $d = now('Asia/Karachi')->format('dmy');
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => strtolower("bt-$d-p-01")]))->assertSessionHasNoErrors();
         $this->actingAs($manager)->post('/goats', $this->payload())->assertSessionHasNoErrors();
 
-        $this->assertSame(["BT-P-$d-0001", "BT-P-$d-0002"], Animal::orderBy('farm_number')->pluck('farm_number')->all(), 'the typed Tag ID is kept and the generator skips it');
+        $this->assertSame(["BT-$d-P-01", "BT-$d-P-02"], Animal::orderBy('farm_number')->pluck('farm_number')->all(), 'the typed Tag ID is kept and the generator skips it');
     }
 
     public function test_breed_codes_come_from_the_workbook_or_initials_and_never_repeat(): void
@@ -196,7 +196,7 @@ class GoatRegistrationTest extends TestCase
     public function test_the_register_page_shows_the_tag_id_each_breed_will_give(): void
     {
         $this->actingAs($this->user('caretaker'))->get('/goats/register')
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('lookups.breed_id.0.label', 'Beetal')->where('lookups.breed_id.0.next', 'BT-'.now('Asia/Karachi')->format('d-m-y').'-0001')->where('lookups.breed_id.0.nextNumber', 1));
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('lookups.breed_id.0.label', 'Beetal')->where('lookups.breed_id.0.next', 'BT-'.now('Asia/Karachi')->format('dmy').'-01')->where('lookups.breed_id.0.nextNumber', 1));
     }
 
     public function test_the_owner_can_add_a_breed_with_its_own_tag_code(): void
