@@ -138,7 +138,7 @@ final class GoatRegistration
 
             $animal = Animal::create([
                 // D-041: a blank Tag ID is generated from the breed (BT-0001 ...). A typed one is kept as entered.
-                'farm_number' => trim((string) ($data['tag_id'] ?? '')) ?: Breed::findOrFail($data['breed_id'])->issueTagId(self::tagDate($data)),
+                'farm_number' => trim((string) ($data['tag_id'] ?? '')) ?: Breed::findOrFail($data['breed_id'])->issueTagId(self::tagDate($data), $data['origin'] ?? null),
                 'name' => $data['name'] ?? null,
                 'sex' => $data['sex'],
                 'breed_id' => $data['breed_id'],

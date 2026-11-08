@@ -97,7 +97,7 @@ class BreedingController extends Controller
             $kids = [];
             for ($i = 1; $i <= (int) $data['alive']; $i++) {
                 $kid = Animal::create([
-                    'farm_number' => ($breedId ? \App\Models\Breed::find($breedId)?->issueTagId() : null) /* D-059 */ ?? Farm::nextFarmNumber(), 'sex' => $i <= $data['females'] ? 'female' : 'male', 'breed_id' => $breedId,
+                    'farm_number' => ($breedId ? \App\Models\Breed::find($breedId)?->issueTagId(null, 'born_on_farm') : null) /* D-059 */ ?? Farm::nextFarmNumber(), 'sex' => $i <= $data['females'] ? 'female' : 'male', 'breed_id' => $breedId,
                     'birth_date' => now()->toDateString(), 'origin' => 'born_on_farm', 'sire_id' => $mating->sire_id, 'dam_id' => $dam->id, 'pen_id' => $kidsPen, 'coat' => $dam->coat,
                 ]);
                 Farm::event($kid, 'origin', "Born on the farm to {$dam->farm_number}", $request->user()->name);

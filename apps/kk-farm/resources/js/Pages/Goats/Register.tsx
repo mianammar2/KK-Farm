@@ -201,7 +201,8 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                     // D-059: breed code, the purchase date (birth date for farm-born, today if empty) as DD-MM-YY, the breed's number.
                     const breed = (lookups.breed_id ?? []).find((b) => String(b.value) === String(form.data.breed_id ?? ''));
                     const iso: string = (farmBorn ? form.data.birth_date : form.data.acquired_on) || TODAY;
-                    const next = breed?.code && breed.nextNumber ? `${breed.code}-${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(2, 4)}-${String(breed.nextNumber).padStart(4, '0')}` : breed?.next;
+                    const letter = ({ purchased: 'P', transferred_in: 'T', born_on_farm: 'B' } as Record<string, string>)[form.data.origin]; // D-060
+                    const next = breed?.code && breed.nextNumber ? `${breed.code}-${letter ? `${letter}-` : ''}${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(2, 4)}-${String(breed.nextNumber).padStart(4, '0')}` : breed?.next;
                     return (
                         <div>
                             <input className="field font-mono" value={v} onChange={(e) => set(f, e.target.value.toUpperCase())} placeholder={next ? `${next} (automatic)` : 'Choose a breed first'} autoComplete="off" />

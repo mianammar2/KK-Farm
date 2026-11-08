@@ -53,18 +53,24 @@ class Breed extends Model
     }
 
     /** The Tag ID the next goat of this breed would get. A preview only: the number is reserved on save. */
-    public function nextTagId(Carbon|string|null $date = null): string
+    public function nextTagId(Carbon|string|null $date = null, ?string $origin = null): string
     {
-        return self::formatTagId($this->code, $this->last_number + 1, $date);
+        return self::formatTagId($this->code, $this->last_number + 1, $date, $origin);
     }
 
+    /** D-060: origin letter in the Tag ID. */
+    public const ORIGIN_LETTERS = ['purchased' => 'P', 'transferred_in' => 'T', 'born_on_farm' => 'B'];
+
     /**
-     * D-059: breed code, date and the breed's running number, e.g. TD-14-10-26-0003 for a Teddy bought on
-     * 14 October 2026. The number keeps counting per breed (it never restarts), so a Tag ID is never reused.
+     * D-059/D-060: breed code, origin letter (P bought, T transferred, B born), date and the breed's running number,
+     * e.g. TD-P-14-10-26-0003 for a Teddy bought on 14 October 2026. The number keeps counting per breed (it never
+     * restarts), so a Tag ID is never reused. Without a known origin the letter is left out.
      */
-    public static function formatTagId(string $code, int $number, Carbon|string|null $date = null): string
+    public static function formatTagId(string $code, int $number, Carbon|string|null $date = null, ?string $origin = null): string
     {
-        return sprintf('%s-%s-%04d', $code, ($date ? Carbon::parse($date) : (\App\Support\Tenant::current() ? \App\Support\Feed::now() : now()))->format('d-m-y'), $number); // today on the farm's clock
+        $letter = self::ORIGIN_LETTERS[$origin] ?? null;
+
+        return sprintf('%s-%s%s-%04d', $code, $letter ? "$letter-" : '', ($date ? Carbon::parse($date) : (\App\Support\Tenant::current() ? \App\Support\Feed::now() : now()))->format('d-m-y'), $number); // today on the farm's clock
     }
 
     /**
@@ -72,12 +78,12 @@ class Breed extends Model
      * so two people registering at the same moment never get the same number. Numbers already used by a
      * goat (for example typed by hand) are skipped.
      */
-    public function issueTagId(Carbon|string|null $date = null): string
+    public function issueTagId(Carbon|string|null $date = null, ?string $origin = null): string
     {
-        return DB::transaction(function () use ($date) {
+        return DB::transaction(function () use ($date, $origin) {
             do {
                 $row = DB::selectOne('UPDATE breeds SET last_number = last_number + 1, updated_at = now() WHERE id = ? RETURNING code, last_number', [$this->id]);
-                $tagId = self::formatTagId($row->code, $row->last_number, $date);
+                $tagId = self::formatTagId($row->code, $row->last_number, $date, $origin);
             } while (Animal::where('farm_number', $tagId)->exists());
 
             $this->last_number = $row->last_number;
