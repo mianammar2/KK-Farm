@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { titleCase } from '../lib/titleCase';
 
 type Ask = { title: string; message?: string; confirm?: string; danger?: boolean };
@@ -13,7 +14,8 @@ export function useConfirm(): [(a: Ask) => Promise<boolean>, ReactNode] {
     const [pending, setPending] = useState<(Ask & { resolve: (ok: boolean) => void }) | null>(null);
     const ask = useCallback((a: Ask) => new Promise<boolean>((resolve) => setPending({ ...a, resolve })), []);
     const done = (ok: boolean) => { pending?.resolve(ok); setPending(null); };
-    return [ask, pending ? <ConfirmBox ask={pending} onAnswer={done} /> : null];
+    // Drawn on the page itself, not inside a panel that moves (a side panel), so it is always in the middle of the screen.
+    return [ask, pending ? createPortal(<ConfirmBox ask={pending} onAnswer={done} />, document.body) : null];
 }
 
 function ConfirmBox({ ask, onAnswer }: { ask: Ask; onAnswer: (ok: boolean) => void }) {
