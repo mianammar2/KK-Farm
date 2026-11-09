@@ -26,6 +26,37 @@ final class Checkups
         return (int) (Tenant::org()?->checkup_interval_days ?: 14);
     }
 
+    /** D-104: a drop of 3% or more (or any drop of 0.3 KG or more for a pregnant doe) is a warning sign. */
+    public const WEIGHT_DROP_PCT = 3;
+
+    /** @return array{kg: float, on: string}|null the goat's last weighing before a date */
+    public static function lastWeight(Animal $goat, string $before): ?array
+    {
+        $w = WeightRecord::where('animal_id', $goat->id)->where('measured_on', '<', $before)->orderByDesc('measured_on')->orderByDesc('id')->first();
+
+        return $w ? ['kg' => (float) $w->weight_kg, 'on' => $w->measured_on->toDateString()] : null;
+    }
+
+    /** "Weight down 0.9 KG (4.6%) since 28 Oct", or null when it is not a warning. */
+    public static function weightDrop(Animal $goat, string $on, ?float $kg): ?string
+    {
+        if (! $kg) {
+            return null;
+        }
+        $last = self::lastWeight($goat, $on);
+        if (! $last || $kg >= $last['kg']) {
+            return null;
+        }
+        $drop = $last['kg'] - $kg;
+        $pct = $drop / $last['kg'] * 100;
+        $pregnant = self::dayOfPregnancy($goat, $on) !== null;
+        if ($pct < self::WEIGHT_DROP_PCT && ! ($pregnant && $drop >= 0.3)) {
+            return null;
+        }
+
+        return 'Weight down '.round($drop, 1).' KG ('.round($pct, 1).'%) since '.Carbon::parse($last['on'])->format('j M').($pregnant ? ' while pregnant' : '');
+    }
+
     /**
      * D-101: a checkup of a pregnant doe always carries her day of pregnancy, counted from the mating, even when no
      * ultrasound was done that day. Typed days on a pregnant ultrasound win (they may set the mating date).
@@ -70,6 +101,7 @@ final class Checkups
             'goats' => $goats->map(fn (Animal $a) => [
                 'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'pen' => $a->pen?->fullName(), 'repro' => $a->repro_status,
                 'last' => null, 'due' => false, 'next' => null, 'recheck' => null, 'matedOn' => isset($pregnant[$a->id]) ? $pregnant[$a->id]->mated_on->toDateString() : null,
+                'weights' => $a->weights()->get(['measured_on', 'weight_kg'])->map(fn ($w) => ['on' => $w->measured_on->toDateString(), 'kg' => (float) $w->weight_kg])->values()->all(), // D-104
             ])->values()->all(),
             'recent' => [], 'interval' => self::interval(), 'normal' => HealthCheckup::NORMAL, 'gestation' => (int) (Tenant::org()?->gestation_days ?: 150),
             'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->all(),
@@ -132,6 +164,16 @@ final class Checkups
     {
         return DB::transaction(function () use ($goat, $data, $by) {
             $on = Carbon::parse($data['checked_on'])->toDateString();
+            // D-104: readings outside normal and a weight drop are warnings: the result cannot stay Healthy, and the vet is alerted.
+            $drop = self::weightDrop($goat, $on, isset($data['weight_kg']) && $data['weight_kg'] !== '' ? (float) $data['weight_kg'] : null);
+            $temp = isset($data['temperature_f']) && $data['temperature_f'] !== '' ? (float) $data['temperature_f'] : null;
+            [$low, $high] = HealthCheckup::NORMAL['temperature_f'];
+            $warnings = array_values(array_filter([
+                $temp !== null && $temp > $high ? "Temperature {$temp} °F (high)" : ($temp !== null && $temp < $low ? "Temperature {$temp} °F (low)" : null), $drop,
+            ]));
+            if ($warnings && ($data['outcome'] ?? 'healthy') === 'healthy') {
+                $data['outcome'] = 'monitor';
+            }
             $checkup = HealthCheckup::create([
                 'animal_id' => $goat->id, 'checked_on' => $on, 'temperature_f' => $data['temperature_f'] ?? null, 'body_score' => $data['body_score'] ?? null, 'weight_kg' => $data['weight_kg'] ?? null,
                 'ultrasound' => $goat->sex === 'female' ? ($data['ultrasound'] ?? null) : null, 'fetuses' => $data['fetuses'] ?? null,
@@ -149,7 +191,7 @@ final class Checkups
                 $parts[] = 'ultrasound: '.strtolower(HealthCheckup::ULTRASOUND[$checkup->ultrasound]).($checkup->fetuses ? " ({$checkup->fetuses} fetus".($checkup->fetuses > 1 ? 'es' : '').')' : '');
             }
 
-            $flags = $checkup->flags();
+            $flags = array_values(array_unique([...$checkup->flags(), ...array_filter([$drop])]));
             if (! empty($data['open_case'])) {
                 DB::statement('LOCK TABLE health_cases IN SHARE ROW EXCLUSIVE MODE');
                 $case = HealthCase::create([
@@ -168,6 +210,9 @@ final class Checkups
             }
 
             self::followUp($goat, $checkup, $data, $by);
+            if ($warnings) {
+                self::alertVet($goat, $checkup, $warnings, $by);
+            }
             self::fillPregnancyDays($goat); // D-101
             self::syncHealth($goat);
             $readings = array_filter([
@@ -177,6 +222,17 @@ final class Checkups
 
             return $checkup;
         });
+    }
+
+    /** D-104: an urgent task for the vets to examine the goat today, for what the checkup flagged. */
+    private static function alertVet(Animal $goat, HealthCheckup $c, array $warnings, User $by): void
+    {
+        $fever = collect($warnings)->contains(fn ($w) => str_contains($w, '(high)'));
+        \App\Models\Task::create([
+            'title' => mb_substr("Vet check {$goat->farm_number}: ".implode('; ', $warnings), 0, 190), 'type' => 'health', 'priority' => $fever ? 'critical' : 'high', 'status' => 'open',
+            'due_on' => now()->toDateString(), 'animal_id' => $goat->id, 'pen_id' => $goat->pen_id, 'department_id' => \App\Models\Department::where('name', 'Veterinary')->value('id'),
+            'notes' => mb_substr('Flagged at the checkup on '.$c->checked_on->format('j M Y')." by {$by->name}.", 0, 500),
+        ]);
     }
 
     /** D-099: after the checkup: a recheck on a date becomes a task for the vets (moved or cancelled when corrected). */

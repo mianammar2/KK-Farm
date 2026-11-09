@@ -1,9 +1,10 @@
 import { Link, useForm } from '@inertiajs/react';
 import { CalendarClock, Pencil, Plus, Stethoscope, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { readingWarnings, type Weighing } from '../lib/readings';
 import { Button, Chip, cx, Field, Panel } from './ui';
 
-type Goat = { id: string; number: string; name: string | null; sex: 'male' | 'female'; pen: string | null; repro: string | null; last: { on: string; outcome: string; by: string } | null; due: boolean; next: string | null; recheck: string | null; matedOn?: string | null };
+type Goat = { id: string; number: string; name: string | null; sex: 'male' | 'female'; pen: string | null; repro: string | null; last: { on: string; outcome: string; by: string } | null; due: boolean; next: string | null; recheck: string | null; matedOn?: string | null; weights?: Weighing[] };
 type Recent = { id: number; on: string; goat: string; goatId: string; outcome: string; temp: number | null; score: number | null; weight: number | null; ultrasound: string | null; fetuses: number | null; flags: string[]; findings: string | null; caseId: number | null; by: string;
     dateIso: string; days: number | null; matedOn: string | null; followUp: string | null; followUpNote: string | null; sex: 'male' | 'female'; canEdit: boolean; edits: number };
 export type CheckupData = {
@@ -114,6 +115,10 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
     // D-100: a doe already pregnant: her day of pregnancy on this date is counted from the mating.
     const counted = goat.matedOn ? Math.round((new Date(`${checkDate}T12:00:00`).getTime() - new Date(`${goat.matedOn}T12:00:00`).getTime()) / 86400000) : null;
     const setUltrasound = (v: string) => form.setData((d) => ({ ...d, ultrasound: v, days_pregnant: v === 'pregnant' && !d.days_pregnant && counted !== null && counted > 0 ? String(counted) : d.days_pregnant }));
+    // D-104: live warnings (not when correcting an old checkup)
+    const { warnings, weightNote } = readingWarnings({ weights: existing ? [] : goat.weights, date: checkDate, weight: form.data.weight_kg, temp: form.data.temperature_f, normal: data.normal.temperature_f, pregnant: Boolean(goat.matedOn) || form.data.ultrasound === 'pregnant' });
+    const [picked, setPicked] = useState(Boolean(existing));
+    useEffect(() => { if (warnings.length && !picked && form.data.outcome === 'healthy') form.setData('outcome', 'monitor'); }, [warnings.length]); // eslint-disable-line react-hooks/exhaustive-deps
     const recheckIn = (days: number) => { const d = new Date(`${checkDate}T12:00:00`); d.setDate(d.getDate() + days); form.setData('follow_up_on', d.toISOString().slice(0, 10)); };
     const e = form.errors as Record<string, string>;
     /** Live check against the normal range; the vet decides what it means. */
@@ -127,6 +132,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
         <Field label={`${label} (${unit})`} error={e[key]}>
             <input className="field" inputMode="decimal" value={form.data[key]} onChange={(x) => form.setData(key, x.target.value)} />
             {key in data.normal ? range(key as keyof CheckupData['normal'], form.data[key]) : null}
+            {key === 'weight_kg' && weightNote ? <span className={cx('text-xs font-semibold', weightNote.bad ? 'text-crit-700' : 'text-ink-soft')}>{weightNote.text}</span> : null}
         </Field>
     );
 
@@ -167,7 +173,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
             <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold text-cobalt-900">Result</span>
                 {Object.entries(OUTCOME).map(([k, o]) => (
-                    <button key={k} type="button" aria-pressed={form.data.outcome === k} onClick={() => form.setData('outcome', k)} className={cx('kk-pill rounded-full border px-3 py-1.5 text-sm font-semibold', form.data.outcome === k ? `${o.chip} border-current` : 'border-rule bg-tile text-cobalt-900')}>{o.label}</button>
+                    <button key={k} type="button" aria-pressed={form.data.outcome === k} onClick={() => { setPicked(true); form.setData('outcome', k); }} className={cx('kk-pill rounded-full border px-3 py-1.5 text-sm font-semibold', form.data.outcome === k ? `${o.chip} border-current` : 'border-rule bg-tile text-cobalt-900')}>{o.label}</button>
                 ))}
             </div>
             {/* D-099: what happens after the checkup */}
@@ -192,6 +198,12 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
                             <label className="flex min-h-11 items-center gap-2 self-end text-sm"><input type="checkbox" className="size-5" checked={form.data.isolated} onChange={(x) => form.setData('isolated', x.target.checked)} /> Isolate</label>
                         </div>
                     ) : null}
+                </div>
+            ) : null}
+            {warnings.length ? (
+                <div role="alert" className="flex items-start gap-2 rounded-tile border border-crit-500 bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">
+                    <span className="kk-beat mt-1.5 size-2.5 shrink-0 rounded-full bg-crit-500" aria-hidden />
+                    <span>{warnings.join(' · ')}. Saving opens a health report and gives the vet an urgent task to check {goat.number} today.</span>
                 </div>
             ) : null}
             {existing ? <Field label="Why the correction? (optional)"><input className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} placeholder="e.g. Wrong date entered, temperature was missing" /></Field> : null}

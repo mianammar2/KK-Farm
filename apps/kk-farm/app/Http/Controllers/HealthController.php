@@ -41,6 +41,7 @@ class HealthController extends Controller
         // D-095: routine checkups: every goat with its latest checkup and whether one is due.
         $latest = \App\Support\Checkups::latest();
         $pregnant = \App\Support\Checkups::pregnancies(); // D-100: day of pregnancy is counted from the mating
+        $weightsBy = \App\Models\WeightRecord::orderBy('measured_on')->orderBy('id')->get(['animal_id', 'measured_on', 'weight_kg'])->groupBy('animal_id'); // D-104: to compare a new weight
         $interval = \App\Support\Checkups::interval();
         $since = now()->subDays($interval)->toDateString();
         $checkupGoats = Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => [
@@ -50,6 +51,7 @@ class HealthController extends Controller
             'next' => isset($latest[$a->id]) ? $latest[$a->id]->checked_on->copy()->addDays($interval)->format('j M') : null, // D-099
             'recheck' => isset($latest[$a->id]) && $latest[$a->id]->follow_up_on ? $latest[$a->id]->follow_up_on->format('j M') : null,
             'matedOn' => isset($pregnant[$a->id]) ? $pregnant[$a->id]->mated_on->toDateString() : null,
+            'weights' => ($weightsBy[$a->id] ?? collect())->map(fn ($w) => ['on' => $w->measured_on->toDateString(), 'kg' => (float) $w->weight_kg])->values()->all(), // D-104
         ])->values();
 
         $revisions = \App\Support\Revisions::counts('checkup', \App\Models\HealthCheckup::orderByDesc('checked_on')->orderByDesc('id')->limit(60)->pluck('id'));

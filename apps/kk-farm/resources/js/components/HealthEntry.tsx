@@ -1,4 +1,6 @@
 import { useForm } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
+import { readingWarnings } from '../lib/readings';
 import { CalendarClock } from 'lucide-react';
 import { Button, cx, Field, Panel } from './ui';
 import type { CheckupData } from './Checkups';
@@ -69,6 +71,10 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
         <div className="flex items-center gap-2 text-sm font-semibold text-cobalt-900"><span className={cx('grid size-6 place-items-center rounded-full text-xs', done ? 'bg-ok-700 text-white' : 'bg-cobalt-800 text-white')}>{n}</span>{title}</div>
     );
     const temp = form.data.temperature_f !== '' && !Number.isNaN(Number(form.data.temperature_f)) ? Number(form.data.temperature_f) : null;
+    // D-104: warnings as it is typed; they set the result to Watch (unless chosen by hand) and alert the vet on saving.
+    const { warnings, weightNote } = readingWarnings({ weights: goat?.weights, date: form.data.date, weight: form.data.weight_kg, temp: form.data.temperature_f, normal: data.normal.temperature_f, pregnant: Boolean(goat?.matedOn) || form.data.ultrasound === 'pregnant' });
+    const [picked, setPicked] = useState(false);
+    useEffect(() => { if (warnings.length && !picked && form.data.outcome === 'healthy') form.setData('outcome', 'monitor'); }, [warnings.length]); // eslint-disable-line react-hooks/exhaustive-deps
     const [low, high] = data.normal.temperature_f;
 
     return (
@@ -126,7 +132,10 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
                 {form.data.kind === 'checkup' || form.data.kind === 'pregnancy' ? (
                     <>
                         <div className="grid grid-cols-2 gap-2">
-                            <Field label="Weight (KG)" error={e.weight_kg}><input className="field" inputMode="decimal" value={form.data.weight_kg} onChange={(x) => set('weight_kg', x.target.value)} /></Field>
+                            <Field label="Weight (KG)" error={e.weight_kg}>
+                                <input className="field" inputMode="decimal" value={form.data.weight_kg} onChange={(x) => set('weight_kg', x.target.value)} />
+                                {weightNote ? <span className={cx('text-xs font-semibold', weightNote.bad ? 'text-crit-700' : 'text-ink-soft')}>{weightNote.text}</span> : null}
+                            </Field>
                             <Field label="Temperature (°F)" error={e.temperature_f}>
                                 <input className="field" inputMode="decimal" value={form.data.temperature_f} onChange={(x) => set('temperature_f', x.target.value)} />
                                 {temp !== null ? <span className={cx('text-xs font-semibold', temp > high ? 'text-crit-700' : temp < low ? 'text-watch-700' : 'text-ok-700')}>{temp > high ? `High (normal ${low}–${high})` : temp < low ? `Low (normal ${low}–${high})` : 'Normal'}</span> : null}
@@ -138,7 +147,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-sm font-semibold text-cobalt-900">Result</span>
                                 {[['healthy', 'Healthy', 'bg-ok-100 text-ok-700'], ['monitor', 'Watch', 'bg-watch-100 text-watch-700'], ['sick', 'Sick', 'bg-crit-100 text-crit-700']].map(([k, l, c]) => (
-                                    <button key={k} type="button" aria-pressed={form.data.outcome === k} onClick={() => set('outcome', k)} className={cx('rounded-full border px-3 py-1.5 text-sm font-semibold', form.data.outcome === k ? `${c} border-current` : 'border-rule bg-tile text-cobalt-900')}>{l}</button>
+                                    <button key={k} type="button" aria-pressed={form.data.outcome === k} onClick={() => { setPicked(true); set('outcome', k); }} className={cx('rounded-full border px-3 py-1.5 text-sm font-semibold', form.data.outcome === k ? `${c} border-current` : 'border-rule bg-tile text-cobalt-900')}>{l}</button>
                                 ))}
                             </div>
                         ) : null}
@@ -177,6 +186,12 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
                     </div>
                 ) : null}
 
+                {warnings.length && !isCase ? (
+                    <div role="alert" className="flex items-start gap-2 rounded-tile border border-crit-500 bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">
+                        <span className="kk-beat mt-1.5 size-2.5 shrink-0 rounded-full bg-crit-500" aria-hidden />
+                        <span>{warnings.join(' · ')}. Saving opens a health report and gives the vet an urgent task to check {goat?.number} today.</span>
+                    </div>
+                ) : null}
                 {form.data.kind ? <Button type="submit" className="w-full" disabled={form.processing}>{isCase ? 'Open health case' : form.data.kind === 'pregnancy' ? 'Save pregnancy check' : 'Save checkup'}</Button> : null}
             </form>
         </Panel>

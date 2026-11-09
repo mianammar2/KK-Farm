@@ -156,4 +156,23 @@ class CheckupTest extends TestCase
         Mating::sole()->update(['status' => 'kidded']);
         $this->assertSame('completed', $task->fresh()->status);
     }
+
+    /** D-104: a weight drop while pregnant and a fever cannot be saved as Healthy; the vet gets an urgent task. */
+    public function test_a_weight_drop_and_a_fever_set_watch_and_alert_the_vet(): void
+    {
+        $vet = $this->user('vet');
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-21', 'weight_kg' => 18.6, 'ultrasound' => 'pregnant', 'days_pregnant' => 35, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-28', 'weight_kg' => 19.5, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $this->assertSame(0, \App\Models\Task::where('type', 'health')->count(), 'gaining weight, normal: nothing to alert');
+
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-11-04', 'weight_kg' => 18.6, 'temperature_f' => 104.6, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $c = HealthCheckup::where('checked_on', '2026-11-04')->sole();
+        $this->assertSame('monitor', $c->outcome, 'not Healthy with these readings');
+        $task = \App\Models\Task::where('type', 'health')->sole();
+        $this->assertSame('critical', $task->priority);
+        $this->assertStringContainsString('Temperature 104.6 °F (high)', $task->title);
+        $this->assertStringContainsString('Weight down 0.9 KG (4.6%) since 28 Oct while pregnant', $task->title);
+        $this->assertSame('open', HealthRecord::where('animal_id', $this->doe->id)->sole()->status);
+        $this->assertSame('monitor', $this->doe->fresh()->health_flag);
+    }
 }
