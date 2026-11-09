@@ -4,7 +4,7 @@ import { inScannerApp } from '../lib/native';
 import { ChevronDown } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
-import { axis } from '../lib/chartTheme';
+import { axis, FARM, GOAT_PATH } from '../lib/chartTheme';
 import { CountUp, Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
@@ -68,7 +68,9 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
         xAxis: axis.category(growth.map((g) => monthLabel(g.month))),
         yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
-        series: [{ type: 'line', data: growth.map((g) => g.kg), smooth: true, symbolSize: 6, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 } }],
+        // D-139: an earth-brown line over green grass
+        series: [{ type: 'line', data: growth.map((g) => g.kg), smooth: true, symbol: 'circle', symbolSize: 8, itemStyle: { color: FARM.earth, borderColor: '#fff8e6', borderWidth: 2 }, lineStyle: { width: 3, color: FARM.earth },
+            areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(122,166,74,0.55)' }, { offset: 1, color: 'rgba(95,143,58,0.12)' }] } } }],
     } : null), [growth]);
 
     const breedChart = useMemo(() => {
@@ -79,7 +81,10 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
             grid: { left: 4, right: 30, top: 4, bottom: 4, containLabel: true },
             xAxis: { type: 'value', show: false },
             yAxis: { ...axis.category(rows.map((b) => b.name)), axisLine: { show: false } },
-            series: [{ type: 'bar', barMaxWidth: 16, barCategoryGap: '35%', data: rows.map((b) => b.value), itemStyle: { color: '#1d5c2e', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', color: '#163d22', fontWeight: 600 } }],
+            // D-139: each breed is a row of goats; a longer row is more goats
+            series: [{ type: 'pictorialBar', symbol: GOAT_PATH, symbolRepeat: true, symbolSize: [22, 18], symbolMargin: 2, symbolClip: false, barCategoryGap: '30%',
+                data: rows.map((b, i) => ({ value: b.value, itemStyle: { color: i % 2 ? FARM.earth : '#a0703f' } })),
+                label: { show: true, position: 'right', color: FARM.ink, fontWeight: 700 } }],
         };
     }, [breeds]);
 
@@ -90,8 +95,8 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
         xAxis: axis.category(finance.map((f) => monthLabel(f.month))),
         yAxis: axis.value((v) => `${v / 1000}k`),
         series: [
-            { name: 'Income', type: 'bar', data: finance.map((f) => f.in), itemStyle: { color: '#1d5c2e', borderRadius: [3, 3, 0, 0] } },
-            { name: 'Spending', type: 'bar', data: finance.map((f) => f.out), itemStyle: { color: '#b8892b', borderRadius: [3, 3, 0, 0] } },
+            { name: 'Income', type: 'bar', data: finance.map((f) => f.in), itemStyle: { color: FARM.grass, borderRadius: [4, 4, 0, 0], borderColor: '#3f6a26', borderWidth: 1 } },
+            { name: 'Spending', type: 'bar', data: finance.map((f) => f.out), itemStyle: { color: FARM.wheat, borderRadius: [4, 4, 0, 0], borderColor: '#9a7020', borderWidth: 1 } },
         ],
     } : null), [finance]);
 
@@ -155,10 +160,10 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                     </div>
                 </Panel>
                     ) : null}
-                    {charts && !showCharts ? <Panel title="Charts" description="Average weight, herd by breed, income and spending"><button type="button" onClick={() => setShowCharts(true)} className="w-full rounded-tile border border-rule py-2.5 text-sm font-semibold text-cobalt-800 hover:bg-glaze">Show charts</button></Panel> : null}
-                    {growthChart && showCharts ? <Panel title="Average weight" description="All weighings, by month"><Chart option={growthChart} label="Average herd weight by month" height={220} onSelect={() => router.visit('/weights')} /></Panel> : null}
-                    {breedChart && showCharts ? <Panel title="Herd by breed" description="Goats on the farm · tap a bar to see them"><Chart option={breedChart} label="Goats by breed" height={Math.max(110, breeds.length * 36 + 24)} onSelect={(name) => router.visit(`/goats?breed=${encodeURIComponent(name)}`)} /></Panel> : null}
-                    {financeChart && showCharts ? <Panel title="Income and spending" description="Last 6 months"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></Panel> : null}
+                    {charts && !showCharts ? <Panel title="Charts" description="Average weight, herd by breed, income and spending"><button type="button" onClick={() => setShowCharts(true)} className="kk-fix kk-lift w-full py-2.5">Show Charts</button></Panel> : null}
+                    {growthChart && showCharts ? <Panel title="Average weight" description="All weighings, by month"><div className="kk-graph"><Chart option={growthChart} label="Average herd weight by month" height={220} onSelect={() => router.visit('/weights')} /></div></Panel> : null}
+                    {breedChart && showCharts ? <Panel title="Herd by breed" description="Goats on the farm · tap a bar to see them"><div className="kk-graph"><Chart option={breedChart} label="Goats by breed" height={Math.max(110, breeds.length * 36 + 24)} onSelect={(name) => router.visit(`/goats?breed=${encodeURIComponent(name)}`)} /></div></Panel> : null}
+                    {financeChart && showCharts ? <Panel title="Income and spending" description="Last 6 months"><div className="kk-graph"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></div></Panel> : null}
                     {kiddings.length ? (
                         <Panel title="Next kiddings" flush description="Mating date + gestation days">
                             <ul className="divide-y divide-rule">
