@@ -248,7 +248,7 @@ function HealthShortcuts({ h }: { h: HealthLinks }) {
     return (
         <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
             {h.canCheck ? item('/health?tab=checkups', 'Health checkup', h.checkupsDue ? `${h.checkupsDue} due` : 'All up to date', h.checkupsDue ? 'border-watch-400 bg-watch-100 text-watch-700' : 'border-ok-700/30 bg-ok-100 text-ok-700') : null}
-            {h.canCase ? item('/health?new=case', 'Open a case', null, 'border-rule bg-tile text-cobalt-900') : null}
+            {h.canCase || h.canCheck ? item('/health?new=entry', 'New health entry', 'Checkup, pregnancy, disease', 'border-rule bg-tile text-cobalt-900') : null}
             {item('/health?new=report', 'Report concern', h.openReports ? `${h.openReports} open` : null, 'border-rule bg-tile text-cobalt-900')}
             {h.canCare ? item('/health?new=care', 'Preventive care', 'Vaccine, deworming', 'border-rule bg-tile text-cobalt-900') : null}
         </div>

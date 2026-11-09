@@ -17,6 +17,12 @@ class HealthCase extends Model
 
     public const ACTIVE = ['open', 'under_treatment', 'monitoring'];
 
+    /** D-100: common goat conditions offered in a list (anything else is typed). The vet decides the diagnosis. */
+    public const CONDITIONS = [
+        'Pneumonia', 'Diarrhoea', 'Bloat', 'Fever', 'Worms / internal parasites', 'Ticks / mites / lice', 'Foot rot / lameness', 'Mastitis', 'Eye infection',
+        'Skin disease', 'PPR (Peste des petits ruminants)', 'Enterotoxaemia', 'Abortion', 'Retained placenta', 'Weak kid', 'Poisoning', 'Off feed', 'Wound / injury', 'Fracture',
+    ];
+
     public function animal()
     {
         return $this->belongsTo(Animal::class);

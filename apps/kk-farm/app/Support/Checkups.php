@@ -26,6 +26,38 @@ final class Checkups
         return (int) (Tenant::org()?->checkup_interval_days ?: 14);
     }
 
+    /** @return Collection<string, Mating> each doe's current pregnancy (a pregnant mating), by goat id (D-100) */
+    public static function pregnancies(): Collection
+    {
+        return Mating::where('status', 'pregnant')->orderByDesc('mated_on')->get()->unique('dam_id')->keyBy('dam_id');
+    }
+
+    /**
+     * D-100: one pregnancy as a thread: day N of the gestation, expected kidding, and every check since mating with its
+     * day of pregnancy, weight and temperature, for the goat page and its graph.
+     */
+    public static function pregnancyThread(Animal $doe): ?array
+    {
+        $m = Mating::with('sire')->where('dam_id', $doe->id)->where('status', 'pregnant')->orderByDesc('mated_on')->first();
+        if (! $m) {
+            return null;
+        }
+        $gestation = (int) (Tenant::org()?->gestation_days ?? 150);
+        $checks = HealthCheckup::where('animal_id', $doe->id)->where('checked_on', '>=', $m->mated_on)->orderBy('checked_on')->orderBy('id')->get();
+        $weights = WeightRecord::where('animal_id', $doe->id)->where('measured_on', '>=', $m->mated_on)->orderBy('measured_on')->get();
+
+        return [
+            'matedOn' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'sire' => $m->sire?->farm_number,
+            'day' => (int) $m->mated_on->diffInDays(now()->startOfDay()), 'gestation' => $gestation,
+            'daysLeft' => $m->expected_kidding_on ? (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false) : null,
+            'checks' => $checks->map(fn (HealthCheckup $c) => [
+                'on' => $c->checked_on->format('j M Y'), 'day' => (int) $m->mated_on->diffInDays($c->checked_on), 'weight' => $c->weight_kg, 'temp' => $c->temperature_f,
+                'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'by' => $c->examiner,
+            ])->values()->all(),
+            'weights' => $weights->map(fn (WeightRecord $w) => ['day' => (int) $m->mated_on->diffInDays($w->measured_on), 'kg' => (float) $w->weight_kg, 'on' => $w->measured_on->format('j M')])->values()->all(),
+        ];
+    }
+
     /** @return Collection<string, HealthCheckup> each goat's latest checkup, by goat id */
     public static function latest(): Collection
     {

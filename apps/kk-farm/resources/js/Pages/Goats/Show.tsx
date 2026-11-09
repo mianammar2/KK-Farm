@@ -25,12 +25,18 @@ type Props = {
     cost: { direct: number; sharedPerHead: number; total: number } | null;
     pens: Array<{ id: number; name: string; purpose: string }>;
     can: { edit: boolean; remove: boolean };
+    pregnancy: Pregnancy | null;
+};
+type Pregnancy = {
+    matedOn: string; expected: string | null; sire: string | null; day: number; gestation: number; daysLeft: number | null;
+    checks: Array<{ on: string; day: number; weight: number | null; temp: number | null; ultrasound: string | null; fetuses: number | null; by: string }>;
+    weights: Array<{ day: number; kg: number; on: string }>;
 };
 
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy } = props;
     const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('overview');
@@ -130,6 +136,7 @@ export default function GoatShow(props: Props) {
                         {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={260} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
                     </Panel>
                     <div className="space-y-4">
+                        {pregnancy ? <PregnancyPanel p={pregnancy} /> : null}
                         <Panel title="Identity">
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
@@ -348,4 +355,37 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
 function parentLink(parent: { id: string | null; number: string } | null | undefined) {
     if (!parent) return null;
     return parent.id ? <Link href={`/goats/${parent.id}`} className="text-cobalt-800 hover:underline">{parent.number}</Link> : <span>{parent.number} <span className="text-sm font-normal text-ink-faint">(not registered)</span></span>;
+}
+
+/**
+ * D-100: the pregnancy as one thread: day N of the gestation counted from the mating, expected kidding, every check
+ * with its day of pregnancy, weight and temperature, and her weight by day of pregnancy.
+ */
+function PregnancyPanel({ p }: { p: Pregnancy }) {
+    const pct = Math.min(100, Math.max(0, Math.round((p.day / p.gestation) * 100)));
+    const chart = useMemo(() => (p.weights.length ? {
+        tooltip: { trigger: 'axis', formatter: (x: Array<{ data: [number, number] }>) => `Day ${x[0].data[0]}: ${x[0].data[1]} KG` },
+        grid: { left: 8, right: 12, top: 14, bottom: 6, containLabel: true },
+        xAxis: { type: 'value', name: 'Day', min: 0, max: p.gestation, splitLine: { show: false }, axisLabel: { color: '#5e6a5f' } },
+        yAxis: { ...axis.value((v) => `${v}`), scale: true },
+        series: [{ type: 'line', data: p.weights.map((w) => [w.day, w.kg]), symbolSize: 8, lineStyle: { width: 2.5, color: '#7a3e8f' }, itemStyle: { color: '#7a3e8f' },
+            markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#c9a23f' }, data: [{ xAxis: p.day }], label: { formatter: 'today' } } }],
+    } : null), [p]);
+    return (
+        <Panel title={`Pregnant · day ${p.day} of ${p.gestation}`} description={`Mated ${p.matedOn}${p.sire ? ` with ${p.sire}` : ''} · kidding about ${p.expected ?? '—'}${p.daysLeft !== null ? ` (${p.daysLeft} days)` : ''}`}>
+            <div className="h-2.5 overflow-hidden rounded-full bg-manganese-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Pregnancy progress">
+                <div className="h-full rounded-full bg-manganese-600" style={{ width: `${pct}%` }} />
+            </div>
+            {chart ? <div className="mt-3"><Chart option={chart} label="Weight by day of pregnancy" height={160} /></div> : null}
+            {p.checks.length ? (
+                <table className="mt-3 w-full text-sm">
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1">Date</th><th>Day</th><th>KG</th><th>°F</th><th>Ultrasound</th></tr></thead>
+                    <tbody className="divide-y divide-rule">{p.checks.map((c, i) => (
+                        <tr key={i}><td className="py-1 whitespace-nowrap">{c.on}</td><td className="font-semibold text-manganese-600">{c.day}</td><td>{c.weight ?? '—'}</td><td>{c.temp ?? '—'}</td>
+                            <td>{c.ultrasound === 'pregnant' ? `Pregnant${c.fetuses ? ` (${c.fetuses})` : ''}` : c.ultrasound === 'not_pregnant' ? 'Not pregnant' : c.ultrasound ? 'Not clear' : '—'}</td></tr>
+                    ))}</tbody>
+                </table>
+            ) : <p className="mt-3 text-sm text-ink-soft">No checks since mating yet.</p>}
+        </Panel>
+    );
 }

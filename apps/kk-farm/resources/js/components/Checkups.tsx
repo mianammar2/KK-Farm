@@ -3,12 +3,12 @@ import { CalendarClock, Pencil, Plus, Stethoscope, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button, Chip, cx, Field, Panel } from './ui';
 
-type Goat = { id: string; number: string; name: string | null; sex: 'male' | 'female'; pen: string | null; repro: string | null; last: { on: string; outcome: string; by: string } | null; due: boolean; next: string | null; recheck: string | null };
+type Goat = { id: string; number: string; name: string | null; sex: 'male' | 'female'; pen: string | null; repro: string | null; last: { on: string; outcome: string; by: string } | null; due: boolean; next: string | null; recheck: string | null; matedOn?: string | null };
 type Recent = { id: number; on: string; goat: string; goatId: string; outcome: string; temp: number | null; score: number | null; weight: number | null; ultrasound: string | null; fetuses: number | null; flags: string[]; findings: string | null; caseId: number | null; by: string;
     dateIso: string; days: number | null; followUp: string | null; followUpNote: string | null; sex: 'male' | 'female'; canEdit: boolean; edits: number };
 export type CheckupData = {
     goats: Goat[]; recent: Recent[]; interval: number; normal: Record<'temperature_f', [number, number]>;
-    sires: Array<{ id: string; number: string }>; canCheck: boolean; canOpenCase: boolean; gestation: number;
+    sires: Array<{ id: string; number: string }>; canCheck: boolean; canOpenCase: boolean; gestation: number; conditions?: string[];
 };
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -51,7 +51,8 @@ export default function Checkups({ data }: { data: CheckupData }) {
                                     <span className={cx('size-2.5 shrink-0 rounded-full', g.due ? 'bg-watch-400' : 'bg-ok-700')} title={g.due ? 'Due' : 'Checked'} />
                                     <div className="min-w-0 flex-1">
                                         <Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-900 hover:underline">{g.number}</Link>
-                                        <span className="ml-2 text-sm text-ink-soft">{g.sex === 'female' ? '♀' : '♂'}{g.name ? ` ${g.name}` : ''}{g.repro === 'pregnant' ? ' · pregnant' : ''}</span>
+                                        <span className="ml-2 text-sm text-ink-soft">{g.sex === 'female' ? '♀' : '♂'}{g.name ? ` ${g.name}` : ''}</span>
+                                        {g.matedOn ? <span className="ml-2 rounded-full bg-manganese-100 px-2 py-0.5 text-xs font-semibold text-manganese-600">Pregnant · day {Math.round((new Date(`${date}T12:00:00`).getTime() - new Date(`${g.matedOn}T12:00:00`).getTime()) / 86400000)}</span> : null}
                                         <div className="truncate text-xs text-ink-soft">{g.pen ?? 'No pen'} · {g.last ? <>last {g.last.on} by {g.last.by} <Chip className={OUTCOME[g.last.outcome]?.chip}>{OUTCOME[g.last.outcome]?.label}</Chip></> : 'never checked'}</div>
                                         {g.next || g.recheck ? <div className="text-xs text-ink-soft">{g.recheck ? <span className="font-semibold text-watch-700">Recheck {g.recheck} · </span> : null}{g.next ? `next routine ${g.next}` : ''}</div> : null}
                                     </div>
@@ -109,6 +110,9 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
     // When the checkup date changes on a correction, the form follows the date typed here (existing) or the page's date (new).
     const [own, setOwn] = useState(existing ? existing.dateIso : '');
     const checkDate = existing ? own : date;
+    // D-100: a doe already pregnant: her day of pregnancy on this date is counted from the mating.
+    const counted = goat.matedOn ? Math.round((new Date(`${checkDate}T12:00:00`).getTime() - new Date(`${goat.matedOn}T12:00:00`).getTime()) / 86400000) : null;
+    const setUltrasound = (v: string) => form.setData((d) => ({ ...d, ultrasound: v, days_pregnant: v === 'pregnant' && !d.days_pregnant && counted !== null && counted > 0 ? String(counted) : d.days_pregnant }));
     const recheckIn = (days: number) => { const d = new Date(`${checkDate}T12:00:00`); d.setDate(d.getDate() + days); form.setData('follow_up_on', d.toISOString().slice(0, 10)); };
     const e = form.errors as Record<string, string>;
     /** Live check against the normal range; the vet decides what it means. */
@@ -139,7 +143,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
                 <Field label="Body condition (1–5, optional)"><select className="field" value={form.data.body_score} onChange={(x) => form.setData('body_score', x.target.value)}><option value="">Not set</option>{['1 · Very thin', '2 · Thin', '3 · Good', '4 · Fat', '5 · Very fat'].map((l, i) => <option key={l} value={i + 1}>{l}</option>)}</select></Field>
                 {num('weight_kg', 'Weight', 'KG')}
                 {goat.sex === 'female' ? (
-                    <Field label="Ultrasound"><select className="field" value={form.data.ultrasound} onChange={(x) => form.setData('ultrasound', x.target.value)}><option value="">Not done</option>{Object.entries(SOUND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <Field label="Ultrasound"><select className="field" value={form.data.ultrasound} onChange={(x) => setUltrasound(x.target.value)}><option value="">Not done</option>{Object.entries(SOUND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 ) : null}
             </div>
             {form.data.ultrasound === 'pregnant' ? (

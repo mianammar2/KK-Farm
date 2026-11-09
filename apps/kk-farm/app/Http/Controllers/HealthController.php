@@ -40,6 +40,7 @@ class HealthController extends Controller
 
         // D-095: routine checkups: every goat with its latest checkup and whether one is due.
         $latest = \App\Support\Checkups::latest();
+        $pregnant = \App\Support\Checkups::pregnancies(); // D-100: day of pregnancy is counted from the mating
         $interval = \App\Support\Checkups::interval();
         $since = now()->subDays($interval)->toDateString();
         $checkupGoats = Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => [
@@ -48,6 +49,7 @@ class HealthController extends Controller
             'due' => ! isset($latest[$a->id]) || $latest[$a->id]->checked_on->toDateString() <= $since,
             'next' => isset($latest[$a->id]) ? $latest[$a->id]->checked_on->copy()->addDays($interval)->format('j M') : null, // D-099
             'recheck' => isset($latest[$a->id]) && $latest[$a->id]->follow_up_on ? $latest[$a->id]->follow_up_on->format('j M') : null,
+            'matedOn' => isset($pregnant[$a->id]) ? $pregnant[$a->id]->mated_on->toDateString() : null,
         ])->values();
 
         $revisions = \App\Support\Revisions::counts('checkup', \App\Models\HealthCheckup::orderByDesc('checked_on')->orderByDesc('id')->limit(60)->pluck('id'));
@@ -66,7 +68,7 @@ class HealthController extends Controller
                 ]),
                 'normal' => \App\Models\HealthCheckup::NORMAL,
                 'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number]),
-                'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'), 'gestation' => (int) (\App\Support\Tenant::org()?->gestation_days ?: 150),
+                'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'), 'gestation' => (int) (\App\Support\Tenant::org()?->gestation_days ?: 150), 'conditions' => HealthCase::CONDITIONS,
             ],
             'cases' => $cases->map(fn (HealthCase $c) => $this->caseRow($c, $withdrawal[$c->animal_id] ?? null)),
             // Concerns reported by staff (and older records) that no case covers yet.

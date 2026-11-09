@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, GoatLabel, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import type { Health as HealthState, Option, SharedProps } from '../types';
 import Checkups, { type CheckupData } from '../components/Checkups';
+import HealthEntry from '../components/HealthEntry';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -44,7 +45,7 @@ export default function Health(props: Props) {
     const isVet = !!auth?.gates.includes('clinical');
     const canCase = !!auth?.gates.includes('open_cases'); // D-095: vet or administrator
     // D-097: forms open from + buttons (or a dashboard shortcut: /health?new=case|report|care), not always on the page.
-    const [sheet, setSheet] = useState<'case' | 'report' | 'care' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'case' | 'report' | 'care' | null));
+    const [sheet, setSheet] = useState<'entry' | 'case' | 'report' | 'care' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'entry' | 'case' | 'report' | 'care' | null));
     const action = (label: string, icon: React.ReactNode, onClick: () => void, primary = false) => (
         <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
             <Plus size={16} aria-hidden />{icon}{label}
@@ -59,7 +60,7 @@ export default function Health(props: Props) {
             <PageHeader title="Veterinary & health" description={isVet ? 'Checkups, cases, treatments and withdrawal. Every record carries your name.' : canCase ? 'Checkups and cases. Treatments and withdrawal dates are set by a veterinarian.' : 'Report a concern. A veterinarian decides what it is.'} />
             <div className="mb-4 flex flex-wrap gap-2">
                 {props.checkups.canCheck ? action('Checkup', <Stethoscope size={16} aria-hidden />, () => setTab('checkups'), true) : null}
-                {canCase ? action('Open case', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('case'); }) : null}
+                {canCase || props.checkups.canCheck ? action('New health entry', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('entry'); }) : null}
                 {action('Report concern', <AlertTriangle size={16} aria-hidden />, () => setSheet('report'))}
                 {isVet ? action('Preventive care', <Syringe size={16} aria-hidden />, () => setSheet('care')) : null}
             </div>
@@ -146,6 +147,7 @@ export default function Health(props: Props) {
 
                 {sheet ? (
                     <Sheet onClose={() => { setSheet(null); setFromReport(null); }}>
+                        {sheet === 'entry' ? <HealthEntry data={{ ...props.checkups, conditions: props.checkups.conditions ?? [] }} severities={severities} onDone={() => { setSheet(null); router.reload(); }} /> : null}
                         {sheet === 'case' && canCase ? <CaseForm key={fromReport?.id ?? 'new'} goats={goats} severities={severities} report={fromReport} onDone={() => { setFromReport(null); setSheet(null); setTab('cases'); }} /> : null}
                         {sheet === 'report' ? <ObservationForm goats={goats} onDone={() => setSheet(null)} /> : null}
                         {sheet === 'care' && isVet ? <PreventiveForm goats={goats} onDone={() => setSheet(null)} /> : null}

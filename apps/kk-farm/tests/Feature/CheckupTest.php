@@ -89,4 +89,19 @@ class CheckupTest extends TestCase
         $this->actingAs($this->user('vet'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'ultrasound' => 'not_pregnant', 'outcome' => 'healthy'])->assertSessionHasNoErrors();
         $this->assertSame(['not_pregnant', 'open'], [$m->fresh()->status, $this->doe->fresh()->repro_status]);
     }
+
+    /** D-100: 35 days pregnant on 21 Oct is day 42 on 28 Oct; the goat page shows the thread with weights by day. */
+    public function test_the_pregnancy_days_count_on_from_the_first_check_and_show_as_a_thread(): void
+    {
+        $vet = $this->user('vet');
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-21', 'weight_kg' => 18.6, 'ultrasound' => 'pregnant', 'days_pregnant' => 35, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $this->actingAs($vet)->get('/health')->assertInertia(fn (AssertableInertia $p) => $p->where('checkups.goats.0.matedOn', '2026-09-16'));
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-28', 'weight_kg' => 19.4, 'ultrasound' => 'pregnant', 'days_pregnant' => 42, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+
+        $this->assertSame(1, Mating::count(), 'the second check confirms the same pregnancy');
+        $this->assertSame('2026-09-16', Mating::sole()->mated_on->toDateString());
+        $this->actingAs($vet)->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p
+            ->where('pregnancy.checks.0.day', 35)->where('pregnancy.checks.1.day', 42)->where('pregnancy.checks.1.weight', 19.4)
+            ->where('pregnancy.weights.1.day', 42)->where('pregnancy.matedOn', '16 Sep 2026')->where('pregnancy.expected', '13 Feb 2027'));
+    }
 }
