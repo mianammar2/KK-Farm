@@ -11,6 +11,7 @@ import { titleCase } from '../lib/titleCase';
 import { useFive } from '../lib/useFive';
 import { BalanceTag, type Balance, type Requirement } from '../components/FeedRequirement';
 import FarmScene from '../components/FarmScene';
+import FeedScene from '../components/FeedScene';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -335,46 +336,19 @@ type FeedSummary = Omit<Requirement, 'sheds' | 'feeds'> & {
 
 /** D-121: feed needed today like Sheds and Pens: totals, then sheds and pen cards; a pen opens its goats on Feeding → Requirement. */
 function FeedAtAGlance({ req }: { req: FeedSummary }) {
-    const [sheds, moreSheds] = useFive(req.sheds);
     const s = req.supply;
     const pens = req.sheds.reduce((n, x) => n + x.pens.length, 0);
-    const box = (label: string, value: string, note?: string) => (
-        <div className="rounded-tile bg-glaze px-3 py-2"><div className="text-xs text-ink-soft">{label}</div><div className="text-lg font-bold tabular-nums text-cobalt-900">{value}</div>{note ? <div className="text-xs text-ink-faint">{note}</div> : null}</div>
-    );
     return (
         <Panel className="mt-4" flush title="Feed Requirement Today" description={`${plural(req.planned, 'goat', 'goats')} in ${plural(pens, 'pen', 'pens')}${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
             actions={<Link href="/feeding?tab=requirement" className="text-sm font-semibold text-turq-800 hover:underline">Each Goat</Link>}>
-            <div className={`grid grid-cols-2 gap-2 border-b border-rule px-4 py-3 sm:grid-cols-3 ${s.cpDay !== null ? 'lg:grid-cols-4' : ''}`}>
-                {box('Needed Today', `${s.needDay} KG`, req.cost ? `PKR ${req.cost.toLocaleString('en-PK')}` : undefined)}
-                {box('Needed This Week', `${s.needWeek} KG`)}
-                {box(`Needed in ${s.month}`, `${s.needMonth} KG`, `${s.needLeft} KG for the ${s.daysLeft} days left`)}
-                {s.cpDay !== null ? box('Crude Protein Today', `${s.cpDay} KG`, `${s.cpMonth} KG in ${s.month}`) : null}
-            </div>
-            <ul className="divide-y divide-rule">
-                {sheds.map((sh) => <FeedShedRow key={sh.id ?? 'none'} shed={sh} tracking={req.tracking} />)}
-            </ul>
-            {moreSheds}
+            {/* D-134: drawn like the farm's feed store */}
+            <FeedScene tracking={req.tracking} sheds={req.sheds} sacks={[
+                { label: 'Today', value: `${s.needDay} KG`, note: req.cost ? `PKR ${req.cost.toLocaleString('en-PK')}` : undefined },
+                { label: 'This Week', value: `${s.needWeek} KG` },
+                { label: s.month, value: `${s.needMonth} KG`, note: `${s.needLeft} KG for ${s.daysLeft} days left` },
+                ...(s.cpDay !== null ? [{ label: 'Crude Protein', value: `${s.cpDay} KG`, note: `${s.cpMonth} KG in ${s.month}`, tone: 'green' as const }] : []),
+            ]} />
         </Panel>
     );
 }
 
-function FeedShedRow({ shed, tracking }: { shed: FeedSummary['sheds'][number]; tracking: boolean }) {
-    const [pens, more] = useFive(shed.pens);
-    return (
-        <li className="px-4 py-3">
-            <div className="mb-2 flex flex-wrap items-baseline gap-x-2"><span className="font-mono font-semibold text-cobalt-900">{shed.name}</span>{shed.typeName ? <span className="text-xs text-ink-soft">{shed.typeName}</span> : null}
-                <span className="ml-auto text-sm font-semibold text-cobalt-900">{shed.kgDay} KG/day{shed.cpDay ? <span className="font-normal text-ink-soft"> · CP {shed.cpDay} KG</span> : null}</span></div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                {pens.map((p) => (
-                    <Link key={p.id ?? 'none'} href={p.id ? `/feeding?tab=requirement&pen=${p.id}` : '/feeding?tab=requirement'} className="kk-lift rounded-tile border border-rule bg-glaze/60 px-3 py-2 hover:border-cobalt-700">
-                        <span className="block truncate font-mono text-xs font-semibold text-ink-soft" title={p.name}>{p.name}</span>
-                        <span className="block text-2xl font-bold tabular-nums text-cobalt-900"><CountUp to={p.kgDay} /><span className="text-sm font-semibold text-ink-soft"> KG/day</span></span>
-                        <span className="block text-xs text-ink-soft">{[plural(p.count, 'goat', 'goats'), p.cpDay ? `CP ${Math.round(p.cpDay * 1000).toLocaleString('en-PK')} g` : null, p.unplanned ? `${p.unplanned} not planned` : null].filter(Boolean).join(' · ')}</span>
-                        {tracking ? <BalanceTag balance={p.balance} diff={p.diff} className="mt-1" /> : null}
-                    </Link>
-                ))}
-            </div>
-            {more ? <div className="mt-2 -mx-4">{more}</div> : null}
-        </li>
-    );
-}

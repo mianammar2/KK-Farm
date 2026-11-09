@@ -28,27 +28,7 @@ function Barn({ shed, index }: { shed: SceneShed; index: number }) {
     const capacity = shed.pens.reduce((n, p) => n + (p.capacity ?? 0), 0);
     return (
         <section className="kk-barn kk-rise" style={{ animationDelay: `${index * 70}ms` }} aria-label={`${shed.name}: ${shed.goats} goats`}>
-            {/* Roof: corrugated tin on a pitched frame, the name board hanging on the gable. */}
-            <div className="relative">
-                <svg viewBox="0 0 400 54" preserveAspectRatio="none" className="block h-12 w-full sm:h-14" aria-hidden>
-                    <defs>
-                        <pattern id={`tin-${shed.id}`} width="9" height="54" patternUnits="userSpaceOnUse">
-                            <rect width="9" height="54" fill="#8a9a8c" />
-                            <rect width="4" height="54" fill="#a3b2a4" />
-                            <rect x="4" width="1" height="54" fill="#6f7f72" />
-                        </pattern>
-                    </defs>
-                    <polygon points="0,54 30,6 370,6 400,54" fill={`url(#tin-${shed.id})`} />
-                    <polygon points="30,6 370,6 365,0 35,0" fill="#5d6b5f" />
-                    <rect x="0" y="50" width="400" height="4" fill="#4b5a4d" />
-                </svg>
-                <div className="absolute inset-x-0 top-1 flex justify-center sm:top-1.5">
-                    <div className="kk-board">
-                        <span className="font-mono text-sm font-bold tracking-wide sm:text-base">{shed.name}</span>
-                        <span className="hidden text-[11px] font-semibold opacity-85 sm:inline">{shed.typeName}</span>
-                    </div>
-                </div>
-            </div>
+            <BarnRoof id={shed.id} name={shed.name} typeName={shed.typeName} />
             {/* Inside: posts at both ends, straw floor, the pens. */}
             <div className="kk-barn-body">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 px-1 text-sm">
@@ -125,5 +105,34 @@ function Legend() {
             {item('Female', true)}{item('Male', false)}{item('Needs Attention', true, true)}
             <span>Tap a pen to see its goats.</span>
         </div>
+    );
+}
+
+/** D-133/D-134: the barn roof (corrugated tin on a pitched frame) with the shed's name board; shared by the farm scenes. */
+export function BarnRoof({ id, name, typeName }: { id: number | string; name: string; typeName: string | null }) {
+    const shed = { id, name, typeName };
+    return (
+        <>
+                        <div className="relative">
+                <svg viewBox="0 0 400 54" preserveAspectRatio="none" className="block h-12 w-full sm:h-14" aria-hidden>
+                    <defs>
+                        <pattern id={`tin-${shed.id}`} width="9" height="54" patternUnits="userSpaceOnUse">
+                            <rect width="9" height="54" fill="#8a9a8c" />
+                            <rect width="4" height="54" fill="#a3b2a4" />
+                            <rect x="4" width="1" height="54" fill="#6f7f72" />
+                        </pattern>
+                    </defs>
+                    <polygon points="0,54 30,6 370,6 400,54" fill={`url(#tin-${shed.id})`} />
+                    <polygon points="30,6 370,6 365,0 35,0" fill="#5d6b5f" />
+                    <rect x="0" y="50" width="400" height="4" fill="#4b5a4d" />
+                </svg>
+                <div className="absolute inset-x-0 top-1 flex justify-center sm:top-1.5">
+                    <div className="kk-board">
+                        <span className="font-mono text-sm font-bold tracking-wide sm:text-base">{shed.name}</span>
+                        <span className="hidden text-[11px] font-semibold opacity-85 sm:inline">{shed.typeName}</span>
+                    </div>
+                </div>
+            </div>
+        </>
     );
 }
