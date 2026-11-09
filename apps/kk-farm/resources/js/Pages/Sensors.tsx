@@ -209,7 +209,7 @@ function ConnectTab({ endpoint, types }: { endpoint: string; types: TypeDef[] })
             </Panel>
             <Panel title="Readings each device type sends">
                 <ul className="space-y-2 text-sm">{types.filter((t) => t.metrics.length).map((t) => (
-                    <li key={t.key}><span className="font-semibold text-cobalt-900">{t.label}:</span> {t.metrics.map((m) => <code key={m.key} className="mr-1 rounded bg-glaze px-1 font-mono">{m.key}{m.unit ? ` (${m.unit})` : ''}</code>)}<span className="block text-ink-soft">{t.help}</span></li>
+                    <li key={t.key}><span className="font-semibold text-cobalt-900">{t.label}:</span> {t.metrics.map((m) => <code key={m.key} className="mr-1 inline-block break-all rounded bg-glaze px-1 font-mono">{m.key}{m.unit ? ` (${m.unit})` : ''}</code>)}<span className="block text-ink-soft">{t.help}</span></li>
                 ))}</ul>
                 <p className="mt-3 text-xs text-ink-soft">Scales and RFID gates also send the tag (<code className="font-mono">rfid</code>). A gate sends 1 when a goat goes out to the open area and 0 when it comes back in. Gates and other actuators keep a local fail-safe and a manual override; the cloud is never the only control path.</p>
             </Panel>

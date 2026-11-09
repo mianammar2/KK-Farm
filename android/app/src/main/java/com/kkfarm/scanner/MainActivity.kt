@@ -93,6 +93,11 @@ class MainActivity : Activity() {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            // D-125: an app screen: no pinch zoom, no zoom buttons, the system font size does not blow up the layout.
+            settings.setSupportZoom(false)
+            settings.builtInZoomControls = false
+            settings.displayZoomControls = false
+            settings.textZoom = 100
             settings.userAgentString = settings.userAgentString + " KKFarmScanner/" + BuildConfigVersion.NAME
             addJavascriptInterface(Bridge(), "KKNative")
             // A WebView ignores <input type="file"> unless the app handles it: this opens the C72 camera

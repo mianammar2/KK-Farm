@@ -10,6 +10,9 @@ struct FarmView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        // D-125: enforce the phone viewport even if a page's own tag is different.
+        let fit = "var m=document.querySelector('meta[name=viewport]');if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}m.content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';"
+        config.userContentController.addUserScript(WKUserScript(source: fit, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         config.websiteDataStore = .default() // keeps the session cookie between launches
         config.allowsInlineMediaPlayback = true
         let web = WKWebView(frame: .zero, configuration: config)
@@ -17,6 +20,14 @@ struct FarmView: UIViewRepresentable {
         web.allowsBackForwardNavigationGestures = true
         web.navigationDelegate = context.coordinator
         web.scrollView.contentInsetAdjustmentBehavior = .never // the web app pads for the notch itself
+        // D-125: an app, not a web page: no pinch or double-tap zoom, no sideways scrolling.
+        web.scrollView.minimumZoomScale = 1
+        web.scrollView.maximumZoomScale = 1
+        web.scrollView.bouncesZoom = false
+        web.scrollView.pinchGestureRecognizer?.isEnabled = false
+        web.scrollView.alwaysBounceHorizontal = false
+        web.scrollView.showsHorizontalScrollIndicator = false
+        web.scrollView.delegate = context.coordinator
         let refresh = UIRefreshControl()
         refresh.addTarget(context.coordinator, action: #selector(Coordinator.pulled(_:)), for: .valueChanged)
         web.scrollView.refreshControl = refresh
@@ -27,7 +38,10 @@ struct FarmView: UIViewRepresentable {
 
     func updateUIView(_ web: WKWebView, context: Context) {}
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, UIScrollViewDelegate {
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? { nil }
+        func scrollViewDidScroll(_ scrollView: UIScrollView) { if scrollView.contentOffset.x != 0 { scrollView.contentOffset.x = 0 } }
+
         weak var web: WKWebView?
         private var hiddenAt: Date?
         private var offline = false
