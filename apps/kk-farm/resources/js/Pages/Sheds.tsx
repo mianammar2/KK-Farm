@@ -1,6 +1,6 @@
 import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
-import { Pencil, Plus } from 'lucide-react';
+import { LocateFixed, MapPin, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
@@ -11,9 +11,11 @@ import Sheet from '../components/Sheet';
 
 type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null };
 type Pen = { id: number; name: string; code: string; kind: 'pen' | 'open_area'; purpose: string; capacity: number | null; count: number; goats: Goat[] };
-type Shed = { id: number; code: string; name: string; status: string; type: string | null; typeName: string | null; purpose: string | null; pens: Pen[] };
+type Shed = { id: number; farmId: number | null; code: string; name: string; status: string; type: string | null; typeName: string | null; purpose: string | null; pens: Pen[] };
 type UnitType = { code: string; name: string; purpose: string };
-type Props = { sheds: Shed[]; types: UnitType[]; prefix: string; recent: Array<{ id: number; goat_id: string; number: string; summary: string; recorded_by: string }> };
+/** D-128: a farm (location). Organization → Farm → Shed → Pen. */
+type FarmLoc = { id: number; code: string; name: string; address: string | null; city: string | null; district: string | null; province: string | null; country: string | null; latitude: number | null; longitude: number | null; notes: string | null; active: boolean; place: string; sheds: number };
+type Props = { farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string; recent: Array<{ id: number; goat_id: string; number: string; summary: string; recorded_by: string }> };
 
 /** Same rule as Pen::standardName on the server (D-055): the part after the "Pen" prefix. */
 /** D-057: the pen number from what was typed or stored ("P01", "pen 1", "1" → 1); 0 when there is none. */
@@ -21,10 +23,10 @@ const penNumber = (text: string) => { const rest = text.replace(/^\s*(open\s*are
 const penCode = (n: number, area = false) => `${area ? 'OA' : 'P'}${String(n).padStart(2, '0')}`;
 
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
-type Editing = { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen; area?: boolean } | null;
+type Editing = { kind: 'farm'; farm?: FarmLoc } | { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen; area?: boolean } | null;
 
-export default function Sheds({ sheds, types, prefix, recent, board }: Props & { board: ShedBoardData }) {
-    usePoll(LIVE_MS, { only: ['sheds', 'recent', 'board'] }); // D-086: live
+export default function Sheds({ farms, sheds, types, prefix, recent, board }: Props & { board: ShedBoardData }) {
+    usePoll(LIVE_MS, { only: ['farms', 'sheds', 'recent', 'board'] }); // D-086: live
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
     const active = sheds.filter((s) => s.status === 'active');
@@ -45,17 +47,33 @@ export default function Sheds({ sheds, types, prefix, recent, board }: Props & {
             <PageHeader
                 title="Sheds"
                 description={`${active.length} shed${active.length === 1 ? '' : 's'} in use, ${planned.length} planned, ${goats.length} goats housed.`}
-                actions={canManage ? <AddButton label="Add a shed" onClick={() => setEditing({ kind: 'shed' })} /> : null}
+                actions={canManage ? <><AddButton primary={false} label="Add a farm" onClick={() => setEditing({ kind: 'farm' })} /><AddButton label="Add a shed" onClick={() => setEditing({ kind: 'shed' })} /></> : null}
             />
 
             {/* D-127: adding or editing a shed, pen or open area opens in a panel. */}
-            {editing ? <Sheet onClose={() => setEditing(null)}><Editor key={JSON.stringify([editing.kind, editing.shed?.id, editing.kind === 'pen' ? `${editing.pen?.id}-${editing.area}` : null])} editing={editing} sheds={sheds} types={types} prefix={prefix} onDone={() => setEditing(null)} /></Sheet> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)}><Editor key={JSON.stringify([editing.kind, editing.kind === 'farm' ? editing.farm?.id : editing.shed?.id, editing.kind === 'pen' ? `${editing.pen?.id}-${editing.area}` : null])} editing={editing} farms={farms} sheds={sheds} types={types} prefix={prefix} onDone={() => setEditing(null)} /></Sheet> : null}
 
             {/* D-120: drag or tick goats into another pen; moved here from the dashboard. */}
             <div className="mb-4"><ShedBoard board={board} canMove /></div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="space-y-4">
+                    {/* D-128: where each farm is; sheds belong to a farm and carry its code. */}
+                    <Panel flush title="Farms & Locations" description={farms.length > 1 ? `${farms.length} farms` : 'Add the location now; more farms can be added later.'}>
+                        <ul className="divide-y divide-rule">
+                            {farms.map((f) => (
+                                <li key={f.id} className={cx('flex items-start gap-3 px-4 py-3', !f.active && 'opacity-60')}>
+                                    <MapPin className="mt-0.5 size-5 shrink-0 text-turq-700" aria-hidden />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2"><span className="font-semibold text-cobalt-900">{f.name}</span><Chip className="bg-cobalt-100 font-mono text-cobalt-800">{f.code}</Chip><span className="text-sm text-ink-soft">{f.sheds} shed{f.sheds === 1 ? '' : 's'}</span>{!f.active ? <Chip className="bg-rule text-ink-soft">Not in use</Chip> : null}</div>
+                                        <div className="text-sm text-ink-soft">{[f.address, f.place].filter(Boolean).join(' · ') || (canManage ? 'No address yet: edit to add the location.' : 'No address yet.')}</div>
+                                        {f.latitude !== null && f.longitude !== null ? <a href={`https://www.google.com/maps?q=${f.latitude},${f.longitude}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-turq-800 hover:underline">GPS {f.latitude.toFixed(5)}, {f.longitude.toFixed(5)} · Open Map</a> : null}
+                                    </div>
+                                    {editButton(`Edit ${f.name}`, () => setEditing({ kind: 'farm', farm: f }))}
+                                </li>
+                            ))}
+                        </ul>
+                    </Panel>
 
                     {sheds.length === 0 ? <Empty title="No sheds yet">{canManage ? 'Add your first shed, then add pens inside it.' : 'The owner or manager adds sheds and pens.'}</Empty> : null}
 
@@ -63,7 +81,7 @@ export default function Sheds({ sheds, types, prefix, recent, board }: Props & {
                         <Panel
                             key={shed.id}
                             title={shed.name}
-                            description={`${shed.typeName ? `${shed.typeName} · ${shed.purpose}` : 'No unit type yet: edit to choose one'}${shed.status === 'planned' ? ' · planned' : ''} · ${shed.pens.length} pen${shed.pens.length === 1 ? '' : 's'}`}
+                            description={`${farms.length > 1 ? `${farms.find((f) => f.id === shed.farmId)?.name ?? 'No farm'} · ` : ''}${shed.typeName ? `${shed.typeName} · ${shed.purpose}` : 'No unit type yet: edit to choose one'}${shed.status === 'planned' ? ' · planned' : ''} · ${shed.pens.length} pen${shed.pens.length === 1 ? '' : 's'}`}
                             actions={canManage ? (
                                 <div className="flex gap-1">
                                     {editButton(`Edit ${shed.name}`, () => setEditing({ kind: 'shed', shed }))}
@@ -132,18 +150,23 @@ export default function Sheds({ sheds, types, prefix, recent, board }: Props & {
     );
 }
 
-function Editor({ editing, sheds, types, prefix, onDone }: { editing: NonNullable<Editing>; sheds: Shed[]; types: UnitType[]; prefix: string; onDone: () => void }) {
-    return editing.kind === 'shed' ? <ShedForm shed={editing.shed} sheds={sheds} types={types} prefix={prefix} onDone={onDone} /> : <PenForm shed={editing.shed} pen={editing.pen} area={editing.area || editing.pen?.kind === 'open_area'} onDone={onDone} />;
+function Editor({ editing, farms, sheds, types, prefix, onDone }: { editing: NonNullable<Editing>; farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string; onDone: () => void }) {
+    if (editing.kind === 'farm') return <FarmForm farm={editing.farm} onDone={onDone} />;
+    return editing.kind === 'shed' ? <ShedForm shed={editing.shed} farms={farms} sheds={sheds} types={types} prefix={prefix} onDone={onDone} /> : <PenForm shed={editing.shed} pen={editing.pen} area={editing.area || editing.pen?.kind === 'open_area'} onDone={onDone} />;
 }
 
 /** D-056: the user chooses what the shed is for; its name is PREFIX-TYPE-NN, e.g. KKF-BDU-01. */
-function ShedForm({ shed, sheds, types, prefix, onDone }: { shed?: Shed; sheds: Shed[]; types: UnitType[]; prefix: string; onDone: () => void }) {
-    const form = useForm({ type: shed?.type ?? '', status: shed?.status ?? 'active' });
+function ShedForm({ shed, farms, sheds, types, prefix, onDone }: { shed?: Shed; farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string; onDone: () => void }) {
+    const usable = farms.filter((f) => f.active || f.id === shed?.farmId);
+    const form = useForm({ farm_id: String(shed?.farmId ?? usable[0]?.id ?? ''), type: shed?.type ?? '', status: shed?.status ?? 'active' });
     const chosen = types.find((t) => t.code === form.data.type);
+    const farm = farms.find((f) => String(f.id) === form.data.farm_id);
+    const code = farm?.code ?? prefix;
+    const movingFarm = !!shed && String(shed.farmId ?? '') !== form.data.farm_id;
     const preview = (() => {
         if (!chosen) return null;
-        if (shed && shed.type === chosen.code) return shed.name;
-        const pattern = `${prefix}-${chosen.code}-`.toUpperCase();
+        if (shed && shed.type === chosen.code && !movingFarm) return shed.name;
+        const pattern = `${code}-${chosen.code}-`.toUpperCase();
         const used = sheds.filter((x) => x.id !== shed?.id && x.name.toUpperCase().startsWith(pattern)).map((x) => Number(x.name.slice(pattern.length)));
         let n = 1;
         while (used.includes(n)) n++;
@@ -157,10 +180,15 @@ function ShedForm({ shed, sheds, types, prefix, onDone }: { shed?: Shed; sheds: 
     };
 
     return (
-        <Panel title={shed ? `Edit ${shed.name}` : 'Add a shed'} description="Choose what the shed is used for. The name is given automatically.">
-            <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+        <Panel title={shed ? `Edit ${shed.name}` : 'Add a shed'} description="Choose the farm first, then what the shed is used for. The name is given automatically.">
+            <form onSubmit={submit} className="grid gap-3">
+                <Field label="Farm / Location" error={(form.errors as Record<string, string>).farm_id}>
+                    <select className="field" autoFocus value={form.data.farm_id} onChange={(e) => form.setData('farm_id', e.target.value)} required>
+                        {usable.map((f) => <option key={f.id} value={f.id}>{f.name} ({f.code}){f.place ? ` · ${f.place}` : ''}</option>)}
+                    </select>
+                </Field>
                 <Field label="Used for (unit type)" error={form.errors.type}>
-                    <select className="field" autoFocus value={form.data.type} onChange={(e) => form.setData('type', e.target.value)} required>
+                    <select className="field" value={form.data.type} onChange={(e) => form.setData('type', e.target.value)} required>
                         {!form.data.type ? <option value="">Choose…</option> : null}
                         {types.map((t) => <option key={t.code} value={t.code}>{t.name} ({t.code})</option>)}
                     </select>
@@ -172,13 +200,13 @@ function ShedForm({ shed, sheds, types, prefix, onDone }: { shed?: Shed; sheds: 
                     </select>
                 </Field>
                 {chosen ? (
-                    <div className="rounded-tile border border-turq-400 bg-turq-100 px-3 py-2 sm:col-span-2">
+                    <div className="rounded-tile border border-turq-400 bg-turq-100 px-3 py-2">
                         <div className="font-mono text-lg font-bold text-cobalt-900">{preview}</div>
                         <div className="text-sm text-cobalt-800">{chosen.name} · {chosen.purpose}</div>
-                        {shed && shed.type && shed.type !== chosen.code ? <div className="mt-1 text-sm text-watch-700">{shed.name} will be renamed. Its pens and goats stay where they are.</div> : null}
+                        {shed && shed.type && (shed.type !== chosen.code || movingFarm) ? <div className="mt-1 text-sm text-watch-700">{shed.name} will be renamed. Its pens and goats stay where they are.</div> : null}
                     </div>
                 ) : null}
-                <div className="flex gap-2 sm:col-span-2">
+                <div className="flex gap-2">
                     <Button type="submit" disabled={form.processing || !chosen}>{shed ? 'Save shed' : `Add ${preview ?? 'shed'}`}</Button>
                     <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
                 </div>
@@ -216,6 +244,67 @@ function PenForm({ shed, pen, area = false, onDone }: { shed: Shed; pen?: Pen; a
                 <Field label="Capacity (goats)" error={form.errors.capacity} hint="Optional"><input className="field" type="number" inputMode="numeric" min={1} max={5000} value={form.data.capacity} onChange={(e) => form.setData('capacity', e.target.value)} /></Field>
                 <div className="flex gap-2 sm:col-span-3">
                     <Button type="submit" disabled={form.processing}>{pen ? (area ? 'Save open area' : 'Save pen') : area ? 'Add open area' : 'Add pen'}</Button>
+                    <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
+                </div>
+            </form>
+        </Panel>
+    );
+}
+
+/** D-128: a farm and where it is. "Use My Location" fills the GPS from the phone or computer (the browser asks first). */
+function FarmForm({ farm, onDone }: { farm?: FarmLoc; onDone: () => void }) {
+    const form = useForm({
+        name: farm?.name ?? '', code: farm?.code ?? '', address: farm?.address ?? '', city: farm?.city ?? '', district: farm?.district ?? '', province: farm?.province ?? '',
+        country: farm?.country ?? 'Pakistan', latitude: farm?.latitude != null ? String(farm.latitude) : '', longitude: farm?.longitude != null ? String(farm.longitude) : '', notes: farm?.notes ?? '', active: farm?.active ?? true,
+    });
+    const [locating, setLocating] = useState<string | null>(null);
+    const e = form.errors as Record<string, string>;
+    const locked = !!farm && farm.sheds > 0;
+    const locate = () => {
+        if (!navigator.geolocation) { setLocating('This device cannot share its location.'); return; }
+        setLocating('Finding your location…');
+        navigator.geolocation.getCurrentPosition(
+            (p) => { form.setData({ ...form.data, latitude: p.coords.latitude.toFixed(6), longitude: p.coords.longitude.toFixed(6) }); setLocating(`Found, accurate to about ${Math.round(p.coords.accuracy)} m.`); },
+            () => setLocating('Location was not shared. Type it in, or allow location for this site.'),
+            { enableHighAccuracy: true, timeout: 15000 },
+        );
+    };
+    const input = (key: keyof typeof form.data, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+        <input className="field" value={String(form.data[key])} onChange={(x) => form.setData(key, x.target.value as never)} {...props} />
+    );
+    const submit = (ev: React.FormEvent) => {
+        ev.preventDefault();
+        const options = { preserveScroll: true, onSuccess: onDone };
+        if (farm) form.patch(`/farms/${farm.id}`, options);
+        else form.post('/farms', options);
+    };
+
+    return (
+        <Panel title={farm ? `Edit ${farm.name}` : 'Add a farm'} description="Where the farm is. Its code starts the names of its sheds, e.g. KKF-BDU-01.">
+            <form onSubmit={submit} className="grid gap-3">
+                <Field label="Farm name" error={e.name}>{input('name', { autoFocus: true, placeholder: 'e.g. KK Farms Bahawalpur', required: true })}</Field>
+                <Field label="Code" error={e.code} hint={locked ? 'Fixed: its sheds already use it.' : '2 to 6 letters, used in shed names'}>{input('code', { className: 'field font-mono uppercase', maxLength: 6, disabled: locked, required: true, placeholder: 'KKF' })}</Field>
+                <Field label="Address" error={e.address}>{input('address', { placeholder: 'Village, road, landmark' })}</Field>
+                <div className="grid grid-cols-2 gap-2">
+                    <Field label="City / Town" error={e.city}>{input('city')}</Field>
+                    <Field label="District" error={e.district}>{input('district')}</Field>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                    <Field label="Province" error={e.province}>{input('province', { placeholder: 'e.g. Punjab' })}</Field>
+                    <Field label="Country" error={e.country}>{input('country')}</Field>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                    <Field label="Latitude" error={e.latitude}>{input('latitude', { inputMode: 'decimal', placeholder: '29.395700' })}</Field>
+                    <Field label="Longitude" error={e.longitude}>{input('longitude', { inputMode: 'decimal', placeholder: '71.683300' })}</Field>
+                </div>
+                <div>
+                    <Button type="button" variant="secondary" onClick={locate}><LocateFixed className="mr-1 inline size-4" aria-hidden />Use My Location</Button>
+                    {locating ? <p className="mt-1 text-sm text-ink-soft">{locating}</p> : null}
+                </div>
+                <Field label="Notes (optional)" error={e.notes}><textarea className="field min-h-16" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
+                {farm ? <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="size-5" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> In use</label> : null}
+                <div className="flex gap-2">
+                    <Button type="submit" disabled={form.processing}>{farm ? 'Save farm' : 'Add farm'}</Button>
                     <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
                 </div>
             </form>

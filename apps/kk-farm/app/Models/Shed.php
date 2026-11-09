@@ -9,6 +9,14 @@ class Shed extends Model
 {
     protected $guarded = [];
 
+    protected static function booted(): void
+    {
+        // D-128: every shed belongs to a farm; one added without a choice goes to the organization's first farm.
+        static::creating(function (self $shed): void {
+            $shed->farm_id ??= FarmLocation::default()->id;
+        });
+    }
+
     /** D-056: KK Farms shed (unit) types. code => [unit name, operational purpose]. */
     public const TYPES = [
         'BBU' => ['Breeder Buck Unit', 'Male goats selected for breeding'],
@@ -48,6 +56,12 @@ class Shed extends Model
     public function purpose(): ?string
     {
         return self::TYPES[$this->type][1] ?? null;
+    }
+
+    /** D-128: the farm (location) this shed belongs to. */
+    public function farm()
+    {
+        return $this->belongsTo(FarmLocation::class, 'farm_id');
     }
 
     public function pens()
