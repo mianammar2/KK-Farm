@@ -14,9 +14,12 @@ type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, C
     goat?: { id: string; number: string; values: Record<string, any> } };
 
 /** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
-const REGISTER_ONLY = ['rfid_epc', 'latest_weight_kg', 'height_in', 'body_score', 'temperature_c', 'pregnant_at_arrival', 'pregnancy_months', 'lifecycle_status'];
+const REGISTER_ONLY = ['rfid_epc', 'latest_weight_kg', 'height_in', 'body_score', 'temperature_f', 'pregnant_at_arrival', 'pregnancy_months', 'lifecycle_status'];
 /** D-091: aging by teeth; same as Classification::TEETH_MONTHS. */
 const TEETH_MONTHS: Record<string, number> = { milk: 8, '2': 15, '4': 21, '6': 32, '8': 42, worn: 66 };
+/** D-093: goat body temperature in °F; same as GoatRegistration::TEMP_NORMAL_F. */
+const TEMP_LOW = 101.3;
+const TEMP_HIGH = 103.5;
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
@@ -63,7 +66,10 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
 
     // D-046: Female Status only for females, Kid Stage only for kids.
     // D-053: only a farm-born goat must have a birth date.
-    const isRequired = (f: FieldDef) => (f.key === 'birth_date' ? form.data.origin === 'born_on_farm' : f.required);
+    const pregnant = form.data.pregnant_at_arrival === 'yes' || form.data.repro_status === 'pregnant';
+    const isRequired = (f: FieldDef) => (f.key === 'birth_date' ? form.data.origin === 'born_on_farm'
+        : f.key === 'temperature_f' ? pregnant && !editing // D-093: required for a pregnant goat
+            : f.key === 'pregnancy_months' ? form.data.pregnant_at_arrival === 'yes' : f.required);
     // D-067: with a birth date the age category is automatic (and moves on as the goat ages); otherwise chosen by hand.
     const age = form.data.birth_date ? ageCategory(form.data.birth_date, classification) : form.data.age_category;
     const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
@@ -227,8 +233,25 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                 );
             case 'long_text':
                 return <textarea className="field min-h-24" value={v} onChange={(e) => set(f, e.target.value)} />;
-            case 'number':
-                return <input className="field" type="number" step="any" inputMode="decimal" value={v} onChange={(e) => set(f, e.target.value)} />;
+            case 'number': {
+                const input = <input className="field" type="number" step="any" inputMode="decimal" value={v} onChange={(e) => set(f, e.target.value)} />;
+                if (f.key !== 'temperature_f' || v === '' || Number.isNaN(Number(v))) return input;
+                // D-093: alarm as soon as the temperature is outside normal.
+                const t = Number(v);
+                const hot = t > TEMP_HIGH;
+                const cold = t < TEMP_LOW;
+                return (
+                    <div>
+                        {input}
+                        {hot || cold ? (
+                            <div role="alert" className={`mt-2 flex items-start gap-2 rounded-tile border px-3 py-2 text-sm font-semibold ${hot ? 'border-crit-500 bg-crit-100 text-crit-700' : 'border-watch-400 bg-watch-100 text-watch-700'}`}>
+                                <span className={`kk-beat mt-1.5 size-2.5 shrink-0 rounded-full ${hot ? 'bg-crit-500' : 'bg-watch-400'}`} aria-hidden />
+                                <span>{hot ? `Fever: ${t} °F is above normal (${TEMP_LOW}–${TEMP_HIGH} °F).` : `Low temperature: ${t} °F is below normal (${TEMP_LOW}–${TEMP_HIGH} °F).`} When you save, the goat gets an open health report and the vets get an urgent task.</span>
+                            </div>
+                        ) : <span className="mt-1 inline-flex text-sm font-semibold text-ok-700">Normal</span>}
+                    </div>
+                );
+            }
             case 'date':
                 return <input className="field" type="date" max={f.key === 'birth_date' || f.key === 'acquired_on' ? TODAY : undefined} value={v} onChange={(e) => set(f, e.target.value)} />;
             case 'yes_no':
@@ -298,13 +321,14 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                     form.post('/goats', { forceFormData: true });
                 }
             }} className="space-y-4">
+                {/* D-094: the profile picture first, as a small round photo instead of a whole card. */}
+                {!editing ? (
+                    <div className="rounded-tile border border-rule bg-tile px-4 py-3 shadow-tile">
+                        <PhotoPicker compact value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
+                    </div>
+                ) : null}
                 {shown.filter((section) => section.fields.some((f) => !hidden(f))).map((section, index) => (
                     <Fragment key={section.name}>
-                    {index === 1 && !editing ? (
-                        <Panel title="Profile picture" description="Take a photo with the camera, or choose one. Optional.">
-                            <PhotoPicker value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
-                        </Panel>
-                    ) : null}
                     <Panel title={section.name === 'Birth' && !farmBorn ? 'Aging' : section.name}>
                         {section.name === 'Parentage' && damMating ? (
                             <div className="mb-3"><Note>From the mating on {damMating.matedOn}{damMating.sire ? ` with ${damMating.sire}` : ''}{damMating.expectedLabel ? `, expected kidding ${damMating.expectedLabel}` : ''}. The sire, breed and kidding are filled in from it.</Note></div>

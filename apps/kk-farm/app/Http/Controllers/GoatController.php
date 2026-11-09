@@ -181,7 +181,10 @@ class GoatController extends Controller
         if ($request->filled('tag_id')) {
             $request->merge(['tag_id' => strtoupper(trim((string) $request->input('tag_id')))]);
         }
-        $data = $request->validate(GoatRegistration::rules(FieldCatalog::forAnimal()));
+        $data = $request->validate(GoatRegistration::rules(FieldCatalog::forAnimal()), [
+            'temperature_f.required' => 'Take her body temperature (°F): it is required for a pregnant goat.', // D-093
+            'pregnancy_months.required_if' => 'About how many months pregnant is she?',
+        ], ['temperature_f' => 'body temperature']);
 
         $animal = GoatRegistration::register($data, $request->user(), $request->boolean('from_scan') ? 'scan' : 'manual');
         $tag = $animal->openAssignment()->with('tag')->first()?->tag?->tag_code;

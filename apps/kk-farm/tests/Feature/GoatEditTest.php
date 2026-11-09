@@ -50,7 +50,7 @@ class GoatEditTest extends TestCase
     {
         $this->actingAs($this->user('manager'))->post('/goats', $extra + [
             'origin' => 'purchased', 'breed_id' => $this->breed->id, 'acquired_on' => now()->toDateString(), 'sex' => 'female', 'pen_id' => $this->pen->id,
-            'teeth' => '4', 'birth_date' => now()->subMonths(21)->toDateString(), 'temperature_c' => 40.2, 'body_score' => '3', 'latest_weight_kg' => 38,
+            'teeth' => '4', 'birth_date' => now()->subMonths(21)->toDateString(), 'temperature_f' => 104.4, 'body_score' => '3', 'latest_weight_kg' => 38,
             'pregnant_at_arrival' => 'yes', 'pregnancy_months' => 3,
         ])->assertSessionHasNoErrors();
 
@@ -64,20 +64,29 @@ class GoatEditTest extends TestCase
 
         $check = HealthRecord::where('animal_id', $doe->id)->sole();
         $this->assertSame(['Arrival check: fever', 'open'], [$check->title, $check->status]);
-        $this->assertStringContainsString('Temperature 40.2 °C (fever', $check->notes);
+        $this->assertStringContainsString('Temperature 104.4 °F (fever: above 103.5 °F)', $check->notes);
+        $task = \App\Models\Task::where('animal_id', $doe->id)->sole();
+        $this->assertSame(['critical', 'health'], [$task->priority, $task->type], 'the vets are alerted');
         $this->assertSame(3, $doe->weights()->first()->body_score);
 
         $mating = Mating::where('dam_id', $doe->id)->sole();
         $this->assertSame(['pregnant', null], [$mating->status, $mating->sire_id]);
         $this->assertSame(now()->subDays(90)->addDays(150)->toDateString(), $mating->expected_kidding_on->toDateString());
 
-        $this->actingAs($this->user('manager'))->post('/goats', ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'pen_id' => $this->pen->id, 'temperature_c' => 50])
-            ->assertSessionHasErrors('temperature_c');
+        $this->actingAs($this->user('manager'))->post('/goats', ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'pen_id' => $this->pen->id, 'temperature_f' => 120])
+            ->assertSessionHasErrors('temperature_f');
+        // D-093: a pregnant goat needs her temperature (and the months pregnant); otherwise it is optional.
+        $this->actingAs($this->user('manager'))->post('/goats', ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'pen_id' => $this->pen->id, 'pregnant_at_arrival' => 'yes'])
+            ->assertSessionHasErrors(['temperature_f', 'pregnancy_months']);
+        $this->actingAs($this->user('manager'))->post('/goats', ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'pen_id' => $this->pen->id, 'repro_status' => 'pregnant'])
+            ->assertSessionHasErrors('temperature_f');
+        $this->actingAs($this->user('manager'))->post('/goats', ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'pen_id' => $this->pen->id, 'pregnant_at_arrival' => 'no'])
+            ->assertSessionDoesntHaveErrors('temperature_f');
     }
 
     public function test_every_detail_can_be_edited_and_each_change_stays_in_the_history(): void
     {
-        $doe = $this->registerDoe(['pregnant_at_arrival' => 'no', 'temperature_c' => '', 'body_score' => '']);
+        $doe = $this->registerDoe(['pregnant_at_arrival' => 'no', 'temperature_f' => '', 'body_score' => '']);
         $taken = Animal::create(['farm_number' => 'TD-TAKEN', 'sex' => 'female', 'breed_id' => $this->breed->id, 'origin' => 'purchased', 'pen_id' => $this->pen->id]);
         $vet = $this->user('vet');
 

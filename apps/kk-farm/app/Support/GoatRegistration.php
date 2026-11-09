@@ -69,8 +69,19 @@ final class GoatRegistration
             $rules[$field] = [...$presence, ...self::typeRules($d)];
         }
 
+        // D-093: a pregnant goat (pregnant when bought, or Female Status Pregnant) must have her temperature taken.
+        if (isset($rules['temperature_f'])) {
+            $rules['temperature_f'] = ['nullable', Rule::requiredIf(fn () => request('pregnant_at_arrival') === 'yes' || request('repro_status') === 'pregnant'), ...array_slice($rules['temperature_f'], 1)];
+        }
+        if (isset($rules['pregnancy_months'])) {
+            $rules['pregnancy_months'] = ['nullable', 'required_if:pregnant_at_arrival,yes', ...array_slice($rules['pregnancy_months'], 1)];
+        }
+
         return $rules;
     }
+
+    /** D-093: goat body temperature in °F. Normal 101.3–103.5 (38.5–39.7 °C). */
+    public const TEMP_NORMAL_F = [101.3, 103.5];
 
     private static function typeRules(FieldDefinition $d): array
     {
@@ -86,7 +97,7 @@ final class GoatRegistration
                 'birth_weight_kg' => ['numeric', 'between:0.1,12'],
                 'latest_weight_kg' => ['numeric', 'between:0.5,150'],
                 'height_in' => ['numeric', 'between:4,80'],
-                'temperature_c' => ['numeric', 'between:34,43'], // D-091
+                'temperature_f' => ['numeric', 'between:93,110'], // D-093: °F
                 'pregnancy_months' => ['numeric', 'between:0.5,5.5'],
                 'purchase_cost_pkr' => ['numeric', 'min:0', 'max:100000000'],
                 'name', 'source_farm' => ['string', 'max:60'],
@@ -219,17 +230,27 @@ final class GoatRegistration
     /** D-091: temperature and body condition taken at registration, kept as an observation in the health history. */
     private static function arrivalCheck(Animal $animal, array $data, User $user): void
     {
-        $temp = isset($data['temperature_c']) && $data['temperature_c'] !== '' ? (float) $data['temperature_c'] : null;
+        $temp = isset($data['temperature_f']) && $data['temperature_f'] !== '' ? (float) $data['temperature_f'] : null;
         $score = $data['body_score'] ?? null;
         if ($temp === null && ! $score) {
             return;
         }
-        $fever = $temp !== null && $temp > 39.7;
-        $notes = collect([$temp !== null ? "Temperature {$temp} °C".($fever ? ' (fever: above 39.7 °C)' : ($temp < 38.0 ? ' (low: below 38 °C)' : '')) : null, $score ? "Body condition {$score} of 5" : null])->filter()->implode('. ').'.';
+        [$low, $high] = self::TEMP_NORMAL_F;
+        $fever = $temp !== null && $temp > $high;
+        $cold = $temp !== null && $temp < $low;
+        $notes = collect([$temp !== null ? "Temperature {$temp} °F".($fever ? " (fever: above {$high} °F)" : ($cold ? " (low: below {$low} °F)" : ' (normal)')) : null, $score ? "Body condition {$score} of 5" : null])->filter()->implode('. ').'.';
         \App\Models\HealthRecord::create([
-            'animal_id' => $animal->id, 'kind' => 'observation', 'occurred_on' => now()->toDateString(), 'title' => $fever ? 'Arrival check: fever' : 'Arrival check',
-            'notes' => $notes, 'severity' => $fever ? 'medium' : null, 'recorded_by' => $user->name, 'recorded_role' => $user->roleLabel(), 'status' => $fever ? 'open' : 'closed',
+            'animal_id' => $animal->id, 'kind' => 'observation', 'occurred_on' => now()->toDateString(), 'title' => $fever ? 'Arrival check: fever' : ($cold ? 'Arrival check: low temperature' : 'Arrival check'),
+            'notes' => $notes, 'severity' => $fever || $cold ? 'high' : null, 'recorded_by' => $user->name, 'recorded_role' => $user->roleLabel(), 'status' => $fever || $cold ? 'open' : 'closed',
         ]);
+        // D-093: outside normal, the vets get a task today (the open report also shows in the Action Center).
+        if ($fever || $cold) {
+            \App\Models\Task::create([
+                'title' => mb_substr("Examine {$animal->farm_number}: ".($fever ? 'fever' : 'low temperature')." {$temp} °F on arrival", 0, 190), 'type' => 'health', 'priority' => 'critical', 'status' => 'open',
+                'due_on' => now()->toDateString(), 'animal_id' => $animal->id, 'pen_id' => $animal->pen_id,
+                'department_id' => \App\Models\Department::where('name', 'Veterinary')->value('id'), 'notes' => mb_substr("Recorded at registration by {$user->name}. Normal {$low}–{$high} °F.", 0, 500),
+            ]);
+        }
     }
 
     /**

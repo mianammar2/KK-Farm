@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 return new class extends Migration
 {
     /** key => [after key, sort offset] for farms that already have their fields. */
-    private const NEW_FIELDS = ['teeth' => ['birth_date', -5], 'body_score' => ['health_flag', 1], 'temperature_c' => ['health_flag', 2], 'pregnant_at_arrival' => ['repro_status', 1], 'pregnancy_months' => ['repro_status', 2]];
+    private const NEW_FIELDS = ['teeth' => ['birth_date', -5], 'body_score' => ['health_flag', 1], 'temperature_f' => ['health_flag', 2], 'pregnant_at_arrival' => ['repro_status', 1], 'pregnancy_months' => ['repro_status', 2]];
 
     public function up(): void
     {

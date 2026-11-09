@@ -79,7 +79,7 @@ final class FieldCatalog
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],
             // D-091: arrival check, saved as a health record (and the body score with the first weighing).
             ['key' => 'body_score', 'label' => 'Body Condition (1–5)', 'type' => 'select', 'section' => 'Status'],
-            ['key' => 'temperature_c', 'label' => 'Body Temperature (°C)', 'type' => 'number', 'section' => 'Status', 'help' => 'Normal 38.5–39.7 °C. Above 39.7 °C is a fever: tell the vet.'],
+            ['key' => 'temperature_f', 'label' => 'Body Temperature (°F)', 'type' => 'number', 'section' => 'Status', 'help' => 'Normal 101.3–103.5 °F. Required for a pregnant goat. Outside normal, the vet is alerted.'], // D-093
             ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing', 'required' => true],
             ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership', 'active' => false], // D-066
             ['key' => 'notes', 'label' => 'Notes', 'type' => 'long_text', 'section' => 'Notes'],

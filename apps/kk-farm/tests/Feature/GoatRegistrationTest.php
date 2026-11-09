@@ -129,7 +129,7 @@ class GoatRegistrationTest extends TestCase
 
         $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload([
             'rfid_epc' => strtolower(self::EPC), 'from_scan' => true, 'tag_id' => 'KK-501', 'name' => 'Noor', 'animal_class' => 'replacement_female',
-            'repro_status' => 'pregnant', 'health_flag' => 'monitor', 'ownership' => 'partner', 'source_farm' => 'Cholistan Farm', 'acquired_on' => now()->subMonth()->toDateString(),
+            'repro_status' => 'pregnant', 'temperature_f' => 102.5, 'health_flag' => 'monitor', 'ownership' => 'partner', 'source_farm' => 'Cholistan Farm', 'acquired_on' => now()->subMonth()->toDateString(),
             'sire_id' => $sire->id, 'dam_id' => $dam->id, 'birth_weight_kg' => 3.2, 'latest_weight_kg' => 31.5, 'purchase_cost_pkr' => 18500, 'notes' => 'Calm.',
         ]))->assertSessionHasNoErrors()->assertRedirect();
 
@@ -431,8 +431,8 @@ class GoatRegistrationTest extends TestCase
 
     public function test_female_status_is_only_for_female_goats(): void
     {
-        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['sex' => 'male', 'repro_status' => 'pregnant']))->assertSessionHasErrors(['repro_status']);
-        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['sex' => 'female', 'repro_status' => 'pregnant']))->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['sex' => 'male', 'repro_status' => 'pregnant', 'temperature_f' => 102.5]))->assertSessionHasErrors(['repro_status']);
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['sex' => 'female', 'repro_status' => 'pregnant', 'temperature_f' => 102.5]))->assertSessionHasNoErrors();
         $this->assertSame('pregnant', Animal::sole()->repro_state, 'the older pregnancy field stays in step');
     }
 
@@ -440,7 +440,7 @@ class GoatRegistrationTest extends TestCase
     {
         $manager = $this->user('manager');
         $mc = Breed::create(['name' => 'Makhi Cheeni (Beetal Variety)', 'default_gestation_days' => 150]);
-        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'MC-1', 'breed_id' => $mc->id, 'animal_purpose' => 'breeding', 'animal_class' => 'breeding_female', 'repro_status' => 'pregnant']));
+        $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'MC-1', 'breed_id' => $mc->id, 'animal_purpose' => 'breeding', 'animal_class' => 'breeding_female', 'repro_status' => 'pregnant', 'temperature_f' => 102.5]));
         $goat = Animal::where('farm_number', 'MC-1')->sole();
 
         $this->actingAs($manager)->get("/goats/{$goat->id}")->assertInertia(fn (AssertableInertia $page) => $page
@@ -467,7 +467,7 @@ class GoatRegistrationTest extends TestCase
     {
         $manager = $this->user('ceo');
         foreach ([['B-1', 'male', 'breeding_male', null], ['B-2', 'female', 'breeding_female', 'pregnant'], ['B-3', 'female', 'breeding_female', 'ready'], ['K-1', 'male', 'male_kid', null]] as [$tag, $sex, $class, $status]) {
-            $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => $tag, 'sex' => $sex, 'animal_class' => $class, 'repro_status' => $status]))->assertSessionHasNoErrors();
+            $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => $tag, 'sex' => $sex, 'animal_class' => $class, 'repro_status' => $status, 'temperature_f' => 102.5]))->assertSessionHasNoErrors();
         }
         // A young goat without a chosen category is counted from its age.
         $this->actingAs($manager)->post('/goats', $this->payload(['tag_id' => 'K-2', 'sex' => 'male', 'birth_date' => now()->subMonth()->toDateString()]))->assertSessionHasNoErrors();
