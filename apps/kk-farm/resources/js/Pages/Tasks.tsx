@@ -60,21 +60,21 @@ export default function Tasks({ tasks, departments, users, pens, goats, types, p
 function TaskRow({ t, statuses, priorities }: { t: Task; statuses: Record<string, string>; priorities: Record<string, string> }) {
     const done = t.status === 'completed';
     return (
-        <li className="flex items-center gap-3 px-4 py-2.5">
+        <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 sm:flex-nowrap"> {/* D-143: on a phone the status drops under the task */}
             <button type="button" aria-label={done ? `Mark ${t.title} as not done` : `Mark ${t.title} as done`} onClick={() => router.post(`/tasks/${t.id}/toggle`, {}, { preserveScroll: true })}
                 className={cx('grid size-9 shrink-0 place-items-center rounded-tile border transition-colors', done ? 'border-turq-700 bg-turq-700 text-white' : 'border-rule-strong hover:border-turq-600 hover:bg-turq-100')}>
                 {done ? <Check size={17} aria-hidden /> : null}
             </button>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-[calc(100%-3rem)] sm:basis-auto">
                 <p className={cx('font-semibold', t.open ? 'text-cobalt-900' : 'text-ink-soft line-through decoration-1')}>{t.title}</p>
-                <p className="truncate text-sm text-ink-soft">
+                <p className="text-sm text-ink-soft sm:truncate">
                     {t.type} · due {t.due} · {t.assignee ?? (t.department ? `anyone in ${t.department}` : 'unassigned')}{t.assignee && t.department ? ` (${t.department})` : ''}
                     {t.goat ? <> · <Link href={`/goats/${t.goatId}`} className="font-mono text-cobalt-800 hover:underline">{t.goat}</Link></> : null}{t.pen ? ` · ${t.pen}` : ''}
                     {t.completedAt ? ` · ${t.status === 'cancelled' ? 'cancelled' : 'done'} ${t.completedAt} by ${t.completedBy}` : ''}
                 </p>
                 {t.notes ? <p className="text-sm">{t.notes}</p> : null}
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 pl-12 sm:justify-end sm:pl-0">
                 {t.alert === 'overdue' ? <Chip className="bg-crit-100 text-crit-700">Overdue</Chip> : t.alert === 'soon' ? <Chip className="bg-watch-100 text-watch-700">Due soon</Chip> : null}
                 {t.priority !== 'medium' ? <Chip className={PRIORITY_CLASS[t.priority]}>{priorities[t.priority] ?? t.priority}</Chip> : null}
                 {t.open ? (

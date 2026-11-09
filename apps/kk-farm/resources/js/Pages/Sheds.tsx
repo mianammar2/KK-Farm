@@ -2,7 +2,6 @@ import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react'
 import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
 import { BarnRoof, EarTag, GoatFigure } from '../components/FarmScene';
 import { Button, Chip, cx, Empty, Field, HealthChip, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
@@ -26,14 +25,13 @@ const penCode = (n: number, area = false) => `${area ? 'OA' : 'P'}${String(n).pa
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
 type Editing = { kind: 'farm'; farm?: FarmLoc } | { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen; area?: boolean } | null;
 
-export default function Sheds({ farms, sheds, types, prefix, board }: Props & { board: ShedBoardData }) {
-    usePoll(LIVE_MS, { only: ['farms', 'sheds', 'board'] }); // D-086: live
+export default function Sheds({ farms, sheds, types, prefix }: Props) {
+    usePoll(LIVE_MS, { only: ['farms', 'sheds'] }); // D-086: live
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
     // D-129: the page shows one farm at a time when there are several; its sheds, pens and goats follow.
     const [farmId, setFarmId] = useState<number | null>(farms.length > 1 ? farms[0].id : null);
     const shown = farmId === null ? sheds : sheds.filter((s) => s.farmId === farmId);
-    const shownIds = new Set(shown.map((s) => s.id));
     const active = shown.filter((s) => s.status === 'active');
     const planned = shown.filter((s) => s.status === 'planned');
     const pens = active.flatMap((s) => s.pens);
@@ -79,8 +77,6 @@ export default function Sheds({ farms, sheds, types, prefix, board }: Props & { 
                 {farms.filter((f) => farmId === null || f.id === farmId).map((f) => <FarmCard key={f.id} farm={f} sheds={sheds.filter((x) => x.farmId === f.id)} onEdit={canManage ? () => setEditing({ kind: 'farm', farm: f }) : undefined} />)}
             </section>
 
-            {/* D-120: drag or tick goats into another pen; moved here from the dashboard. */}
-            <div className="mb-4"><ShedBoard board={farmId === null ? board : { ...board, sheds: board.sheds.filter((x) => shownIds.has(x.id)) }} canMove /></div>
 
             <div>
                 <div className="space-y-4">

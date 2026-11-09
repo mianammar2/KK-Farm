@@ -190,7 +190,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
 
     return (
-        <div className="min-h-dvh bg-glaze lg:pl-60">
+        <div className="min-h-dvh overflow-x-clip bg-glaze lg:pl-60">
             {/* The Scan page and the register page have their own scan field. */}
             <ScanCapture disabled={path === '/scan' || path === '/goats/register'} />
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-cobalt-900 pt-4 lg:flex">

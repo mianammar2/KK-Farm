@@ -122,9 +122,6 @@ class SensorsTest extends TestCase
         $this->assertSame($this->area->id, Sensors::outNow()[$this->goat->id]->area_id);
         $this->assertSame($this->pen->id, $this->goat->fresh()->pen_id, 'home pen unchanged');
 
-        $this->actingAs($this->user('ceo'))->get('/sheds')->assertInertia(fn (AssertableInertia $p) => $p
-            ->where('board.sheds.0.areas.0.code', 'OA01')->where('board.sheds.0.areas.0.goats.0.number', 'G-1')
-            ->where('board.sheds.0.pens.0.goats.0.out.area', 'KKF-BDU-01-OA01'));
 
         $this->travel(9)->hours();
         $this->assertSame(['G-1'], array_column(collect(ActionCenter::items($this->user('manager')))->firstWhere('key', 'out_too_long')['items'], 'text'));

@@ -35,7 +35,6 @@ class ShedController extends Controller
             ]),
             'types' => collect(Shed::TYPES)->map(fn ($t, $code) => ['code' => $code, 'name' => $t[0], 'purpose' => $t[1]])->values(),
             'prefix' => $this->prefix(),
-            'board' => \App\Support\ShedBoard::build(Animal::with(['pen.shed'])->active()->orderBy('farm_number')->get()), // D-120: move goats here
         ]);
     }
 

@@ -480,3 +480,8 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 }
 .kk-tagchip-on { color: #fff7e6; background: #2f5a2a; box-shadow: inset 0 -2px 0 #1d3a1a, 0 0 0 2px #fff7e6, 0 0 0 4px #2f5a2a; }
 .kk-pen-drop { border-color: #2f5a2a !important; background: #e8f2d8 !important; box-shadow: 0 0 0 3px rgb(47 90 42 / 0.55); }
+
+/* D-143: nothing runs off a phone screen: long unbroken words (tag numbers, codes) wrap; phones and the apps keep text at the page's size. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overflow-wrap: break-word; }
+main { min-width: 0; }
