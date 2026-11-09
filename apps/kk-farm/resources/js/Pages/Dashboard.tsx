@@ -10,7 +10,7 @@ import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
 import { useFive } from '../lib/useFive';
 import { BalanceTag, type Balance, type Requirement } from '../components/FeedRequirement';
-import FarmScene, { GoatFigure } from '../components/FarmScene';
+import FarmScene, { EarTag, GoatFigure } from '../components/FarmScene';
 import { FarmStat, FarmStatRow } from '../components/FarmStats';
 import FeedScene from '../components/FeedScene';
 
@@ -193,15 +193,6 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
     );
 }
 
-/** D-138: a yellow plastic ear tag with the goat's tag number, as on the real goats. */
-function EarTag({ number }: { number: string }) {
-    return (
-        <span className="kk-eartag" title={number}>
-            <span className="kk-eartag-hole" aria-hidden />
-            <span className="font-mono text-xs font-extrabold tracking-tight">{number}</span>
-        </span>
-    );
-}
 
 /** D-137: a meal's status written on the feeding chalkboard. */
 function ChalkMark({ status }: { status: FeedStatus }) {

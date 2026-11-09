@@ -136,3 +136,13 @@ export function BarnRoof({ id, name, typeName }: { id: number | string; name: st
         </>
     );
 }
+
+/** D-138: a yellow plastic ear tag with the goat's tag number, as on the real goats. */
+export function EarTag({ number }: { number: string }) {
+    return (
+        <span className="kk-eartag" title={number}>
+            <span className="kk-eartag-hole" aria-hidden />
+            <span className="font-mono text-xs font-extrabold tracking-tight">{number}</span>
+        </span>
+    );
+}

@@ -2,13 +2,11 @@ import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react'
 import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import GoatPortrait from '../components/GoatPortrait';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
-import { BarnRoof, GoatFigure } from '../components/FarmScene';
-import { Button, Chip, cx, Empty, Field, HealthChip, PageHeader, Panel } from '../components/ui';
+import { BarnRoof, EarTag, GoatFigure } from '../components/FarmScene';
+import { Button, Chip, cx, Empty, Field, HealthChip, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { useFive } from '../lib/useFive';
-import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 import { useConfirm } from '../components/Confirm';
 
@@ -50,11 +48,22 @@ export default function Sheds({ farms, sheds, types, prefix, board }: Props & { 
     return (
         <>
             <Head title="Sheds" />
-            <PageHeader
-                title="Sheds"
-                description={`${active.length} shed${active.length === 1 ? '' : 's'} in use, ${planned.length} planned, ${goats.length} goats housed.`}
-                actions={canManage ? <><AddButton primary={false} label="Add a farm" onClick={() => setEditing({ kind: 'farm' })} /><AddButton label="Add a shed" onClick={() => setEditing({ kind: 'shed' })} /></> : null}
-            />
+            {/* D-142: the page header is the farm's wooden sign over a fence. */}
+            <header className="kk-page-sign">
+                <div className="kk-page-board">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl font-extrabold tracking-tight text-[#fff7e6] sm:text-3xl">Sheds</h1>
+                        <p className="text-sm text-[#f3e3c3]">{active.length} shed{active.length === 1 ? '' : 's'} in use · {planned.length} planned · {goats.length} goats housed</p>
+                    </div>
+                    {canManage ? (
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" className="kk-sign-btn kk-lift" onClick={() => setEditing({ kind: 'farm' })}><Plus className="size-4" aria-hidden />Add a Farm</button>
+                            <button type="button" className="kk-sign-btn kk-sign-btn-green kk-lift" onClick={() => setEditing({ kind: 'shed' })}><Plus className="size-4" aria-hidden />Add a Shed</button>
+                        </div>
+                    ) : null}
+                </div>
+                <div className="kk-fence" aria-hidden />
+            </header>
 
             {/* D-127: adding or editing a shed, pen or open area opens in a panel. */}
             {editing ? <Sheet onClose={() => setEditing(null)}><Editor key={JSON.stringify([editing.kind, editing.kind === 'farm' ? editing.farm?.id : editing.shed?.id, editing.kind === 'pen' ? `${editing.pen?.id}-${editing.area}` : null])} editing={editing} farms={farms} sheds={sheds} types={types} prefix={prefix} onDone={() => setEditing(null)} /></Sheet> : null}
@@ -63,8 +72,8 @@ export default function Sheds({ farms, sheds, types, prefix, board }: Props & { 
             <section className="mb-4 space-y-3" aria-label="Farms & Locations">
                 {farms.length > 1 ? (
                     <div className="flex flex-wrap gap-2" role="tablist">
-                        {farms.map((f) => <button key={f.id} type="button" role="tab" aria-selected={farmId === f.id} onClick={() => setFarmId(f.id)} className={cx('kk-pill min-h-10 rounded-full border px-4 text-sm font-semibold', farmId === f.id ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>{f.name} <span className="font-mono opacity-75">{f.code}</span></button>)}
-                        <button type="button" role="tab" aria-selected={farmId === null} onClick={() => setFarmId(null)} className={cx('kk-pill min-h-10 rounded-full border px-4 text-sm font-semibold', farmId === null ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>All Farms</button>
+                        {farms.map((f) => <button key={f.id} type="button" role="tab" aria-selected={farmId === f.id} onClick={() => setFarmId(f.id)} className={cx('kk-tab-sign', farmId === f.id && 'kk-tab-sign-on')}><MapPin className="size-3.5" aria-hidden />{f.name} <span className="font-mono opacity-80">{f.code}</span></button>)}
+                        <button type="button" role="tab" aria-selected={farmId === null} onClick={() => setFarmId(null)} className={cx('kk-tab-sign', farmId === null && 'kk-tab-sign-on')}>All Farms</button>
                     </div>
                 ) : null}
                 {farms.filter((f) => farmId === null || f.id === farmId).map((f) => <FarmCard key={f.id} farm={f} sheds={sheds.filter((x) => x.farmId === f.id)} onEdit={canManage ? () => setEditing({ kind: 'farm', farm: f }) : undefined} />)}
@@ -129,18 +138,7 @@ export default function Sheds({ farms, sheds, types, prefix, board }: Props & { 
                     ))}
 
                     {pen ? (
-                        <Panel title={`${pen.name}: ${pen.purpose}`} description={`${pen.count} goats`}>
-                            {pen.goats.length ? (
-                                <div className="flex flex-wrap gap-2">
-                                    {pen.goats.map((g) => (
-                                        <Link key={g.id} href={`/goats/${g.id}`} className="flex w-40 items-center gap-2 rounded-tile border border-rule p-1.5 hover:border-turq-600">
-                                            <GoatPortrait number={g.number} coat={g.coat} sex={g.sex} size={32} />
-                                            <span className="min-w-0 truncate text-sm font-medium">{g.name ?? g.number}</span>
-                                        </Link>
-                                    ))}
-                                </div>
-                            ) : <p className="text-sm text-ink-soft">This pen is empty.</p>}
-                        </Panel>
+                        <PenRollCall pen={pen} />
                     ) : null}
                 </div>
 
@@ -352,7 +350,7 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
     ].filter((t) => t.count > 0) as Array<{ id: Detail; label: string; value: string | number; count: number }>;
 
     return (
-        <div className={cx('kk-rise grid overflow-hidden rounded-tile border border-rule bg-tile shadow-tile lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]', !farm.active && 'opacity-70')}>
+        <div className={cx('kk-farmcard kk-rise grid overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]', !farm.active && 'opacity-70')}>
             <div className="space-y-3 p-4">
                 <div className="flex items-start gap-3">
                     <MapPin className="mt-1 size-5 shrink-0 text-turq-700" aria-hidden />
@@ -367,9 +365,9 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {stats.map((t) => (
                             <button key={t.id} type="button" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}
-                                className={cx('kk-pill rounded-tile border px-3 py-2 text-left transition-colors', open === t.id ? 'border-cobalt-700 bg-cobalt-100' : 'border-transparent bg-glaze hover:border-turq-600')}>
-                                <span className="block text-xs font-semibold text-ink-soft">{t.label}</span>
-                                <span className={cx('block text-lg font-bold tabular-nums', t.id === 'attention' ? 'text-watch-700' : 'text-cobalt-900')}>{t.value}</span>
+                                className={cx('kk-stat-plank kk-lift text-left', open === t.id && 'kk-stat-plank-on')}>
+                                <span className="block text-[11px] font-semibold text-[#5a4628]">{t.label}</span>
+                                <span className={cx('block text-lg font-extrabold tabular-nums', t.id === 'attention' ? 'text-crit-700' : 'text-[#2f5a2a]')}>{t.value}</span>
                             </button>
                         ))}
                     </div>
@@ -377,7 +375,7 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
                 {open ? <FarmDetail detail={open} sheds={sheds} pens={pens} goats={goats} penOf={penOf} onClose={() => setOpen(null)} /> : null}
                 {farm.notes ? <p className="text-sm text-ink-soft">{farm.notes}</p> : null}
             </div>
-            <div className="relative min-h-60 border-t border-rule bg-glaze lg:border-t-0 lg:border-l">
+            <div className="kk-map-frame relative min-h-60">
                 {query ? (
                     <>
                         <iframe title={`Map of ${farm.name}`} className="absolute inset-0 size-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade"
@@ -427,5 +425,34 @@ function FarmDetail({ detail, sheds, pens, goats, penOf, onClose }: { detail: De
             </ul>
             {more}
         </div>
+    );
+}
+
+/** D-142: the selected pen's roll call on a clipboard: each goat's ear tag, its figure and name; first 6, then Show More. */
+function PenRollCall({ pen }: { pen: Pen }) {
+    const [shown, more] = useFive(pen.goats, 6);
+    return (
+        <section className="kk-clipboard !m-0" aria-label={`${pen.name}: ${pen.count} goats`}>
+            <span className="kk-clip" aria-hidden />
+            <div className="kk-lined !pl-3">
+                <h2 className="flex flex-wrap items-baseline gap-x-2 py-2 font-semibold text-[#3b2e1a]"><span className="kk-pen-sign">{pen.code}</span>{pen.name}<span className="text-sm font-normal text-[#6b5434]">{pen.purpose} · {pen.count} goats</span></h2>
+                {pen.goats.length ? (
+                    <>
+                        <ul className="grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {shown.map((g) => (
+                                <li key={g.id}>
+                                    <Link href={`/goats/${g.id}`} className="kk-lift flex items-center gap-2 rounded-md bg-[#fff8e6] p-1.5 pr-2 shadow-[0_1px_0_#d8c49a]">
+                                        <EarTag number={g.number} />
+                                        <span className="kk-th-goat" aria-hidden><GoatFigure female={g.sex === 'female'} flag={g.health !== 'healthy'} delay={0} flip={false} /></span>
+                                        <span className="min-w-0 truncate text-sm font-semibold text-[#3b2e1a]">{g.name ?? ''}</span>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                        {more ? <div className="-mx-3 pb-1">{more}</div> : null}
+                    </>
+                ) : <p className="pb-3 text-sm text-[#6b5434]">This pen is empty.</p>}
+            </div>
+        </section>
     );
 }

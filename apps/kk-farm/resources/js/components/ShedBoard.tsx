@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { ArrowRightLeft, ChevronDown, Sun, X } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
-import { cx, Panel } from './ui';
+import { cx } from './ui';
 
 export type BoardGoat = { id: string; number: string; name: string | null; sex: string; age: string | null; ageLabel: string | null; flag: string | null; weight: number | null; out: { area: string | null; since: string } | null };
 export type BoardPen = { id: number; name: string; code: string; purpose: string; capacity: number | null; goats: BoardGoat[] };
@@ -57,12 +57,12 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
         const on = picked.includes(g.id);
         return (
             <li key={g.id} draggable={canMove} onDragStart={(e) => onDragStart(e, g.id)}
-                className={cx('flex items-center gap-1.5 rounded-[6px] border px-2 py-1 text-sm', canMove && 'cursor-grab active:cursor-grabbing', on ? 'border-cobalt-700 bg-cobalt-700 text-white' : 'border-rule bg-tile')}>
+                className={cx('kk-tagchip', canMove && 'cursor-grab active:cursor-grabbing', on && 'kk-tagchip-on')}>
                 {canMove ? <input type="checkbox" aria-label={`Pick ${g.number}`} checked={on} onChange={() => toggle(g.id)} className="size-4 shrink-0" /> : null}
                 <span className={cx('size-2 shrink-0 rounded-full', FLAG[g.flag ?? ''] ?? 'bg-ok-700')} title={g.flag ?? 'healthy'} />
-                <Link href={`/goats/${g.id}`} className={cx('min-w-0 truncate font-mono font-semibold hover:underline', on ? 'text-white' : 'text-cobalt-900')}>{g.number}</Link>
+                <Link href={`/goats/${g.id}`} className="shrink-0 font-mono font-bold hover:underline">{g.number}</Link>
                 {g.out ? <span title={`Out in ${g.out.area ?? 'open area'} for ${g.out.since}`} className={cx('flex shrink-0 items-center gap-0.5 rounded-[4px] px-1 text-[10px] font-semibold', on ? 'bg-white/20 text-white' : 'bg-watch-100 text-watch-700')}><Sun size={10} aria-hidden />out</span> : null}
-                <span className={cx('ml-auto shrink-0 text-xs', on ? 'text-white/80' : 'text-ink-soft')}>{g.sex === 'male' ? '♂' : '♀'} {g.age ? AGE[g.age] : ''}{g.weight ? ` · ${g.weight} KG` : ''}</span>
+                <span className="ml-auto shrink-0 text-xs opacity-80">{g.sex === 'male' ? '♂' : '♀'} {g.age ? AGE[g.age] : ''}{g.weight ? ` · ${g.weight} KG` : ''}</span>
             </li>
         );
     };
@@ -72,14 +72,14 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
         const target = canMove && picked.length > 0 && picked.some((id) => !p.goats.some((g) => g.id === id));
         return (
             <div key={p.id} onDragOver={canMove ? (e) => { e.preventDefault(); setOver(p.id); } : undefined} onDragLeave={() => setOver((o) => (o === p.id ? null : o))} onDrop={canMove ? (e) => onDrop(e, p.id) : undefined}
-                className={cx('flex min-h-32 flex-col rounded-tile border bg-glaze/60 p-2 transition-colors', over === p.id ? 'border-turq-600 bg-turq-100 ring-2 ring-turq-600' : 'border-rule')}>
+                className={cx('kk-pen flex min-h-32 flex-col', over === p.id && 'kk-pen-drop')}>
                 <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                    <span className="min-w-0 truncate font-mono text-sm font-semibold text-cobalt-900" title={p.name}>{p.name}</span>
-                    <span className={cx('shrink-0 text-xs font-semibold tabular-nums', full ? 'text-crit-700' : 'text-ink-soft')}>{p.goats.length}{p.capacity !== null ? `/${p.capacity}` : ''} goat{p.goats.length === 1 && p.capacity === null ? '' : 's'}</span>
+                    <span className="kk-pen-sign min-w-0 truncate" title={p.name}>{p.code}</span>
+                    <span className={cx('shrink-0 text-xs font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#3b2e1a]')}>{p.goats.length}{p.capacity !== null ? `/${p.capacity}` : ''} goat{p.goats.length === 1 && p.capacity === null ? '' : 's'}</span>
                 </div>
-                <div className="mb-1.5 truncate text-xs text-ink-soft">{p.purpose}</div>
+                <div className="mb-1.5 truncate text-xs text-[#4a3a22]">{p.purpose}</div>
                 {p.goats.length ? <ChipList goats={p.goats} render={chip} /> : <p className="flex flex-1 items-center justify-center rounded-[6px] border border-dashed border-rule-strong py-3 text-xs text-ink-faint">Empty pen</p>}
-                {target ? <button type="button" disabled={busy} onClick={() => move(picked, p.id)} className="mt-2 rounded-[6px] bg-turq-700 px-2 py-1.5 text-sm font-semibold text-white hover:bg-turq-800 disabled:opacity-50">Move {picked.length} here</button> : null}
+                {target ? <button type="button" disabled={busy} onClick={() => move(picked, p.id)} className="kk-fix mt-2 disabled:opacity-50">Move {picked.length} here</button> : null}
             </div>
         );
     };
@@ -90,12 +90,12 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
         return (
             <div key={a.id} onDragOver={canMove ? (e) => { e.preventDefault(); setOver(a.id); } : undefined} onDragLeave={() => setOver((o) => (o === a.id ? null : o))}
                 onDrop={canMove ? (e) => { e.preventDefault(); try { presence(JSON.parse(e.dataTransfer.getData('text/plain')) as string[], 'out', a.id); } catch { setOver(null); } } : undefined}
-                className={cx('flex min-h-32 flex-col rounded-tile border border-dashed p-2 transition-colors', over === a.id ? 'border-turq-600 bg-turq-100 ring-2 ring-turq-600' : 'border-watch-400 bg-watch-100/50')}>
+                className={cx('kk-pen kk-yard flex min-h-32 flex-col', over === a.id && 'kk-pen-drop')}>
                 <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                    <span className="flex items-center gap-1 truncate font-mono text-sm font-semibold text-cobalt-900" title={a.name}><Sun size={14} className="shrink-0 text-watch-700" aria-hidden /><span className="min-w-0 truncate">{a.name}</span></span>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-ink-soft">{a.goats.length} out{a.capacity !== null ? ` / ${a.capacity}` : ''}</span>
+                    <span className="kk-pen-sign flex items-center gap-1 truncate" title={a.name}><Sun size={12} className="shrink-0" aria-hidden /><span className="min-w-0 truncate">{a.code}</span></span>
+                    <span className="shrink-0 text-xs font-bold tabular-nums text-[#2a3a1a]">{a.goats.length} out{a.capacity !== null ? ` / ${a.capacity}` : ''}</span>
                 </div>
-                <div className="mb-1.5 truncate text-xs text-ink-soft">Open area{a.purpose ? ` · ${a.purpose}` : ''}</div>
+                <div className="mb-1.5 truncate text-xs text-[#2a3a1a]">Open area{a.purpose ? ` · ${a.purpose}` : ''}</div>
                 {a.goats.length ? <ChipList goats={a.goats} render={chip} /> : <p className="flex flex-1 items-center justify-center rounded-[6px] border border-dashed border-rule-strong py-3 text-xs text-ink-faint">No goats out</p>}
                 {canMove && toSend.length ? <button type="button" disabled={busy} onClick={() => presence(toSend, 'out', a.id)} className="mt-2 rounded-[6px] bg-watch-700 px-2 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Send {toSend.length} out here</button> : null}
                 {canMove && a.goats.length ? <button type="button" disabled={busy} onClick={() => presence(pickedHere.length ? pickedHere : a.goats.map((g) => g.id), 'in')} className="mt-2 rounded-[6px] border border-rule bg-tile px-2 py-1.5 text-sm font-semibold text-cobalt-900 disabled:opacity-50">{pickedHere.length ? `Bring ${pickedHere.length} back in` : 'Bring all back in'}</button> : null}
@@ -104,27 +104,28 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
     };
 
     return (
-        <Panel className="mt-4" flush>
+        <section className="kk-movepanel mt-4">
             <div className="flex items-center gap-3 px-4 py-3">
                 <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                    <ChevronDown size={18} className={cx('shrink-0 text-ink-soft transition-transform', open && 'rotate-180')} aria-hidden />
-                    <span className="min-w-0">
-                        <span className="block font-semibold text-cobalt-900">Sheds and Pens</span>
-                        <span className="block truncate text-sm text-ink-soft">
+                    <span className="kk-move-icon" aria-hidden><ArrowRightLeft size={18} /></span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block font-extrabold text-[#3b2e1a]">Move Goats Between Pens</span>
+                        <span className="block truncate text-sm text-[#5a4628]">
                             {board.sheds.length} shed{board.sheds.length === 1 ? '' : 's'} · {board.sheds.reduce((n, sh) => n + sh.pens.length, 0)} pens · {all.length} goats
                             {board.noPen.length ? ` · ${board.noPen.length} not in a pen` : ''}
                             {all.some((g) => g.out) ? ` · ${all.filter((g) => g.out).length} out in open areas` : ''}
                             {open ? (canMove ? ' · drag goats to another pen, or tick them and press “Move here”' : '') : ' · tap to open'}
                         </span>
                     </span>
+                    <ChevronDown size={20} className={cx('shrink-0 text-[#5a3b1e] transition-transform', open && 'rotate-180')} aria-hidden />
                 </button>
             </div>
-            {open ? <div className="border-t border-rule px-4 py-3">
+            {open ? <div className="kk-movepanel-body px-4 py-3">
             {board.sheds.length > 1 ? (
                 <div className="mb-3 flex gap-1.5 overflow-x-auto" role="group" aria-label="Shed">
                     {[{ id: 'all' as const, name: 'All sheds', count: all.length - board.noPen.length }, ...board.sheds.map((s) => ({ id: s.id, name: s.name, count: s.pens.reduce((n, p) => n + p.goats.length, 0) }))].map((s) => (
                         <button key={s.id} type="button" aria-pressed={shedId === s.id} onClick={() => setShedId(s.id)}
-                            className={cx('min-h-10 shrink-0 rounded-tile border px-3 text-sm font-semibold', shedId === s.id ? 'border-cobalt-700 bg-cobalt-700 text-white' : 'border-rule bg-tile text-cobalt-900')}>
+                            className={cx('kk-tab-sign shrink-0', shedId === s.id && 'kk-tab-sign-on')}>
                             <span className="font-mono">{s.name}</span> <span className="font-normal opacity-75">{s.count}</span>
                         </button>
                     ))}
@@ -132,7 +133,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
             ) : null}
 
             {picked.length ? (
-                <div className="sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-2 rounded-tile bg-cobalt-900 px-3 py-2 text-sm text-white shadow-tile">
+                <div className="sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-2 rounded-lg border-2 border-[#3a2412] bg-[#5a3b1e] px-3 py-2 text-sm text-[#fff7e6] shadow-[0_3px_0_#3a2412]">
                     <ArrowRightLeft size={16} aria-hidden />
                     <span className="font-semibold">{picked.length} picked:</span>
                     <span className="min-w-0 flex-1 truncate font-mono">{pickedGoats.map((g) => g.number).join(', ')}</span>
@@ -145,21 +146,21 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
                 <div className="space-y-4">
                     {sheds.map((s) => (
                         <section key={s.id}>
-                            <h3 className="mb-2 flex items-baseline gap-2"><span className="font-mono font-semibold text-cobalt-900">{s.name}</span>{s.typeName ? <span className="text-xs text-ink-soft">{s.typeName}</span> : null}<span className="text-xs text-ink-faint">{s.pens.length} pen{s.pens.length === 1 ? '' : 's'}{s.areas.length ? ` · ${s.areas.length} open area${s.areas.length === 1 ? '' : 's'}` : ''}</span></h3>
-                            {s.pens.length || s.areas.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{s.pens.map(penCard)}{s.areas.map(areaCard)}</div> : <p className="text-sm text-ink-soft">No pens in this shed yet.</p>}
+                            <h3 className="mb-2 flex items-baseline gap-2"><span className="kk-board !inline-flex !flex-row !px-3 !py-0.5 font-mono text-sm font-bold">{s.name}</span>{s.typeName ? <span className="text-xs text-ink-soft">{s.typeName}</span> : null}<span className="text-xs text-ink-faint">{s.pens.length} pen{s.pens.length === 1 ? '' : 's'}{s.areas.length ? ` · ${s.areas.length} open area${s.areas.length === 1 ? '' : 's'}` : ''}</span></h3>
+                            {s.pens.length || s.areas.length ? <div className="kk-barn-body grid gap-2.5 rounded-lg sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{s.pens.map(penCard)}{s.areas.map(areaCard)}</div> : <p className="text-sm text-ink-soft">No pens in this shed yet.</p>}
                         </section>
                     ))}
                 </div>
             ) : <p className="text-sm text-ink-soft">No sheds yet. Add one under Sheds.</p>}
 
             {board.noPen.length ? (
-                <div className="mt-4 rounded-tile border border-watch-400 bg-watch-100 p-2">
-                    <div className="mb-1.5 text-sm font-semibold text-watch-700">Not in a pen ({board.noPen.length}){canMove ? ': drag or tick them into a pen' : ''}</div>
+                <div className="kk-paper-note mt-4">
+                    <div className="mb-1.5 text-sm font-bold">Not in a pen ({board.noPen.length}){canMove ? ': drag or tick them into a pen' : ''}</div>
                     <ChipList goats={board.noPen} render={chip} className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4" />
                 </div>
             ) : null}
             </div> : null}
-        </Panel>
+        </section>
     );
 }
 
@@ -170,7 +171,7 @@ function ChipList<T>({ goats, render, className = 'space-y-1' }: { goats: T[]; r
     return (
         <>
             <ul className={className}>{shown.map(render)}</ul>
-            {goats.length > 5 ? <button type="button" onClick={() => setOpen(!open)} className="mt-1 w-full rounded-[6px] px-2 py-1 text-xs font-semibold text-cobalt-800 hover:bg-tile">{open ? 'Show Less' : `Show ${goats.length - 5} More`}</button> : null}
+            {goats.length > 5 ? <button type="button" onClick={() => setOpen(!open)} className="mt-1 w-full rounded-[6px] px-2 py-1 text-xs font-bold text-[#4a3a22] hover:bg-white/50">{open ? 'Show Less' : `Show ${goats.length - 5} More`}</button> : null}
         </>
     );
 }
