@@ -26,6 +26,36 @@ final class Checkups
         return (int) (Tenant::org()?->checkup_interval_days ?: 14);
     }
 
+    /**
+     * D-101: a checkup of a pregnant doe always carries her day of pregnancy, counted from the mating, even when no
+     * ultrasound was done that day. Typed days on a pregnant ultrasound win (they may set the mating date).
+     */
+    public static function dayOfPregnancy(Animal $doe, string $date): ?int
+    {
+        if ($doe->sex !== 'female') {
+            return null;
+        }
+        $m = Mating::where('dam_id', $doe->id)->where('status', 'pregnant')->where('mated_on', '<=', $date)->orderByDesc('mated_on')->first();
+
+        return $m ? (int) $m->mated_on->diffInDays(Carbon::parse($date)) : null;
+    }
+
+    /** Fill the day of pregnancy on checkups that have none (all of them, or one goat's). Returns how many were filled. */
+    public static function fillPregnancyDays(?Animal $only = null): int
+    {
+        $n = 0;
+        HealthCheckup::with('animal')->whereNull('days_pregnant')->when($only, fn ($q) => $q->where('animal_id', $only->id))->get()
+            ->each(function (HealthCheckup $c) use (&$n) {
+                $day = self::dayOfPregnancy($c->animal, $c->checked_on->toDateString());
+                if ($day !== null) {
+                    $c->update(['days_pregnant' => $day]);
+                    $n++;
+                }
+            });
+
+        return $n;
+    }
+
     /** @return Collection<string, Mating> each doe's current pregnancy (a pregnant mating), by goat id (D-100) */
     public static function pregnancies(): Collection
     {
@@ -115,6 +145,7 @@ final class Checkups
             }
 
             self::followUp($goat, $checkup, $data, $by);
+            self::fillPregnancyDays($goat); // D-101
             self::syncHealth($goat);
             $readings = array_filter([
                 $checkup->temperature_f !== null ? "{$checkup->temperature_f} °F" : null, $checkup->body_score ? "body {$checkup->body_score}/5" : null,
@@ -229,6 +260,10 @@ final class Checkups
                     'severity' => 'medium', 'recorded_by' => $by->name, 'recorded_role' => $by->roleLabel(), 'status' => 'open',
                 ]);
             }
+            if ($c->ultrasound !== 'pregnant') {
+                $c->update(['days_pregnant' => self::dayOfPregnancy($goat, $on)]); // D-101: a check without a pregnant ultrasound carries the counted day
+            }
+            self::fillPregnancyDays($goat);
             self::syncHealth($goat);
             Revisions::log('checkup', $c->id, $goat, $changes, $by, $data['reason'] ?? null);
 

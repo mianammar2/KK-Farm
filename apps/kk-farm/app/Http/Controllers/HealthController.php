@@ -63,6 +63,7 @@ class HealthController extends Controller
                     'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'flags' => $c->flags(), 'findings' => $c->findings, 'caseId' => $c->health_case_id, 'by' => $c->examiner,
                     // D-099: what a correction form needs, and whether this person may correct it
                     'dateIso' => $c->checked_on->toDateString(), 'days' => $c->days_pregnant, 'followUp' => $c->follow_up_on?->toDateString(), 'followUpNote' => $c->follow_up_note,
+                    'matedOn' => isset($pregnant[$c->animal_id]) ? $pregnant[$c->animal_id]->mated_on->toDateString() : null, // D-101
                     'sex' => $c->animal->sex, 'canEdit' => $request->user()->passes('health_checkup') && \App\Support\Revisions::canCorrect($request->user(), $c->examiner),
                     'edits' => (int) ($revisions[$c->id] ?? 0),
                 ]),

@@ -5,7 +5,7 @@ import { Button, Chip, cx, Field, Panel } from './ui';
 
 type Goat = { id: string; number: string; name: string | null; sex: 'male' | 'female'; pen: string | null; repro: string | null; last: { on: string; outcome: string; by: string } | null; due: boolean; next: string | null; recheck: string | null; matedOn?: string | null };
 type Recent = { id: number; on: string; goat: string; goatId: string; outcome: string; temp: number | null; score: number | null; weight: number | null; ultrasound: string | null; fetuses: number | null; flags: string[]; findings: string | null; caseId: number | null; by: string;
-    dateIso: string; days: number | null; followUp: string | null; followUpNote: string | null; sex: 'male' | 'female'; canEdit: boolean; edits: number };
+    dateIso: string; days: number | null; matedOn: string | null; followUp: string | null; followUpNote: string | null; sex: 'male' | 'female'; canEdit: boolean; edits: number };
 export type CheckupData = {
     goats: Goat[]; recent: Recent[]; interval: number; normal: Record<'temperature_f', [number, number]>;
     sires: Array<{ id: string; number: string }>; canCheck: boolean; canOpenCase: boolean; gestation: number; conditions?: string[];
@@ -73,13 +73,13 @@ export default function Checkups({ data }: { data: CheckupData }) {
             {editing ? (
                 <Panel title={`Correct the checkup of ${editing.goat}`} description={`Done ${editing.on} by ${editing.by}. Every change is kept with your name and the reason.`}
                     actions={<button type="button" onClick={() => setEditing(null)} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-glaze"><X size={16} aria-hidden /></button>}>
-                    <CheckupForm key={editing.id} existing={editing} goat={{ id: editing.goatId, number: editing.goat, name: null, sex: editing.sex, pen: null, repro: null, last: null, due: false, next: null, recheck: null }} date={editing.dateIso} data={data} onDone={() => setEditing(null)} />
+                    <CheckupForm key={editing.id} existing={editing} goat={{ id: editing.goatId, number: editing.goat, name: null, sex: editing.sex, pen: null, repro: null, last: null, due: false, next: null, recheck: null, matedOn: editing.matedOn }} date={editing.dateIso} data={data} onDone={() => setEditing(null)} />
                 </Panel>
             ) : null}
             <Panel flush title="Recent checkups">
                 {data.recent.length ? (
                     <div className="overflow-x-auto"><table className="data-table min-w-[600px]">
-                        <thead><tr><th>Date</th><th>Goat</th><th>Result</th><th>°F</th><th>Body</th><th>KG</th><th>Ultrasound</th><th>Recheck</th><th>By</th><th /></tr></thead>
+                        <thead><tr><th>Date</th><th>Goat</th><th>Result</th><th>°F</th><th>Body</th><th>KG</th><th>Ultrasound</th><th>Pregnancy day</th><th>Recheck</th><th>By</th><th /></tr></thead>
                         <tbody>{data.recent.map((r) => (
                             <tr key={r.id}>
                                 <td className="whitespace-nowrap">{r.on}</td>
@@ -87,6 +87,7 @@ export default function Checkups({ data }: { data: CheckupData }) {
                                 <td><Chip className={OUTCOME[r.outcome]?.chip}>{OUTCOME[r.outcome]?.label}</Chip>{r.caseId ? <Chip className="ml-1 bg-crit-100 text-crit-700">case</Chip> : null}{r.flags.length ? <span className="block text-xs text-crit-700">{r.flags.join(', ')}</span> : null}</td>
                                 <td>{r.temp ?? '—'}</td><td>{r.score ?? '—'}</td><td>{r.weight ?? '—'}</td>
                                 <td>{r.ultrasound ? `${SOUND[r.ultrasound]}${r.fetuses ? ` (${r.fetuses})` : ''}` : '—'}</td>
+                                <td>{r.days ? <span className="font-semibold text-manganese-600">Day {r.days}</span> : '—'}</td>
                                 <td className="whitespace-nowrap text-sm">{r.followUp ? new Date(`${r.followUp}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
                                 <td className="text-sm text-ink-soft">{r.by}{r.edits ? <Chip className="ml-1 bg-cobalt-100 text-cobalt-800">corrected{r.edits > 1 ? ` ×${r.edits}` : ''}</Chip> : null}</td>
                                 <td>{r.canEdit ? <button type="button" onClick={() => { setEditing(r); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="inline-flex items-center gap-1 text-sm font-semibold text-turq-800 hover:underline"><Pencil size={14} aria-hidden /> Edit</button> : null}</td>

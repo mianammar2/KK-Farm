@@ -104,4 +104,19 @@ class CheckupTest extends TestCase
             ->where('pregnancy.checks.0.day', 35)->where('pregnancy.checks.1.day', 42)->where('pregnancy.checks.1.weight', 19.4)
             ->where('pregnancy.weights.1.day', 42)->where('pregnancy.matedOn', '16 Sep 2026')->where('pregnancy.expected', '13 Feb 2027'));
     }
+
+    /** D-101: a weight-only check of a pregnant doe carries her day of pregnancy; older checkups are filled in too. */
+    public function test_a_check_without_ultrasound_gets_the_counted_day_of_pregnancy(): void
+    {
+        $vet = $this->user('vet');
+        // Entered before the pregnancy was known (no day), then the ultrasound of 21 Oct: 35 days.
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-28', 'weight_kg' => 19.5, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $this->assertNull(HealthCheckup::sole()->days_pregnant);
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-21', 'weight_kg' => 18.6, 'ultrasound' => 'pregnant', 'days_pregnant' => 35, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $this->assertSame([35, 42], HealthCheckup::orderBy('checked_on')->pluck('days_pregnant')->all(), 'the 28 Oct weight-only check is day 42');
+
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-11-04', 'weight_kg' => 20.1, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $this->assertSame(49, HealthCheckup::where('checked_on', '2026-11-04')->sole()->days_pregnant);
+        $this->actingAs($vet)->get('/health')->assertInertia(fn (AssertableInertia $p) => $p->where('checkups.recent.0.days', 49));
+    }
 }
