@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { useConfirm } from '../../components/Confirm';
 import PhotoPicker from '../../components/PhotoPicker';
 import { Camera, ClipboardPlus, MoveRight, Pencil, Scale, Star, Stethoscope, Trash2, TriangleAlert } from 'lucide-react';
 import HealthEntry from '../../components/HealthEntry';
@@ -42,6 +43,7 @@ const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-
 
 export default function GoatShow(props: Props) {
     const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking } = props;
+    const [ask, removeBox] = useConfirm(); // D-133
     const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('overview');
@@ -74,6 +76,7 @@ export default function GoatShow(props: Props) {
 
     return (
         <>
+            {removeBox}
             <Head title={goat.number} />
             {/* D-073: withdrawal from the veterinarian's treatment dates. */}
             {goat.withdrawal ? (
@@ -96,7 +99,7 @@ export default function GoatShow(props: Props) {
                     <span><strong>Removal asked</strong> by {goat.removal.by} on {goat.removal.on}: {goat.removal.reason}</span>
                     {can.remove ? (
                         <span className="ml-auto flex gap-2">
-                            <Button variant="danger" onClick={() => router.post(`/goats/${goat.id}/removal/decide`, { decision: 'confirm' })}>Confirm removal</Button>
+                            <Button variant="danger" onClick={async () => { if (await ask({ title: `Remove ${goat.number}?`, message: 'It leaves every list, count and feed plan, and its RFID tag is freed. The record and its history stay and it can be restored.', confirm: 'Yes, remove' })) router.post(`/goats/${goat.id}/removal/decide`, { decision: 'confirm' }); }}>Confirm removal</Button>
                             <Button variant="secondary" onClick={() => router.post(`/goats/${goat.id}/removal/decide`, { decision: 'cancel' }, { preserveScroll: true })}>Keep the goat</Button>
                         </span>
                     ) : <span className="ml-auto text-sm">Waiting for the owner or a manager.</span>}
@@ -322,6 +325,7 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     const concern = useForm({ animal_id: goat.id, title: '', severity: 'low', notes: '' });
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? '') });
     const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
+    const [ask, confirmBox] = useConfirm(); // D-133
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
     const birth = useForm({ birth_date: '', age_months: '', reason: '' });
     const removal = useForm({ reason: '' });
@@ -385,7 +389,8 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
         );
     }
     return (
-        <form onSubmit={(e) => { e.preventDefault(); exit.post(`/goats/${goat.id}/exit`, options); }} className="flex flex-wrap items-end gap-2">
+        <form onSubmit={async (e) => { e.preventDefault(); if (await ask({ title: `Record ${goat.number} as ${EXIT_WORD[exit.data.reason] ?? 'left the farm'}?`, message: 'It leaves the farm lists and counts. This is kept in its history.', confirm: 'Yes, record exit' })) exit.post(`/goats/${goat.id}/exit`, options); }} className="flex flex-wrap items-end gap-2">
+            {confirmBox}
             <div className="w-52"><Field label="Reason" error={exit.errors.reason}><select className="field" value={exit.data.reason} onChange={(e) => exit.setData('reason', e.target.value)}><option value="sold">Sold</option><option value="sacrificed">Qurbani / sacrifice</option><option value="culled">Culled</option><option value="gifted">Gifted</option><option value="transferred">Transferred out</option><option value="died">Died</option><option value="other">Other</option></select></Field></div>
             {exit.data.reason === 'sold' ? <div className="w-40"><Field label="Price (PKR)" error={exit.errors.amount}><input inputMode="decimal" className="field" value={exit.data.amount} onChange={(e) => exit.setData('amount', e.target.value)} /></Field></div> : null}
             {exit.data.reason !== 'died' ? <div className="w-48"><Field label={exit.data.reason === 'sold' ? 'Buyer' : 'Destination'}><input className="field" value={exit.data.destination} onChange={(e) => exit.setData('destination', e.target.value)} /></Field></div> : null}
@@ -466,3 +471,5 @@ function ActionTile({ icon, label, onClick, primary = false, active = false }: {
         </button>
     );
 }
+
+const EXIT_WORD: Record<string, string> = { sold: 'sold', died: 'died', sacrificed: 'Qurbani', culled: 'culled', gifted: 'gifted', transferred: 'transferred out' };

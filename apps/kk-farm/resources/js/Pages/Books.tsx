@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useConfirm } from '../components/Confirm';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
 import AddButton from '../components/AddButton';
@@ -91,11 +92,13 @@ function Statement({ title, rows, total, openLedger }: { title: string; rows: Ro
 }
 
 function JournalTab({ journal, accounts, openLedger }: { journal: Journal[]; accounts: AccountRow[]; openLedger: (id: number) => void }) {
+    const [ask, confirmBox] = useConfirm(); // D-133
     const [all, setAll] = useState(false);
     const rows = all ? journal : journal.slice(0, 25);
     const [adding, setAdding] = useState(false); // D-127
     return (
         <div>
+            {confirmBox}
             {adding ? <Sheet onClose={() => setAdding(false)}><ManualJournal accounts={accounts} onDone={() => setAdding(false)} /></Sheet> : null}
             <Panel flush title="Journal" description="Newest first. Click an account to see its ledger." actions={<AddButton label="Post a journal" onClick={() => setAdding(true)} />}>
                 {journal.length ? (
@@ -107,7 +110,7 @@ function JournalTab({ journal, accounts, openLedger }: { journal: Journal[]; acc
                                     <span className="flex items-center gap-2">
                                         {j.isReversal ? <Chip className="bg-cobalt-100 text-cobalt-800">Reversal</Chip> : null}
                                         {j.reversed ? <Chip className="bg-glaze text-ink-soft">Reversed</Chip> : null}
-                                        {!j.reversed && !j.isReversal && ['Manual journal', 'Opening balance'].includes(j.source) ? <button type="button" className="text-xs font-semibold text-turq-800 hover:underline" onClick={() => router.post(`/finance/journals/${j.id}/reverse`, {}, { preserveScroll: true })}>Reverse</button> : null}
+                                        {!j.reversed && !j.isReversal && ['Manual journal', 'Opening balance'].includes(j.source) ? <button type="button" className="text-xs font-semibold text-turq-800 hover:underline" onClick={async () => { if (await ask({ title: `Reverse journal ${j.no}?`, message: `${j.memo}. A reversing journal is added; this cannot be undone.`, confirm: 'Yes, reverse' })) router.post(`/finance/journals/${j.id}/reverse`, {}, { preserveScroll: true }); }}>Reverse</button> : null}
                                     </span>
                                 </div>
                                 <p className="text-sm">{j.memo}</p>

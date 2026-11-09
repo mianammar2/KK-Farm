@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useConfirm } from '../components/Confirm';
 import { useMemo, useState } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
@@ -11,6 +12,7 @@ type SaleRow = { id: number; on: string; category: string; goatId: string | null
 type Props = { summary: Record<string, number>; monthly: Array<{ month: string; income: number; spend: number }>; categories: Array<{ name: string; value: number }>; entries: Entry[]; categoryOptions: string[]; sales: SaleRow[]; goats: Array<{ id: string; farm_number: string }>; pending: number; accounts: Array<{ id: number; label: string; type: string; money: boolean }> };
 
 export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales, goats, pending, accounts }: Props) {
+    const [ask, confirmBox] = useConfirm(); // D-133
     const [direction, setDirection] = useState('');
     const [category, setCategory] = useState('');
     const [adding, setAdding] = useState<'' | 'entry' | 'sale'>(''); // D-127
@@ -44,6 +46,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
 
     return (
         <>
+            {confirmBox}
             <Head title="Expenses & Finance" />
             <PageHeader title="Expenses & finance" description="Only the CEO and finance roles can open this. Every entry posts a balanced double-entry journal; a correction is a reversing entry." actions={<><Link href="/finance/books" className="text-sm font-semibold text-turq-800 hover:underline">Accounts (books)</Link><AddButton primary={false} label="Record a product sale" onClick={() => setAdding('sale')} /><AddButton label="Record an entry" onClick={() => setAdding('entry')} /></>} />
             <StatRow>
@@ -102,7 +105,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
                                         <td className={cx('font-semibold whitespace-nowrap', !e.reversed && (e.direction === 'in' ? 'text-ok-700' : 'text-cobalt-900'))}>{e.direction === 'in' ? '+' : '−'}{pkr(e.amount)}</td>
                                         <td>{e.direction === 'out' && e.payment !== 'paid' ? <span className="flex items-center gap-1.5"><Chip className="bg-watch-100 text-watch-700">{e.payment === 'pending' ? 'Pending' : 'Partly paid'}</Chip>{!e.reversed ? <button type="button" className="text-xs font-semibold text-turq-800 hover:underline" onClick={() => router.post(`/finance/entries/${e.id}/paid`, {}, { preserveScroll: true })}>Mark paid</button> : null}</span> : <span className="text-sm text-ink-soft">Paid{e.paidBy ? ` · ${e.paidBy}` : ''}</span>}</td>
                                         <td className="text-sm text-ink-soft">{e.by}</td>
-                                        <td>{e.reversed ? <span className="text-sm">Reversed</span> : e.isReversal ? null : <button type="button" className="text-sm font-semibold text-turq-800 hover:underline" onClick={() => router.post(`/finance/entries/${e.id}/reverse`, {}, { preserveScroll: true })}>Reverse</button>}</td>
+                                        <td>{e.reversed ? <span className="text-sm">Reversed</span> : e.isReversal ? null : <button type="button" className="text-sm font-semibold text-turq-800 hover:underline" onClick={async () => { if (await ask({ title: 'Reverse this entry?', message: `${e.category}, PKR ${e.amount.toLocaleString('en-PK')} on ${e.on}. A reversing entry is added; this cannot be undone.`, confirm: 'Yes, reverse' })) router.post(`/finance/entries/${e.id}/reverse`, {}, { preserveScroll: true }); }}>Reverse</button>}</td>
                                     </tr>
                                 ))}
                             </tbody>
