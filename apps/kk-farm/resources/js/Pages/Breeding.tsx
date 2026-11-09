@@ -7,6 +7,7 @@ import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow,
 import type { Option, SharedProps } from '../types';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
+import { useConfirm } from '../components/Confirm';
 
 type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null };
 type MatingRow = {
@@ -139,8 +140,10 @@ export default function Breeding(props: Props) {
 function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; isVet: boolean; canClose: boolean } & Props) {
     const [open, setOpen] = useState(m.active && m.alert !== null);
     const [mode, setMode] = useState<'none' | 'check' | 'kidding'>('none');
+    const [ask, confirmBox] = useConfirm(); // D-132
     return (
         <section className={cx('rounded-tile border border-rule bg-tile shadow-tile', !m.active && 'opacity-75')}>
+            {confirmBox}
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left">
                 <GoatPortrait number={m.dam.number} coat={m.dam.coat} sex="female" size={38} />
                 <div className="min-w-44 flex-1">
@@ -166,7 +169,7 @@ function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; i
                         <div className="flex flex-wrap gap-2">
                             {isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'check' ? 'none' : 'check')}>Pregnancy check</Button> : null}
                             <Button onClick={() => setMode(mode === 'kidding' ? 'none' : 'kidding')}>Record kidding</Button>
-                            {canClose ? <Button variant="quiet" onClick={() => { if (confirm('Close this mating without a kidding?')) router.post(`/breeding/matings/${m.id}/close`, {}, { preserveScroll: true }); }}>Close mating</Button> : null}
+                            {canClose ? <Button variant="quiet" onClick={async () => { if (await ask({ title: 'Close this mating?', message: 'It will be closed without a kidding.', confirm: 'Yes, close mating', danger: false })) router.post(`/breeding/matings/${m.id}/close`, {}, { preserveScroll: true }); }}>Close mating</Button> : null}
                         </div>
                     ) : null}
                     {mode === 'check' ? <CheckForm m={m} options={options} onDone={() => setMode('none')} /> : null}

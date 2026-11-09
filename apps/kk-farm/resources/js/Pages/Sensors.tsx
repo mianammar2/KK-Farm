@@ -2,6 +2,7 @@ import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import { useConfirm } from '../components/Confirm';
 
 type Device = { id: number; code: string; name: string; type: string; typeLabel: string; vendor: string | null; model: string | null; place: string; shedId: number | null; penId: number | null; status: string; lastSeen: string | null; keyHint: string | null; settings: Record<string, number>; notes: string | null };
 type Alert = { id: number; kind: string; severity: 'critical' | 'warning' | 'info'; title: string; detail: string | null; status: string; device: string | null; goat: string | null; goatId: string | null; pen: string | null; taskId: number | null; on: string; by: string | null };
@@ -80,8 +81,10 @@ function DeviceRow({ d, types, canManage, onEdit }: { d: Device; types: TypeDef[
     const metrics = types.find((t) => t.key === d.type)?.metrics ?? [];
     const form = useForm({ metric: metrics[0]?.key ?? '', value: '', rfid: '' });
     const [testing, setTesting] = useState(false);
+    const [ask, confirmBox] = useConfirm(); // D-132
     return (
         <li className="px-4 py-3">
+            {confirmBox}
             <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono font-semibold text-cobalt-900">{d.code}</span>
                 <span className="font-medium">{d.name}</span>
@@ -89,7 +92,7 @@ function DeviceRow({ d, types, canManage, onEdit }: { d: Device; types: TypeDef[
                 <span className="ml-auto flex gap-3 text-sm">
                     {canManage ? <button type="button" className="font-semibold text-turq-800 hover:underline" onClick={() => setTesting(!testing)}>Test reading</button> : null}
                     {canManage ? <button type="button" className="font-semibold text-turq-800 hover:underline" onClick={onEdit}>Edit</button> : null}
-                    {canManage ? <button type="button" className="font-semibold text-turq-800 hover:underline" onClick={() => { if (confirm(`Issue a new key for ${d.code}? The old key stops working at once.`)) router.post(`/sensors/devices/${d.id}/key`, {}, { preserveScroll: true }); }}>New key</button> : null}
+                    {canManage ? <button type="button" className="font-semibold text-turq-800 hover:underline" onClick={async () => { if (await ask({ title: `Issue a new key for ${d.code}?`, message: 'The old key stops working at once.', confirm: 'Yes, new key', danger: false })) router.post(`/sensors/devices/${d.id}/key`, {}, { preserveScroll: true }); }}>New key</button> : null}
                 </span>
             </div>
             <p className="text-sm text-ink-soft">{d.typeLabel} · {d.place}{d.vendor ? ` · ${d.vendor}${d.model ? ` ${d.model}` : ''}` : ''} · {d.lastSeen ? `last seen ${d.lastSeen} ago` : 'never connected'}{d.keyHint ? ` · key …${d.keyHint}` : ''}</p>

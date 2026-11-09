@@ -9,6 +9,7 @@ import type { Health, SharedProps } from '../types';
 import { useFive } from '../lib/useFive';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
+import { useConfirm } from '../components/Confirm';
 
 type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null };
 type Pen = { id: number; name: string; code: string; kind: 'pen' | 'open_area'; purpose: string; capacity: number | null; count: number; goats: Goat[] };
@@ -254,9 +255,11 @@ function FarmForm({ farm, only = false, onDone }: { farm?: FarmLoc; only?: boole
     );
     // D-130: delete only an empty farm, and never the last one.
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [ask, confirmBox] = useConfirm(); // D-132
     const blocked = farm ? (farm.sheds > 0 ? `Move its ${farm.sheds} shed${farm.sheds === 1 ? '' : 's'} to another farm first.` : only ? 'This is the only farm. Add another before deleting it.' : null) : null;
-    const remove = () => {
-        if (!farm || blocked || !window.confirm(`Delete ${farm.name} (${farm.code})? This cannot be undone.`)) return;
+    const remove = async () => {
+        if (!farm || blocked) return;
+        if (!(await ask({ title: `Delete ${farm.name}?`, message: `The farm ${farm.code} and its location will be removed. This cannot be undone.`, confirm: 'Yes, delete farm' }))) return;
         router.delete(`/farms/${farm.id}`, { preserveScroll: true, onSuccess: onDone, onError: (er) => setDeleteError(er.farm ?? 'Could not delete this farm.') });
     };
     const submit = (ev: React.FormEvent) => {
@@ -294,6 +297,7 @@ function FarmForm({ farm, only = false, onDone }: { farm?: FarmLoc; only?: boole
                     <Button type="submit" disabled={form.processing}>{farm ? 'Save farm' : 'Add farm'}</Button>
                     <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
                 </div>
+                {confirmBox}
                 {farm ? (
                     <div className="border-t border-rule pt-3">
                         <button type="button" onClick={remove} disabled={!!blocked} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-crit-700 px-4 text-sm font-semibold text-crit-700 hover:bg-crit-100 disabled:cursor-not-allowed disabled:border-rule disabled:text-ink-faint disabled:hover:bg-transparent"><Trash2 size={16} aria-hidden />Delete Farm</button>
