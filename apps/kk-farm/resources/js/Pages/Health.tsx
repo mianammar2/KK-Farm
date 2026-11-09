@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { AlertTriangle, ChevronDown, Pill, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ClipboardPlus, Pill, Plus, Stethoscope, Syringe, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, GoatLabel, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import type { Health as HealthState, Option, SharedProps } from '../types';
@@ -42,13 +42,27 @@ export default function Health(props: Props) {
     const { cases, reports, care, withdrawal, counts, goats, severities } = props;
     const { auth } = usePage<SharedProps>().props;
     const isVet = !!auth?.gates.includes('clinical');
+    const canCase = !!auth?.gates.includes('open_cases'); // D-095: vet or administrator
+    // D-097: forms open from + buttons (or a dashboard shortcut: /health?new=case|report|care), not always on the page.
+    const [sheet, setSheet] = useState<'case' | 'report' | 'care' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'case' | 'report' | 'care' | null));
+    const action = (label: string, icon: React.ReactNode, onClick: () => void, primary = false) => (
+        <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
+            <Plus size={16} aria-hidden />{icon}{label}
+        </button>
+    );
     const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') ?? 'cases');
     const [fromReport, setFromReport] = useState<Row | null>(null);
 
     return (
         <>
             <Head title="Veterinary & Health" />
-            <PageHeader title="Veterinary & health" description={isVet ? 'You open cases, treat, and set withdrawal dates. Every record carries your name.' : 'You can report a concern. Cases and treatments are recorded by a veterinarian only.'} />
+            <PageHeader title="Veterinary & health" description={isVet ? 'Checkups, cases, treatments and withdrawal. Every record carries your name.' : canCase ? 'Checkups and cases. Treatments and withdrawal dates are set by a veterinarian.' : 'Report a concern. A veterinarian decides what it is.'} />
+            <div className="mb-4 flex flex-wrap gap-2">
+                {props.checkups.canCheck ? action('Checkup', <Stethoscope size={16} aria-hidden />, () => setTab('checkups'), true) : null}
+                {canCase ? action('Open case', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('case'); }) : null}
+                {action('Report concern', <AlertTriangle size={16} aria-hidden />, () => setSheet('report'))}
+                {isVet ? action('Preventive care', <Syringe size={16} aria-hidden />, () => setSheet('care')) : null}
+            </div>
             <StatRow>
                 <Stat label="Active cases" value={counts.active} />
                 <Stat label="High or emergency" value={counts.emergency} tone={counts.emergency ? 'alert' : undefined} />
@@ -57,7 +71,7 @@ export default function Health(props: Props) {
                 <Stat label="Care overdue" value={counts.overdue} note="Vaccine or deworming" tone={counts.overdue ? 'alert' : undefined} />
             </StatRow>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
+            <div>
                 <div className="min-w-0">
                     <Tabs value={tab} onChange={setTab} tabs={[
                         { id: 'checkups', label: 'Checkups', count: props.checkups.goats.filter((g) => g.due).length || undefined },
@@ -87,7 +101,7 @@ export default function Health(props: Props) {
                                             </div>
                                             {isVet ? (
                                                 <div className="flex gap-2">
-                                                    <Button onClick={() => { setFromReport(r); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Open case</Button>
+                                                    <Button onClick={() => { setFromReport(r); setSheet('case'); }}>Open case</Button>
                                                     <Button variant="secondary" onClick={() => router.post(`/health/records/${r.id}/close`, {}, { preserveScroll: true })}>Nothing found</Button>
                                                 </div>
                                             ) : null}
@@ -130,15 +144,13 @@ export default function Health(props: Props) {
                     ) : null}
                 </div>
 
-                <div className="space-y-4">
-                    {isVet ? <CaseForm key={fromReport?.id ?? 'new'} goats={goats} severities={severities} report={fromReport} onDone={() => { setFromReport(null); setTab('cases'); }} /> : null}
-                    <ObservationForm goats={goats} />
-                    {isVet ? <PreventiveForm goats={goats} /> : (
-                        <Panel>
-                            <p className="flex items-start gap-2 text-sm text-ink-soft"><ShieldCheck size={17} aria-hidden className="mt-0.5 shrink-0 text-cobalt-600" />Cases, treatments and withdrawal dates are entered by a veterinarian.This is also enforced on the server.</p>
-                        </Panel>
-                    )}
-                </div>
+                {sheet ? (
+                    <Sheet onClose={() => { setSheet(null); setFromReport(null); }}>
+                        {sheet === 'case' && canCase ? <CaseForm key={fromReport?.id ?? 'new'} goats={goats} severities={severities} report={fromReport} onDone={() => { setFromReport(null); setSheet(null); setTab('cases'); }} /> : null}
+                        {sheet === 'report' ? <ObservationForm goats={goats} onDone={() => setSheet(null)} /> : null}
+                        {sheet === 'care' && isVet ? <PreventiveForm goats={goats} onDone={() => setSheet(null)} /> : null}
+                    </Sheet>
+                ) : null}
             </div>
         </>
     );
@@ -260,7 +272,7 @@ function CaseForm({ goats, severities, report, onDone }: { goats: Option[]; seve
     const form = useForm({ animal_id: report?.goatId ?? String(goats[0]?.id ?? ''), onset_on: today(), condition: report?.title ?? '', symptoms: report?.notes ?? '', severity: 'moderate', isolated: false, diagnosis: '', notes: '', report_id: report ? String(report.id) : '' });
     const e = form.errors as Record<string, string>;
     return (
-        <Panel title={report ? `Open a case for ${report.number}` : 'Open a health case'} description={report ? `From the concern "${report.title}" (${report.by})` : 'Veterinarians only'}>
+        <Panel title={report ? `Open a case for ${report.number}` : 'Open a health case'} description={report ? `From the concern "${report.title}" (${report.by})` : 'Vet or administrator'}>
             <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/cases', { preserveScroll: true, onSuccess: () => { form.reset(); onDone(); } }); }} className="space-y-3">
                 {!report ? <Field label="Goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</select></Field> : null}
                 <Field label="Disease / condition" error={e.condition}><input className="field" value={form.data.condition} onChange={(x) => form.setData('condition', x.target.value)} /></Field>
@@ -277,11 +289,11 @@ function CaseForm({ goats, severities, report, onDone }: { goats: Option[]; seve
     );
 }
 
-function ObservationForm({ goats }: { goats: Option[] }) {
+function ObservationForm({ goats, onDone }: { goats: Option[]; onDone?: () => void }) {
     const form = useForm({ animal_id: String(goats[0]?.id ?? ''), title: '', severity: 'low', notes: '' });
     return (
         <Panel title="Report a concern" description="Anyone can report. A veterinarian decides what it is.">
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/health/observations', { preserveScroll: true, onSuccess: () => form.reset('title', 'notes') }); }} className="space-y-3">
+            <form onSubmit={(e) => { e.preventDefault(); form.post('/health/observations', { preserveScroll: true, onSuccess: () => { form.reset('title', 'notes'); onDone?.(); } }); }} className="space-y-3">
                 <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</select></Field>
                 <Field label="What did you notice?" error={form.errors.title}><input className="field" value={form.data.title} onChange={(e) => form.setData('title', e.target.value)} /></Field>
                 <Field label="How serious?"><select className="field" value={form.data.severity} onChange={(e) => form.setData('severity', e.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></Field>
@@ -292,11 +304,11 @@ function ObservationForm({ goats }: { goats: Option[] }) {
 }
 
 /** Vaccination, deworming and routine examinations (workbook "Preventive Care"; batch entry comes with D-07x). */
-function PreventiveForm({ goats }: { goats: Option[] }) {
+function PreventiveForm({ goats, onDone }: { goats: Option[]; onDone?: () => void }) {
     const form = useForm({ animal_id: String(goats[0]?.id ?? ''), kind: 'vaccination', title: '', notes: '', next_due_on: '' });
     return (
         <Panel title="Preventive care" description="Vaccines, deworming, routine checks">
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/health/clinical', { preserveScroll: true, onSuccess: () => form.reset('title', 'notes', 'next_due_on') }); }} className="space-y-3">
+            <form onSubmit={(e) => { e.preventDefault(); form.post('/health/clinical', { preserveScroll: true, onSuccess: () => { form.reset('title', 'notes', 'next_due_on'); onDone?.(); } }); }} className="space-y-3">
                 <Field label="Goat"><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</select></Field>
                 <Field label="Type"><select className="field" value={form.data.kind} onChange={(e) => form.setData('kind', e.target.value)}><option value="vaccination">Vaccination</option><option value="deworming">Deworming</option><option value="examination">Routine examination</option></select></Field>
                 <Field label="Product / finding" error={form.errors.title}><input className="field" value={form.data.title} onChange={(e) => form.setData('title', e.target.value)} /></Field>
@@ -421,5 +433,17 @@ function MedicineMoveForm({ medicines, types }: { medicines: Medicine[]; types: 
                 <div className="col-span-2"><Button type="submit" className="w-full" disabled={form.processing}>Save</Button></div>
             </form>
         </Panel>
+    );
+}
+
+/** D-097: a form opened from a + button: a panel from the right on a computer, from the bottom on a phone or the gun. */
+function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-end justify-end bg-cobalt-950/40 sm:items-stretch" onClick={onClose} role="dialog" aria-modal="true">
+            <div className="kk-rise relative max-h-[88dvh] w-full overflow-y-auto rounded-t-3xl bg-glaze p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-float sm:max-h-none sm:w-[26rem] sm:rounded-none sm:p-4" onClick={(e) => e.stopPropagation()}>
+                <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 grid size-10 place-items-center rounded-full bg-tile text-ink-soft shadow-tile hover:text-cobalt-900"><X size={18} aria-hidden /></button>
+                {children}
+            </div>
+        </div>
     );
 }

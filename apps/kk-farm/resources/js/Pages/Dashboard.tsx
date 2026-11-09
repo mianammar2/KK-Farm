@@ -21,7 +21,8 @@ type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay
 type Supply = { needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
 type Requirement = { supply: Supply; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
-type Props = { shedBoard: ShedBoardData | null; canMove: boolean; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
+type HealthLinks = { checkupsDue: number; openReports: number; canCheck: boolean; canCase: boolean; canCare: boolean };
+type Props = { health: HealthLinks | null; shedBoard: ShedBoardData | null; canMove: boolean; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
@@ -65,7 +66,7 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ shedBoard, canMove, requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ health, shedBoard, canMove, requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
     usePoll(LIVE_MS, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
@@ -113,6 +114,7 @@ export default function Dashboard({ shedBoard, canMove, requirement, actions, st
             <div className="max-sm:hidden"><PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Updates by itself every ${LIVE_MS / 1000} seconds.`} /></div>
 
             <ActionBanner actions={actions} />
+            {health ? <HealthShortcuts h={health} /> : null}
 
             <StatRow>
                 <StatLink href="/goats" label="Goats on farm" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : `${plural(stats.does, 'female', 'females')}, ${plural(stats.bucks, 'male', 'males')}`} tone={stats.noPen ? 'alert' : undefined} />
@@ -235,6 +237,24 @@ const FEED_STATUS: Record<FeedStatus, { label: string; className: string }> = {
 };
 
 /** D-069: today's feeding on the dashboard — only pens that have goats, each meal's status and KG given of planned. */
+/** D-097: one tap from the dashboard to the vet's work: checkups, cases, concerns, preventive care. */
+function HealthShortcuts({ h }: { h: HealthLinks }) {
+    const item = (href: string, label: string, note: string | null, tone: string) => (
+        <Link href={href} className={`kk-lift flex min-h-14 items-center gap-2 rounded-tile border px-3 py-2 ${tone}`}>
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/70 text-lg font-bold leading-none">+</span>
+            <span className="min-w-0"><span className="block text-sm font-semibold">{label}</span>{note ? <span className="block truncate text-xs opacity-80">{note}</span> : null}</span>
+        </Link>
+    );
+    return (
+        <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {h.canCheck ? item('/health?tab=checkups', 'Health checkup', h.checkupsDue ? `${h.checkupsDue} due` : 'All up to date', h.checkupsDue ? 'border-watch-400 bg-watch-100 text-watch-700' : 'border-ok-700/30 bg-ok-100 text-ok-700') : null}
+            {h.canCase ? item('/health?new=case', 'Open a case', null, 'border-rule bg-tile text-cobalt-900') : null}
+            {item('/health?new=report', 'Report concern', h.openReports ? `${h.openReports} open` : null, 'border-rule bg-tile text-cobalt-900')}
+            {h.canCare ? item('/health?new=care', 'Preventive care', 'Vaccine, deworming', 'border-rule bg-tile text-cobalt-900') : null}
+        </div>
+    );
+}
+
 /** D-086: given against plan, in words and colour. */
 function BalanceTag({ balance, diff, className = '' }: { balance: Balance; diff: number; className?: string }) {
     if (balance !== 'over' && balance !== 'short') return null;

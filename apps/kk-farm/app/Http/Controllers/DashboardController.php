@@ -82,6 +82,9 @@ class DashboardController extends Controller
             'requirement' => $user->canModule('feeding') ? $this->feedRequirement($goats) : null,
             'shedBoard' => $user->canModule('sheds') || $user->canModule('goats') ? $this->shedBoard($goats) : null,
             'canMove' => $user->canModule('sheds'),
+            // D-097: health shortcuts on the dashboard
+            'health' => $user->canModule('health') ? ['checkupsDue' => \App\Support\Checkups::due()->count(), 'openReports' => \App\Models\HealthRecord::where('status', 'open')->whereHas('animal', fn ($q) => $q->active())->count(),
+                'canCheck' => $user->passes('health_checkup'), 'canCase' => $user->passes('open_cases'), 'canCare' => $user->passes('clinical')] : null,
             'attention' => $attention,
             'kiddings' => $kiddings,
             'activity' => fn () => Activity::latest()->limit(20)
