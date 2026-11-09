@@ -6,8 +6,10 @@ import GoatPortrait from '../../components/GoatPortrait';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
-type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string> };
-type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen';
+type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; teethOptions: Record<string, string>; canEdit: boolean };
+/** D-106: short labels for the teeth column */
+const TEETH_SHORT: Record<string, string> = { milk: 'Milk', '2': '2', '4': '4', '6': '6', '8': '8 (full)', worn: 'Worn' };
+type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen' | 'teeth';
 type Goat = Props['goats'][number];
 
 /**
@@ -30,7 +32,7 @@ const PAGE = LITE ? 25 : 60; // rows drawn at once; the gun draws fewer (D-089)
 /** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
 const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
 
-export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
+export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptions, canEdit }: Props) {
     const url = usePage().url;
     const params = new URLSearchParams(url.split('?')[1] ?? '');
     const [query, setQuery] = useState(() => params.get('q') ?? '');
@@ -59,7 +61,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
             (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || g.health === health) &&
             (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone),
         );
-        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : (g[sort.key] ?? '') as string);
+        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : sort.key === 'teeth' ? ['milk', '2', '4', '6', '8', 'worn'].indexOf(g.teeth ?? '') : (g[sort.key] ?? '') as string);
         return [...list].sort((a, b) => {
             const [x, y] = [value(a), value(b)];
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
@@ -129,8 +131,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                         <option value="">All breeds</option>
                         {Object.values(breeds).map((b) => <option key={b}>{b}</option>)}
                     </select>
-                    <select aria-label="Sex" value={sex} onChange={(e) => setSex(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
-                        <option value="">Both sexes</option><option value="female">Female</option><option value="male">Male</option>
+                    <select aria-label="Gender" value={sex} onChange={(e) => setSex(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                        <option value="">All genders</option><option value="female">Female</option><option value="male">Male</option>
                     </select>
                     <select aria-label="Pen" value={pen} onChange={(e) => setPen(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">All pens</option>
@@ -152,8 +154,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                     <Empty title="No goats match these filters"><button type="button" onClick={clear} className="font-semibold text-turq-800 underline">Clear filters</button> to see the whole registry.</Empty>
                 ) : view === 'table' ? (
                     <div className="max-h-[70vh] overflow-auto">
-                        <table className="data-table min-w-[820px]">
-                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Sex</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current tag</th></tr></thead>
+                        <table className="data-table min-w-[900px]">
+                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><Th id="teeth" label="Teeth" /><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
@@ -164,8 +166,17 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                                                 <div className="flex items-center gap-1.5 pl-1"><GoatLabel goat={g} />{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
                                             </td>
                                             <td>{g.breed}</td>
-                                            <td><SexIcon sex={g.sex} /></td>
-                                            <td className="whitespace-nowrap">{g.age}</td>
+                                            <td><SexIcon sex={g.sex} label /></td>
+                                            <td>
+                                                {canEdit && g.status === 'active' ? (
+                                                    <select aria-label={`Teeth of ${g.number}`} className="field h-9 w-auto min-w-24 py-0 text-sm" value={g.teeth ?? ''}
+                                                        onChange={(e) => router.post(`/goats/${g.id}/teeth`, { teeth: e.target.value || null }, { preserveScroll: true, preserveState: true })}>
+                                                        <option value="">—</option>
+                                                        {Object.entries(teethOptions).map(([k, v]) => <option key={k} value={k} title={v}>{TEETH_SHORT[k] ?? k}</option>)}
+                                                    </select>
+                                                ) : <span className="text-sm">{g.teeth ? TEETH_SHORT[g.teeth] ?? g.teeth : '—'}</span>}
+                                            </td>
+                                            <td className="whitespace-nowrap">{g.age ?? <span className="text-ink-faint">Unknown</span>}</td>
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} /></div></td>
@@ -188,7 +199,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5"><span className="truncate font-mono font-semibold text-cobalt-900">{g.number}</span><SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
-                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.age}{g.weight ? ` · ${g.weight} KG` : ''}</div>
+                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.age ?? 'age unknown'}{g.teeth ? ` · ${TEETH_SHORT[g.teeth] ?? g.teeth} teeth` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>
@@ -213,7 +224,7 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
         <Panel title="Register a goat" description="The system issues the permanent identity. Assign an RFID tag afterwards." className="mb-4">
             <form onSubmit={(e) => { e.preventDefault(); form.post('/goats', { onSuccess: onDone }); }} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Name (optional)" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} /></Field>
-                <Field label="Sex" error={form.errors.sex}><select className="field" value={form.data.sex} onChange={(e) => form.setData('sex', e.target.value)}><option value="female">Female</option><option value="male">Male</option></select></Field>
+                <Field label="Gender" error={form.errors.sex}><select className="field" value={form.data.sex} onChange={(e) => form.setData('sex', e.target.value)}><option value="female">Female</option><option value="male">Male</option></select></Field>
                 <Field label="Breed" error={form.errors.breed_id}><select className="field" value={form.data.breed_id} onChange={(e) => form.setData('breed_id', e.target.value)}>{Object.entries(breeds).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field>
                 <Field label="Birth date" error={form.errors.birth_date}><input type="date" className="field" value={form.data.birth_date} onChange={(e) => form.setData('birth_date', e.target.value)} /></Field>
                 <Field label="Origin" error={form.errors.origin}><select className="field" value={form.data.origin} onChange={(e) => form.setData('origin', e.target.value)}><option value="purchased">Purchased</option><option value="born_on_farm">Born on farm</option></select></Field>

@@ -132,4 +132,25 @@ class GoatEditTest extends TestCase
         $this->actingAs($this->user('ceo'))->post("/goats/{$goat->id}/restore")->assertRedirect();
         $this->assertSame('active', $goat->fresh()->status);
     }
+
+    /** D-106: teeth set in the Goat Registry give the estimated age; a farm-born goat keeps its real birth date. */
+    public function test_teeth_from_the_registry_estimate_the_age(): void
+    {
+        $bought = Animal::create(['farm_number' => 'TD141026-04', 'sex' => 'female', 'breed_id' => $this->breed->id, 'origin' => 'purchased', 'pen_id' => $this->pen->id])->refresh();
+        $born = Animal::create(['farm_number' => 'TD-B', 'sex' => 'female', 'breed_id' => $this->breed->id, 'origin' => 'born_on_farm', 'pen_id' => $this->pen->id, 'birth_date' => now()->subMonths(10)])->refresh();
+        $vet = $this->user('vet');
+
+        $this->actingAs($vet)->post("/goats/{$bought->id}/teeth", ['teeth' => '4'])->assertSessionHasNoErrors();
+        $bought->refresh();
+        $this->assertSame(['4', now()->subMonths(21)->toDateString(), true], [$bought->teeth, $bought->birth_date->toDateString(), $bought->birth_date_is_estimate]);
+        $this->assertSame('21 mo (est.)', $bought->ageLabel());
+        $this->assertStringContainsString('Teeth (permanent incisors): empty → 4', $bought->events()->where('type', 'edit')->sole()->summary);
+
+        $this->actingAs($vet)->post("/goats/{$born->id}/teeth", ['teeth' => '2'])->assertSessionHasNoErrors();
+        $this->assertSame(['2', now()->subMonths(10)->toDateString()], [$born->fresh()->teeth, $born->fresh()->birth_date->toDateString()], 'a real birth date is kept');
+
+        $this->actingAs($this->user('ceo'))->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p->where('canEdit', true)->where('teethOptions.4', '4 teeth (18–24 months)')
+            ->where('goats', fn ($g) => collect($g)->firstWhere('number', 'TD141026-04')['teeth'] === '4' && collect($g)->firstWhere('number', 'TD141026-04')['ageMonths'] === 21));
+        $this->actingAs($this->user('caretaker'))->post("/goats/{$bought->id}/teeth", ['teeth' => '6'])->assertForbidden();
+    }
 }

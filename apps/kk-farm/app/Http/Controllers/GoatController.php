@@ -36,6 +36,7 @@ class GoatController extends Controller
         return Inertia::render('Goats/Index', [
             'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]]),
             'showLabels' => \App\Support\HerdStats::LABELS,
+            'teethOptions' => \App\Support\Classification::TEETH, 'canEdit' => request()->user()->passes('edit_goats'), // D-106
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
@@ -138,6 +139,23 @@ class GoatController extends Controller
         Farm::event($animal, 'edit', "Restored by {$request->user()->name}", $request->user()->name);
 
         return back()->with('success', "{$animal->farm_number} restored. Put a tag on it again from the scan screen if needed.");
+    }
+
+    /**
+     * D-106: set the teeth from the Goat Registry. For a goat whose birth date is not known exactly (bought,
+     * transferred, or never set) the estimated birth date follows the teeth, so the age shows up to today. Kept in
+     * the goat's history like any edit.
+     */
+    public function teeth(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('edit_goats'), 403);
+        $data = $request->validate(['teeth' => ['nullable', Rule::in(array_keys(\App\Support\Classification::TEETH))]]);
+        $exact = $animal->birth_date && ! $animal->birth_date_is_estimate && $animal->origin === 'born_on_farm';
+        $values = ['origin' => $animal->origin, 'breed_id' => $animal->breed_id, 'tag_id' => $animal->farm_number, 'sex' => $animal->sex, 'pen_id' => $animal->pen_id, 'teeth' => $data['teeth'] ?? null,
+            'birth_date' => ! $exact && ! empty($data['teeth']) ? now()->subMonths(\App\Support\Classification::TEETH_MONTHS[$data['teeth']])->toDateString() : $animal->birth_date?->toDateString()];
+        $changes = GoatRegistration::update($animal, $values, $request->user());
+
+        return back()->with('success', $changes ? "{$animal->farm_number}: teeth saved".($exact ? '.' : ', age estimated from them.') : 'Nothing changed.');
     }
 
     /** @return array<string, mixed> what the register and edit form need */

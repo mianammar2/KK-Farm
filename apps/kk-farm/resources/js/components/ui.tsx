@@ -120,8 +120,15 @@ export function ReproChip({ repro }: { repro?: string | null }) {
     return null;
 }
 
-export function SexIcon({ sex }: { sex: string }) {
-    return sex === 'male' ? <Mars size={14} className="text-cobalt-600" aria-label="Male" /> : <Venus size={14} className="text-manganese-600" aria-label="Female" />;
+/** D-106: gender as a bold, coloured badge (♀ pink, ♂ blue) that is easy to see; `label` adds Female / Male. */
+export function SexIcon({ sex, label = false }: { sex: string; label?: boolean }) {
+    const male = sex === 'male';
+    return (
+        <span title={male ? 'Male' : 'Female'} aria-label={male ? 'Male' : 'Female'}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full font-bold leading-none ${label ? 'px-2 py-1 text-xs' : 'size-6 justify-center text-base'} ${male ? 'bg-sky-100 text-sky-700 ring-1 ring-sky-300' : 'bg-pink-100 text-pink-700 ring-1 ring-pink-300'}`}>
+            {male ? <Mars size={label ? 13 : 15} strokeWidth={3} aria-hidden /> : <Venus size={label ? 13 : 15} strokeWidth={3} aria-hidden />}{label ? (male ? 'Male' : 'Female') : null}
+        </span>
+    );
 }
 
 export function GoatLabel({ goat, size = 38 }: { goat: Pick<GoatCard, 'id' | 'number' | 'name' | 'coat' | 'sex' | 'photo'>; size?: number }) {

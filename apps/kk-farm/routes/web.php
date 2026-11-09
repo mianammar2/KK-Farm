@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/removal', [GoatController::class, 'requestRemoval']);
         Route::post('/goats/{animal}/removal/decide', [GoatController::class, 'decideRemoval']);
         Route::post('/goats/{animal}/restore', [GoatController::class, 'restore']);
+        Route::post('/goats/{animal}/teeth', [GoatController::class, 'teeth']); // D-106
         Route::get('/media/{photo}', [GoatController::class, 'media']);
     });
 

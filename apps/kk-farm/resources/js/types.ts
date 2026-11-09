@@ -8,6 +8,8 @@ export type GoatCard = {
     coat: string;
     breed?: string;
     age?: string | null;
+    teeth?: string | null;
+    ageMonths?: number | null;
     pen?: string | null;
     penId?: number | null;
     status?: string;
