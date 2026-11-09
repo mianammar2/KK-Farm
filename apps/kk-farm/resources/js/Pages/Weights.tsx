@@ -5,6 +5,8 @@ import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
 import { Button, cx, Empty, Field, GoatLabel, monthLabel, PageHeader, Panel, Stat, StatRow } from '../components/ui';
 import type { GoatCard } from '../types';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Row = GoatCard & { adg: number | null; previous: number | null; weighedOn: string | null; daysAgo: number | null; bodyScore: number | null };
 type LogRow = { id: number; goatId: string; goat: string; on: string; kg: number; previous: number | null; days: number | null; gain: number | null; adg: number | null; score: number | null; heightIn: number | null; context: string | null; by: string; dateIso: string; canEdit: boolean };
@@ -15,6 +17,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
     const [view, setView] = useState('all');
     const form = useForm({ animal_id: goats[0]?.id ?? '', weight_kg: '', body_score: '', height_in: '', measured_on: new Date().toLocaleDateString('en-CA') });
     const [logShown, setLogShown] = useState(10);
+    const [adding, setAdding] = useState(false); // D-127
     const [fixing, setFixing] = useState<number | null>(null); // D-099: correcting a weighing
 
     const losing = goats.filter((g) => (g.adg ?? 0) < 0);
@@ -44,7 +47,21 @@ export default function Weights({ goats, log, byBreed }: Props) {
     return (
         <>
             <Head title="Weight & Growth" />
-            <PageHeader title="Weight & growth" description="Average daily gain is calculated between the two latest weighings." />
+            <PageHeader title="Weight & growth" description="Average daily gain is calculated between the two latest weighings." actions={<AddButton label="Record a weight" onClick={() => setAdding(true)} />} />
+            {adding ? <Sheet onClose={() => setAdding(false)}>
+                    <Panel title="Record a weight">
+                        <form onSubmit={(e) => { e.preventDefault(); form.post('/weights', { preserveScroll: true, onSuccess: () => { form.reset('weight_kg', 'body_score', 'height_in'); setAdding(false); } }); }} className="space-y-3">
+                            <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</select></Field>
+                            <Field label="Weight (KG)" error={form.errors.weight_kg}><input inputMode="decimal" className="field" value={form.data.weight_kg} onChange={(e) => form.setData('weight_kg', e.target.value)} /></Field>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Field label="Body score 1–5" error={form.errors.body_score} hint="1 thin · 3 good · 5 fat"><select className="field" value={form.data.body_score} onChange={(e) => form.setData('body_score', e.target.value)}><option value="">Not scored</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
+                                <Field label="Height (inches)" error={form.errors.height_in}><input inputMode="decimal" className="field" value={form.data.height_in} onChange={(e) => form.setData('height_in', e.target.value)} /></Field>
+                            </div>
+                            <Field label="Date" error={form.errors.measured_on}><input type="date" className="field" value={form.data.measured_on} onChange={(e) => form.setData('measured_on', e.target.value)} /></Field>
+                            <Button type="submit" className="w-full" disabled={form.processing}>Save weight</Button>
+                        </form>
+                    </Panel>
+            </Sheet> : null}
             <StatRow>
                 <Stat label="Average daily gain" value={`${averageAdg} g`} note={`${withAdg.length} goats with two weighings`} />
                 <Stat label="Losing weight" value={losing.length} tone={losing.length ? 'alert' : undefined} note="Since last weighing" />
@@ -81,18 +98,6 @@ export default function Weights({ goats, log, byBreed }: Props) {
                 </Panel>
 
                 <div className="space-y-4">
-                    <Panel title="Record a weight">
-                        <form onSubmit={(e) => { e.preventDefault(); form.post('/weights', { preserveScroll: true, onSuccess: () => form.reset('weight_kg', 'body_score', 'height_in') }); }} className="space-y-3">
-                            <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</select></Field>
-                            <Field label="Weight (KG)" error={form.errors.weight_kg}><input inputMode="decimal" className="field" value={form.data.weight_kg} onChange={(e) => form.setData('weight_kg', e.target.value)} /></Field>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Field label="Body score 1–5" error={form.errors.body_score} hint="1 thin · 3 good · 5 fat"><select className="field" value={form.data.body_score} onChange={(e) => form.setData('body_score', e.target.value)}><option value="">Not scored</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
-                                <Field label="Height (inches)" error={form.errors.height_in}><input inputMode="decimal" className="field" value={form.data.height_in} onChange={(e) => form.setData('height_in', e.target.value)} /></Field>
-                            </div>
-                            <Field label="Date" error={form.errors.measured_on}><input type="date" className="field" value={form.data.measured_on} onChange={(e) => form.setData('measured_on', e.target.value)} /></Field>
-                            <Button type="submit" className="w-full" disabled={form.processing}>Save weight</Button>
-                        </form>
-                    </Panel>
                     <Panel title="Average weight by breed"><Chart option={chart} label="Average weight by breed and month" height={270} /></Panel>
                 </div>
             </div>

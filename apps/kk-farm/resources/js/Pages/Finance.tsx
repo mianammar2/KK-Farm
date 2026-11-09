@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
 import { Button, Chip, cx, Field, monthLabel, PageHeader, Panel, pkr, pkrShort, Stat, StatRow } from '../components/ui';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Entry = { id: number; direction: 'in' | 'out'; category: string; amount: number; on: string; counterparty: string | null; description: string | null; by: string; reversed: boolean; isReversal: boolean; payment: 'paid' | 'pending' | 'partial'; paidBy: string | null; reference: string | null; goatId: string | null; goat: string | null };
 type SaleRow = { id: number; on: string; category: string; goatId: string | null; what: string | null; buyer: string | null; gross: number; fee: number; net: number; receipt: string | null; by: string };
@@ -11,6 +13,7 @@ type Props = { summary: Record<string, number>; monthly: Array<{ month: string; 
 export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales, goats, pending, accounts }: Props) {
     const [direction, setDirection] = useState('');
     const [category, setCategory] = useState('');
+    const [adding, setAdding] = useState<'' | 'entry' | 'sale'>(''); // D-127
     const moneyAccounts = accounts.filter((a) => a.money);
     const pickable = (d: string) => accounts.filter((a) => (d === 'in' ? a.type === 'income' : a.type === 'expense'));
     const form = useForm({ direction: 'out', account_id: String(pickable('out')[0]?.id ?? ''), money_account_id: String(moneyAccounts[0]?.id ?? ''), paid_now: '', amount: '', counterparty: '', description: '', occurred_on: new Date().toLocaleDateString('en-CA'), payment_status: 'paid', paid_by: '', reference: '', animal_id: '' });
@@ -42,7 +45,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
     return (
         <>
             <Head title="Expenses & Finance" />
-            <PageHeader title="Expenses & finance" description="Only the CEO and finance roles can open this. Every entry posts a balanced double-entry journal; a correction is a reversing entry." actions={<Link href="/finance/books" className="text-sm font-semibold text-turq-800 hover:underline">Accounts (books)</Link>} />
+            <PageHeader title="Expenses & finance" description="Only the CEO and finance roles can open this. Every entry posts a balanced double-entry journal; a correction is a reversing entry." actions={<><Link href="/finance/books" className="text-sm font-semibold text-turq-800 hover:underline">Accounts (books)</Link><AddButton primary={false} label="Record a product sale" onClick={() => setAdding('sale')} /><AddButton label="Record an entry" onClick={() => setAdding('entry')} /></>} />
             <StatRow>
                 <Stat label="This month in" value={pkrShort(summary.monthIn)} />
                 <Stat label="This month out" value={pkrShort(summary.monthOut)} />
@@ -57,7 +60,30 @@ export default function Finance({ summary, monthly, categories, entries, categor
                 <Panel title="Spending by category"><Chart option={split} label="Spending by category" height={250} /></Panel>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+            {adding === 'entry' ? <Sheet onClose={() => setAdding('')}>
+                <Panel title="Record an entry">
+                    <form onSubmit={(e) => { e.preventDefault(); form.post('/finance/entries', { preserveScroll: true, onSuccess: () => { form.reset('amount', 'counterparty', 'description'); setAdding(''); } }); }} className="space-y-3">
+                        <Field label="Type"><select className="field" value={form.data.direction} onChange={(e) => form.setData({ ...form.data, direction: e.target.value, account_id: String(pickable(e.target.value)[0]?.id ?? '') })}><option value="out">Money out</option><option value="in">Money in</option></select></Field>
+                        <Field label={form.data.direction === 'in' ? 'Income account' : 'Expense account'} error={(form.errors as Record<string, string>).account_id}><select className="field" value={form.data.account_id} onChange={(e) => form.setData('account_id', e.target.value)}>{pickable(form.data.direction).map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field>
+                        <Field label="Amount (PKR)" error={form.errors.amount}><input inputMode="decimal" className="field" value={form.data.amount} onChange={(e) => form.setData('amount', e.target.value)} /></Field>
+                        <Field label={form.data.direction === 'out' ? 'Vendor' : 'Payer'}><input className="field" value={form.data.counterparty} onChange={(e) => form.setData('counterparty', e.target.value)} /></Field>
+                        {form.data.direction === 'out' ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                <Field label="Payment"><select className="field" value={form.data.payment_status} onChange={(e) => form.setData('payment_status', e.target.value)}><option value="paid">Paid</option><option value="pending">Pending</option><option value="partial">Partly paid</option></select></Field>
+                                <Field label="Paid by"><input className="field" value={form.data.paid_by} onChange={(e) => form.setData('paid_by', e.target.value)} /></Field>
+                            </div>
+                        ) : null}
+                        {form.data.direction === 'out' && form.data.payment_status === 'partial' ? <Field label="Paid now (PKR)" error={(form.errors as Record<string, string>).paid_now}><input inputMode="decimal" className="field" value={form.data.paid_now} onChange={(e) => form.setData('paid_now', e.target.value)} /></Field> : null}
+                        {form.data.direction === 'in' || form.data.payment_status !== 'pending' ? <Field label={form.data.direction === 'in' ? 'Received into' : 'Paid from'}><select className="field" value={form.data.money_account_id} onChange={(e) => form.setData('money_account_id', e.target.value)}>{moneyAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field> : null}
+                        <Field label="For a goat (optional)"><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}><option value="">Whole farm</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
+                        <Field label="Invoice / reference"><input className="field" value={form.data.reference} onChange={(e) => form.setData('reference', e.target.value)} /></Field>
+                        <Field label="Date" error={form.errors.occurred_on}><input type="date" className="field" value={form.data.occurred_on} onChange={(e) => form.setData('occurred_on', e.target.value)} /></Field>
+                        <Button type="submit" className="w-full" disabled={form.processing}>Save entry</Button>
+                    </form>
+                </Panel>
+            </Sheet> : null}
+            {adding === 'sale' ? <Sheet onClose={() => setAdding('')}><ProductSaleForm onDone={() => setAdding('')} /></Sheet> : null}
+            <div>
                 <Panel flush title="Ledger" actions={
                     <div className="flex flex-wrap gap-2">
                         <select aria-label="Direction" className="field w-auto" value={direction} onChange={(e) => setDirection(e.target.value)}><option value="">In and out</option><option value="in">Money in</option><option value="out">Money out</option></select>
@@ -83,32 +109,11 @@ export default function Finance({ summary, monthly, categories, entries, categor
                         </table>
                     </div>
                 </Panel>
-                <Panel title="Record an entry">
-                    <form onSubmit={(e) => { e.preventDefault(); form.post('/finance/entries', { preserveScroll: true, onSuccess: () => form.reset('amount', 'counterparty', 'description') }); }} className="space-y-3">
-                        <Field label="Type"><select className="field" value={form.data.direction} onChange={(e) => form.setData({ ...form.data, direction: e.target.value, account_id: String(pickable(e.target.value)[0]?.id ?? '') })}><option value="out">Money out</option><option value="in">Money in</option></select></Field>
-                        <Field label={form.data.direction === 'in' ? 'Income account' : 'Expense account'} error={(form.errors as Record<string, string>).account_id}><select className="field" value={form.data.account_id} onChange={(e) => form.setData('account_id', e.target.value)}>{pickable(form.data.direction).map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field>
-                        <Field label="Amount (PKR)" error={form.errors.amount}><input inputMode="decimal" className="field" value={form.data.amount} onChange={(e) => form.setData('amount', e.target.value)} /></Field>
-                        <Field label={form.data.direction === 'out' ? 'Vendor' : 'Payer'}><input className="field" value={form.data.counterparty} onChange={(e) => form.setData('counterparty', e.target.value)} /></Field>
-                        {form.data.direction === 'out' ? (
-                            <div className="grid grid-cols-2 gap-2">
-                                <Field label="Payment"><select className="field" value={form.data.payment_status} onChange={(e) => form.setData('payment_status', e.target.value)}><option value="paid">Paid</option><option value="pending">Pending</option><option value="partial">Partly paid</option></select></Field>
-                                <Field label="Paid by"><input className="field" value={form.data.paid_by} onChange={(e) => form.setData('paid_by', e.target.value)} /></Field>
-                            </div>
-                        ) : null}
-                        {form.data.direction === 'out' && form.data.payment_status === 'partial' ? <Field label="Paid now (PKR)" error={(form.errors as Record<string, string>).paid_now}><input inputMode="decimal" className="field" value={form.data.paid_now} onChange={(e) => form.setData('paid_now', e.target.value)} /></Field> : null}
-                        {form.data.direction === 'in' || form.data.payment_status !== 'pending' ? <Field label={form.data.direction === 'in' ? 'Received into' : 'Paid from'}><select className="field" value={form.data.money_account_id} onChange={(e) => form.setData('money_account_id', e.target.value)}>{moneyAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field> : null}
-                        <Field label="For a goat (optional)"><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}><option value="">Whole farm</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
-                        <Field label="Invoice / reference"><input className="field" value={form.data.reference} onChange={(e) => form.setData('reference', e.target.value)} /></Field>
-                        <Field label="Date" error={form.errors.occurred_on}><input type="date" className="field" value={form.data.occurred_on} onChange={(e) => form.setData('occurred_on', e.target.value)} /></Field>
-                        <Button type="submit" className="w-full" disabled={form.processing}>Save entry</Button>
-                    </form>
-                </Panel>
             </div>
 
             {/* D-076: workbook "Sales". Goat sales come from Movements; products are recorded here. */}
-            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+            <div className="mt-4">
                 <SalesList sales={sales} />
-                <ProductSaleForm />
             </div>
         </>
     );
@@ -141,12 +146,12 @@ function SalesList({ sales }: { sales: SaleRow[] }) {
     );
 }
 
-function ProductSaleForm() {
+function ProductSaleForm({ onDone }: { onDone?: () => void }) {
     const form = useForm({ sold_on: new Date().toLocaleDateString('en-CA'), category: 'product', item: '', buyer: '', gross: '', fee: '', receipt_ref: '', notes: '' });
     const e = form.errors as Record<string, string>;
     return (
         <Panel title="Record a product sale" description="Milk, manure, skins and other sales without a goat">
-            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/finance/sales', { preserveScroll: true, onSuccess: () => form.reset('item', 'buyer', 'gross', 'fee', 'receipt_ref', 'notes') }); }} className="space-y-3">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/finance/sales', { preserveScroll: true, onSuccess: () => { form.reset('item', 'buyer', 'gross', 'fee', 'receipt_ref', 'notes'); onDone?.(); } }); }} className="space-y-3">
                 <Field label="What was sold" error={e.item}><input className="field" value={form.data.item} onChange={(x) => form.setData('item', x.target.value)} placeholder="e.g. Milk 40 L" /></Field>
                 <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}><option value="product">Goat product</option><option value="other">Other</option></select></Field>
                 <div className="grid grid-cols-2 gap-2">

@@ -2,7 +2,9 @@ import { Head, Link, useForm, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow } from '../components/ui';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Move = { id: number; on: string; type: string; typeLabel: string; goatId: string; goat: string; from: string | null; to: string | null; reason: string | null; by: string; amount: number | null; evidence: string | null };
 type Goat = { id: string; number: string; name: string | null; pen: string | null; penId: number | null; withdrawal: string | null };
@@ -17,7 +19,7 @@ const TYPE_CLASS: Record<string, string> = { transfer: 'bg-cobalt-100 text-cobal
 /** D-076: workbook "Animal Movements": move one goat or a batch, or record exits; every movement is kept. */
 export default function Movements({ movements, goats, pens, types, month, canExit, saleCategories }: Props) {
     usePoll(LIVE_MS, { only: ['movements', 'goats', 'pens', 'month'] }); // D-086: live
-    const [tab, setTab] = useState('record');
+    const [adding, setAdding] = useState(false); // D-127: the movement form opens from a + button
     const [filter, setFilter] = useState('');
     const [shown, setShown] = useState(20);
     const list = movements.filter((m) => !filter || m.type === filter);
@@ -26,15 +28,15 @@ export default function Movements({ movements, goats, pens, types, month, canExi
     return (
         <>
             <Head title="Movements" />
-            <PageHeader title="Animal movements" description="Pen transfers and goats leaving the farm. Every movement is kept; the goat's pen and status follow from it." />
+            <PageHeader title="Animal movements" description="Pen transfers and goats leaving the farm. Every movement is kept; the goat's pen and status follow from it." actions={<AddButton label="Record a movement" onClick={() => setAdding(true)} />} />
+            {adding ? <Sheet onClose={() => setAdding(false)}><MoveForm goats={goats} pens={pens} types={types} canExit={canExit} saleCategories={saleCategories} onDone={() => setAdding(false)} /></Sheet> : null}
             <StatRow>
                 <Stat label="Goats on the farm" value={goats.length} />
                 <Stat label="Pen transfers this month" value={month.transfer ?? 0} />
                 <Stat label="Left the farm this month" value={exits} note={month.sale ? `${month.sale} sold` : undefined} />
                 <Stat label="Deaths this month" value={month.death ?? 0} tone={month.death ? 'alert' : undefined} />
             </StatRow>
-            <Tabs value={tab} onChange={setTab} tabs={[{ id: 'record', label: 'Record a movement' }, { id: 'history', label: 'History', count: movements.length }]} />
-            {tab === 'record' ? <MoveForm goats={goats} pens={pens} types={types} canExit={canExit} saleCategories={saleCategories} /> : (
+            {(
                 <Panel flush actions={
                     <select aria-label="Filter by type" className="field w-48" value={filter} onChange={(e) => setFilter(e.target.value)}>
                         <option value="">All movements</option>
@@ -68,7 +70,7 @@ export default function Movements({ movements, goats, pens, types, month, canExi
     );
 }
 
-function MoveForm({ goats, pens, types, canExit, saleCategories }: Omit<Props, 'movements' | 'month'>) {
+function MoveForm({ goats, pens, types, canExit, saleCategories, onDone }: Omit<Props, 'movements' | 'month'> & { onDone?: () => void }) {
     const [query, setQuery] = useState('');
     const form = useForm({ animal_ids: [] as string[], type: 'transfer', moved_on: today(), to_pen_id: '', destination: '', reason: '', authorized_by: '', amount: '', fee: '', evidence_ref: '', notes: '', sale_category: 'live_goat' });
     const e = form.errors as Record<string, string>;
@@ -84,7 +86,7 @@ function MoveForm({ goats, pens, types, canExit, saleCategories }: Omit<Props, '
     const penNames = [...new Set(goats.map((g) => g.pen).filter(Boolean) as string[])];
 
     return (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="space-y-4">
             <Panel title="1. Choose goats" description="Search, tap to add, or add a whole pen. Scanning with the gun opens the goat itself.">
                 <div className="relative mb-3"><Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" aria-hidden /><input className="field pl-9" value={query} onChange={(x) => setQuery(x.target.value)} placeholder="Tag ID, name or pen" aria-label="Search goats" /></div>
                 {penNames.length ? <div className="mb-3 flex flex-wrap gap-1.5"><span className="text-sm text-ink-soft">Add a whole pen:</span>{penNames.map((p) => <button key={p} type="button" onClick={() => byPen(p)} className="rounded-[4px] border border-rule px-2 py-0.5 font-mono text-xs hover:border-cobalt-600">{p}</button>)}</div> : null}
@@ -101,7 +103,7 @@ function MoveForm({ goats, pens, types, canExit, saleCategories }: Omit<Props, '
             </Panel>
 
             <Panel title={`2. Movement · ${picked.length} goat${picked.length === 1 ? '' : 's'}`}>
-                <form onSubmit={(x) => { x.preventDefault(); form.post('/movements', { preserveScroll: true, onSuccess: () => form.reset('animal_ids', 'destination', 'reason', 'amount', 'fee', 'evidence_ref', 'notes') }); }} className="space-y-3">
+                <form onSubmit={(x) => { x.preventDefault(); form.post('/movements', { preserveScroll: true, onSuccess: () => { form.reset('animal_ids', 'destination', 'reason', 'amount', 'fee', 'evidence_ref', 'notes'); onDone?.(); } }); }} className="space-y-3">
                     {picked.length ? <div className="flex flex-wrap gap-1.5">{picked.map((g) => <button key={g.id} type="button" onClick={() => toggle(g.id)} className={cx('rounded-[4px] px-2 py-0.5 font-mono text-xs', g.withdrawal ? 'bg-crit-100 text-crit-700' : 'bg-cobalt-100 text-cobalt-800')} title="Remove">{g.number} ×</button>)}</div> : <p className="text-sm text-ink-soft">No goats chosen yet.</p>}
                     <Field label="Movement" error={e.type}>
                         <select className="field" value={form.data.type} onChange={(x) => form.setData('type', x.target.value)}>

@@ -1,6 +1,8 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Line = { account: string; accountId: number; debit: number; credit: number; goat: string | null };
 type Journal = { id: number; no: number; on: string; memo: string; source: string; reference: string | null; by: string; reversed: boolean; isReversal: boolean; lines: Line[] };
@@ -91,9 +93,11 @@ function Statement({ title, rows, total, openLedger }: { title: string; rows: Ro
 function JournalTab({ journal, accounts, openLedger }: { journal: Journal[]; accounts: AccountRow[]; openLedger: (id: number) => void }) {
     const [all, setAll] = useState(false);
     const rows = all ? journal : journal.slice(0, 25);
+    const [adding, setAdding] = useState(false); // D-127
     return (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-            <Panel flush title="Journal" description="Newest first. Click an account to see its ledger.">
+        <div>
+            {adding ? <Sheet onClose={() => setAdding(false)}><ManualJournal accounts={accounts} onDone={() => setAdding(false)} /></Sheet> : null}
+            <Panel flush title="Journal" description="Newest first. Click an account to see its ledger." actions={<AddButton label="Post a journal" onClick={() => setAdding(true)} />}>
                 {journal.length ? (
                     <div className="divide-y divide-rule">
                         {rows.map((j) => (
@@ -122,12 +126,11 @@ function JournalTab({ journal, accounts, openLedger }: { journal: Journal[]; acc
                     </div>
                 ) : <p className="p-4 text-sm text-ink-soft">No journals in these dates.</p>}
             </Panel>
-            <ManualJournal accounts={accounts} />
         </div>
     );
 }
 
-function ManualJournal({ accounts }: { accounts: AccountRow[] }) {
+function ManualJournal({ accounts, onDone }: { accounts: AccountRow[]; onDone?: () => void }) {
     const blank = { account_id: '', debit: '', credit: '' };
     const form = useForm({ posted_on: new Date().toLocaleDateString('en-CA'), memo: '', reference: '', opening: false, lines: [blank, blank] });
     const total = (k: 'debit' | 'credit') => form.data.lines.reduce((s, l) => s + (parseFloat(l[k]) || 0), 0);
@@ -136,7 +139,7 @@ function ManualJournal({ accounts }: { accounts: AccountRow[] }) {
     const errors = form.errors as Record<string, string>;
     return (
         <Panel title="Post a journal" description="Owner's capital, cash to bank, drawings, opening balances or a correction. Debits must equal credits.">
-            <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); form.post('/finance/journals', { preserveScroll: true, onSuccess: () => form.reset() }); }}>
+            <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); form.post('/finance/journals', { preserveScroll: true, onSuccess: () => { form.reset(); onDone?.(); } }); }}>
                 <Field label="What is it for" error={form.errors.memo}><input className="field" value={form.data.memo} onChange={(e) => form.setData('memo', e.target.value)} placeholder="e.g. Owner put cash into the farm" /></Field>
                 <div className="space-y-2">
                     {form.data.lines.map((l, i) => (
@@ -185,9 +188,10 @@ function LedgerTab({ ledger, accounts, pick }: { ledger: Props['ledger']; accoun
 
 function AccountsTab({ accounts, types, openLedger }: { accounts: AccountRow[]; types: Record<string, string>; openLedger: (id: number) => void }) {
     const form = useForm({ name: '', type: 'expense', code: '', is_money: false, notes: '' });
+    const [adding, setAdding] = useState(false); // D-127
     return (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
-            <Panel flush title="Chart of accounts">
+        <div>
+            <Panel flush title="Chart of accounts" actions={<AddButton label="Add an account" onClick={() => setAdding(true)} />}>
                 <div className="overflow-x-auto"><table className="data-table min-w-[560px]">
                     <thead><tr><th>Code</th><th>Account</th><th>Type</th><th className="text-right">Balance</th><th /></tr></thead>
                     <tbody>{Object.keys(types).flatMap((t) => accounts.filter((a) => a.type === t)).map((a) => (
@@ -200,8 +204,9 @@ function AccountsTab({ accounts, types, openLedger }: { accounts: AccountRow[]; 
                     ))}</tbody>
                 </table></div>
             </Panel>
+            {adding ? <Sheet onClose={() => setAdding(false)}>
             <Panel title="Add an account">
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); form.post('/finance/accounts', { preserveScroll: true, onSuccess: () => form.reset() }); }}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); form.post('/finance/accounts', { preserveScroll: true, onSuccess: () => { form.reset(); setAdding(false); } }); }}>
                     <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Meezan Bank" /></Field>
                     <Field label="Type" error={form.errors.type}><select className="field" value={form.data.type} onChange={(e) => form.setData('type', e.target.value)}>{Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Code (optional)" error={form.errors.code} hint="Left empty, the next free number is used."><input className="field" value={form.data.code} onChange={(e) => form.setData('code', e.target.value)} /></Field>
@@ -209,6 +214,7 @@ function AccountsTab({ accounts, types, openLedger }: { accounts: AccountRow[]; 
                     <Button type="submit" className="w-full" disabled={form.processing}>Add account</Button>
                 </form>
             </Panel>
+            </Sheet> : null}
         </div>
     );
 }

@@ -3,6 +3,8 @@ import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel, Tabs } from '../components/ui';
 import type { SharedProps } from '../types';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Task = {
     id: number; title: string; type: string; priority: string; status: string; open: boolean; pen: string | null; goatId: string | null; goat: string | null; notes: string | null;
@@ -22,6 +24,7 @@ const STATUS_CLASS: Record<string, string> = { in_progress: 'bg-cobalt-100 text-
 export default function Tasks({ tasks, departments, users, pens, goats, types, priorities, statuses }: Props) {
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('open');
+    const [adding, setAdding] = useState(false); // D-127
     const canAssign = ['ceo', 'manager', 'vet'].includes(auth?.role ?? '');
     const open = tasks.filter((t) => t.open);
     const mine = open.filter((t) => t.mine);
@@ -34,10 +37,10 @@ export default function Tasks({ tasks, departments, users, pens, goats, types, p
     return (
         <>
             <Head title="Tasks & Daily Work" />
-            <PageHeader title="Tasks & daily work" description={`${todays.filter((t) => t.status === 'completed').length} of ${todays.length} due today done · ${overdue.length} overdue`} />
+            <PageHeader title="Tasks & daily work" description={`${todays.filter((t) => t.status === 'completed').length} of ${todays.length} due today done · ${overdue.length} overdue`} actions={canAssign ? <AddButton label="Assign a task" onClick={() => setAdding(true)} /> : null} />
             <div className="mb-4 h-2 overflow-hidden rounded-sm bg-rule" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Tasks due today completed"><div className="h-full bg-turq-600 transition-[width] duration-300 ease-out" style={{ width: `${percent}%` }} /></div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div>
                 <div className="min-w-0">
                     <Tabs value={tab} onChange={setTab} tabs={[{ id: 'open', label: 'To do', count: open.length }, { id: 'mine', label: 'Mine', count: mine.length }, { id: 'overdue', label: 'Overdue', count: overdue.length }, { id: 'closed', label: 'Done this week', count: closed.length }]} />
                     <Panel flush>
@@ -48,7 +51,7 @@ export default function Tasks({ tasks, departments, users, pens, goats, types, p
                         ) : <Empty title={tab === 'closed' ? 'Nothing finished this week' : tab === 'mine' ? 'Nothing for you or your department' : tab === 'overdue' ? 'Nothing overdue' : 'Everything is done'} />}
                     </Panel>
                 </div>
-                {canAssign ? <AssignForm departments={departments} users={users} pens={pens} goats={goats} types={types} priorities={priorities} /> : null}
+                {canAssign && adding ? <Sheet onClose={() => setAdding(false)}><AssignForm departments={departments} users={users} pens={pens} goats={goats} types={types} priorities={priorities} onDone={() => setAdding(false)} /></Sheet> : null}
             </div>
         </>
     );
@@ -85,13 +88,13 @@ function TaskRow({ t, statuses, priorities }: { t: Task; statuses: Record<string
     );
 }
 
-function AssignForm({ departments, users, pens, goats, types, priorities }: Pick<Props, 'departments' | 'users' | 'pens' | 'goats' | 'types' | 'priorities'>) {
+function AssignForm({ departments, users, pens, goats, types, priorities, onDone }: Pick<Props, 'departments' | 'users' | 'pens' | 'goats' | 'types' | 'priorities'> & { onDone?: () => void }) {
     const form = useForm({ title: '', type: 'health', department_id: '', user_id: '', pen_id: '', animal_id: '', priority: 'medium', due_on: today(), notes: '' });
     const people = form.data.department_id ? users.filter((u) => String(u.department) === form.data.department_id) : users;
     const e = form.errors as Record<string, string>;
     return (
         <Panel title="Assign a task">
-            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/tasks', { preserveScroll: true, onSuccess: () => form.reset('title', 'user_id', 'animal_id', 'notes') }); }} className="space-y-3">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/tasks', { preserveScroll: true, onSuccess: () => { form.reset('title', 'user_id', 'animal_id', 'notes'); onDone?.(); } }); }} className="space-y-3">
                 <Field label="Task" error={e.title}><input className="field" value={form.data.title} onChange={(x) => form.setData('title', x.target.value)} /></Field>
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Type"><select className="field" value={form.data.type} onChange={(x) => form.setData('type', x.target.value)}>{Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>

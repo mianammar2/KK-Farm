@@ -1,6 +1,9 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
+import { useState } from 'react';
+import AddButton from '../../components/AddButton';
+import Sheet from '../../components/Sheet';
 
 type Def = { id: string; key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; active: boolean; structural: boolean; required: boolean; options: string };
 type Props = { fields: Def[]; sections: string[]; types: string[] };
@@ -10,24 +13,15 @@ const TYPE_LABEL: Record<string, string> = { text: 'Short text', long_text: 'Lon
 export default function Fields({ fields, sections, types }: Props) {
     const add = useForm({ label: '', type: 'text', options: '', section: 'Custom', required: false, help: '' });
     const addSection = [...new Set([...sections, 'Custom'])];
+    const [adding, setAdding] = useState(false); // D-127
 
     return (
         <>
             <Head title="Register fields" />
-            <PageHeader title="Goat register fields" description="The fields shown when a goat is registered. Rename them, edit dropdown options, or add your own." actions={<Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>} />
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-                <div className="space-y-4">
-                    {sections.map((section) => (
-                        <Panel key={section} title={section} flush>
-                            <ul className="divide-y divide-rule">
-                                {fields.filter((f) => f.section === section).map((f) => <FieldRow key={`${f.id}-${f.label}-${f.options}-${f.active}-${f.required}`} field={f} />)}
-                            </ul>
-                        </Panel>
-                    ))}
-                </div>
-                <div className="xl:sticky xl:top-4 xl:self-start">
+            <PageHeader title="Goat register fields" description="The fields shown when a goat is registered. Rename them, edit dropdown options, or add your own." actions={<><Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link><AddButton label="Add a custom field" onClick={() => setAdding(true)} /></>} />
+            {adding ? <Sheet onClose={() => setAdding(false)}>
                     <Panel title="Add a custom field" description="Appears on the goat register form and is saved with each goat">
-                        <form onSubmit={(e) => { e.preventDefault(); add.post('/settings/fields', { preserveScroll: true, onSuccess: () => add.reset('label', 'options', 'help', 'required') }); }} className="space-y-3">
+                        <form onSubmit={(e) => { e.preventDefault(); add.post('/settings/fields', { preserveScroll: true, onSuccess: () => { add.reset('label', 'options', 'help', 'required'); setAdding(false); } }); }} className="space-y-3">
                             <Field label="Field name" error={add.errors.label}><input className="field" value={add.data.label} onChange={(e) => add.setData('label', e.target.value)} placeholder="e.g. Horn status" /></Field>
                             <Field label="Type" error={add.errors.type}>
                                 <select className="field" value={add.data.type} onChange={(e) => add.setData('type', e.target.value)}>{types.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}</select>
@@ -43,6 +37,16 @@ export default function Fields({ fields, sections, types }: Props) {
                         </form>
                         <div className="mt-3"><Note>Existing goats keep their data. A field that is switched off is hidden, not deleted.</Note></div>
                     </Panel>
+            </Sheet> : null}
+            <div>
+                <div className="space-y-4">
+                    {sections.map((section) => (
+                        <Panel key={section} title={section} flush>
+                            <ul className="divide-y divide-rule">
+                                {fields.filter((f) => f.section === section).map((f) => <FieldRow key={`${f.id}-${f.label}-${f.options}-${f.active}-${f.required}`} field={f} />)}
+                            </ul>
+                        </Panel>
+                    ))}
                 </div>
             </div>
         </>

@@ -6,6 +6,8 @@ import GoatPortrait from '../components/GoatPortrait';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null };
 type Pen = { id: number; name: string; code: string; kind: 'pen' | 'open_area'; purpose: string; capacity: number | null; count: number; goats: Goat[] };
@@ -43,19 +45,17 @@ export default function Sheds({ sheds, types, prefix, recent, board }: Props & {
             <PageHeader
                 title="Sheds"
                 description={`${active.length} shed${active.length === 1 ? '' : 's'} in use, ${planned.length} planned, ${goats.length} goats housed.`}
-                actions={canManage ? <Button type="button" onClick={() => setEditing({ kind: 'shed' })}><Plus className="mr-1 inline size-4" aria-hidden />Add shed</Button> : null}
+                actions={canManage ? <AddButton label="Add a shed" onClick={() => setEditing({ kind: 'shed' })} /> : null}
             />
+
+            {/* D-127: adding or editing a shed, pen or open area opens in a panel. */}
+            {editing ? <Sheet onClose={() => setEditing(null)}><Editor key={JSON.stringify([editing.kind, editing.shed?.id, editing.kind === 'pen' ? `${editing.pen?.id}-${editing.area}` : null])} editing={editing} sheds={sheds} types={types} prefix={prefix} onDone={() => setEditing(null)} /></Sheet> : null}
 
             {/* D-120: drag or tick goats into another pen; moved here from the dashboard. */}
             <div className="mb-4"><ShedBoard board={board} canMove /></div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="space-y-4">
-                    {editing ? <Editor key={JSON.stringify([editing.kind, editing.shed?.id, editing.kind === 'pen' ? `${editing.pen?.id}-${editing.area}` : null])} editing={editing} sheds={sheds} types={types} prefix={prefix} onDone={() => setEditing(null)} /> : null}
-
-                    {canManage && !editing ? (
-                        <div className="xl:hidden"><Button type="button" variant="secondary" className="w-full" onClick={() => setEditing({ kind: 'shed' })}><Plus className="mr-1 inline size-4" aria-hidden />Add shed</Button></div>
-                    ) : null}
 
                     {sheds.length === 0 ? <Empty title="No sheds yet">{canManage ? 'Add your first shed, then add pens inside it.' : 'The owner or manager adds sheds and pens.'}</Empty> : null}
 

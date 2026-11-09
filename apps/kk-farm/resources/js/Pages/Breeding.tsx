@@ -5,6 +5,8 @@ import GoatPortrait from '../components/GoatPortrait';
 import PedigreeTree, { type PedigreeNode } from '../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import type { Option, SharedProps } from '../types';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null };
 type MatingRow = {
@@ -41,6 +43,7 @@ export default function Breeding(props: Props) {
     const { matings, kiddings, weaning, weaned, performance, focus, goats, settings } = props;
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('cycle');
+    const [adding, setAdding] = useState(false); // D-127
     const isVet = !!auth?.gates.includes('clinical');
     const canSettings = !!auth?.modules.includes('settings');
     const active = matings.filter((m) => m.active);
@@ -49,7 +52,8 @@ export default function Breeding(props: Props) {
     return (
         <>
             <Head title="Breeding & Pedigree" />
-            <PageHeader title="Breeding & pedigree" description={`Gestation ${settings.gestation} days · pregnancy check ${settings.check} days after mating · weaning at ${settings.weaning} days. Your vet confirms these.`} />
+            <PageHeader title="Breeding & pedigree" description={`Gestation ${settings.gestation} days · pregnancy check ${settings.check} days after mating · weaning at ${settings.weaning} days. Your vet confirms these.`} actions={<AddButton label="Record a mating" onClick={() => setAdding(true)} />} />
+            {adding ? <Sheet onClose={() => setAdding(false)}><MatingForm {...props} onDone={() => setAdding(false)} /></Sheet> : null}
             <StatRow>
                 <Stat label="Confirmed pregnant" value={active.filter((m) => m.status === 'pregnant').length} />
                 <Stat label="Waiting for a check" value={active.filter((m) => m.status === 'open' || m.status === 'inconclusive').length} note={`${active.filter((m) => m.alert === 'check_overdue' || m.alert === 'recheck_overdue').length} overdue`} tone={active.some((m) => m.alert === 'check_overdue' || m.alert === 'recheck_overdue') ? 'alert' : undefined} />
@@ -66,12 +70,11 @@ export default function Breeding(props: Props) {
             ]} />
 
             {tab === 'cycle' ? (
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
+                <div>
                     <div className="min-w-0 space-y-3">
                         {matings.length ? matings.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} {...props} />)
-                            : <Panel><Empty title="No matings yet">Record a mating with the form.</Empty></Panel>}
+                            : <Panel><Empty title="No matings yet">Tap Record a mating to add one.</Empty></Panel>}
                     </div>
-                    <MatingForm {...props} />
                 </div>
             ) : null}
 
@@ -251,7 +254,7 @@ function WeaningRow({ w, pens, options }: { w: Due } & Props) {
     );
 }
 
-function MatingForm({ does, bucks, pairCheck, options, settings }: Props) {
+function MatingForm({ does, bucks, pairCheck, options, settings, onDone }: Props & { onDone?: () => void }) {
     const mating = useForm({ dam_id: String(does[0]?.id ?? ''), sire_id: String(bucks[0]?.id ?? ''), mated_on: today(), method: 'natural', heat_observed: 'yes', handler: '', notes: '' });
     const checkPair = () => router.get('/breeding', { sire: mating.data.sire_id, dam: mating.data.dam_id }, { preserveState: true, preserveScroll: true, only: ['pairCheck'] });
     const e = mating.errors as Record<string, string>;
@@ -259,7 +262,7 @@ function MatingForm({ does, bucks, pairCheck, options, settings }: Props) {
     const plus = (days: number) => { const d = new Date(mated); d.setDate(d.getDate() + days); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
     return (
         <Panel title="Record a mating">
-            <form onSubmit={(ev) => { ev.preventDefault(); mating.post('/breeding/matings', { preserveScroll: true, onSuccess: () => mating.reset('notes') }); }} className="space-y-3">
+            <form onSubmit={(ev) => { ev.preventDefault(); mating.post('/breeding/matings', { preserveScroll: true, onSuccess: () => { mating.reset('notes'); onDone?.(); } }); }} className="space-y-3">
                 {!does.length ? <Note>No female goats are registered yet. Register a doe first, then record her mating here.</Note> : null}
                 <Field label="Doe" error={e.dam_id}><select className="field" value={mating.data.dam_id} onChange={(x) => mating.setData('dam_id', x.target.value)} disabled={!does.length}>{does.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>
                 <Field label="Buck" error={e.sire_id} hint="Not recorded: unknown or not on this farm"><select className="field" value={mating.data.sire_id} onChange={(x) => mating.setData('sire_id', x.target.value)}><option value="">Not recorded</option>{bucks.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>

@@ -7,6 +7,7 @@ import Checkups, { type CheckupData } from '../components/Checkups';
 import HealthEntry from '../components/HealthEntry';
 import Sheet from '../components/Sheet';
 import { titleCase } from '../lib/titleCase';
+import AddButton from '../components/AddButton';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -330,9 +331,15 @@ function PreventiveForm({ goats, onDone }: { goats: Option[]; onDone?: () => voi
 function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineUnits, medicineTypes, canMedicine }: Props) {
     const [open, setOpen] = useState<number | null>(null);
     const [moves, setMoves] = useState(false);
+    const [adding, setAdding] = useState<'' | 'medicine' | 'stock'>(''); // D-127
     return (
         <div className="space-y-4">
-            <Panel title="Medicines in store" description="Quantity comes from receipts and issues. Treatments take the batch that expires first." flush>
+            {adding === 'medicine' ? <Sheet onClose={() => setAdding('')}><MedicineAdd categories={medicineCategories} units={medicineUnits} onDone={() => setAdding('')} /></Sheet> : null}
+            {adding === 'stock' && medicines.length ? <Sheet onClose={() => setAdding('')}><MedicineMoveForm medicines={medicines} types={medicineTypes} onDone={() => setAdding('')} /></Sheet> : null}
+            <Panel title="Medicines in store" description="Quantity comes from receipts and issues. Treatments take the batch that expires first." flush actions={canMedicine ? <>
+                {medicines.length ? <AddButton primary={false} label="Stock in / out" onClick={() => setAdding('stock')} /> : null}
+                <AddButton label="Add a medicine" onClick={() => setAdding('medicine')} />
+            </> : null}>
                 {medicines.length ? (
                     <ul className="divide-y divide-rule">
                         {medicines.map((m) => (
@@ -358,12 +365,6 @@ function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineU
                     </ul>
                 ) : <Empty title="No medicines yet">{canMedicine ? 'Add the medicines you keep, with the batch and expiry of what is on the shelf.' : 'The owner, manager or vet adds medicines.'}</Empty>}
             </Panel>
-            {canMedicine ? (
-                <div className="grid gap-4 lg:grid-cols-2">
-                    {medicines.length ? <MedicineMoveForm medicines={medicines} types={medicineTypes} /> : null}
-                    <MedicineAdd categories={medicineCategories} units={medicineUnits} />
-                </div>
-            ) : null}
             <Panel title="Stock movements" flush>
                 {medicineMoves.length ? (
                     <ul className="divide-y divide-rule text-sm">
@@ -382,12 +383,12 @@ function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineU
     );
 }
 
-function MedicineAdd({ categories, units }: { categories: Record<string, string>; units: Record<string, string> }) {
+function MedicineAdd({ categories, units, onDone }: { categories: Record<string, string>; units: Record<string, string>; onDone?: () => void }) {
     const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'ml', reorder_level: '', cost_per_unit: '', storage: '', supplier: '', opening_qty: '', batch: '', expiry_on: '' });
     const e = form.errors as Record<string, string>;
     return (
         <Panel title="Add a medicine">
-            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/medicines', { preserveScroll: true, onSuccess: () => form.reset() }); }} className="grid grid-cols-2 gap-3">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/medicines', { preserveScroll: true, onSuccess: () => { form.reset(); onDone?.(); } }); }} className="grid grid-cols-2 gap-3">
                 <Field label="Code" error={e.code} hint="e.g. OXY-LA"><input className="field font-mono uppercase" value={form.data.code} onChange={(x) => form.setData('code', x.target.value)} maxLength={20} /></Field>
                 <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
                 <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -419,7 +420,7 @@ function MedicineEdit({ m, categories }: { m: Medicine; categories: Record<strin
     );
 }
 
-function MedicineMoveForm({ medicines, types }: { medicines: Medicine[]; types: Props['medicineTypes'] }) {
+function MedicineMoveForm({ medicines, types, onDone }: { medicines: Medicine[]; types: Props['medicineTypes']; onDone?: () => void }) {
     const form = useForm({ medicine_id: String(medicines.find((m) => m.active)?.id ?? medicines[0].id), type: 'purchase', direction: '', qty: '', batch: '', expiry_on: '', rate: '', moved_on: today(), party: '', reference: '', notes: '' });
     const e = form.errors as Record<string, string>;
     const type = types[form.data.type];
@@ -427,7 +428,7 @@ function MedicineMoveForm({ medicines, types }: { medicines: Medicine[]; types: 
     const incoming = type?.direction === 1 || (type?.direction === 0 && form.data.direction === 'in');
     return (
         <Panel title="Stock in / out" description="Purchases also go into Expenses. Treatments issue stock by themselves.">
-            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/medicine-stock', { preserveScroll: true, onSuccess: () => form.reset('qty', 'batch', 'expiry_on', 'rate', 'party', 'reference', 'notes') }); }} className="grid grid-cols-2 gap-3">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/medicine-stock', { preserveScroll: true, onSuccess: () => { form.reset('qty', 'batch', 'expiry_on', 'rate', 'party', 'reference', 'notes'); onDone?.(); } }); }} className="grid grid-cols-2 gap-3">
                 <Field label="Medicine" error={e.medicine_id}><select className="field" value={form.data.medicine_id} onChange={(x) => form.setData('medicine_id', x.target.value)}>{medicines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.qty} {m.unit})</option>)}</select></Field>
                 <Field label="What happened" error={e.type}><select className="field" value={form.data.type} onChange={(x) => form.setData('type', x.target.value)}>{Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
                 {type?.direction === 0 ? <Field label="Stock goes" error={e.direction}><select className="field" value={form.data.direction} onChange={(x) => form.setData('direction', x.target.value)}><option value="">Choose…</option><option value="in">In</option><option value="out">Out</option></select></Field> : null}

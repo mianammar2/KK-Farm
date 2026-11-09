@@ -3,6 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { SharedProps } from '../../types';
+import AddButton from '../../components/AddButton';
+import Sheet from '../../components/Sheet';
 
 type D = { id: number; name: string; users: number };
 type U = { id: number; name: string; login: string; role: string; active: boolean; department: number | null; mustChange: boolean; lastLogin: string | null; me: boolean };
@@ -11,18 +13,15 @@ type U = { id: number; name: string; login: string; role: string; active: boolea
 export default function Users({ users, departments }: { users: U[]; departments: D[] }) {
     const { roles } = usePage<SharedProps>().props;
     const add = useForm({ name: '', login: '', role: 'caretaker', department_id: '', password: '' });
+    const [adding, setAdding] = useState(false); // D-127
 
     return (
         <>
             <Head title="Users" />
-            <PageHeader title="Users and sign-in" description="Each person signs in with their own username and password, so every record shows who made it." actions={<Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>} />
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-                <Panel flush>
-                    <ul className="divide-y divide-rule">{users.map((u) => <UserRow key={`${u.id}-${u.role}-${u.active}-${u.department}`} user={u} roles={roles} departments={departments} />)}</ul>
-                </Panel>
-                <div className="xl:sticky xl:top-4 xl:self-start">
+            <PageHeader title="Users and sign-in" description="Each person signs in with their own username and password, so every record shows who made it." actions={<><Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link><AddButton label="Add a user" onClick={() => setAdding(true)} /></>} />
+            {adding ? <Sheet onClose={() => setAdding(false)}>
                     <Panel title="Add a user">
-                        <form onSubmit={(e) => { e.preventDefault(); add.post('/settings/users', { preserveScroll: true, onSuccess: () => add.reset() }); }} className="space-y-3">
+                        <form onSubmit={(e) => { e.preventDefault(); add.post('/settings/users', { preserveScroll: true, onSuccess: () => { add.reset(); setAdding(false); } }); }} className="space-y-3">
                             <Field label="Name" error={add.errors.name}><input className="field" value={add.data.name} onChange={(e) => add.setData('name', e.target.value)} /></Field>
                             <Field label="Username or email" error={add.errors.login} hint="Letters, numbers and . _ @ + -"><input className="field" autoCapitalize="none" spellCheck={false} value={add.data.login} onChange={(e) => add.setData('login', e.target.value)} /></Field>
                             <Field label="Role" error={add.errors.role}><select className="field" value={add.data.role} onChange={(e) => add.setData('role', e.target.value)}>{Object.entries(roles).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -31,6 +30,12 @@ export default function Users({ users, departments }: { users: U[]; departments:
                             <Button type="submit" disabled={add.processing}>Add user</Button>
                         </form>
                     </Panel>
+            </Sheet> : null}
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                <Panel flush>
+                    <ul className="divide-y divide-rule">{users.map((u) => <UserRow key={`${u.id}-${u.role}-${u.active}-${u.department}`} user={u} roles={roles} departments={departments} />)}</ul>
+                </Panel>
+                <div className="xl:sticky xl:top-4 xl:self-start">
                     <Departments departments={departments} />
                 </div>
             </div>
@@ -45,7 +50,7 @@ function Departments({ departments }: { departments: D[] }) {
     const rename = useForm({ name: '' });
 
     return (
-        <div className="mt-4">
+        <div>
             <Panel title="Departments" description="Tasks can be given to a whole department or to one person in it.">
                 <ul className="mb-3 divide-y divide-rule">
                     {departments.map((d) => (

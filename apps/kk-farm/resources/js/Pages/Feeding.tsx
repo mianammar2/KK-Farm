@@ -4,6 +4,8 @@ import FeedRequirement, { type Requirement } from '../components/FeedRequirement
 import { Check, Clock, Pencil, Plus, Trash2, Wheat } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import AddButton from '../components/AddButton';
+import Sheet from '../components/Sheet';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -313,11 +315,17 @@ function RationForm({ group, items, settings, onDone }: { group: Group; items: I
 
 function Store({ items, movements, categories, movementTypes, can }: Props) {
     const [edit, setEdit] = useState<number | null>(null);
+    const [adding, setAdding] = useState<'' | 'feed' | 'stock'>(''); // D-127
 
     return (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div>
+            {adding === 'feed' ? <Sheet onClose={() => setAdding('')}><Panel title="Add a feed"><ItemForm categories={categories} onDone={() => setAdding('')} /></Panel></Sheet> : null}
+            {adding === 'stock' && items.length ? <Sheet onClose={() => setAdding('')}><StockForm items={items} movementTypes={movementTypes} onDone={() => setAdding('')} /></Sheet> : null}
             <div className="space-y-4">
-                <Panel title="Feeds in store" flush>
+                <Panel title="Feeds in store" flush actions={can.store ? <>
+                    {items.length ? <AddButton primary={false} label="Stock in / out" onClick={() => setAdding('stock')} /> : null}
+                    <AddButton label="Add a feed" onClick={() => setAdding('feed')} />
+                </> : null}>
                     {items.length ? (
                         <ul className="divide-y divide-rule">
                             {items.map((i) => (
@@ -343,12 +351,6 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
                         : <p className="p-4 text-sm text-ink-soft">Purchases and adjustments appear here. Feed given to goats reduces stock automatically.</p>}
                 </Panel>
             </div>
-            {can.store ? (
-                <div className="space-y-4">
-                    {items.length ? <StockForm items={items} movementTypes={movementTypes} /> : null}
-                    <Panel title="Add a feed"><ItemForm categories={categories} /></Panel>
-                </div>
-            ) : null}
         </div>
     );
 }
@@ -357,7 +359,7 @@ function ItemForm({ item, categories, onDone }: { item?: Item; categories: Recor
     const form = useForm({ code: item?.code ?? '', name: item?.name ?? '', category: item?.category ?? 'concentrate', cost_per_kg: item ? String(item.costPerKg) : '', cp_pct: item?.cp != null ? String(item.cp) : '', dm_pct: item?.dm != null ? String(item.dm) : '', reorder_level_kg: item ? String(item.reorder) : '', opening_kg: '', supplier: item?.supplier ?? '', notes: item?.notes ?? '', active: item?.active ?? true });
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        form.post(item ? `/feeding/items/${item.id}` : '/feeding/items', { preserveScroll: true, onSuccess: () => { if (item) onDone?.(); else form.reset(); } });
+        form.post(item ? `/feeding/items/${item.id}` : '/feeding/items', { preserveScroll: true, onSuccess: () => { if (!item) form.reset(); onDone?.(); } });
     };
 
     return (
@@ -377,7 +379,7 @@ function ItemForm({ item, categories, onDone }: { item?: Item; categories: Recor
     );
 }
 
-function StockForm({ items, movementTypes }: { items: Item[]; movementTypes: Props['movementTypes'] }) {
+function StockForm({ items, movementTypes, onDone }: { items: Item[]; movementTypes: Props['movementTypes']; onDone?: () => void }) {
     const todayIso = new Date().toISOString().slice(0, 10);
     const form = useForm({ feed_item_id: String(items.find((i) => i.active)?.id ?? items[0].id), type: 'purchase', direction: '', qty_kg: '', rate: '', moved_on: todayIso, party: '', reference: '', notes: '' });
     const type = movementTypes[form.data.type];
@@ -385,7 +387,7 @@ function StockForm({ items, movementTypes }: { items: Item[]; movementTypes: Pro
 
     return (
         <Panel title="Stock in / out" description="Purchases also go into Expenses automatically.">
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/feeding/stock', { preserveScroll: true, onSuccess: () => form.reset('qty_kg', 'rate', 'party', 'reference', 'notes') }); }} className="space-y-3">
+            <form onSubmit={(e) => { e.preventDefault(); form.post('/feeding/stock', { preserveScroll: true, onSuccess: () => { form.reset('qty_kg', 'rate', 'party', 'reference', 'notes'); onDone?.(); } }); }} className="space-y-3">
                 <Field label="Feed" error={form.errors.feed_item_id}><select className="field" value={form.data.feed_item_id} onChange={(e) => form.setData('feed_item_id', e.target.value)}>{items.map((i) => <option key={i.id} value={i.id}>{i.name} ({kg(i.stock)})</option>)}</select></Field>
                 <Field label="What happened" error={form.errors.type}><select className="field" value={form.data.type} onChange={(e) => form.setData('type', e.target.value)}>{Object.entries(movementTypes).filter(([k]) => k !== 'opening').map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
                 {type?.direction === 0 ? <Field label="Stock goes" error={form.errors.direction}><select className="field" value={form.data.direction} onChange={(e) => form.setData('direction', e.target.value)}><option value="">Choose…</option><option value="in">In (more than recorded)</option><option value="out">Out (less than recorded)</option></select></Field> : null}
@@ -520,9 +522,9 @@ function Nutrition({ standards, nutritionCategories, methods, breeds, can }: Pro
             <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-ink-soft">{total} goats on {active.filter((s) => s.goats).length} standards</span>
                 <label className="ml-auto flex items-center gap-2 text-sm text-ink-soft"><input type="checkbox" className="size-4" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show inactive</label>
-                {can.plan ? <Button type="button" onClick={() => setEditing('new')}><Plus size={15} className="mr-1 inline" aria-hidden />Add Standard</Button> : null}
+                {can.plan ? <AddButton label="Add Standard" onClick={() => setEditing('new')} /> : null}
             </div>
-            {editing === 'new' ? <Panel title="New Nutrition Standard"><StandardForm nutritionCategories={nutritionCategories} methods={methods} breeds={breeds} onDone={() => setEditing(null)} /></Panel> : null}
+            {editing === 'new' ? <Sheet onClose={() => setEditing(null)}><Panel title="New Nutrition Standard"><StandardForm stacked nutritionCategories={nutritionCategories} methods={methods} breeds={breeds} onDone={() => setEditing(null)} /></Panel></Sheet> : null}
             <Panel flush title="CP Requirements" description="Feeding & Nutrition → Nutrition Standards">
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[64rem] text-sm">
@@ -556,7 +558,7 @@ function Nutrition({ standards, nutritionCategories, methods, breeds, can }: Pro
     );
 }
 
-function StandardForm({ standard, nutritionCategories, methods, breeds, onDone }: { standard?: Standard; nutritionCategories: Record<string, string>; methods: Record<string, string>; breeds: Props['breeds']; onDone: () => void }) {
+function StandardForm({ standard, nutritionCategories, methods, breeds, onDone, stacked = false }: { stacked?: boolean; standard?: Standard; nutritionCategories: Record<string, string>; methods: Record<string, string>; breeds: Props['breeds']; onDone: () => void }) {
     const form = useForm({
         name: standard?.name ?? '', category: standard?.category ?? '', breed_id: standard?.breedId ? String(standard.breedId) : '', min_weight_kg: num(standard?.minKg ?? null), max_weight_kg: num(standard?.maxKg ?? null),
         cp_min_pct: num(standard?.cpMin ?? null), cp_max_pct: num(standard?.cpMax ?? null), tdn_min_pct: num(standard?.tdnMin ?? null), tdn_max_pct: num(standard?.tdnMax ?? null),
@@ -571,7 +573,7 @@ function StandardForm({ standard, nutritionCategories, methods, breeds, onDone }
         form.post(standard ? `/feeding/standards/${standard.id}` : '/feeding/standards', { preserveScroll: true, onSuccess: onDone });
     };
     return (
-        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <form onSubmit={submit} className={stacked ? 'grid gap-3' : 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
             <Field label="Nutrition Group" error={e.name}>{input('name', { placeholder: 'e.g. Growing Male (Makhi Cheeni)' })}</Field>
             <Field label="Matches Goats" error={e.category} hint="Empty = only goats put on it by hand"><select className="field" value={form.data.category} onChange={(ev) => form.setData('category', ev.target.value)}><option value="">By hand only</option>{Object.entries(nutritionCategories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Breed" error={e.breed_id}><select className="field" value={form.data.breed_id} onChange={(ev) => form.setData('breed_id', ev.target.value)}><option value="">Any breed</option>{breeds.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
