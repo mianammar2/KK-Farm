@@ -37,7 +37,10 @@ class HerdByAgeTest extends TestCase
             ->where('herdAge.rows.1', ['key' => 'grower', 'label' => 'Growers', 'range' => '2 to 14 months', 'female' => 1, 'male' => 1, 'total' => 2])
             ->where('herdAge.rows.2', ['key' => 'adult', 'label' => 'Adults', 'range' => '14 months and over', 'female' => 2, 'male' => 0, 'total' => 2])
             ->where('herdAge.rows.3.key', 'age_unknown')->where('herdAge.rows.3.male', 1)
-            ->where('herdAge.breeds.0', ['breed' => 'Makhi Cheeni', 'female' => 2, 'male' => 1, 'total' => 3]));
+            // D-123: by classification; A1 and A2 are adult does, so suggested Breeding Female (Doe).
+            ->where('herdAge.classes', fn ($c) => ($row = collect($c)->firstWhere('key', 'class_breeding_female')) && $row['label'] === 'Breeding Female (Doe)' && $row['total'] === 2 && $row['local'] === 'Nasli Bakri'));
+        $this->actingAs($user)->get('/goats?show=class_breeding_female')->assertInertia(fn ($page) => $page->where('showLabels.class_breeding_female', 'Breeding Female (Doe)')
+            ->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('class_breeding_female', $g['tags'], true))->count() === 2));
 
         // The count opens exactly those goats.
         $this->actingAs($user)->get('/goats?show=adult_female')->assertInertia(fn ($page) => $page->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('adult_female', $g['tags'], true))->pluck('number')->sort()->values()->all() === ['A1', 'A2'])

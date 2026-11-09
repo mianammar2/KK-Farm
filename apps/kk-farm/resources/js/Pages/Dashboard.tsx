@@ -262,27 +262,27 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
 
 type HerdAge = {
     rows: Array<{ key: string; label: string; range: string; female: number; male: number; total: number }>; female: number; male: number; total: number;
-    breeds: Array<{ breed: string; female: number; male: number; total: number }>;
+    classes: Array<{ key: string; label: string; local: string | null; female: number; male: number; total: number }>;
 };
 
 /** D-118: Kids, Growers and Adults by gender, from each goat's age today; every number opens those goats. */
 function HerdByAge({ h }: { h: HerdAge }) {
-    const [view, setView] = useState<'age' | 'breed'>('age');
+    const [view, setView] = useState<'age' | 'class'>('age');
     const cell = (key: string, n: number, strong = false) => n
         ? <Link href={`/goats?show=${key}`} className={`block rounded-[4px] px-2 py-1 tabular-nums hover:bg-glaze hover:underline ${strong ? 'font-bold text-cobalt-900' : 'font-semibold text-cobalt-800'}`}>{n}</Link>
         : <span className="block px-2 py-1" aria-label="none" />;
     const pct = (n: number) => (h.total ? Math.round((n / h.total) * 100) : 0);
     // D-119: rows and columns with nothing in them are not shown.
     const rows = h.rows.filter((r) => r.total > 0);
-    const [breeds, moreBreeds] = useFive(h.breeds);
+    const [classes, moreClasses] = useFive(h.classes);
     const showF = h.female > 0;
     const showM = h.male > 0;
     return (
-        <Panel title="Herd by Age and Gender" description={`${plural(h.total, 'goat', 'goats')} on the farm${showF && showM ? ` · ${h.female} female, ${h.male} male` : showF ? ', all female' : ', all male'}`} className="mt-4"
-            actions={<div className="flex gap-1" role="group" aria-label="View">{(['age', 'breed'] as const).map((v) => <button key={v} type="button" onClick={() => setView(v)} className={`rounded-tile px-2.5 py-1 text-sm font-semibold ${view === v ? 'bg-cobalt-800 text-white' : 'text-cobalt-800 hover:bg-glaze'}`}>{v === 'age' ? 'By Age' : 'By Breed'}</button>)}</div>}>
+        <Panel title={view === 'age' ? 'Herd by Age and Gender' : 'Herd by Classification'} description={`${plural(h.total, 'goat', 'goats')} on the farm${showF && showM ? ` · ${h.female} female, ${h.male} male` : showF ? ', all female' : ', all male'}`} className="mt-4"
+            actions={<div className="flex gap-1" role="group" aria-label="View">{(['age', 'class'] as const).map((v) => <button key={v} type="button" onClick={() => setView(v)} className={`rounded-tile px-2.5 py-1 text-sm font-semibold ${view === v ? 'bg-cobalt-800 text-white' : 'text-cobalt-800 hover:bg-glaze'}`}>{v === 'age' ? 'By Age' : 'By Classification'}</button>)}</div>}>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[26rem] text-sm">
-                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Breed'}</th>{showF ? <th className="px-2 text-right font-semibold">♀ Female</th> : null}{showM ? <th className="px-2 text-right font-semibold">♂ Male</th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="w-1/3 pl-3 font-semibold">Share</th></tr></thead>
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold">♀ Female</th> : null}{showM ? <th className="px-2 text-right font-semibold">♂ Male</th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="w-1/3 pl-3 font-semibold">Share</th></tr></thead>
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
@@ -292,19 +292,19 @@ function HerdByAge({ h }: { h: HerdAge }) {
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>
                                 <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
                             </tr>
-                        )) : breeds.map((b) => (
-                            <tr key={b.breed}>
-                                <td className="py-1.5 pr-3 font-semibold text-cobalt-900">{b.breed}</td>
-                                {showF ? <td className="px-2 text-right tabular-nums">{b.female || ''}</td> : null}
-                                {showM ? <td className="px-2 text-right tabular-nums">{b.male || ''}</td> : null}
-                                <td className="px-2 text-right font-bold tabular-nums text-cobalt-900">{b.total}</td>
-                                <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(b.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(b.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(b.total)}%</span></td>
+                        )) : classes.map((c) => (
+                            <tr key={c.key}>
+                                <td className="py-1.5 pr-3"><span className="font-semibold text-cobalt-900">{c.label}</span>{c.local ? <span className="block text-xs text-ink-soft">{c.local}</span> : null}</td>
+                                {showF ? <td className="text-right">{cell(`${c.key}`, c.female)}</td> : null}
+                                {showM ? <td className="text-right">{cell(`${c.key}`, c.male)}</td> : null}
+                                <td className="text-right">{cell(c.key, c.total, true)}</td>
+                                <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(c.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
                             </tr>
                         ))}
                     </tbody>
                     <tfoot className="border-t-2 border-rule text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td /></tr></tfoot>
                 </table>
-                {view === 'breed' ? moreBreeds : null}
+                {view === 'class' ? moreClasses : null}
             </div>
         </Panel>
     );

@@ -165,8 +165,10 @@ class DashboardController extends Controller
 
         return [
             'rows' => $rows, 'female' => $count('female'), 'male' => $count('male'), 'total' => $goats->count(),
-            'breeds' => $goats->groupBy(fn ($g) => $g->breed?->name ?? 'Breed not set')->map(fn ($gs, $b) => ['breed' => $b,
-                'female' => $gs->where('sex', 'female')->count(), 'male' => $gs->where('sex', '!=', 'female')->count(), 'total' => $gs->count()])->sortBy([['total', 'desc'], ['breed', 'asc']])->values(),
+            // D-123: by classification (goat category, set or suggested from gender, age and purpose).
+            'classes' => $goats->groupBy(fn ($g) => $g->effectiveCategory() ?? 'none')->map(fn ($gs, $c) => ['key' => 'class_'.$c,
+                'label' => \App\Support\Classification::CATEGORIES[$c][0] ?? 'Not Classified', 'local' => \App\Support\Classification::CATEGORIES[$c][1] ?? null,
+                'female' => $gs->where('sex', 'female')->count(), 'male' => $gs->where('sex', '!=', 'female')->count(), 'total' => $gs->count()])->sortBy([['total', 'desc'], ['label', 'asc']])->values(),
         ];
     }
 

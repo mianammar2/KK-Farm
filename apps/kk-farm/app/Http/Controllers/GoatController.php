@@ -35,7 +35,7 @@ class GoatController extends Controller
 
         return Inertia::render('Goats/Index', [
             'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]]),
-            'showLabels' => \App\Support\HerdStats::LABELS,
+            'showLabels' => \App\Support\HerdStats::labels(),
             'teethOptions' => \App\Support\Classification::TEETH, 'canEdit' => request()->user()->passes('edit_goats'), // D-106
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),

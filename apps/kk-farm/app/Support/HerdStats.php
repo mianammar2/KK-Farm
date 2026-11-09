@@ -25,6 +25,12 @@ final class HerdStats
         'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data',
     ];
 
+    /** D-123: labels for the class_* filters (/goats?show=class_breeding_female). */
+    public static function labels(): array
+    {
+        return self::LABELS + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
+    }
+
     public const CATEGORIES = ['breeding_males', 'breeding_females', 'pregnant', 'ready', 'male_kids', 'female_kids', 'growing', 'lactating', 'sick', 'treatment', 'for_sale'];
 
     /** @return list<string> every key this goat belongs to */
@@ -59,6 +65,8 @@ final class HerdStats
         $tests[$age] = true;
         $tests[$sex] = true;
         $tests["{$age}_{$sex}"] = true;
+        // D-123: the goat's classification (category), for the dashboard's By Classification view.
+        $tests['class_'.($cat ?? 'none')] = true;
 
         return array_keys(array_filter($tests));
     }
