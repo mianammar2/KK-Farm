@@ -29,8 +29,12 @@ export default function Sheds({ farms, sheds, types, prefix, recent, board }: Pr
     usePoll(LIVE_MS, { only: ['farms', 'sheds', 'recent', 'board'] }); // D-086: live
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
-    const active = sheds.filter((s) => s.status === 'active');
-    const planned = sheds.filter((s) => s.status === 'planned');
+    // D-129: the page shows one farm at a time when there are several; its sheds, pens and goats follow.
+    const [farmId, setFarmId] = useState<number | null>(farms.length > 1 ? farms[0].id : null);
+    const shown = farmId === null ? sheds : sheds.filter((s) => s.farmId === farmId);
+    const shownIds = new Set(shown.map((s) => s.id));
+    const active = shown.filter((s) => s.status === 'active');
+    const planned = shown.filter((s) => s.status === 'planned');
     const pens = active.flatMap((s) => s.pens);
     const goats = pens.flatMap((p) => p.goats);
     const [selected, setSelected] = useState<number | null>(pens[0]?.id ?? null);
@@ -53,29 +57,24 @@ export default function Sheds({ farms, sheds, types, prefix, recent, board }: Pr
             {/* D-127: adding or editing a shed, pen or open area opens in a panel. */}
             {editing ? <Sheet onClose={() => setEditing(null)}><Editor key={JSON.stringify([editing.kind, editing.kind === 'farm' ? editing.farm?.id : editing.shed?.id, editing.kind === 'pen' ? `${editing.pen?.id}-${editing.area}` : null])} editing={editing} farms={farms} sheds={sheds} types={types} prefix={prefix} onDone={() => setEditing(null)} /></Sheet> : null}
 
+            {/* D-129: farms and where they are, at the top; picking one shows only its sheds below. */}
+            <section className="mb-4 space-y-3" aria-label="Farms & Locations">
+                {farms.length > 1 ? (
+                    <div className="flex flex-wrap gap-2" role="tablist">
+                        {farms.map((f) => <button key={f.id} type="button" role="tab" aria-selected={farmId === f.id} onClick={() => setFarmId(f.id)} className={cx('kk-pill min-h-10 rounded-full border px-4 text-sm font-semibold', farmId === f.id ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>{f.name} <span className="font-mono opacity-75">{f.code}</span></button>)}
+                        <button type="button" role="tab" aria-selected={farmId === null} onClick={() => setFarmId(null)} className={cx('kk-pill min-h-10 rounded-full border px-4 text-sm font-semibold', farmId === null ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>All Farms</button>
+                    </div>
+                ) : null}
+                {farms.filter((f) => farmId === null || f.id === farmId).map((f) => <FarmCard key={f.id} farm={f} sheds={sheds.filter((x) => x.farmId === f.id)} onEdit={canManage ? () => setEditing({ kind: 'farm', farm: f }) : undefined} />)}
+            </section>
+
             {/* D-120: drag or tick goats into another pen; moved here from the dashboard. */}
-            <div className="mb-4"><ShedBoard board={board} canMove /></div>
+            <div className="mb-4"><ShedBoard board={farmId === null ? board : { ...board, sheds: board.sheds.filter((x) => shownIds.has(x.id)) }} canMove /></div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="space-y-4">
-                    {/* D-128: where each farm is; sheds belong to a farm and carry its code. */}
-                    <Panel flush title="Farms & Locations" description={farms.length > 1 ? `${farms.length} farms` : 'Add the location now; more farms can be added later.'}>
-                        <ul className="divide-y divide-rule">
-                            {farms.map((f) => (
-                                <li key={f.id} className={cx('flex items-start gap-3 px-4 py-3', !f.active && 'opacity-60')}>
-                                    <MapPin className="mt-0.5 size-5 shrink-0 text-turq-700" aria-hidden />
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2"><span className="font-semibold text-cobalt-900">{f.name}</span><Chip className="bg-cobalt-100 font-mono text-cobalt-800">{f.code}</Chip><span className="text-sm text-ink-soft">{f.sheds} shed{f.sheds === 1 ? '' : 's'}</span>{!f.active ? <Chip className="bg-rule text-ink-soft">Not in use</Chip> : null}</div>
-                                        <div className="text-sm text-ink-soft">{[f.address, f.place].filter(Boolean).join(' · ') || (canManage ? 'No address yet: edit to add the location.' : 'No address yet.')}</div>
-                                        {f.latitude !== null && f.longitude !== null ? <a href={`https://www.google.com/maps?q=${f.latitude},${f.longitude}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-turq-800 hover:underline">GPS {f.latitude.toFixed(5)}, {f.longitude.toFixed(5)} · Open Map</a> : null}
-                                    </div>
-                                    {editButton(`Edit ${f.name}`, () => setEditing({ kind: 'farm', farm: f }))}
-                                </li>
-                            ))}
-                        </ul>
-                    </Panel>
 
-                    {sheds.length === 0 ? <Empty title="No sheds yet">{canManage ? 'Add your first shed, then add pens inside it.' : 'The owner or manager adds sheds and pens.'}</Empty> : null}
+                    {shown.length === 0 ? <Empty title={sheds.length ? 'No sheds on this farm yet' : 'No sheds yet'}>{canManage ? 'Add your first shed, then add pens inside it.' : 'The owner or manager adds sheds and pens.'}</Empty> : null}
 
                     {[...active, ...planned].map((shed) => (
                         <Panel
@@ -309,5 +308,67 @@ function FarmForm({ farm, onDone }: { farm?: FarmLoc; onDone: () => void }) {
                 </div>
             </form>
         </Panel>
+    );
+}
+
+/** D-129: one farm at the top of Sheds: where it is, its numbers, and a map (Google Maps, no key: a pin from the GPS, else the address). */
+function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdit?: () => void }) {
+    const [view, setView] = useState<'m' | 'k'>('k');
+    const inUse = sheds.filter((s) => s.status === 'active');
+    const pens = inUse.flatMap((s) => s.pens.filter((p) => p.kind === 'pen'));
+    const goats = pens.flatMap((p) => p.goats);
+    const females = goats.filter((g) => g.sex === 'female').length;
+    const capacity = pens.reduce((a, p) => a + (p.capacity ?? 0), 0);
+    const watch = goats.filter((g) => g.health !== 'healthy').length;
+    const hasGps = farm.latitude !== null && farm.longitude !== null;
+    const address = [farm.address, farm.city, farm.district, farm.province].filter(Boolean).join(', ');
+    const query = hasGps ? `${farm.latitude},${farm.longitude}` : address ? `${address}, ${farm.country ?? ''}` : null;
+    const stats: Array<[string, string | number]> = [
+        ['Sheds', `${inUse.length}${sheds.length > inUse.length ? ` + ${sheds.length - inUse.length} planned` : ''}`],
+        ['Pens', pens.length],
+        ['Goats', capacity ? `${goats.length} of ${capacity}` : goats.length],
+        ['Female / Male', `${females} / ${goats.length - females}`],
+        ['Need Attention', watch],
+    ];
+
+    return (
+        <div className={cx('kk-rise grid overflow-hidden rounded-tile border border-rule bg-tile shadow-tile lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]', !farm.active && 'opacity-70')}>
+            <div className="space-y-3 p-4">
+                <div className="flex items-start gap-3">
+                    <MapPin className="mt-1 size-5 shrink-0 text-turq-700" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-semibold text-cobalt-900">{farm.name}</h2><Chip className="bg-cobalt-100 font-mono text-cobalt-800">{farm.code}</Chip>{!farm.active ? <Chip className="bg-rule text-ink-soft">Not In Use</Chip> : null}</div>
+                        <p className="text-sm text-ink-soft">{address || 'No address yet'}{farm.country ? `${address ? ', ' : ' · '}${farm.country}` : ''}</p>
+                        {hasGps ? <p className="font-mono text-xs text-ink-faint">GPS {farm.latitude!.toFixed(5)}, {farm.longitude!.toFixed(5)}</p> : null}
+                    </div>
+                    {onEdit ? <Button type="button" variant="quiet" onClick={onEdit} aria-label={`Edit ${farm.name}`} title={`Edit ${farm.name}`}><Pencil className="size-4" aria-hidden /></Button> : null}
+                </div>
+                <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {stats.map(([label, value]) => (
+                        <div key={label} className="rounded-tile bg-glaze px-3 py-2">
+                            <dt className="text-xs font-semibold text-ink-soft">{label}</dt>
+                            <dd className={cx('text-lg font-bold tabular-nums', label === 'Need Attention' && Number(value) > 0 ? 'text-watch-700' : 'text-cobalt-900')}>{value}</dd>
+                        </div>
+                    ))}
+                </dl>
+                {farm.notes ? <p className="text-sm text-ink-soft">{farm.notes}</p> : null}
+            </div>
+            <div className="relative min-h-60 border-t border-rule bg-glaze lg:border-t-0 lg:border-l">
+                {query ? (
+                    <>
+                        <iframe title={`Map of ${farm.name}`} className="absolute inset-0 size-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+                            src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=${hasGps ? 16 : 13}&t=${view}&output=embed`} />
+                        <div className="absolute top-2 left-2 flex overflow-hidden rounded-full border border-rule bg-tile text-xs font-semibold shadow-tile">
+                            {(['k', 'm'] as const).map((v) => <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v} className={cx('px-3 py-1.5', view === v ? 'bg-cobalt-800 text-white' : 'text-cobalt-900')}>{v === 'k' ? 'Satellite' : 'Map'}</button>)}
+                        </div>
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`} target="_blank" rel="noreferrer" className="absolute right-2 bottom-2 rounded-full bg-tile px-3 py-1.5 text-xs font-semibold text-turq-800 shadow-tile hover:underline">Open in Google Maps</a>
+                    </>
+                ) : (
+                    <div className="grid h-full min-h-60 place-items-center p-4 text-center text-sm text-ink-soft">
+                        <div><MapPin className="mx-auto mb-2 size-8 text-ink-faint" aria-hidden />Add the address or GPS to show the farm on the map.{onEdit ? <div className="mt-2"><Button type="button" variant="secondary" onClick={onEdit}>Add Location</Button></div> : null}</div>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
