@@ -135,6 +135,12 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/tasks/{task}/status', [TaskController::class, 'status']);
     });
 
+    Route::middleware('module:value')->group(function (): void { // D-113
+        Route::get('/value', [\App\Http\Controllers\HerdValueController::class, 'index']);
+        Route::post('/value/rates', [\App\Http\Controllers\HerdValueController::class, 'storeRate']);
+        Route::post('/value/batch', [\App\Http\Controllers\HerdValueController::class, 'batch']);
+        Route::post('/value/feed-price', [\App\Http\Controllers\HerdValueController::class, 'feedPrice']);
+    });
     Route::middleware('module:finance')->group(function (): void {
         Route::get('/finance', [FinanceController::class, 'index']);
         Route::post('/finance/entries', [FinanceController::class, 'store']);

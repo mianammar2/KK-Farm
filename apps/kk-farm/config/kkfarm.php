@@ -39,6 +39,7 @@ return [
         'employees' => ['ceo', 'manager'],
         'tasks' => $all,
         'finance' => ['ceo', 'finance'],
+        'value' => ['ceo', 'manager', 'finance'], // D-113: Herd Value
         'reports' => ['ceo', 'manager', 'finance'],
         'settings' => ['ceo'],
         'sensors' => ['ceo', 'manager', 'vet'], // D-087: devices, readings, sensor alerts
@@ -58,6 +59,7 @@ return [
         'edit_goats' => ['ceo', 'manager', 'vet'], // D-091: change a goat's details; ask to remove a wrong entry
         'remove_goats' => ['ceo', 'manager'], // D-091: confirm (or cancel) removing a wrong entry; restore
         'health_checkup' => ['ceo', 'manager', 'vet'], // D-095: routine checkups
+        'manage_market' => ['ceo', 'finance'], // D-113: market rates, batch purchase rates, feed price
         'open_cases' => ['vet', 'ceo'], // D-095: the vet, and the administrator, open health cases (treatments stay with the vet)
     ],
 
