@@ -72,7 +72,7 @@ final class FieldCatalog
             ['key' => 'kid_stage', 'label' => 'Kid Stage', 'type' => 'select', 'section' => 'Classification'],
             // D-091: a bought doe may arrive pregnant: she then goes straight into Breeding with an expected kidding date.
             ['key' => 'pregnant_at_arrival', 'label' => 'Pregnant when bought?', 'type' => 'select', 'section' => 'Classification', 'help' => 'Female goats that were bought or transferred in.'],
-            ['key' => 'pregnancy_months', 'label' => 'Months pregnant (about)', 'type' => 'number', 'section' => 'Classification', 'help' => 'Works out the expected kidding date (gestation about 5 months).'],
+            ['key' => 'pregnancy_days', 'label' => 'Days pregnant (about)', 'type' => 'number', 'section' => 'Classification', 'help' => 'Days since she was mated. Works out the expected kidding date (gestation about 150 days).'], // D-098
             // D-066: off by default (new goats are Active; exits change it). The owner can switch it on in Settings.
             ['key' => 'lifecycle_status', 'label' => 'Lifecycle Status', 'type' => 'select', 'section' => 'Status', 'active' => false],
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],

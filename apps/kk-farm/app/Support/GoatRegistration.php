@@ -73,8 +73,8 @@ final class GoatRegistration
         if (isset($rules['temperature_f'])) {
             $rules['temperature_f'] = ['nullable', Rule::requiredIf(fn () => request('pregnant_at_arrival') === 'yes' || request('repro_status') === 'pregnant'), ...array_slice($rules['temperature_f'], 1)];
         }
-        if (isset($rules['pregnancy_months'])) {
-            $rules['pregnancy_months'] = ['nullable', 'required_if:pregnant_at_arrival,yes', ...array_slice($rules['pregnancy_months'], 1)];
+        if (isset($rules['pregnancy_days'])) {
+            $rules['pregnancy_days'] = ['nullable', 'required_if:pregnant_at_arrival,yes', ...array_slice($rules['pregnancy_days'], 1)];
         }
 
         return $rules;
@@ -98,7 +98,7 @@ final class GoatRegistration
                 'latest_weight_kg' => ['numeric', 'between:0.5,150'],
                 'height_in' => ['numeric', 'between:4,80'],
                 'temperature_f' => ['numeric', 'between:93,110'], // D-093: °F
-                'pregnancy_months' => ['numeric', 'between:0.5,5.5'],
+                'pregnancy_days' => ['integer', 'between:1,160'], // D-098: days pregnant
                 'purchase_cost_pkr' => ['numeric', 'min:0', 'max:100000000'],
                 'name', 'source_farm' => ['string', 'max:60'],
                 default => null,
@@ -264,12 +264,12 @@ final class GoatRegistration
         }
         $org = \App\Support\Tenant::org();
         $gestation = (int) ($org->gestation_days ?? 150);
-        $months = isset($data['pregnancy_months']) && $data['pregnancy_months'] !== '' ? (float) $data['pregnancy_months'] : 2.5;
-        $mated = now()->subDays((int) round($months * 30))->startOfDay();
+        $days = isset($data['pregnancy_days']) && $data['pregnancy_days'] !== '' ? (int) $data['pregnancy_days'] : 75;
+        $mated = now()->subDays($days)->startOfDay();
         Mating::create([
             'dam_id' => $animal->id, 'sire_id' => null, 'mated_on' => $mated, 'method' => 'natural', 'status' => 'pregnant',
             'expected_kidding_on' => $mated->copy()->addDays($gestation), 'recorded_by' => $user->name,
-            'notes' => 'Pregnant when she came to the farm; sire unknown. Mating date estimated from about '.rtrim(rtrim(number_format($months, 1), '0'), '.').' months pregnant.',
+            'notes' => "Pregnant when she came to the farm; sire unknown. Mating date estimated from about {$days} days pregnant.",
         ]);
         $animal->update(['repro_status' => 'pregnant', 'repro_state' => Classification::LEGACY_REPRO['pregnant'] ?? 'pregnant']);
         Farm::event($animal, 'breeding', 'Pregnant on arrival. Expected kidding about '.$mated->copy()->addDays($gestation)->format('j M Y'), $user->name);

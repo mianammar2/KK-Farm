@@ -4,10 +4,10 @@ import { useMemo, useState } from 'react';
 import { Button, Chip, cx, Field, Panel } from './ui';
 
 type Goat = { id: string; number: string; name: string | null; sex: 'male' | 'female'; pen: string | null; repro: string | null; last: { on: string; outcome: string; by: string } | null; due: boolean };
-type Recent = { id: number; on: string; goat: string; goatId: string; outcome: string; temp: number | null; heart: number | null; breath: number | null; score: number | null; weight: number | null; ultrasound: string | null; fetuses: number | null; flags: string[]; findings: string | null; caseId: number | null; by: string };
+type Recent = { id: number; on: string; goat: string; goatId: string; outcome: string; temp: number | null; score: number | null; weight: number | null; ultrasound: string | null; fetuses: number | null; flags: string[]; findings: string | null; caseId: number | null; by: string };
 export type CheckupData = {
-    goats: Goat[]; recent: Recent[]; interval: number; normal: Record<'temperature_f' | 'heart_rate' | 'respiration_rate', [number, number]>;
-    sires: Array<{ id: string; number: string }>; canCheck: boolean; canOpenCase: boolean;
+    goats: Goat[]; recent: Recent[]; interval: number; normal: Record<'temperature_f', [number, number]>;
+    sires: Array<{ id: string; number: string }>; canCheck: boolean; canOpenCase: boolean; gestation: number;
 };
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -68,14 +68,14 @@ export default function Checkups({ data }: { data: CheckupData }) {
 
             <Panel flush title="Recent checkups">
                 {data.recent.length ? (
-                    <div className="overflow-x-auto"><table className="data-table min-w-[720px]">
-                        <thead><tr><th>Date</th><th>Goat</th><th>Result</th><th>°F</th><th>Heart</th><th>Breath</th><th>Body</th><th>KG</th><th>Ultrasound</th><th>By</th></tr></thead>
+                    <div className="overflow-x-auto"><table className="data-table min-w-[600px]">
+                        <thead><tr><th>Date</th><th>Goat</th><th>Result</th><th>°F</th><th>Body</th><th>KG</th><th>Ultrasound</th><th>By</th></tr></thead>
                         <tbody>{data.recent.map((r) => (
                             <tr key={r.id}>
                                 <td className="whitespace-nowrap">{r.on}</td>
                                 <td><Link href={`/goats/${r.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{r.goat}</Link></td>
                                 <td><Chip className={OUTCOME[r.outcome]?.chip}>{OUTCOME[r.outcome]?.label}</Chip>{r.caseId ? <Chip className="ml-1 bg-crit-100 text-crit-700">case</Chip> : null}{r.flags.length ? <span className="block text-xs text-crit-700">{r.flags.join(', ')}</span> : null}</td>
-                                <td>{r.temp ?? '—'}</td><td>{r.heart ?? '—'}</td><td>{r.breath ?? '—'}</td><td>{r.score ?? '—'}</td><td>{r.weight ?? '—'}</td>
+                                <td>{r.temp ?? '—'}</td><td>{r.score ?? '—'}</td><td>{r.weight ?? '—'}</td>
                                 <td>{r.ultrasound ? `${SOUND[r.ultrasound]}${r.fetuses ? ` (${r.fetuses})` : ''}` : '—'}</td>
                                 <td className="text-sm text-ink-soft">{r.by}</td>
                             </tr>
@@ -89,8 +89,8 @@ export default function Checkups({ data }: { data: CheckupData }) {
 
 function CheckupForm({ goat, date, data, onDone }: { goat: Goat; date: string; data: CheckupData; onDone: () => void }) {
     const form = useForm({
-        animal_id: goat.id, checked_on: date, temperature_f: '', heart_rate: '', respiration_rate: '', body_score: '', weight_kg: '',
-        ultrasound: '', months_pregnant: '', fetuses: '', sire_id: '', findings: '', outcome: 'healthy', open_case: false, condition: '', severity: 'moderate', isolated: false,
+        animal_id: goat.id, checked_on: date, temperature_f: '', body_score: '', weight_kg: '',
+        ultrasound: '', days_pregnant: '', fetuses: '', sire_id: '', findings: '', outcome: 'healthy', open_case: false, condition: '', severity: 'moderate', isolated: false,
     });
     const e = form.errors as Record<string, string>;
     /** Live check against the normal range; the vet decides what it means. */
@@ -100,7 +100,7 @@ function CheckupForm({ goat, date, data, onDone }: { goat: Goat; date: string; d
         const v = Number(value);
         return v > high ? <span className="text-xs font-semibold text-crit-700">High (normal {low}–{high})</span> : v < low ? <span className="text-xs font-semibold text-watch-700">Low (normal {low}–{high})</span> : <span className="text-xs font-semibold text-ok-700">Normal</span>;
     };
-    const num = (key: 'temperature_f' | 'heart_rate' | 'respiration_rate' | 'weight_kg' | 'months_pregnant' | 'fetuses', label: string, unit: string) => (
+    const num = (key: 'temperature_f' | 'weight_kg' | 'days_pregnant' | 'fetuses', label: string, unit: string) => (
         <Field label={`${label} (${unit})`} error={e[key]}>
             <input className="field" inputMode="decimal" value={form.data[key]} onChange={(x) => form.setData(key, x.target.value)} />
             {key in data.normal ? range(key as keyof CheckupData['normal'], form.data[key]) : null}
@@ -112,9 +112,7 @@ function CheckupForm({ goat, date, data, onDone }: { goat: Goat; date: string; d
             <p className="flex items-center gap-2 text-sm font-semibold text-cobalt-900"><Stethoscope size={16} aria-hidden /> Checkup of {goat.number} on {new Date(`${date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             <div className="grid gap-3 sm:grid-cols-3">
                 {num('temperature_f', 'Temperature', '°F')}
-                {num('heart_rate', 'Heart rate', 'beats/min')}
-                {num('respiration_rate', 'Breathing', 'breaths/min')}
-                <Field label="Body condition (1–5)"><select className="field" value={form.data.body_score} onChange={(x) => form.setData('body_score', x.target.value)}><option value="">Not set</option>{['1 · Very thin', '2 · Thin', '3 · Good', '4 · Fat', '5 · Very fat'].map((l, i) => <option key={l} value={i + 1}>{l}</option>)}</select></Field>
+                <Field label="Body condition (1–5, optional)"><select className="field" value={form.data.body_score} onChange={(x) => form.setData('body_score', x.target.value)}><option value="">Not set</option>{['1 · Very thin', '2 · Thin', '3 · Good', '4 · Fat', '5 · Very fat'].map((l, i) => <option key={l} value={i + 1}>{l}</option>)}</select></Field>
                 {num('weight_kg', 'Weight', 'KG')}
                 {goat.sex === 'female' ? (
                     <Field label="Ultrasound"><select className="field" value={form.data.ultrasound} onChange={(x) => form.setData('ultrasound', x.target.value)}><option value="">Not done</option>{Object.entries(SOUND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -122,7 +120,15 @@ function CheckupForm({ goat, date, data, onDone }: { goat: Goat; date: string; d
             </div>
             {form.data.ultrasound === 'pregnant' ? (
                 <div className="grid gap-3 rounded-tile bg-manganese-100/60 p-3 sm:grid-cols-3">
-                    {num('months_pregnant', 'Months pregnant (about)', 'months')}
+                    <div>
+                        {num('days_pregnant', 'Days pregnant (about)', 'days')}
+                        {/* D-098: counted in days; expected kidding = checkup date − days pregnant + gestation days */}
+                        {Number(form.data.days_pregnant) > 0 ? (() => {
+                            const kid = new Date(`${date}T12:00:00`);
+                            kid.setDate(kid.getDate() - Number(form.data.days_pregnant) + data.gestation);
+                            return <p className="mt-1 text-xs font-semibold text-manganese-600">Day {form.data.days_pregnant} of about {data.gestation} · kidding about {kid.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>;
+                        })() : null}
+                    </div>
                     {num('fetuses', 'Fetuses seen', 'count')}
                     <Field label="Sire (if known)"><select className="field" value={form.data.sire_id} onChange={(x) => form.setData('sire_id', x.target.value)}><option value="">Unknown</option>{data.sires.map((s) => <option key={s.id} value={s.id}>{s.number}</option>)}</select></Field>
                     <p className="text-xs text-manganese-600 sm:col-span-3">She becomes Pregnant in Breeding with an expected kidding date, and the dashboard counts her.</p>

@@ -183,7 +183,7 @@ class GoatController extends Controller
         }
         $data = $request->validate(GoatRegistration::rules(FieldCatalog::forAnimal()), [
             'temperature_f.required' => 'Take her body temperature (°F): it is required for a pregnant goat.', // D-093
-            'pregnancy_months.required_if' => 'About how many months pregnant is she?',
+            'pregnancy_days.required_if' => 'About how many days pregnant is she?',
         ], ['temperature_f' => 'body temperature']);
 
         $animal = GoatRegistration::register($data, $request->user(), $request->boolean('from_scan') ? 'scan' : 'manual');

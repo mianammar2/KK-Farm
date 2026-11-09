@@ -12,11 +12,11 @@ class HealthCheckup extends Model
     public const OUTCOMES = ['healthy' => 'Healthy', 'monitor' => 'Watch', 'sick' => 'Sick'];
 
     /** Normal ranges for an adult goat, to flag readings (the vet decides). */
-    public const NORMAL = ['temperature_f' => [101.3, 103.5], 'heart_rate' => [70, 90], 'respiration_rate' => [15, 30]];
+    public const NORMAL = ['temperature_f' => [101.3, 103.5]]; // D-098: only temperature is taken
 
     protected $guarded = [];
 
-    protected $casts = ['checked_on' => 'date', 'temperature_f' => 'float', 'weight_kg' => 'float', 'months_pregnant' => 'float'];
+    protected $casts = ['checked_on' => 'date', 'temperature_f' => 'float', 'weight_kg' => 'float', 'days_pregnant' => 'integer'];
 
     public function animal()
     {
@@ -32,7 +32,7 @@ class HealthCheckup extends Model
     public function flags(): array
     {
         $out = [];
-        foreach (['temperature_f' => ['Temperature', '°F'], 'heart_rate' => ['Heart rate', '/min'], 'respiration_rate' => ['Breathing', '/min']] as $key => [$label, $unit]) {
+        foreach (['temperature_f' => ['Temperature', '°F']] as $key => [$label, $unit]) {
             $v = $this->{$key};
             if ($v === null) {
                 continue;

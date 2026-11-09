@@ -48,10 +48,9 @@ final class Checkups
         return DB::transaction(function () use ($goat, $data, $by) {
             $on = Carbon::parse($data['checked_on'])->toDateString();
             $checkup = HealthCheckup::create([
-                'animal_id' => $goat->id, 'checked_on' => $on, 'temperature_f' => $data['temperature_f'] ?? null, 'heart_rate' => $data['heart_rate'] ?? null,
-                'respiration_rate' => $data['respiration_rate'] ?? null, 'body_score' => $data['body_score'] ?? null, 'weight_kg' => $data['weight_kg'] ?? null,
+                'animal_id' => $goat->id, 'checked_on' => $on, 'temperature_f' => $data['temperature_f'] ?? null, 'body_score' => $data['body_score'] ?? null, 'weight_kg' => $data['weight_kg'] ?? null,
                 'ultrasound' => $goat->sex === 'female' ? ($data['ultrasound'] ?? null) : null, 'fetuses' => $data['fetuses'] ?? null,
-                'months_pregnant' => $data['months_pregnant'] ?? null, 'findings' => $data['findings'] ?? null, 'outcome' => $data['outcome'], 'examiner' => $by->name,
+                'days_pregnant' => $data['days_pregnant'] ?? null, 'findings' => $data['findings'] ?? null, 'outcome' => $data['outcome'], 'examiner' => $by->name,
             ]);
             $parts = [];
 
@@ -85,8 +84,7 @@ final class Checkups
 
             self::syncHealth($goat);
             $readings = array_filter([
-                $checkup->temperature_f !== null ? "{$checkup->temperature_f} °F" : null, $checkup->heart_rate ? "heart {$checkup->heart_rate}/min" : null,
-                $checkup->respiration_rate ? "breathing {$checkup->respiration_rate}/min" : null, $checkup->body_score ? "body {$checkup->body_score}/5" : null,
+                $checkup->temperature_f !== null ? "{$checkup->temperature_f} °F" : null, $checkup->body_score ? "body {$checkup->body_score}/5" : null,
             ]);
             Farm::event($goat, 'health', 'Health checkup: '.HealthCheckup::OUTCOMES[$checkup->outcome].(($readings || $parts) ? ' · '.implode(' · ', [...$readings, ...$parts]) : ''), $by->name, Carbon::parse($on));
 
@@ -107,18 +105,18 @@ final class Checkups
         $mating = Mating::where('dam_id', $doe->id)->whereIn('status', ['open', 'pregnant'])->orderByDesc('mated_on')->first();
 
         if ($c->ultrasound === 'pregnant') {
-            $months = $c->months_pregnant;
+            $days = $c->days_pregnant;
             if (! $mating) {
-                $mated = $on->copy()->subDays((int) round(($months ?: 2) * 30));
+                $mated = $on->copy()->subDays($days ?: 60);
                 $mating = Mating::create([
                     'dam_id' => $doe->id, 'sire_id' => $data['sire_id'] ?? null, 'mated_on' => $mated, 'method' => 'natural', 'status' => 'pregnant',
                     'expected_kidding_on' => $mated->copy()->addDays($gestation), 'recorded_by' => $by->name,
-                    'notes' => 'Found pregnant at the health checkup on '.$on->format('j M Y').($months ? ", about {$months} months" : '').'.',
+                    'notes' => 'Found pregnant at the health checkup on '.$on->format('j M Y').($days ? ", about {$days} days pregnant" : '').'.',
                 ]);
             } else {
                 $update = ['status' => 'pregnant'];
-                if ($months && ! $mating->sire_id && $mating->status !== 'pregnant') {
-                    $update['expected_kidding_on'] = $on->copy()->subDays((int) round($months * 30))->addDays($gestation);
+                if ($days && ! $mating->sire_id && $mating->status !== 'pregnant') {
+                    $update['expected_kidding_on'] = $on->copy()->subDays($days)->addDays($gestation);
                 }
                 $mating->update($update);
             }

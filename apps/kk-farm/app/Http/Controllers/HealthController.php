@@ -53,12 +53,12 @@ class HealthController extends Controller
                 'goats' => $checkupGoats, 'interval' => $interval,
                 'recent' => \App\Models\HealthCheckup::with('animal')->orderByDesc('checked_on')->orderByDesc('id')->limit(60)->get()->map(fn ($c) => [
                     'id' => $c->id, 'on' => $c->checked_on->format('j M Y'), 'goat' => $c->animal->farm_number, 'goatId' => $c->animal_id, 'outcome' => $c->outcome,
-                    'temp' => $c->temperature_f, 'heart' => $c->heart_rate, 'breath' => $c->respiration_rate, 'score' => $c->body_score, 'weight' => $c->weight_kg,
+                    'temp' => $c->temperature_f, 'score' => $c->body_score, 'weight' => $c->weight_kg,
                     'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'flags' => $c->flags(), 'findings' => $c->findings, 'caseId' => $c->health_case_id, 'by' => $c->examiner,
                 ]),
                 'normal' => \App\Models\HealthCheckup::NORMAL,
                 'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number]),
-                'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'),
+                'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'), 'gestation' => (int) (\App\Support\Tenant::org()?->gestation_days ?: 150),
             ],
             'cases' => $cases->map(fn (HealthCase $c) => $this->caseRow($c, $withdrawal[$c->animal_id] ?? null)),
             // Concerns reported by staff (and older records) that no case covers yet.
@@ -140,14 +140,14 @@ class HealthController extends Controller
         abort_unless($request->user()->passes('health_checkup'), 403);
         $data = $request->validate([
             'animal_id' => ['required', 'exists:animals,id'], 'checked_on' => ['required', 'date', 'before_or_equal:today'],
-            'temperature_f' => ['nullable', 'numeric', 'between:93,110'], 'heart_rate' => ['nullable', 'integer', 'between:20,250'], 'respiration_rate' => ['nullable', 'integer', 'between:5,120'],
+            'temperature_f' => ['nullable', 'numeric', 'between:93,110'], // D-098: heart and breathing rate are not taken
             'body_score' => ['nullable', 'integer', 'between:1,5'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
             'ultrasound' => ['nullable', Rule::in(array_keys(\App\Models\HealthCheckup::ULTRASOUND))], 'fetuses' => ['nullable', 'integer', 'between:1,6'],
-            'months_pregnant' => ['nullable', 'required_if:ultrasound,pregnant', 'numeric', 'between:0.5,5.5'], 'sire_id' => ['nullable', 'exists:animals,id'],
+            'days_pregnant' => ['nullable', 'required_if:ultrasound,pregnant', 'integer', 'between:1,160'], 'sire_id' => ['nullable', 'exists:animals,id'], // D-098: days
             'findings' => ['nullable', 'string', 'max:2000'], 'outcome' => ['required', Rule::in(array_keys(\App\Models\HealthCheckup::OUTCOMES))],
             'open_case' => ['boolean'], 'condition' => ['nullable', 'required_if:open_case,true', 'string', 'max:120'],
             'severity' => ['nullable', Rule::in(array_keys(HealthCase::SEVERITIES))], 'isolated' => ['boolean'],
-        ], ['months_pregnant.required_if' => 'About how many months pregnant?', 'condition.required_if' => 'What did you find? (the condition for the case)'], ['heart_rate' => 'heart rate', 'respiration_rate' => 'breathing rate']);
+        ], ['days_pregnant.required_if' => 'About how many days pregnant?', 'condition.required_if' => 'What did you find? (the condition for the case)']);
         abort_if(! empty($data['open_case']) && ! $request->user()->passes('open_cases'), 403, 'Only a veterinarian or the administrator opens a health case.');
         $goat = Animal::findOrFail($data['animal_id']);
         abort_unless($goat->status === 'active', 422, 'This goat is no longer on the farm.');

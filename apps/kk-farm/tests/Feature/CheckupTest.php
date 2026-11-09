@@ -49,10 +49,10 @@ class CheckupTest extends TestCase
         $vet = $this->user('vet');
         $this->assertSame(['TD141026-01', 'TD-B1'], array_column(collect(ActionCenter::items($vet))->firstWhere('key', 'checkups_due')['items'], 'text'));
 
-        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-21', 'temperature_f' => 102.4, 'heart_rate' => 80, 'respiration_rate' => 22,
-            'body_score' => 3, 'weight_kg' => 41, 'ultrasound' => 'pregnant'])->assertSessionHasErrors('months_pregnant');
-        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-21', 'temperature_f' => 102.4, 'heart_rate' => 80, 'respiration_rate' => 22,
-            'body_score' => 3, 'weight_kg' => 41, 'ultrasound' => 'pregnant', 'months_pregnant' => 2, 'fetuses' => 2, 'sire_id' => $this->buck->id, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-21', 'temperature_f' => 102.4,
+            'body_score' => 3, 'weight_kg' => 41, 'ultrasound' => 'pregnant'])->assertSessionHasErrors('days_pregnant');
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => '2026-10-21', 'temperature_f' => 102.4,
+            'body_score' => 3, 'weight_kg' => 41, 'ultrasound' => 'pregnant', 'days_pregnant' => 60, 'fetuses' => 2, 'sire_id' => $this->buck->id, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
 
         $doe = $this->doe->fresh();
         $this->assertSame('pregnant', $doe->repro_status);
@@ -69,8 +69,8 @@ class CheckupTest extends TestCase
 
     public function test_readings_outside_normal_are_flagged_and_a_finding_opens_a_case(): void
     {
-        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'heart_rate' => 110, 'outcome' => 'monitor'])->assertSessionHasNoErrors();
-        $this->assertSame(['Temperature 105.1 °F (high)', 'Heart rate 110 /min (high)'], HealthCheckup::sole()->flags());
+        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertSessionHasNoErrors();
+        $this->assertSame(['Temperature 105.1 °F (high)'], HealthCheckup::sole()->flags());
         $this->assertSame(['open', 'monitor'], [HealthRecord::sole()->status, $this->buck->fresh()->health_flag]);
 
         // The administrator can open a case from a checkup, as the vet can; a caretaker cannot record checkups.
