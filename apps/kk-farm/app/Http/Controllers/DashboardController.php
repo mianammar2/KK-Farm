@@ -219,11 +219,11 @@ class DashboardController extends Controller
                 $bal = \App\Support\Feed::balance($rows->sum('kgDay'), $rows->sum('min'), $rows->sum('max'), $given, $tol);
 
                 return [
-                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1), 'kgMonth' => round($rows->sum('kgDay') * $md, 1), 'givenToday' => $given, 'balance' => $bal['state'], 'diff' => $bal['diff'],
+                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1), 'cpDay' => round($rows->sum('cpKg'), 2), 'kgMonth' => round($rows->sum('kgDay') * $md, 1), 'givenToday' => $given, 'balance' => $bal['state'], 'diff' => $bal['diff'],
                     'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
                     'goats' => $rows->map(fn ($r) => [
                         'id' => $r['id'], 'number' => $r['number'], 'group' => $r['group'], 'weight' => $r['weight'], 'state' => $r['state'], 'rule' => $r['rule'],
-                        'kgDay' => $r['kgDay'], 'kgMonth' => round($r['kgDay'] * $md, 1), 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
+                        'kgDay' => $r['kgDay'], 'kgMonth' => round($r['kgDay'] * $md, 1), 'cp' => $r['cp'], 'cpKg' => $r['cpKg'], 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
                     ])->values()->all(),
                     '_rows' => $rows,
                 ];
@@ -231,7 +231,7 @@ class DashboardController extends Controller
             $all = $pens->flatMap(fn ($p) => $p['_rows']);
 
             return [
-                'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a pen', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1), 'kgMonth' => round($all->sum('kgDay') * $md, 1),
+                'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a pen', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1), 'cpDay' => round($all->sum('cpKg'), 2), 'kgMonth' => round($all->sum('kgDay') * $md, 1),
                 'cost' => round($all->sum(fn ($r) => $cost($r['lines']))), 'count' => $all->count(), 'feeds' => $sum($all),
                 'pens' => $pens->map(fn ($p) => collect($p)->except('_rows')->all())->all(),
             ];
@@ -254,6 +254,9 @@ class DashboardController extends Controller
         $daysLeft = $monthDays - $now->day + 1;
         $supply = [
             'needDay' => round($kgDay, 1), 'needWeek' => round($kgDay * 7, 1), 'inStore' => $inStore,
+            // D-111: crude protein the day's feed should carry (feed KG × CP % for each goat's age); null when no CP % is set.
+            'cpDay' => $req->contains(fn ($r) => $r['cp'] !== null) ? round($req->sum('cpKg'), 2) : null, 'cpMonth' => $req->contains(fn ($r) => $r['cp'] !== null) ? round($req->sum('cpKg') * $monthDays, 1) : null,
+            'cpMissing' => $req->where('state', 'planned')->whereNull('cp')->count(),
             'month' => $now->format('F'), 'monthDays' => $monthDays, 'daysLeft' => $daysLeft,
             'needMonth' => round($kgDay * $monthDays, 1), 'needLeft' => round($kgDay * $daysLeft, 1), 'shortMonth' => round(max(0, $kgDay * $daysLeft - $inStore), 1),
             'days' => $kgDay > 0 ? (int) floor($inStore / $kgDay) : null,

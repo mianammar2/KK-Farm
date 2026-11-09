@@ -432,4 +432,28 @@ class FeedTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('feeding', null)->where('feedTracking', false)
             ->where('requirement.tracking', false)->where('requirement.supply.needDay', 1));
     }
+
+    /** D-111: CP % per age in Feeding Settings; the dashboard shows the protein the feed should carry. */
+    public function test_crude_protein_percent_per_age_gives_the_protein_needed(): void
+    {
+        $d1 = Animal::where('farm_number', 'D-1')->first();
+        \App\Models\WeightRecord::create(['animal_id' => $d1->id, 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']);
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.cpDay', null));
+
+        $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
+            'grower_min' => 3, 'grower_max' => 4, 'adult_min' => 2, 'adult_max' => 3, 'tracking' => false, 'grower_cp' => 16, 'adult_cp' => 12])->assertSessionHasNoErrors();
+        \App\Support\Tenant::flush();
+        $this->assertSame(12.0, (float) Organization::find(Tenant::current())->adult_cp_pct);
+
+        // 40 KG adult × 2.5% = 1 KG of feed a day; at 12% CP that is 0.12 KG of protein.
+        $req = Feed::perGoat(Animal::active()->get(), now());
+        $this->assertSame([12.0, 0.12], [$req[$d1->id]['cp'], $req[$d1->id]['cpKg']]);
+        $this->assertNull($req[Animal::where('farm_number', 'K-1')->value('id')]['cp'], 'kid on milk: no CP');
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.cpDay', 0.12)
+            ->where('requirement.sheds.0.cpDay', 0.12)->where('requirement.sheds.0.pens.0.goats.0.cpKg', 0.12));
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('settings.cp.adult', 12)->where('settings.cp.kid', null));
+
+        $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
+            'grower_min' => 3, 'grower_max' => 4, 'adult_min' => 2, 'adult_max' => 3, 'adult_cp' => 55])->assertSessionHasErrors('adult_cp');
+    }
 }

@@ -59,7 +59,9 @@ class FeedingController extends Controller
                     'kid' => $org->kid_intake_min_pct !== null ? [(float) $org->kid_intake_min_pct, (float) $org->kid_intake_max_pct] : null,
                     'grower' => [(float) $org->grower_intake_min_pct, (float) $org->grower_intake_max_pct],
                     'adult' => [(float) $org->adult_intake_min_pct, (float) $org->adult_intake_max_pct],
-                ]],
+                ],
+                'cp' => collect(['kid', 'grower', 'adult'])->mapWithKeys(fn ($a) => [$a => $org->{"{$a}_cp_pct"} !== null ? (float) $org->{"{$a}_cp_pct"} : null])->all(), // D-111
+            ],
             'board' => $board->map(function (array $meals, int $penId) use ($pens, $meal, $line, $stock) {
                 $m = $meals[$meal];
                 $rows = $m['rows']->keyBy('feed_item_id');
@@ -394,6 +396,7 @@ class FeedingController extends Controller
             'adult_min' => ['required', 'numeric', 'between:0.1,10'],
             'adult_max' => ['required', 'numeric', 'between:0.1,10', 'gte:adult_min'],
             'tracking' => ['boolean'], // D-107
+            'kid_cp' => ['nullable', 'numeric', 'between:1,40'], 'grower_cp' => ['nullable', 'numeric', 'between:1,40'], 'adult_cp' => ['nullable', 'numeric', 'between:1,40'], // D-111
         ]);
         Organization::whereKey($request->user()->org_id)->update([
             'meal_times' => json_encode(['morning' => $data['morning'], 'midday' => $data['midday'], 'evening' => $data['evening']]),
@@ -402,6 +405,7 @@ class FeedingController extends Controller
             'grower_intake_min_pct' => $data['grower_min'], 'grower_intake_max_pct' => $data['grower_max'],
             'adult_intake_min_pct' => $data['adult_min'], 'adult_intake_max_pct' => $data['adult_max'],
             'feed_tracking' => (bool) ($data['tracking'] ?? false),
+            'kid_cp_pct' => $data['kid_cp'] ?? null, 'grower_cp_pct' => $data['grower_cp'] ?? null, 'adult_cp_pct' => $data['adult_cp'] ?? null,
         ]);
         Farm::log($request->user(), 'Changed feeding settings', '/feeding');
 

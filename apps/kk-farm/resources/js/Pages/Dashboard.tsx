@@ -16,10 +16,10 @@ type Balance = 'over' | 'short' | 'ok' | null;
 type Feeding = { meal: Meal; meals: Record<Meal, string>; times: Record<Meal, string>; plannedKg: number; givenKg: number; cost: number; lowStock: string[]; overPens: number;
     pens: Array<{ id: number; name: string; goats: number; onMilk: number; dayPlanned: number; dayGiven: number; over: boolean; diff: number; meals: Record<Meal, { status: FeedStatus; planned: number; given: number; balance: Balance; diff: number }> }> };
 type ActionSummary = { key: string; label: string; count: number; severity: 'critical' | 'warning' | 'info' };
-type ReqGoat = { id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; kgMonth: number; min: number; max: number; feeds: string };
-type ReqPen = { id: number | null; name: string; kgDay: number; kgMonth: number; givenToday: number; balance: Balance; diff: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
-type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; kgMonth: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
-type Supply = { needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
+type ReqGoat = { cp: number | null; cpKg: number; id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; kgMonth: number; min: number; max: number; feeds: string };
+type ReqPen = { id: number | null; name: string; kgDay: number; cpDay: number; kgMonth: number; givenToday: number; balance: Balance; diff: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
+type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; kgMonth: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
+type Supply = { cpDay: number | null; cpMonth: number | null; cpMissing: number; needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
 type Requirement = { supply: Supply; tracking: boolean; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
 type HealthLinks = { checkupsDue: number; openReports: number; canCheck: boolean; canCase: boolean; canCare: boolean };
@@ -380,7 +380,7 @@ function FeedRequirement({ req }: { req: Requirement }) {
                                         <span className="block text-xs text-ink-soft">{s.typeName ? `${s.typeName} · ` : ''}{plural(s.count, 'goat', 'goats')} · {s.pens.length} pen{s.pens.length === 1 ? '' : 's'}</span>
                                     </span>
                                     <span className="hidden flex-wrap gap-1 md:flex">{s.feeds.slice(0, 3).map((f) => <span key={f.name} className="rounded-[4px] bg-glaze px-1.5 py-0.5 text-xs text-ink-soft">{f.name} {f.kg} KG</span>)}</span>
-                                    <span className="text-right"><span className="block font-bold text-cobalt-900">{s.kgDay} KG/day</span><span className="block text-xs text-ink-soft">{s.kgMonth} KG this month{s.cost ? ` · PKR ${s.cost.toLocaleString('en-PK')}/day` : ''}</span></span>
+                                    <span className="text-right"><span className="block font-bold text-cobalt-900">{s.kgDay} KG/day</span><span className="block text-xs text-ink-soft">{req.supply.cpDay !== null ? `CP ${s.cpDay} KG/day · ` : ''}{s.kgMonth} KG this month{s.cost ? ` · PKR ${s.cost.toLocaleString('en-PK')}/day` : ''}</span></span>
                                     <ChevronDown size={16} className={`text-ink-faint transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden />
                                 </button>
                                 {isOpen ? <div className="space-y-3 bg-glaze/50 px-4 pb-3">{s.pens.map((p) => <ReqPenCard key={p.id ?? 'none'} pen={p} />)}</div> : null}
@@ -400,11 +400,11 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
         <div className="rounded-tile border border-rule bg-tile">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-rule px-3 py-2">
                 <span className="font-mono text-sm font-semibold text-cobalt-900">{pen.name}</span>
-                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong> · given today {pen.givenToday} KG <BalanceTag balance={pen.balance} diff={pen.diff} /> · {pen.kgMonth} KG this month{pen.cost ? ` · PKR ${pen.cost.toLocaleString('en-PK')}` : ''}</span>
+                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong>{pen.cpDay ? ` · CP ${pen.cpDay} KG` : ''} · given today {pen.givenToday} KG <BalanceTag balance={pen.balance} diff={pen.diff} /> · {pen.kgMonth} KG this month{pen.cost ? ` · PKR ${pen.cost.toLocaleString('en-PK')}` : ''}</span>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[46rem] text-sm">
-                    <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-1.5 font-semibold">Goat</th><th className="px-3 font-semibold">Group</th><th className="px-3 font-semibold">Weight</th><th className="px-3 font-semibold">Rule</th><th className="px-3 font-semibold">Per Day</th><th className="px-3 font-semibold">This Month</th><th className="px-3 font-semibold">Feeds (KG)</th></tr></thead>
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-1.5 font-semibold">Goat</th><th className="px-3 font-semibold">Group</th><th className="px-3 font-semibold">Weight</th><th className="px-3 font-semibold">Rule</th><th className="px-3 font-semibold">Per Day</th><th className="px-3 font-semibold">CP / Day</th><th className="px-3 font-semibold">This Month</th><th className="px-3 font-semibold">Feeds (KG)</th></tr></thead>
                     <tbody className="divide-y divide-rule">
                         {rows.map((g) => (
                             <tr key={g.id}>
@@ -413,6 +413,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
                                 <td className="px-3">{g.weight ? `${g.weight} KG` : '—'}</td>
                                 <td className="px-3">{g.state === 'planned' ? <span className="text-ink-soft">{g.rule}</span> : <span className={`rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${REQ_STATE[g.state]}`}>{g.rule}</span>}</td>
                                 <td className="px-3 font-semibold text-cobalt-900">{g.state === 'planned' ? <>{g.kgDay} KG{g.max > g.min ? <span className="block text-xs font-normal text-ink-faint">{g.min}–{g.max}</span> : null}</> : '—'}</td>
+                                <td className="px-3 text-cobalt-900">{g.state === 'planned' && g.cp !== null ? <>{Math.round(g.cpKg * 1000)} g<span className="block text-xs text-ink-faint">{g.cp}% CP</span></> : '—'}</td>
                                 <td className="px-3 text-cobalt-900">{g.state === 'planned' ? `${g.kgMonth} KG` : '—'}</td>
                                 <td className="px-3 text-xs text-ink-soft">{g.feeds || '—'}</td>
                             </tr>
@@ -437,10 +438,11 @@ function SupplyStrip({ s, tracking }: { s: Supply; tracking: boolean }) {
     );
     return (
         <div className="space-y-2 border-b border-rule px-4 py-3">
-            <div className={`grid grid-cols-2 gap-2 sm:grid-cols-3 ${tracking ? 'lg:grid-cols-5' : ''}`}>
+            <div className={`grid grid-cols-2 gap-2 sm:grid-cols-3 ${tracking ? 'lg:grid-cols-5' : s.cpDay !== null ? 'lg:grid-cols-4' : ''}`}>
                 {box('Needed today', `${s.needDay} KG`)}
                 {box('Needed this week', `${s.needWeek} KG`)}
                 {box(`Needed in ${s.month}`, `${s.needMonth} KG`, `${s.needLeft} KG for the ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} left${tracking && s.shortMonth ? ` · short ${s.shortMonth} KG` : ''}`, tracking && s.shortMonth > 0)}
+                {s.cpDay !== null ? box('Crude Protein Today', `${s.cpDay} KG`, `${s.cpMonth} KG in ${s.month}${s.cpMissing ? ` · ${s.cpMissing} goats without a CP %` : ''}`) : null}
                 {!tracking ? null : <>
                 {box('In the feed store', `${s.inStore} KG`, undefined, s.needDay > 0 && s.inStore === 0)}
                 {box('Store lasts', s.days === null ? '—' : s.days === 0 ? 'Not today' : `${s.days} day${s.days === 1 ? '' : 's'}`, short ? `Short ${Math.max(0, Math.round(s.needWeek - s.inStore))} KG for a week` : undefined, short)}

@@ -16,7 +16,7 @@ type Movement = { id: number; on: string; item: string; type: string; qty: numbe
 type History = { id: string; on: string; meal: Meal; pen: string; feed: string; headcount: number; planned: number; offered: number; refused: number | null; consumed: number; perHead: number | null; cost: number; by: string; corrected: boolean; off: boolean };
 type Props = {
     today: string; meal: Meal; meals: Record<Meal, string>; mealTimes: Record<Meal, string>;
-    settings: { late: number; window: number; tolerance: number; timezone: string; tracking: boolean; intake: { kid: [number, number] | null; grower: [number, number]; adult: [number, number] } };
+    settings: { late: number; window: number; tolerance: number; timezone: string; tracking: boolean; intake: { kid: [number, number] | null; grower: [number, number]; adult: [number, number] }; cp: { kid: number | null; grower: number | null; adult: number | null } };
     board: PenRow[]; groups: Group[]; items: Item[]; movements: Movement[]; history: History[];
     categories: Record<string, string>; movementTypes: Record<string, { label: string; direction: number }>;
     can: { store: boolean; plan: boolean; approve: boolean; settings: boolean };
@@ -418,7 +418,11 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
     const form = useForm({ morning: mealTimes.morning, midday: mealTimes.midday, evening: mealTimes.evening, late: settings.late, window: settings.window, tolerance: settings.tolerance,
         kid_min: settings.intake.kid ? String(settings.intake.kid[0]) : '', kid_max: settings.intake.kid ? String(settings.intake.kid[1]) : '',
         grower_min: String(settings.intake.grower[0]), grower_max: String(settings.intake.grower[1]), adult_min: String(settings.intake.adult[0]), adult_max: String(settings.intake.adult[1]),
-        tracking: settings.tracking });
+        tracking: settings.tracking,
+        kid_cp: settings.cp.kid === null ? '' : String(settings.cp.kid), grower_cp: settings.cp.grower === null ? '' : String(settings.cp.grower), adult_cp: settings.cp.adult === null ? '' : String(settings.cp.adult) });
+    const cpField = (key: 'grower_cp' | 'adult_cp' | 'kid_cp', label: string, hint?: string) => (
+        <Field label={label} error={errors[key]} hint={hint}><input className="field" type="number" inputMode="decimal" step="0.1" min={1} max={40} placeholder="Not set" value={form.data[key]} onChange={(e) => form.setData(key, e.target.value)} /></Field>
+    );
     type RangeKey = 'kid' | 'grower' | 'adult';
     const range = (key: RangeKey, label: string, hint?: string) => (
         <div className="grid grid-cols-[7rem_1fr_1fr] items-end gap-2">
@@ -446,6 +450,10 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
                 {range('grower', 'Growers')}
                 {range('adult', 'Adults')}
                 {range('kid', 'Kids', 'Empty = milk only')}
+                {/* D-111 */}
+                <p className="pt-2 text-sm font-semibold text-cobalt-900">Crude Protein (CP), % of the Feed</p>
+                <p className="-mt-2 text-xs text-ink-soft">How much protein the feed for each age should carry. The dashboard shows the CP needed: feed KG × CP %. Leave empty if not set.</p>
+                <div className="grid grid-cols-3 gap-2">{cpField('grower_cp', 'Growers CP %')}{cpField('adult_cp', 'Adults CP %')}{cpField('kid_cp', 'Kids CP %', 'Kids on milk need none')}</div>
                 <Button type="submit" disabled={form.processing}>Save</Button>
             </form>
         </Panel>

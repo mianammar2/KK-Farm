@@ -226,13 +226,13 @@ final class Feed
                 $lines = $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => (float) $l->kg_per_head])->all();
                 $kg = round(array_sum($lines), 2);
 
-                return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => $kg, 'max' => $kg, 'rule' => "Fixed {$kg} KG a day", 'lines' => $lines, 'split' => true] + $base];
+                return [$goat->id => self::withCp(['state' => 'planned', 'kgDay' => $kg, 'min' => $kg, 'max' => $kg, 'rule' => "Fixed {$kg} KG a day", 'lines' => $lines, 'split' => true] + $base, $goat, $org)];
             }
             if ($age === 'kid' && ! $range) {
-                return [$goat->id => $base + ['state' => 'milk', 'rule' => 'Kid on milk']];
+                return [$goat->id => self::withCp($base + ['state' => 'milk', 'rule' => 'Kid on milk'], $goat, $org)];
             }
             if (! $weight) {
-                return [$goat->id => $base + ['state' => 'no_weight', 'rule' => 'Needs a weight']];
+                return [$goat->id => self::withCp($base + ['state' => 'no_weight', 'rule' => 'Needs a weight'], $goat, $org)];
             }
             // D-080: otherwise the farm's intake % of body weight for its age, ration or not. The ration only splits it over feeds.
             [$min, $max] = $range;
@@ -241,9 +241,25 @@ final class Feed
             $split = $plan && $plan->basis === 'body_weight' && $plan->lines->isNotEmpty();
             $lines = $split ? $plan->lines->mapWithKeys(fn ($l) => [$l->feed_item_id => round($kg * $l->share_pct / 100, 3)])->all() : [];
 
-            return [$goat->id => ['state' => 'planned', 'kgDay' => $kg, 'min' => round($weight * $min / 100, 2), 'max' => round($weight * $max / 100, 2),
-                'rule' => rtrim(rtrim(number_format($mid, 2), '0'), '.')."% of {$weight} KG ({$ageLabel[$age]})", 'lines' => $lines, 'split' => $split] + $base];
+            return [$goat->id => self::withCp(['state' => 'planned', 'kgDay' => $kg, 'min' => round($weight * $min / 100, 2), 'max' => round($weight * $max / 100, 2),
+                'rule' => rtrim(rtrim(number_format($mid, 2), '0'), '.')."% of {$weight} KG ({$ageLabel[$age]})", 'lines' => $lines, 'split' => $split] + $base, $goat, $org)];
         });
+    }
+
+    /** D-111: the crude protein % the feed should carry for this goat's age, or null when the farm has not set it. */
+    public static function cpPct(Animal $goat, Organization $org): ?float
+    {
+        $pct = match (self::intakeAge($goat)) { 'kid' => $org->kid_cp_pct, 'grower' => $org->grower_cp_pct, default => $org->adult_cp_pct };
+
+        return $pct === null ? null : (float) $pct;
+    }
+
+    /** D-111: add the goat's CP need (KG of protein a day = feed KG × CP %) to its requirement row. */
+    private static function withCp(array $row, Animal $goat, Organization $org): array
+    {
+        $cp = $row['state'] === 'planned' ? self::cpPct($goat, $org) : null;
+
+        return $row + ['cp' => $cp, 'cpKg' => $cp === null ? 0.0 : round($row['kgDay'] * $cp / 100, 3)];
     }
 
     /** @return Collection<string, float> each goat's most recent weight in kg */
