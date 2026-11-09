@@ -40,6 +40,7 @@ return [
         'tasks' => $all,
         'finance' => ['ceo', 'finance'],
         'value' => ['ceo', 'manager', 'finance'], // D-113: Herd Value
+        'milking' => ['ceo', 'manager', 'vet', 'caretaker'], // D-117
         'reports' => ['ceo', 'manager', 'finance'],
         'settings' => ['ceo'],
         'sensors' => ['ceo', 'manager', 'vet'], // D-087: devices, readings, sensor alerts
@@ -60,6 +61,8 @@ return [
         'remove_goats' => ['ceo', 'manager'], // D-091: confirm (or cancel) removing a wrong entry; restore
         'health_checkup' => ['ceo', 'manager', 'vet'], // D-095: routine checkups
         'manage_market' => ['ceo', 'finance'], // D-113: market rates, batch purchase rates, feed price
+        'record_milk' => ['ceo', 'manager', 'vet', 'caretaker'], // D-117: milk per session
+        'manage_milking' => ['ceo', 'manager', 'vet'], // D-117: dry off, start a lactation by hand, milking settings
         'open_cases' => ['vet', 'ceo'], // D-095: the vet, and the administrator, open health cases (treatments stay with the vet)
     ],
 

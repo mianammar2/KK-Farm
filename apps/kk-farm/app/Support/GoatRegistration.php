@@ -76,6 +76,9 @@ final class GoatRegistration
         if (isset($rules['pregnancy_days'])) {
             $rules['pregnancy_days'] = ['nullable', 'required_if:pregnant_at_arrival,yes', ...array_slice($rules['pregnancy_days'], 1)];
         }
+        if (isset($rules['days_in_milk'])) { // D-117
+            $rules['days_in_milk'] = ['nullable', 'required_if:milking_at_arrival,yes', ...array_slice($rules['days_in_milk'], 1)];
+        }
 
         return $rules;
     }
@@ -99,6 +102,7 @@ final class GoatRegistration
                 'height_in' => ['numeric', 'between:4,80'],
                 'temperature_f' => ['numeric', 'between:93,110'], // D-093: °F
                 'pregnancy_days' => ['integer', 'between:1,160'], // D-098: days pregnant
+                'days_in_milk' => ['integer', 'between:0,400'], // D-117: days since she kidded
                 'purchase_cost_pkr' => ['numeric', 'min:0', 'max:100000000'],
                 'name', 'source_farm' => ['string', 'max:60'],
                 default => null,
@@ -213,6 +217,13 @@ final class GoatRegistration
             }
             self::arrivalCheck($animal, $data, $user);
             self::pregnantOnArrival($animal, $data, $user);
+            // D-117: a doe bought in milk starts her lactation from about when she kidded.
+            if (($data['milking_at_arrival'] ?? null) === 'yes' && $animal->sex === 'female' && $animal->origin !== 'born_on_farm') {
+                Milking::start($animal->fresh(), now()->subDays((int) ($data['days_in_milk'] ?? 0))->startOfDay(), 'arrival', $user->name);
+                if (in_array($data['repro_status'] ?? null, ['pregnant', 'expected_kidding'], true) || ($data['pregnant_at_arrival'] ?? null) === 'yes') {
+                    $animal->update(['repro_status' => 'pregnant', 'repro_state' => 'pregnant']); // pregnant and still milking
+                }
+            }
 
             $origin = ['purchased' => 'Purchased and registered', 'transferred_in' => 'Transferred in and registered'][$data['origin']] ?? 'Born on the farm';
             Farm::event($animal, 'origin', $origin.($via === 'scan' ? ' (started from an RFID scan)' : ''), $user->name);

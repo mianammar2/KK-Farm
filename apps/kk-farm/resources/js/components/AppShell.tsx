@@ -1,7 +1,7 @@
 import BrandMark from './BrandMark';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
-    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp } from 'lucide-react';
+    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -24,6 +24,7 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
         heading: 'Care',
         items: [
             { href: '/breeding', label: 'Breeding & Pedigree', module: 'breeding', icon: Network },
+            { href: '/milking', label: 'Milking', module: 'milking', icon: Milk },
             { href: '/health', label: 'Veterinary & Health', module: 'health', icon: HeartPulse },
             { href: '/weights', label: 'Weight & Growth', module: 'weights', icon: Scale },
             { href: '/feeding', label: 'Feeding & Nutrition', module: 'feeding', icon: Wheat },

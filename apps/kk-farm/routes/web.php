@@ -138,6 +138,13 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/tasks/{task}/status', [TaskController::class, 'status']);
     });
 
+    Route::middleware('module:milking')->group(function (): void { // D-117
+        Route::get('/milking', [\App\Http\Controllers\MilkingController::class, 'index']);
+        Route::post('/milking/records', [\App\Http\Controllers\MilkingController::class, 'record']);
+        Route::post('/milking/start', [\App\Http\Controllers\MilkingController::class, 'start']);
+        Route::post('/milking/settings', [\App\Http\Controllers\MilkingController::class, 'settings']);
+        Route::post('/milking/lactations/{lactation}/dry-off', [\App\Http\Controllers\MilkingController::class, 'dryOff']);
+    });
     Route::middleware('module:value')->group(function (): void { // D-113
         Route::get('/value', [\App\Http\Controllers\HerdValueController::class, 'index']);
         Route::post('/value/rates', [\App\Http\Controllers\HerdValueController::class, 'storeRate']);

@@ -29,6 +29,7 @@ type Props = {
     pens: Array<{ id: number; name: string; purpose: string }>;
     can: { edit: boolean; remove: boolean };
     pregnancy: Pregnancy | null;
+    milking: Milking | null;
     healthEntry: (CheckupData & { conditions: string[]; severities: Record<string, string> }) | null;
 };
 type Pregnancy = {
@@ -40,7 +41,7 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking } = props;
     const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('overview');
@@ -160,6 +161,7 @@ export default function GoatShow(props: Props) {
                     </Panel>
                     <div className="space-y-4">
                         {pregnancy ? <PregnancyPanel p={pregnancy} /> : null}
+                        {milking ? <MilkingPanel m={milking} /> : null}
                         <Panel title="Identity">
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
@@ -416,6 +418,23 @@ function PregnancyPanel({ p }: { p: Pregnancy }) {
                     ))}</tbody>
                 </table>
             ) : <p className="mt-3 text-sm text-ink-soft">No checks since mating yet.</p>}
+        </Panel>
+    );
+}
+
+type Milking = { avg7: number | null; high: boolean; standard: string | null; cp: string | null; lactations: Array<{ number: number; started: string; dried: string | null; days: number; total: number; reason: string | null; open: boolean }> };
+
+/** D-117: in milk since kidding (or arrival), her lactations and the nutrition standard that follows from it. */
+function MilkingPanel({ m }: { m: Milking }) {
+    const now = m.lactations.find((l) => l.open);
+    return (
+        <Panel title={now ? `In Milk · Lactation ${now.number}, Day ${now.days}` : 'Milking History'} actions={<Link href="/milking" className="text-sm font-semibold text-turq-800 hover:underline">Milking</Link>}>
+            {now ? (
+                <p className="mb-2 text-sm text-ink-soft">Since {now.started} · {now.total} L so far{m.avg7 !== null ? ` · ${m.avg7} L a day this week` : ''}{m.high ? ' · high-producing' : ''}{m.standard ? <> · feeds as <strong className="text-cobalt-900">{m.standard}</strong>{m.cp ? ` (CP ${m.cp})` : ''}</> : null}</p>
+            ) : null}
+            <ul className="divide-y divide-rule text-sm">{m.lactations.map((l) => (
+                <li key={l.number} className="flex flex-wrap gap-x-3 py-1.5"><span className="font-semibold text-cobalt-900">Lactation {l.number}</span><span className="text-ink-soft">{l.started} to {l.dried ?? 'now'} · {l.days} days · {l.total} L</span>{l.reason ? <span className="w-full text-xs text-ink-faint">{l.reason}</span> : null}</li>
+            ))}</ul>
         </Panel>
     );
 }

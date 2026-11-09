@@ -252,6 +252,7 @@ class GoatController extends Controller
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
             'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats')],
             'pregnancy' => $animal->sex === 'female' ? \App\Support\Checkups::pregnancyThread($animal) : null, // D-100
+            'milking' => $animal->sex === 'female' ? $this->milking($animal) : null, // D-117
             'healthEntry' => $animal->status === 'active' && $request->user()->canModule('health') ? \App\Support\Checkups::entryData($request->user(), new \Illuminate\Database\Eloquent\Collection([$animal])) : null, // D-102
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
@@ -359,5 +360,23 @@ class GoatController extends Controller
         $share = round($shared / max(1, Animal::active()->count()));
 
         return ['direct' => $direct, 'sharedPerHead' => $share, 'total' => $direct + $share];
+    }
+
+    /** D-117: the doe's lactations: the one in milk now (days, 7-day average, total, standard) and earlier ones. */
+    private function milking(Animal $animal): ?array
+    {
+        $lactations = \App\Models\Lactation::where('animal_id', $animal->id)->orderByDesc('number')->get();
+        if ($lactations->isEmpty()) {
+            return null;
+        }
+        $totals = \App\Models\MilkRecord::current()->where('animal_id', $animal->id)->selectRaw('lactation_id, sum(litres) as l')->groupBy('lactation_id')->pluck('l', 'lactation_id');
+        $std = \App\Support\Feed::standardFor($animal, \App\Support\Feed::latestWeights()[$animal->id] ?? null);
+
+        return [
+            'avg7' => \App\Support\Milking::weekAverages()[$animal->id] ?? null, 'high' => \App\Support\Milking::isHighYield($animal),
+            'standard' => $std?->name, 'cp' => $std?->range(),
+            'lactations' => $lactations->map(fn ($l) => ['number' => $l->number, 'started' => $l->started_on->format('j M Y'), 'dried' => $l->dried_on?->format('j M Y'),
+                'days' => $l->daysInMilk(), 'total' => round((float) ($totals[$l->id] ?? 0), 1), 'reason' => $l->dry_reason, 'open' => $l->dried_on === null])->values(),
+        ];
     }
 }

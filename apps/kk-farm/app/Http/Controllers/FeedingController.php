@@ -100,7 +100,7 @@ class FeedingController extends Controller
                 ]),
             'categories' => FeedItem::CATEGORIES,
             'standards' => $this->standards(), // D-116
-            'nutritionCategories' => collect(Feed::NUTRITION_CATEGORIES)->map(fn ($c) => $c[0])->except('high_lactating')->all(),
+            'nutritionCategories' => collect(Feed::NUTRITION_CATEGORIES)->map(fn ($c) => $c[0])->all(),
             'methods' => \App\Models\NutritionStandard::METHODS,
             'breeds' => \App\Models\Breed::orderBy('name')->get(['id', 'name']),
             'movementTypes' => collect(FeedStockMovement::TYPES)->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),

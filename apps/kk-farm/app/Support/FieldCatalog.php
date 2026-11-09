@@ -37,6 +37,7 @@ final class FieldCatalog
             'teeth' => \App\Support\Classification::TEETH,
             'body_score' => ['1' => '1 · Very thin', '2' => '2 · Thin', '3' => '3 · Good', '4' => '4 · Fat', '5' => '5 · Very fat'],
             'pregnant_at_arrival' => ['yes' => 'Yes, pregnant', 'no' => 'Not pregnant', 'unknown' => 'Not known'],
+            'milking_at_arrival' => ['yes' => 'Yes, in milk', 'no' => 'Not in milk'], // D-117
             'ownership' => ['kk_farms' => 'KK Farms', 'partner' => 'Partner', 'consignment' => 'Consignment', 'other' => 'Other'],
         ];
     }
@@ -73,6 +74,8 @@ final class FieldCatalog
             // D-091: a bought doe may arrive pregnant: she then goes straight into Breeding with an expected kidding date.
             ['key' => 'pregnant_at_arrival', 'label' => 'Pregnant when bought?', 'type' => 'select', 'section' => 'Classification', 'help' => 'Female goats that were bought or transferred in.'],
             ['key' => 'pregnancy_days', 'label' => 'Days pregnant (about)', 'type' => 'number', 'section' => 'Classification', 'help' => 'Days since she was mated. Works out the expected kidding date (gestation about 150 days).'], // D-098
+            ['key' => 'milking_at_arrival', 'label' => 'In milk when bought?', 'type' => 'select', 'section' => 'Classification', 'help' => 'A doe giving milk when she came to the farm starts her lactation in Milking.'], // D-117
+            ['key' => 'days_in_milk', 'label' => 'Days since she kidded (about)', 'type' => 'number', 'section' => 'Classification', 'help' => 'Counts her days in milk.'], // D-117
             // D-066: off by default (new goats are Active; exits change it). The owner can switch it on in Settings.
             ['key' => 'lifecycle_status', 'label' => 'Lifecycle Status', 'type' => 'select', 'section' => 'Status', 'active' => false],
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],

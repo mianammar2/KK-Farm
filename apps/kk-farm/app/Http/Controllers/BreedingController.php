@@ -204,7 +204,7 @@ class BreedingController extends Controller
                 'assisted' => $data['assisted'] ?? 'no', 'attendant' => $data['attendant'] ?? $request->user()->name, 'notes' => $data['notes'] ?? null, 'recorded_by' => $request->user()->name,
             ]);
             $mating->update(['status' => 'kidded']);
-            $dam->update(['repro_status' => (int) $data['alive'] > 0 ? 'lactating' : 'kidded', 'repro_state' => (int) $data['alive'] > 0 ? 'lactating' : null]);
+            // D-117: she is in milk after kidding (her lactation was started when the kidding was saved).
             $total = (int) $data['alive'] + (int) $data['stillborn'];
             Farm::event($dam, 'breeding', 'Kidded: '.Kidding::litterType($total)." · {$data['alive']} born alive".($data['stillborn'] ? ", {$data['stillborn']} stillborn" : '').(($data['assisted'] ?? 'no') !== 'no' ? ' · assisted' : ''), $request->user()->name, $on);
 

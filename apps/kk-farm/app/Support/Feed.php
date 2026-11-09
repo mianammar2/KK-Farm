@@ -64,7 +64,7 @@ final class Feed
         'weaned_kid' => ['Weaned Kid', 14, 16, 'Healthy growth after weaning'],
         'late_pregnant' => ['Late Pregnant Female', 12, 16, 'Fetal development, especially twins'],
         'early_pregnant' => ['Early Pregnant Female', 9, 11, 'Pregnancy maintenance'],
-        'high_lactating' => ['High-Producing Lactating Female', 16, 20, 'Higher milk production demands'],
+        'high_lactating' => ['High-Producing Lactating Female', 16, 20, 'Higher milk production demands'], // D-117: by 7-day milk average
         'lactating' => ['Lactating Female', 12, 16, 'Milk production and kid nutrition'],
         'ready_female' => ['Female Ready for Breeding', 10, 12, 'Breeding preparation'],
         'fattening' => ['Fattening Goat', 11, 14, 'Weight gain and finishing'],
@@ -84,7 +84,7 @@ final class Feed
         }
         foreach (self::NUTRITION_CATEGORIES as $key => [$name, $min, $max, $purpose]) {
             DB::table('nutrition_standards')->insert([
-                'org_id' => $orgId, 'name' => $name, 'category' => $key === 'high_lactating' ? null : $key, 'cp_min_pct' => $min, 'cp_max_pct' => $max, 'purpose' => $purpose,
+                'org_id' => $orgId, 'name' => $name, 'category' => $key, 'cp_min_pct' => $min, 'cp_max_pct' => $max, 'purpose' => $purpose,
                 'active' => true, 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
@@ -102,7 +102,8 @@ final class Feed
             $age === 'kid' => $goat->kid_stage === 'weaned' ? 'weaned_kid' : 'young_kid',
             $mating !== null => $mating->expected_kidding_on && now()->startOfDay()->diffInDays($mating->expected_kidding_on, false) <= self::LATE_PREGNANCY_DAYS ? 'late_pregnant' : 'early_pregnant',
             $female && in_array($goat->repro_status, ['pregnant', 'expected_kidding'], true) => 'early_pregnant',
-            $female && in_array($goat->repro_status, ['kidded', 'lactating', 'nursing'], true) => 'lactating',
+            // D-117: in milk (an open lactation, or marked lactating); high-producing from the farm's 7-day average line.
+            $female && (Milking::openByDoe()->has($goat->id) || in_array($goat->repro_status, ['kidded', 'lactating', 'nursing'], true)) => Milking::isHighYield($goat) ? 'high_lactating' : 'lactating',
             $female && in_array($goat->repro_status, ['ready', 'heat'], true) => 'ready_female',
             in_array($goat->animal_purpose, ['fattening', 'meat'], true) || in_array($category, ['fattening_male', 'wether', 'cull'], true) => 'fattening',
             $age === 'grower' => $female ? 'growing_female' : 'growing_male',

@@ -65,7 +65,7 @@ class NutritionStandardTest extends TestCase
         $this->assertSame(12, NutritionStandard::count());
         $late = NutritionStandard::where('category', 'late_pregnant')->first();
         $this->assertSame(['Late Pregnant Female', '12–16%', 14.0], [$late->name, $late->range(), $late->target()]);
-        $this->assertNull(NutritionStandard::where('name', 'High-Producing Lactating Female')->value('category'), 'put on by hand only');
+        $this->assertSame('high_lactating', NutritionStandard::where('name', 'High-Producing Lactating Female')->value('category'), 'D-117: matched by milk yield');
     }
 
     public function test_each_goat_is_matched_to_its_group(): void

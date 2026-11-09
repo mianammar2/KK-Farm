@@ -14,7 +14,7 @@ type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, C
     goat?: { id: string; number: string; values: Record<string, any> } };
 
 /** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
-const REGISTER_ONLY = ['rfid_epc', 'latest_weight_kg', 'height_in', 'body_score', 'temperature_f', 'pregnant_at_arrival', 'pregnancy_days', 'lifecycle_status'];
+const REGISTER_ONLY = ['rfid_epc', 'latest_weight_kg', 'height_in', 'body_score', 'temperature_f', 'pregnant_at_arrival', 'pregnancy_days', 'milking_at_arrival', 'days_in_milk', 'lifecycle_status'];
 /** D-091: aging by teeth; same as Classification::TEETH_MONTHS. */
 const TEETH_MONTHS: Record<string, number> = { milk: 8, '2': 15, '4': 21, '6': 32, '8': 42, worn: 66 };
 /** D-093: goat body temperature in °F; same as GoatRegistration::TEMP_NORMAL_F. */
@@ -69,13 +69,16 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     const pregnant = form.data.pregnant_at_arrival === 'yes' || form.data.repro_status === 'pregnant';
     const isRequired = (f: FieldDef) => (f.key === 'birth_date' ? form.data.origin === 'born_on_farm'
         : f.key === 'temperature_f' ? pregnant && !editing // D-093: required for a pregnant goat
-            : f.key === 'pregnancy_days' ? form.data.pregnant_at_arrival === 'yes' : f.required);
+            : f.key === 'pregnancy_days' ? form.data.pregnant_at_arrival === 'yes'
+                : f.key === 'days_in_milk' ? form.data.milking_at_arrival === 'yes' : f.required); // D-117
     // D-067: with a birth date the age category is automatic (and moves on as the goat ages); otherwise chosen by hand.
     const age = form.data.birth_date ? ageCategory(form.data.birth_date, classification) : form.data.age_category;
     const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
     const hidden = (f: FieldDef) => (editing && REGISTER_ONLY.includes(f.key))
         || ((f.key === 'pregnant_at_arrival' || f.key === 'pregnancy_days') && (form.data.sex !== 'female' || farmBorn))
         || (f.key === 'pregnancy_days' && form.data.pregnant_at_arrival !== 'yes')
+        || ((f.key === 'milking_at_arrival' || f.key === 'days_in_milk') && (form.data.sex !== 'female' || farmBorn)) // D-117
+        || (f.key === 'days_in_milk' && form.data.milking_at_arrival !== 'yes')
         || (f.key === 'teeth' && farmBorn && !editing)
         || (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid)
         || f.key === 'birth_date_is_estimate'

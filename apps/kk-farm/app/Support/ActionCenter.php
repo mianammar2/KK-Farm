@@ -127,6 +127,13 @@ final class ActionCenter
         $add('feeding', 'ration_low_cp', 'Ration Crude Protein Below Target', 'warning', 'Add a higher-CP feed or change the shares in Feeding → Rations.', '/feeding?tab=rations',
             Feed::lowCpRations()->map(fn ($r) => ['text' => $r['group'], 'sub' => "Mix CP {$r['mix']}%, target {$r['target']}%".($r['standard'] ? " for {$r['standard']}" : '')." (short ".round($r['target'] - $r['mix'], 1)."%) · {$r['head']} goats", 'url' => '/feeding?tab=rations']));
 
+        // D-117: does in milk past the farm's dry-off days.
+        if ($org->dry_off_days) {
+            $add('milking', 'dry_off_due', 'Does Due for Drying Off', 'info', 'In milk '.$org->dry_off_days.' days or more. Dry off in Milking, or keep milking.', '/milking',
+                \App\Models\Lactation::open()->with('animal')->where('started_on', '<=', now()->subDays($org->dry_off_days)->toDateString())->orderBy('started_on')->get()
+                    ->filter(fn ($l) => $l->animal?->status === 'active')->map(fn ($l) => $goat($l->animal, "Lactation {$l->number} · day {$l->daysInMilk()}"))->values());
+        }
+
         // ---- Routine checkups (D-095) ----
         $due = \App\Support\Checkups::due();
         $add('health', 'checkups_due', 'Health checkups due', 'info', 'Every '.\App\Support\Checkups::interval().' days. Open Veterinary & Health → Checkups.', '/health?tab=checkups',
