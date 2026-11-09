@@ -19,15 +19,11 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
     const [picked, setPicked] = useState<string[]>([]);
     const [over, setOver] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
-    const [showEmpty, setShowEmpty] = useState(false); // D-119: empty pens and sheds are hidden unless asked for, or while moving goats
     // Closed until opened; each viewer's choice is remembered on this device.
     const [open, setOpenState] = useState(() => { try { return localStorage.getItem('kk.shedBoard.open') === '1'; } catch { return false; } });
     const setOpen = (v: boolean) => { setOpenState(v); try { localStorage.setItem('kk.shedBoard.open', v ? '1' : '0'); } catch { /* storage off */ } };
     const sheds = shedId === 'all' ? board.sheds : board.sheds.filter((s) => s.id === shedId);
     const all = [...board.sheds.flatMap((s) => s.pens.flatMap((p) => p.goats)), ...board.noPen];
-    // D-119: picking goats to move shows every pen, so an empty one can be the target.
-    const withEmpty = showEmpty || picked.length > 0;
-    const emptyCount = sheds.reduce((n, s) => n + s.pens.filter((p) => !p.goats.length).length + s.areas.filter((a) => !a.goats.length).length, 0);
     const pickedGoats = all.filter((g) => picked.includes(g.id));
     const goatsIn = (penId: number) => board.sheds.flatMap((s) => s.pens).find((p) => p.id === penId)?.goats.map((g) => g.id) ?? [];
 
@@ -122,12 +118,11 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
                         </span>
                     </span>
                 </button>
-                <Link href="/sheds" className="shrink-0 text-sm font-semibold text-turq-800 hover:underline">Manage sheds</Link>
             </div>
             {open ? <div className="border-t border-rule px-4 py-3">
             {board.sheds.length > 1 ? (
                 <div className="mb-3 flex gap-1.5 overflow-x-auto" role="group" aria-label="Shed">
-                    {[{ id: 'all' as const, name: 'All sheds', count: all.length - board.noPen.length }, ...board.sheds.map((s) => ({ id: s.id, name: s.name, count: s.pens.reduce((n, p) => n + p.goats.length, 0) }))].filter((s) => s.id === 'all' || s.count > 0 || showEmpty || shedId === s.id).map((s) => (
+                    {[{ id: 'all' as const, name: 'All sheds', count: all.length - board.noPen.length }, ...board.sheds.map((s) => ({ id: s.id, name: s.name, count: s.pens.reduce((n, p) => n + p.goats.length, 0) }))].map((s) => (
                         <button key={s.id} type="button" aria-pressed={shedId === s.id} onClick={() => setShedId(s.id)}
                             className={cx('min-h-10 shrink-0 rounded-tile border px-3 text-sm font-semibold', shedId === s.id ? 'border-cobalt-700 bg-cobalt-700 text-white' : 'border-rule bg-tile text-cobalt-900')}>
                             <span className="font-mono">{s.name}</span> <span className="font-normal opacity-75">{s.count}</span>
@@ -148,15 +143,12 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
 
             {board.sheds.length ? (
                 <div className="space-y-4">
-                    {sheds.filter((s) => withEmpty || s.pens.some((p) => p.goats.length) || s.areas.some((a) => a.goats.length)).map((s) => (
+                    {sheds.map((s) => (
                         <section key={s.id}>
                             <h3 className="mb-2 flex items-baseline gap-2"><span className="font-mono font-semibold text-cobalt-900">{s.name}</span>{s.typeName ? <span className="text-xs text-ink-soft">{s.typeName}</span> : null}<span className="text-xs text-ink-faint">{s.pens.length} pen{s.pens.length === 1 ? '' : 's'}{s.areas.length ? ` · ${s.areas.length} open area${s.areas.length === 1 ? '' : 's'}` : ''}</span></h3>
-                            {s.pens.length || s.areas.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{s.pens.filter((p) => withEmpty || p.goats.length).map(penCard)}{s.areas.filter((a) => withEmpty || a.goats.length).map(areaCard)}</div> : <p className="text-sm text-ink-soft">No pens in this shed yet.</p>}
+                            {s.pens.length || s.areas.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{s.pens.map(penCard)}{s.areas.map(areaCard)}</div> : <p className="text-sm text-ink-soft">No pens in this shed yet.</p>}
                         </section>
                     ))}
-                    {emptyCount && !picked.length ? <button type="button" onClick={() => setShowEmpty(!showEmpty)} className="flex w-full items-center justify-center gap-1 rounded-tile border border-dashed border-rule-strong px-3 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">
-                        {showEmpty ? 'Hide Empty Pens' : `Show ${emptyCount} Empty Pen${emptyCount === 1 ? '' : 's'}`}
-                    </button> : null}
                 </div>
             ) : <p className="text-sm text-ink-soft">No sheds yet. Add one under Sheds.</p>}
 

@@ -83,8 +83,7 @@ class DashboardController extends Controller
             'feeding' => $user->canModule('feeding') && $tracking ? $feedToday : null,
             'feedTracking' => $tracking,
             'requirement' => $user->canModule('feeding') ? $this->feedRequirement($goats) : null,
-            'shedBoard' => $user->canModule('sheds') || $user->canModule('goats') ? $this->shedBoard($goats) : null,
-            'canMove' => $user->canModule('sheds'),
+            'pensSummary' => $user->canModule('sheds') || $user->canModule('goats') ? $this->pensSummary($goats) : null, // D-120: moving goats is on the Sheds page
             // D-097: health shortcuts on the dashboard
             'health' => $user->canModule('health') ? ['checkupsDue' => \App\Support\Checkups::due()->count(), 'openReports' => \App\Models\HealthRecord::where('status', 'open')->whereHas('animal', fn ($q) => $q->active())->count(),
                 'canCheck' => $user->passes('health_checkup'), 'canCase' => $user->passes('open_cases'), 'canCare' => $user->passes('clinical')] : null,
@@ -99,37 +98,6 @@ class DashboardController extends Controller
                 ->selectRaw("to_char(measured_on, 'YYYY-MM') as month, round(avg(weight_kg)::numeric, 1)::float as kg")->groupBy('month')->orderBy('month')->get(),
             'finance' => $user->canModule('finance') ? $this->financeSummary() : null,
         ]);
-    }
-
-    /**
-     * D-085: every shed with all its pens (empty ones too, so goats can be moved into them) and the goats in each pen,
-     * plus goats that have no pen. Moves go through Movements::transfer, so each one is a movement row and a life event.
-     */
-    private function shedBoard(\Illuminate\Support\Collection $goats): array
-    {
-        $weights = \App\Support\Feed::latestWeights();
-        $out = \App\Support\Sensors::outNow(); // D-087: goats out in an open area now
-        $card = fn (Animal $a) => [
-            'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'age' => $a->effectiveAge(), 'ageLabel' => $a->ageLabel(),
-            'flag' => $a->health_flag, 'weight' => isset($weights[$a->id]) ? round($weights[$a->id], 1) : null,
-            'out' => isset($out[$a->id]) ? ['area' => $out[$a->id]->area?->fullName(), 'since' => $out[$a->id]->at->diffForHumans(short: true)] : null,
-        ];
-        $byPen = $goats->groupBy(fn ($g) => $g->pen_id ?? 0);
-        $byId = $goats->keyBy('id');
-        $sheds = \App\Models\Shed::with(['pens' => fn ($q) => $q->orderBy('name')])->orderBy('name')->get()
-            ->each(fn (\App\Models\Shed $s) => $s->pens->each->setRelation('shed', $s))->map(fn (\App\Models\Shed $s) => [
-            'id' => $s->id, 'name' => $s->name, 'typeName' => $s->typeName(),
-            'pens' => $s->pens->where('kind', 'pen')->map(fn (\App\Models\Pen $p) => [
-                'id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity,
-                'goats' => ($byPen[$p->id] ?? collect())->map($card)->values()->all(),
-            ])->values()->all(),
-            'areas' => $s->pens->where('kind', 'open_area')->map(fn (\App\Models\Pen $p) => [
-                'id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'purpose' => $p->purpose, 'capacity' => $p->capacity,
-                'goats' => $out->where('area_id', $p->id)->map(fn ($x) => $byId[$x->animal_id] ?? null)->filter()->map($card)->values()->all(),
-            ])->values()->all(),
-        ])->values()->all();
-
-        return ['sheds' => $sheds, 'noPen' => ($byPen[0] ?? collect())->map($card)->values()->all()];
     }
 
     /** @return array<int, array{month: string, in: float, out: float}> */
@@ -295,6 +263,27 @@ class DashboardController extends Controller
             'rows' => $rows, 'female' => $count('female'), 'male' => $count('male'), 'total' => $goats->count(),
             'breeds' => $goats->groupBy(fn ($g) => $g->breed?->name ?? 'Breed not set')->map(fn ($gs, $b) => ['breed' => $b,
                 'female' => $gs->where('sex', 'female')->count(), 'male' => $gs->where('sex', '!=', 'female')->count(), 'total' => $gs->count()])->sortBy([['total', 'desc'], ['breed', 'asc']])->values(),
+        ];
+    }
+
+    /**
+     * D-120: the dashboard's sheds and pens at a glance: only sheds and pens with goats, each pen's count (and
+     * capacity), females and males, and goats needing attention. A pen opens its goats in the Goat Registry.
+     */
+    private function pensSummary(\Illuminate\Support\Collection $goats): array
+    {
+        $byPen = $goats->whereNotNull('pen_id')->groupBy('pen_id');
+        $pens = \App\Models\Pen::with('shed')->whereIn('id', $byPen->keys())->get();
+
+        return [
+            'sheds' => $pens->groupBy('shed_id')->map(fn ($ps) => [
+                'id' => $ps->first()->shed->id, 'name' => $ps->first()->shed->name, 'typeName' => $ps->first()->shed->typeName(),
+                'goats' => $ps->sum(fn ($p) => $byPen[$p->id]->count()),
+                'pens' => $ps->sortBy('name')->map(fn ($p) => ['id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'capacity' => $p->capacity,
+                    'goats' => $byPen[$p->id]->count(), 'female' => $byPen[$p->id]->where('sex', 'female')->count(), 'male' => $byPen[$p->id]->where('sex', '!=', 'female')->count(),
+                    'attention' => $byPen[$p->id]->where('health_flag', '!=', 'healthy')->whereNotNull('health_flag')->count()])->values()->all(),
+            ])->sortBy('name')->values()->all(),
+            'noPen' => $goats->whereNull('pen_id')->count(),
         ];
     }
 }

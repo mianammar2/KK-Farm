@@ -3,6 +3,7 @@ import { LIVE_MS } from '../lib/live';
 import { Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
+import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 
@@ -20,8 +21,8 @@ const penCode = (n: number, area = false) => `${area ? 'OA' : 'P'}${String(n).pa
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
 type Editing = { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen; area?: boolean } | null;
 
-export default function Sheds({ sheds, types, prefix, recent }: Props) {
-    usePoll(LIVE_MS, { only: ['sheds', 'recent'] }); // D-086: live
+export default function Sheds({ sheds, types, prefix, recent, board }: Props & { board: ShedBoardData }) {
+    usePoll(LIVE_MS, { only: ['sheds', 'recent', 'board'] }); // D-086: live
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
     const active = sheds.filter((s) => s.status === 'active');
@@ -44,6 +45,9 @@ export default function Sheds({ sheds, types, prefix, recent }: Props) {
                 description={`${active.length} shed${active.length === 1 ? '' : 's'} in use, ${planned.length} planned, ${goats.length} goats housed.`}
                 actions={canManage ? <Button type="button" onClick={() => setEditing({ kind: 'shed' })}><Plus className="mr-1 inline size-4" aria-hidden />Add shed</Button> : null}
             />
+
+            {/* D-120: drag or tick goats into another pen; moved here from the dashboard. */}
+            <div className="mb-4"><ShedBoard board={board} canMove /></div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="space-y-4">

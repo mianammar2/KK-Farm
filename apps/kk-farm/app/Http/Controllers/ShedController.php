@@ -30,6 +30,7 @@ class ShedController extends Controller
             ]),
             'types' => collect(Shed::TYPES)->map(fn ($t, $code) => ['code' => $code, 'name' => $t[0], 'purpose' => $t[1]])->values(),
             'prefix' => $this->prefix(),
+            'board' => \App\Support\ShedBoard::build(Animal::with(['pen.shed'])->active()->orderBy('farm_number')->get()), // D-120: move goats here
             'recent' => DB::table('animal_events')->join('animals', 'animals.id', '=', 'animal_events.animal_id')->where('type', 'move')->orderByDesc('occurred_at')->limit(8)
                 ->get(['animal_events.id', 'animals.id as goat_id', 'animals.farm_number as number', 'summary', 'occurred_at', 'recorded_by']),
         ]);

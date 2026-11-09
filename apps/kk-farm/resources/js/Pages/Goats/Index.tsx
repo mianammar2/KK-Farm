@@ -40,7 +40,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
     const [show, setShow] = useState(() => params.get('show') ?? '');
     const [breed, setBreed] = useState(() => params.get('breed') ?? '');
     const [sex, setSex] = useState('');
-    const [pen, setPen] = useState('');
+    const [pen, setPen] = useState(() => params.get('pen') ?? ''); // D-120: opened from a pen on the dashboard
     const [health, setHealth] = useState('');
     const [status, setStatus] = useState('active');
     // Phones and the gun open on cards (a wide table needs sideways scrolling there); the choice is remembered.

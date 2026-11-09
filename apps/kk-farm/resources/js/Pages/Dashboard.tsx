@@ -5,7 +5,6 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
-import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
 import { Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
@@ -23,7 +22,7 @@ type Supply = { cpDay: number | null; cpMonth: number | null; cpMissing: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
 type Requirement = { supply: Supply; tracking: boolean; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
 type HealthLinks = { checkupsDue: number; openReports: number; canCheck: boolean; canCase: boolean; canCare: boolean };
-type Props = { health: HealthLinks | null; shedBoard: ShedBoardData | null; canMove: boolean; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>; herdAge: HerdAge;
+type Props = { health: HealthLinks | null; pensSummary: PensSummary | null; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>; herdAge: HerdAge;
     stats: Record<string, number>;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
@@ -78,10 +77,10 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ health, shedBoard, canMove, requirement, actions, stats, feeding, herd, herdAge, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ health, pensSummary, requirement, actions, stats, feeding, herd, herdAge, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
-    usePoll(LIVE_MS, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
+    usePoll(LIVE_MS, { only: ['pensSummary', 'herdAge', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
 
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
@@ -139,7 +138,7 @@ export default function Dashboard({ health, shedBoard, canMove, requirement, act
             {/* D-118: the herd by age and gender (and by breed); health is in Needs Attention. */}
             {total && total.value ? <HerdByAge h={herdAge} /> : <div className="mt-4"><Empty title="No goats yet">Scan a tag or open the Goat Register to add the first goat.</Empty></div>}
 
-            {shedBoard ? <ShedBoard board={shedBoard} canMove={canMove} /> : null}
+            {pensSummary && pensSummary.sheds.length ? <PensAtAGlance data={pensSummary} /> : null}
 
             {feeding || attention.length || stats.toReview ? <div className={`mt-4 grid gap-4 ${feeding && (attention.length || stats.toReview) ? 'xl:grid-cols-[minmax(0,1fr)_21rem]' : ''}`}>
                 {feeding ? <FeedingToday feeding={feeding} /> : null}
@@ -517,5 +516,45 @@ function HerdByAge({ h }: { h: HerdAge }) {
                 {view === 'breed' ? moreBreeds : null}
             </div>
         </Panel>
+    );
+}
+
+type PensSummary = {
+    sheds: Array<{ id: number; name: string; typeName: string | null; goats: number; pens: Array<{ id: number; name: string; code: string; capacity: number | null; goats: number; female: number; male: number; attention: number }> }>;
+    noPen: number;
+};
+
+/** D-120: sheds, then their pens with how many goats; a pen opens its goats. Moving goats is on the Sheds page. */
+function PensAtAGlance({ data }: { data: PensSummary }) {
+    const [sheds, moreSheds] = useFive(data.sheds);
+    return (
+        <Panel title="Sheds and Pens" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a pen` : ''}`} className="mt-4" flush
+            actions={<Link href="/sheds" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
+            <ul className="divide-y divide-rule">{sheds.map((s) => <ShedRow key={s.id} shed={s} />)}</ul>
+            {moreSheds}
+            {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a pen →</Link> : null}
+        </Panel>
+    );
+}
+
+function ShedRow({ shed }: { shed: PensSummary['sheds'][number] }) {
+    const [pens, more] = useFive(shed.pens);
+    return (
+        <li className="px-4 py-3">
+            <div className="mb-2 flex flex-wrap items-baseline gap-x-2"><span className="font-mono font-semibold text-cobalt-900">{shed.name}</span>{shed.typeName ? <span className="text-xs text-ink-soft">{shed.typeName}</span> : null}<span className="ml-auto text-sm font-semibold text-cobalt-900">{plural(shed.goats, 'goat', 'goats')}</span></div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                {pens.map((p) => {
+                    const full = p.capacity !== null && p.goats > p.capacity;
+                    return (
+                        <Link key={p.id} href={`/goats?pen=${encodeURIComponent(p.name)}`} className="kk-lift rounded-tile border border-rule bg-glaze/60 px-3 py-2 hover:border-cobalt-700">
+                            <span className="block truncate font-mono text-xs font-semibold text-ink-soft" title={p.name}>{p.name}</span>
+                            <span className={`block text-2xl font-bold tabular-nums ${full ? 'text-crit-700' : 'text-cobalt-900'}`}>{p.goats}{p.capacity !== null ? <span className="text-sm font-semibold text-ink-soft">/{p.capacity}</span> : null}</span>
+                            <span className="block text-xs text-ink-soft">{[p.female ? `♀ ${p.female}` : null, p.male ? `♂ ${p.male}` : null, p.attention ? `${p.attention} need attention` : null].filter(Boolean).join(' · ')}</span>
+                        </Link>
+                    );
+                })}
+            </div>
+            {more ? <div className="mt-2 -mx-4">{more}</div> : null}
+        </li>
     );
 }

@@ -57,18 +57,22 @@ class MovementsSalesTest extends TestCase
         $loose = Animal::create(['farm_number' => 'L-1', 'sex' => 'male', 'breed_id' => $g1->breed_id, 'birth_date' => now()->subYear(), 'origin' => 'purchased']);
         $manager = $this->user('manager');
 
-        $this->actingAs($manager)->get('/')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->where('canMove', true)
-            ->where('shedBoard.sheds.0.pens.0.code', 'P01')->has('shedBoard.sheds.0.pens.0.goats', 2)
-            ->where('shedBoard.sheds.0.pens.1.code', 'P02')->has('shedBoard.sheds.0.pens.1.goats', 0)
-            ->where('shedBoard.noPen.0.number', 'L-1'));
+        // D-120: the board for moving goats is on the Sheds page (empty pens too, as drop targets) ...
+        $this->actingAs($manager)->get('/sheds')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p
+            ->where('board.sheds.0.pens.0.code', 'P01')->has('board.sheds.0.pens.0.goats', 2)
+            ->where('board.sheds.0.pens.1.code', 'P02')->has('board.sheds.0.pens.1.goats', 0)
+            ->where('board.noPen.0.number', 'L-1'));
+        // ... and the dashboard shows only pens with goats, with their counts.
+        $this->actingAs($manager)->get('/')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->missing('shedBoard')
+            ->has('pensSummary.sheds.0.pens', 1)->where('pensSummary.sheds.0.pens.0.code', 'P01')->where('pensSummary.sheds.0.pens.0.goats', 2)->where('pensSummary.noPen', 1));
 
         // What the board sends when goats are dropped on another pen.
         $this->actingAs($manager)->post('/movements', ['animal_ids' => [$g2->id, $loose->id], 'type' => 'transfer', 'to_pen_id' => $this->b->id, 'moved_on' => now()->toDateString(), 'reason' => 'Moved on the dashboard'])->assertSessionHasNoErrors();
         $this->assertSame([$this->a->id, $this->b->id, $this->b->id], [$g1->fresh()->pen_id, $g2->fresh()->pen_id, $loose->fresh()->pen_id]);
         $this->assertSame(2, \App\Models\AnimalMovement::where('reason', 'Moved on the dashboard')->count());
-        $this->actingAs($manager)->get('/')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->has('shedBoard.sheds.0.pens.1.goats', 2)->where('shedBoard.noPen', []));
+        $this->actingAs($manager)->get('/sheds')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->has('board.sheds.0.pens.1.goats', 2)->where('board.noPen', []));
 
-        $this->actingAs($this->user('finance'))->get('/')->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->where('canMove', false));
+        $this->actingAs($this->user('finance'))->get('/sheds')->assertForbidden(); // the board where goats are moved
         $this->actingAs($this->user('finance'))->post('/movements', ['animal_ids' => [$g1->id], 'type' => 'transfer', 'to_pen_id' => $this->b->id, 'moved_on' => now()->toDateString()])->assertForbidden();
     }
 
