@@ -96,4 +96,21 @@ class HerdValueTest extends TestCase
         Tenant::enter($this->org->id);
         $this->assertSame(1, MarketRate::count());
     }
+
+    /** D-114: only Qurbani, sale and meat goats are priced; a batch's purpose brings it in. */
+    public function test_breeding_goats_and_goats_without_a_purpose_are_not_priced(): void
+    {
+        $breed = $this->goat->breed_id;
+        Animal::create(['farm_number' => 'TD141026-01', 'sex' => 'female', 'breed_id' => $breed, 'origin' => 'purchased', 'acquired_on' => '2026-10-14', 'animal_purpose' => 'breeding', 'birth_date' => '2024-01-01']);
+        $loose = Animal::create(['farm_number' => 'MC241026-01', 'sex' => 'female', 'breed_id' => $breed, 'origin' => 'purchased', 'acquired_on' => '2026-10-24', 'birth_date' => '2025-01-01']);
+        WeightRecord::create(['animal_id' => $loose->id, 'measured_on' => '2026-10-24', 'weight_kg' => 30, 'measured_by' => 'x']);
+        $this->actingAs($this->user('ceo'))->post('/value/rates', ['rate_on' => '2026-11-10', 'rate' => 1000])->assertSessionHasNoErrors();
+
+        $this->actingAs($this->user('ceo'))->get('/value')->assertInertia(fn ($page) => $page->where('total.goats', 1)->where('total.value', 22000)
+            ->where('excluded.breeding', 1)->where('excluded.none', 1)->has('allBatches', 3)->where('tradeOptions.meat', 'Meat Sale')->missing('tradeOptions.breeding'));
+
+        $this->actingAs($this->user('ceo'))->post('/value/batch', ['batch' => 'MC241026', 'purpose' => 'meat'])->assertSessionHasNoErrors();
+        $this->assertSame('meat', $loose->fresh()->animal_purpose);
+        $this->actingAs($this->user('ceo'))->get('/value')->assertInertia(fn ($page) => $page->where('total.goats', 2)->where('total.value', 52000)->where('excluded.none', 0));
+    }
 }

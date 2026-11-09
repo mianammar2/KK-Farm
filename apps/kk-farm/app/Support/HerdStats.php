@@ -41,7 +41,7 @@ final class HerdStats
             'lactating' => $female && (in_array($a->repro_status, ['lactating', 'nursing'], true) || $a->repro_state === 'lactating'),
             'sick' => $flag === 'sick',
             'treatment' => in_array($flag, ['sick', 'quarantine'], true),
-            'for_sale' => $a->animal_purpose === 'sale' || in_array($cat, ['fattening_male', 'cull'], true) || $a->kid_stage === 'sale_selected',
+            'for_sale' => in_array($a->animal_purpose, ['sale', 'meat'], true) || in_array($cat, ['fattening_male', 'cull'], true) || $a->kid_stage === 'sale_selected',
             'attention' => $flag !== 'healthy',
             'no_pen' => $a->pen_id === null,
             'no_weight' => ! $hasWeight,

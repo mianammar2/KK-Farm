@@ -19,6 +19,9 @@ class HerdValue
 {
     public const PERIODS = ['day' => 1, 'week' => 7, 'month' => 30];
 
+    /** D-114: only goats kept to sell are priced: Qurbani, sale and meat. Breeding, replacement and milk goats are not. */
+    public const TRADE_PURPOSES = ['fattening', 'sale', 'meat'];
+
     /** @var Collection<int, MarketRate> */
     private Collection $rates;
 
@@ -66,7 +69,7 @@ class HerdValue
     public function build(): array
     {
         $org = Feed::org();
-        $goats = Animal::active()->with('breed')->orderBy('farm_number')->get();
+        $goats = Animal::active()->with('breed')->whereIn('animal_purpose', self::TRADE_PURPOSES)->orderBy('farm_number')->get();
         $this->weights = WeightRecord::whereIn('animal_id', $goats->pluck('id'))->orderBy('measured_on')->orderBy('id')->get(['animal_id', 'measured_on', 'weight_kg'])->groupBy('animal_id');
         $req = Feed::perGoat($goats, $this->today->toDateString());
         $items = FeedItem::pluck('cost_per_kg_minor', 'id');

@@ -67,7 +67,7 @@ final class Classification
         self::$cache = [];
     }
 
-    public const PURPOSES = ['breeding' => 'Breeding', 'replacement' => 'Replacement Breeding', 'fattening' => 'Fattening / Qurbani', 'sale' => 'Sale', 'milk' => 'Milk'];
+    public const PURPOSES = ['breeding' => 'Breeding', 'replacement' => 'Replacement Breeding', 'fattening' => 'Fattening / Qurbani', 'sale' => 'Sale', 'meat' => 'Meat Sale', 'milk' => 'Milk'];
 
     /** Kid Stage; shown with the kid's sex in the generated classification (Newborn Male Kid ...). */
     public const KID_STAGES = [

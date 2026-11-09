@@ -18,6 +18,9 @@ type Props = {
     goats: Array<{ id: string; number: string; batch: string; purpose: string | null; weight: number | null; rate: number | null; value: number | null; buy: number | null; feed: number; gain: number | null; week: number | null }>;
     feedPrice: { farm: number | null; used: number | null; priced: number };
     purposeOptions: Record<string, string>;
+    tradeOptions: Record<string, string>;
+    allBatches: Array<{ batch: string; goats: number; breed: string; buyRate: number | null; purposes: Record<string, number> }>;
+    excluded: { breeding: number; none: number };
     can: { manage: boolean };
 };
 
@@ -28,19 +31,20 @@ const PERIOD_LABEL = { day: 'Today', week: 'Last 7 Days', month: 'Last 30 Days' 
 
 /** D-113: the herd priced by live weight like a market, against what it cost to buy and feed. */
 export default function HerdValue(props: Props) {
-    const { rate, total, purposes, batches, goats, feedPrice, purposeOptions, can } = props;
-    const [batchPick, setBatchPick] = useState(batches[0]?.batch ?? '');
+    const { rate, total, purposes, batches, goats, feedPrice, purposeOptions, tradeOptions, allBatches, excluded, can } = props;
+    const [batchPick, setBatchPick] = useState(batches[0]?.batch ?? allBatches[0]?.batch ?? '');
     const change = rate.now !== null && rate.weekAgo !== null && rate.weekAgo > 0 ? ((rate.now - rate.weekAgo) / rate.weekAgo) * 100 : null;
 
     return (
         <>
             <Head title="Herd Value" />
-            <PageHeader title="Herd Value" description="Live weight × the market rate per KG, against what each goat cost to buy and to feed. Gains count weight put on, rate changes and feed eaten." />
+            <PageHeader title="Herd Value" description="Goats kept to sell (Fattening / Qurbani, Sale, Meat Sale): live weight × the market rate per KG, against what each cost to buy and to feed. Breeding goats are not priced." />
+            {excluded.breeding || excluded.none ? <div className="mb-4"><Note>{[excluded.breeding ? `${excluded.breeding} breeding, replacement or milk goats are not priced` : null, excluded.none ? `${excluded.none} goats have no purpose yet` : null].filter(Boolean).join(' · ')}. {can.manage ? 'Give a batch the purpose Fattening / Qurbani, Sale or Meat Sale in Batch Purchase Rate to include it.' : 'The administrator sets each batch\'s purpose.'}</Note></div> : null}
             {rate.now === null ? <div className="mb-4"><Note>No market rate yet. {can.manage ? 'Enter today\'s live-weight rate per KG on the right to value the herd.' : 'The administrator enters the live-weight rate per KG.'}</Note></div> : null}
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="min-w-0 space-y-4">
-                    <Ticker rate={rate} change={change} costPerKg={total.costPerKg} purposeOptions={purposeOptions} />
+                    <Ticker rate={rate} change={change} costPerKg={total.costPerKg} purposeOptions={tradeOptions} />
 
                     <StatRow>
                         <Stat label="Herd Value" value={money(total.value)} note={`${total.valued} of ${total.goats} goats priced`} />
@@ -68,8 +72,8 @@ export default function HerdValue(props: Props) {
 
                 {can.manage ? (
                     <div className="space-y-4">
-                        <RateForm purposeOptions={purposeOptions} />
-                        <BatchForm batches={batches} purposeOptions={purposeOptions} batch={batchPick} setBatch={setBatchPick} />
+                        <RateForm purposeOptions={tradeOptions} />
+                        <BatchForm batches={allBatches} purposeOptions={purposeOptions} batch={batchPick} setBatch={setBatchPick} />
                         <FeedPriceForm feedPrice={feedPrice} goats={total.goats} />
                         <RecentRates recent={rate.recent} purposeOptions={purposeOptions} />
                     </div>
@@ -225,7 +229,7 @@ function RateForm({ purposeOptions }: { purposeOptions: Record<string, string> }
     );
 }
 
-function BatchForm({ batches, purposeOptions, batch, setBatch }: { batches: Props['batches']; purposeOptions: Record<string, string>; batch: string; setBatch: (b: string) => void }) {
+function BatchForm({ batches, purposeOptions, batch, setBatch }: { batches: Props['allBatches']; purposeOptions: Record<string, string>; batch: string; setBatch: (b: string) => void }) {
     const current = batches.find((b) => b.batch === batch);
     const form = useForm({ batch, rate: '', purpose: '' });
     const pick = (b: string) => setBatch(b);
@@ -235,7 +239,7 @@ function BatchForm({ batches, purposeOptions, batch, setBatch }: { batches: Prop
             <Panel title="Batch Purchase Rate" description="What was paid per KG of live weight for a batch. Each goat's purchase cost = its first weight × this rate.">
                 <form onSubmit={(e) => { e.preventDefault(); form.post('/value/batch', { preserveScroll: true, onSuccess: () => form.reset('rate', 'purpose') }); }} className="space-y-3">
                     <Field label="Batch" error={form.errors.batch}><select className="field font-mono" value={batch} onChange={(e) => pick(e.target.value)}>{batches.map((b) => <option key={b.batch} value={b.batch}>{b.batch} ({b.goats} goats){b.buyRate !== null ? ` · ${b.buyRate}/KG` : ''}</option>)}</select></Field>
-                    {current ? <p className="text-xs text-ink-soft">{current.breed} · {current.kg.toLocaleString('en-PK')} KG now{current.buyRate !== null ? ` · bought at PKR ${current.buyRate.toLocaleString('en-PK')}/KG` : ' · no purchase rate yet'}</p> : null}
+                    {current ? <p className="text-xs text-ink-soft">{current.breed} · {Object.entries(current.purposes).map(([p, n]) => `${n} ${p}`).join(', ')}{current.buyRate !== null ? ` · bought at PKR ${current.buyRate.toLocaleString('en-PK')}/KG` : ' · no purchase rate yet'}</p> : null}
                     <Field label="Paid PKR per KG" error={form.errors.rate}><input className="field" type="number" inputMode="decimal" min={1} value={form.data.rate} onChange={(e) => form.setData('rate', e.target.value)} placeholder={current?.buyRate ? String(current.buyRate) : 'e.g. 1200'} /></Field>
                     <Field label="Purpose (optional)" error={form.errors.purpose} hint="Sets the purpose of every goat in the batch"><select className="field" value={form.data.purpose} onChange={(e) => form.setData('purpose', e.target.value)}><option value="">Keep as is</option>{Object.entries(purposeOptions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Button type="submit" disabled={form.processing || !batch}>Save Batch</Button>

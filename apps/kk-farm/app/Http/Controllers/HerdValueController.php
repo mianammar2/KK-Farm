@@ -28,6 +28,14 @@ class HerdValueController extends Controller
         $general = $hv->rateOn($today, null);
         $weekAgo = $hv->rateOn($today->copy()->subDays(7), null);
         $purposes = Classification::PURPOSES;
+        $trade = array_intersect_key($purposes, array_flip(HerdValue::TRADE_PURPOSES));
+        // D-114: every batch, priced or not, so a batch can be given a purpose (and so be included) from this page.
+        $all = Animal::active()->with('breed')->get();
+        $allBatches = $all->groupBy(fn ($g) => HerdValue::batchOf($g))->map(fn ($gs, $b) => [
+            'batch' => $b, 'goats' => $gs->count(), 'breed' => $gs->pluck('breed.name')->filter()->unique()->implode(', '),
+            'buyRate' => ($br = $gs->pluck('purchase_rate_minor_per_kg')->filter()->unique())->count() === 1 ? $br->first() / 100 : null,
+            'purposes' => $gs->countBy(fn ($g) => $purposes[$g->animal_purpose] ?? 'No purpose')->all(),
+        ])->sortKeys()->values();
 
         $summary = function (Collection $rs) use ($pkr): array {
             $valued = $rs->whereNotNull('value');
@@ -55,7 +63,7 @@ class HerdValueController extends Controller
 
         return Inertia::render('HerdValue', [
             'rate' => ['now' => $general !== null ? $general / 100 : null, 'weekAgo' => $weekAgo !== null ? $weekAgo / 100 : null,
-                'byPurpose' => collect($purposes)->keys()->mapWithKeys(fn ($p) => [$p => ($r = $hv->rates()->where('purpose', $p)->last()) ? $r->rate_minor_per_kg / 100 : null])->filter()->all(),
+                'byPurpose' => collect($trade)->keys()->mapWithKeys(fn ($p) => [$p => ($r = $hv->rates()->where('purpose', $p)->last()) ? $r->rate_minor_per_kg / 100 : null])->filter()->all(),
                 'history' => $hv->history(),
                 'recent' => $hv->rates()->reverse()->take(12)->values()->map(fn (MarketRate $r) => ['on' => $r->rate_on->format('j M Y'), 'purpose' => $r->purpose, 'rate' => $r->rate_minor_per_kg / 100, 'by' => $r->recorded_by, 'note' => $r->note])],
             'total' => $summary($rows),
@@ -67,7 +75,8 @@ class HerdValueController extends Controller
                 'gain' => $r['value'] !== null && $r['buy'] !== null ? $pkr($r['value'] - $r['buy'] - $r['feed']) : null,
                 'week' => $r['periods']['week']['value'] !== null ? $pkr($r['periods']['week']['value'] - $r['periods']['week']['feed']) : null])->values(),
             'feedPrice' => ['farm' => ($p = Organization::find($request->user()->org_id)?->feed_price_minor_per_kg) ? $p / 100 : null, 'used' => $fallback ? $fallback / 100 : null, 'priced' => $rows->where('priced', true)->count()],
-            'purposeOptions' => $purposes,
+            'purposeOptions' => $purposes, 'tradeOptions' => $trade, 'allBatches' => $allBatches,
+            'excluded' => ['breeding' => $all->whereNotNull('animal_purpose')->whereNotIn('animal_purpose', HerdValue::TRADE_PURPOSES)->count(), 'none' => $all->whereNull('animal_purpose')->count()],
             'can' => ['manage' => $request->user()->passes('manage_market')],
         ]);
     }
@@ -97,7 +106,7 @@ class HerdValueController extends Controller
             'rate' => ['nullable', 'numeric', 'min:1', 'max:100000', 'required_without:purpose'],
             'purpose' => ['nullable', Rule::in(array_keys(Classification::PURPOSES))],
         ]);
-        $goats = Animal::active()->get()->filter(fn ($g) => HerdValue::batchOf($g) === $data['batch']);
+        $goats = Animal::active()->get()->filter(fn ($g) => HerdValue::batchOf($g) === $data['batch']); // every goat of the batch, trade or not
         abort_if($goats->isEmpty(), 404);
         DB::transaction(function () use ($goats, $data, $request) {
             foreach ($goats as $g) {
