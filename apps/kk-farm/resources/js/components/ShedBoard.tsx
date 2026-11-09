@@ -19,11 +19,15 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
     const [picked, setPicked] = useState<string[]>([]);
     const [over, setOver] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
+    const [showEmpty, setShowEmpty] = useState(false); // D-119: empty pens and sheds are hidden unless asked for, or while moving goats
     // Closed until opened; each viewer's choice is remembered on this device.
     const [open, setOpenState] = useState(() => { try { return localStorage.getItem('kk.shedBoard.open') === '1'; } catch { return false; } });
     const setOpen = (v: boolean) => { setOpenState(v); try { localStorage.setItem('kk.shedBoard.open', v ? '1' : '0'); } catch { /* storage off */ } };
     const sheds = shedId === 'all' ? board.sheds : board.sheds.filter((s) => s.id === shedId);
     const all = [...board.sheds.flatMap((s) => s.pens.flatMap((p) => p.goats)), ...board.noPen];
+    // D-119: picking goats to move shows every pen, so an empty one can be the target.
+    const withEmpty = showEmpty || picked.length > 0;
+    const emptyCount = sheds.reduce((n, s) => n + s.pens.filter((p) => !p.goats.length).length + s.areas.filter((a) => !a.goats.length).length, 0);
     const pickedGoats = all.filter((g) => picked.includes(g.id));
     const goatsIn = (penId: number) => board.sheds.flatMap((s) => s.pens).find((p) => p.id === penId)?.goats.map((g) => g.id) ?? [];
 
@@ -78,7 +82,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
                     <span className={cx('shrink-0 text-xs font-semibold tabular-nums', full ? 'text-crit-700' : 'text-ink-soft')}>{p.goats.length}{p.capacity !== null ? `/${p.capacity}` : ''} goat{p.goats.length === 1 && p.capacity === null ? '' : 's'}</span>
                 </div>
                 <div className="mb-1.5 truncate text-xs text-ink-soft">{p.purpose}</div>
-                {p.goats.length ? <ul className="space-y-1">{p.goats.map(chip)}</ul> : <p className="flex flex-1 items-center justify-center rounded-[6px] border border-dashed border-rule-strong py-3 text-xs text-ink-faint">Empty pen</p>}
+                {p.goats.length ? <ChipList goats={p.goats} render={chip} /> : <p className="flex flex-1 items-center justify-center rounded-[6px] border border-dashed border-rule-strong py-3 text-xs text-ink-faint">Empty pen</p>}
                 {target ? <button type="button" disabled={busy} onClick={() => move(picked, p.id)} className="mt-2 rounded-[6px] bg-turq-700 px-2 py-1.5 text-sm font-semibold text-white hover:bg-turq-800 disabled:opacity-50">Move {picked.length} here</button> : null}
             </div>
         );
@@ -96,7 +100,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
                     <span className="shrink-0 text-xs font-semibold tabular-nums text-ink-soft">{a.goats.length} out{a.capacity !== null ? ` / ${a.capacity}` : ''}</span>
                 </div>
                 <div className="mb-1.5 truncate text-xs text-ink-soft">Open area{a.purpose ? ` · ${a.purpose}` : ''}</div>
-                {a.goats.length ? <ul className="space-y-1">{a.goats.map(chip)}</ul> : <p className="flex flex-1 items-center justify-center rounded-[6px] border border-dashed border-rule-strong py-3 text-xs text-ink-faint">No goats out</p>}
+                {a.goats.length ? <ChipList goats={a.goats} render={chip} /> : <p className="flex flex-1 items-center justify-center rounded-[6px] border border-dashed border-rule-strong py-3 text-xs text-ink-faint">No goats out</p>}
                 {canMove && toSend.length ? <button type="button" disabled={busy} onClick={() => presence(toSend, 'out', a.id)} className="mt-2 rounded-[6px] bg-watch-700 px-2 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Send {toSend.length} out here</button> : null}
                 {canMove && a.goats.length ? <button type="button" disabled={busy} onClick={() => presence(pickedHere.length ? pickedHere : a.goats.map((g) => g.id), 'in')} className="mt-2 rounded-[6px] border border-rule bg-tile px-2 py-1.5 text-sm font-semibold text-cobalt-900 disabled:opacity-50">{pickedHere.length ? `Bring ${pickedHere.length} back in` : 'Bring all back in'}</button> : null}
             </div>
@@ -123,7 +127,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
             {open ? <div className="border-t border-rule px-4 py-3">
             {board.sheds.length > 1 ? (
                 <div className="mb-3 flex gap-1.5 overflow-x-auto" role="group" aria-label="Shed">
-                    {[{ id: 'all' as const, name: 'All sheds', count: all.length - board.noPen.length }, ...board.sheds.map((s) => ({ id: s.id, name: s.name, count: s.pens.reduce((n, p) => n + p.goats.length, 0) }))].map((s) => (
+                    {[{ id: 'all' as const, name: 'All sheds', count: all.length - board.noPen.length }, ...board.sheds.map((s) => ({ id: s.id, name: s.name, count: s.pens.reduce((n, p) => n + p.goats.length, 0) }))].filter((s) => s.id === 'all' || s.count > 0 || showEmpty || shedId === s.id).map((s) => (
                         <button key={s.id} type="button" aria-pressed={shedId === s.id} onClick={() => setShedId(s.id)}
                             className={cx('min-h-10 shrink-0 rounded-tile border px-3 text-sm font-semibold', shedId === s.id ? 'border-cobalt-700 bg-cobalt-700 text-white' : 'border-rule bg-tile text-cobalt-900')}>
                             <span className="font-mono">{s.name}</span> <span className="font-normal opacity-75">{s.count}</span>
@@ -144,22 +148,37 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
 
             {board.sheds.length ? (
                 <div className="space-y-4">
-                    {sheds.map((s) => (
+                    {sheds.filter((s) => withEmpty || s.pens.some((p) => p.goats.length) || s.areas.some((a) => a.goats.length)).map((s) => (
                         <section key={s.id}>
                             <h3 className="mb-2 flex items-baseline gap-2"><span className="font-mono font-semibold text-cobalt-900">{s.name}</span>{s.typeName ? <span className="text-xs text-ink-soft">{s.typeName}</span> : null}<span className="text-xs text-ink-faint">{s.pens.length} pen{s.pens.length === 1 ? '' : 's'}{s.areas.length ? ` · ${s.areas.length} open area${s.areas.length === 1 ? '' : 's'}` : ''}</span></h3>
-                            {s.pens.length || s.areas.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{s.pens.map(penCard)}{s.areas.map(areaCard)}</div> : <p className="text-sm text-ink-soft">No pens in this shed yet.</p>}
+                            {s.pens.length || s.areas.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{s.pens.filter((p) => withEmpty || p.goats.length).map(penCard)}{s.areas.filter((a) => withEmpty || a.goats.length).map(areaCard)}</div> : <p className="text-sm text-ink-soft">No pens in this shed yet.</p>}
                         </section>
                     ))}
+                    {emptyCount && !picked.length ? <button type="button" onClick={() => setShowEmpty(!showEmpty)} className="flex w-full items-center justify-center gap-1 rounded-tile border border-dashed border-rule-strong px-3 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">
+                        {showEmpty ? 'Hide Empty Pens' : `Show ${emptyCount} Empty Pen${emptyCount === 1 ? '' : 's'}`}
+                    </button> : null}
                 </div>
             ) : <p className="text-sm text-ink-soft">No sheds yet. Add one under Sheds.</p>}
 
             {board.noPen.length ? (
                 <div className="mt-4 rounded-tile border border-watch-400 bg-watch-100 p-2">
                     <div className="mb-1.5 text-sm font-semibold text-watch-700">Not in a pen ({board.noPen.length}){canMove ? ': drag or tick them into a pen' : ''}</div>
-                    <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4">{board.noPen.map(chip)}</ul>
+                    <ChipList goats={board.noPen} render={chip} className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4" />
                 </div>
             ) : null}
             </div> : null}
         </Panel>
+    );
+}
+
+/** D-119: a pen's goats, the first 5 and the rest on a tap. */
+function ChipList<T>({ goats, render, className = 'space-y-1' }: { goats: T[]; render: (g: T) => React.ReactNode; className?: string }) {
+    const [open, setOpen] = useState(false);
+    const shown = open ? goats : goats.slice(0, 5);
+    return (
+        <>
+            <ul className={className}>{shown.map(render)}</ul>
+            {goats.length > 5 ? <button type="button" onClick={() => setOpen(!open)} className="mt-1 w-full rounded-[6px] px-2 py-1 text-xs font-semibold text-cobalt-800 hover:bg-tile">{open ? 'Show Less' : `Show ${goats.length - 5} More`}</button> : null}
+        </>
     );
 }

@@ -50,12 +50,23 @@ function ShowMore<T>({ items, render, empty, limit = 5 }: { items: T[]; render: 
             {items.length > limit ? (
                 <li className="list-none">
                     <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-center gap-1 px-4 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">
-                        <ChevronDown size={15} className={open ? 'rotate-180' : ''} aria-hidden />{open ? 'Show less' : `Show ${items.length - limit} more`}
+                        <ChevronDown size={15} className={open ? 'rotate-180' : ''} aria-hidden />{open ? 'Show Less' : `Show ${items.length - limit} More`}
                     </button>
                 </li>
             ) : null}
         </>
     );
+}
+
+/** D-119: any dashboard list: the first 5, the rest on a tap. */
+function useFive<T>(items: T[], limit = 5): [T[], ReactNode] {
+    const [open, setOpen] = useState(false);
+    const button = items.length > limit ? (
+        <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-center gap-1 border-t border-rule px-4 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">
+            <ChevronDown size={15} className={open ? 'rotate-180' : ''} aria-hidden />{open ? 'Show Less' : `Show ${items.length - limit} More`}
+        </button>
+    ) : null;
+    return [open ? items : items.slice(0, limit), button];
 }
 
 /** A dashboard number that opens the goats (or page) it counts. */
@@ -117,11 +128,12 @@ export default function Dashboard({ health, shedBoard, canMove, requirement, act
             {health ? <HealthShortcuts h={health} /> : null}
 
             <StatRow>
-                <StatLink href="/goats" label="Goats on farm" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : `${plural(stats.does, 'female', 'females')}, ${plural(stats.bucks, 'male', 'males')}`} tone={stats.noPen ? 'alert' : undefined} />
-                <StatLink href="/goats?show=attention" label="Need attention" value={stats.unwell} note={stats.overdueCare ? `${plural(stats.overdueCare, 'goat', 'goats')} overdue for care` : 'Sick or on watch'} tone={stats.unwell || stats.overdueCare ? 'alert' : undefined} />
-                <StatLink href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note="Does" />
+                {/* D-119: a number that is zero is not shown. */}
+                <StatLink href="/goats" label="Goats on farm" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
+                {stats.unwell || stats.overdueCare ? <StatLink href="/goats?show=attention" label="Need attention" value={stats.unwell} note={stats.overdueCare ? `${plural(stats.overdueCare, 'goat', 'goats')} overdue for care` : 'Sick or on watch'} tone="alert" /> : null}
+                {stats.pregnant ? <StatLink href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note="Does" /> : null}
                 {feeding ? <StatLink href="/feeding" label="Meals fed today" value={`${stats.feedingDone}/${stats.feedingTotal}`} note={stats.feedingTotal ? 'Pen meals due so far' : 'None due yet'} tone={stats.feedingTotal && stats.feedingDone < stats.feedingTotal ? 'alert' : undefined} /> : null}
-                <StatLink href="/tasks" label="Tasks today" value={`${stats.tasksDone}/${stats.tasksTotal}`} note="Done" />
+                {stats.tasksTotal ? <StatLink href="/tasks" label="Tasks today" value={`${stats.tasksDone}/${stats.tasksTotal}`} note="Done" /> : null}
             </StatRow>
 
             {/* D-118: the herd by age and gender (and by breed); health is in Needs Attention. */}
@@ -129,11 +141,11 @@ export default function Dashboard({ health, shedBoard, canMove, requirement, act
 
             {shedBoard ? <ShedBoard board={shedBoard} canMove={canMove} /> : null}
 
-            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
-                {feeding ? <FeedingToday feeding={feeding} /> : <div />}
-                <Panel title="Needs attention" description="Goats not marked Healthy" flush actions={<Link href="/health" className="text-sm font-semibold text-turq-800 hover:underline">Health board</Link>}>
+            {feeding || attention.length || stats.toReview ? <div className={`mt-4 grid gap-4 ${feeding && (attention.length || stats.toReview) ? 'xl:grid-cols-[minmax(0,1fr)_21rem]' : ''}`}>
+                {feeding ? <FeedingToday feeding={feeding} /> : null}
+                {attention.length || stats.toReview ? <Panel title="Needs attention" description="Goats not marked Healthy" flush actions={<Link href="/health" className="text-sm font-semibold text-turq-800 hover:underline">Health board</Link>}>
                     <ul className="divide-y divide-rule">
-                        <ShowMore items={attention} empty={<li className="list-none"><Empty title="Every goat is marked Healthy" /></li>} render={(item) => (
+                        <ShowMore items={attention} render={(item) => (
                             <li key={item.goatId} className="flex items-center gap-2 px-4 py-2">
                                 <div className="min-w-0 flex-1">
                                     <GoatLabel goat={{ id: item.goatId, number: item.number, name: item.name, coat: item.coat, sex: item.sex }} size={34} />
@@ -144,8 +156,8 @@ export default function Dashboard({ health, shedBoard, canMove, requirement, act
                         )} />
                     </ul>
                     {stats.toReview ? <Link href="/health" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-cobalt-800 hover:bg-glaze">{plural(stats.toReview, 'open health report', 'open health reports')} on healthy goats to review →</Link> : null}
-                </Panel>
-            </div>
+                </Panel> : null}
+            </div> : null}
 
             {requirement ? <FeedRequirement req={requirement} /> : null}
 
@@ -350,13 +362,14 @@ const REQ_STATE: Record<ReqGoat['state'], string> = { planned: '', milk: 'bg-cob
 /** D-079: what every goat needs to eat today, and where it is: shed → pen → goat, with totals and cost. */
 function FeedRequirement({ req }: { req: Requirement }) {
     const [open, setOpen] = useState<number | null | 'none'>(req.sheds.length === 1 ? req.sheds[0].id : 'none');
+    const [sheds, moreSheds] = useFive(req.sheds);
     return (
         <Panel className="mt-4" title="Feed requirement today" description={`${req.kgDay} KG for ${plural(req.planned, 'goat', 'goats')}${req.cost ? ` · PKR ${req.cost.toLocaleString('en-PK')} a day` : ''} · ${req.kgMonth} KG${req.costMonth ? ` (PKR ${req.costMonth.toLocaleString('en-PK')})` : ''} in ${req.supply.month}${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
             actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Rations</Link>} flush>
             <SupplyStrip s={req.supply} tracking={req.tracking} />
             {req.sheds.length ? (
                 <ul className="divide-y divide-rule">
-                    {req.sheds.map((s) => {
+                    {sheds.map((s) => {
                         const isOpen = open === s.id;
                         return (
                             <li key={s.id ?? 'none'}>
@@ -369,14 +382,21 @@ function FeedRequirement({ req }: { req: Requirement }) {
                                     <span className="text-right"><span className="block font-bold text-cobalt-900">{s.kgDay} KG/day</span><span className="block text-xs text-ink-soft">{req.supply.cpDay !== null ? `CP ${s.cpDay} KG/day · ` : ''}{s.kgMonth} KG this month{s.cost ? ` · PKR ${s.cost.toLocaleString('en-PK')}/day` : ''}</span></span>
                                     <ChevronDown size={16} className={`text-ink-faint transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden />
                                 </button>
-                                {isOpen ? <div className="space-y-3 bg-glaze/50 px-4 pb-3">{s.pens.map((p) => <ReqPenCard key={p.id ?? 'none'} pen={p} />)}</div> : null}
+                                {isOpen ? <ShedPens pens={s.pens} /> : null}
                             </li>
                         );
                     })}
                 </ul>
             ) : <p className="p-4 text-sm text-ink-soft">No goats on the farm yet.</p>}
+            {moreSheds}
         </Panel>
     );
+}
+
+/** D-119: a shed's pens, the first 5 and the rest on a tap. */
+function ShedPens({ pens }: { pens: ReqPen[] }) {
+    const [shown, more] = useFive(pens);
+    return <div className="space-y-3 bg-glaze/50 px-4 pb-3">{shown.map((p) => <ReqPenCard key={p.id ?? 'none'} pen={p} />)}{more}</div>;
 }
 
 function ReqPenCard({ pen }: { pen: ReqPen }) {
@@ -414,6 +434,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
 
 /** D-080: what the goats need against what is in the feed store. */
 function SupplyStrip({ s, tracking }: { s: Supply; tracking: boolean }) {
+    const [feeds, moreFeeds] = useFive(s.feeds);
     const short = tracking && s.days !== null && s.days < 7;
     const box = (label: string, value: string, note?: string, alert?: boolean) => (
         <div className={`rounded-tile px-3 py-2 ${alert ? 'bg-crit-100' : 'bg-glaze'}`}>
@@ -440,8 +461,9 @@ function SupplyStrip({ s, tracking }: { s: Supply; tracking: boolean }) {
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[40rem] text-sm">
                         <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1 font-semibold">Feed</th><th className="font-semibold">Needed a Day</th><th className="font-semibold">In Store</th><th className="font-semibold">Lasts</th><th className="font-semibold">Short for a Week</th><th className="font-semibold">Needed in {s.month}</th><th className="font-semibold">Short This Month</th></tr></thead>
-                        <tbody className="divide-y divide-rule">{s.feeds.map((f) => <tr key={f.name}><td className="py-1 font-medium">{f.name}</td><td>{f.needDay} KG</td><td>{f.stock} KG</td><td className={f.days !== null && f.days < 7 ? 'font-semibold text-crit-700' : ''}>{f.days === null ? '—' : `${f.days} days`}</td><td className={f.shortWeek ? 'font-semibold text-crit-700' : 'text-ink-faint'}>{f.shortWeek ? `${f.shortWeek} KG` : '—'}</td><td>{f.needMonth} KG</td><td className={f.shortMonth ? 'font-semibold text-crit-700' : 'text-ink-faint'}>{f.shortMonth ? `${f.shortMonth} KG` : '—'}</td></tr>)}</tbody>
+                        <tbody className="divide-y divide-rule">{feeds.map((f) => <tr key={f.name}><td className="py-1 font-medium">{f.name}</td><td>{f.needDay} KG</td><td>{f.stock} KG</td><td className={f.days !== null && f.days < 7 ? 'font-semibold text-crit-700' : ''}>{f.days === null ? '—' : `${f.days} days`}</td><td className={f.shortWeek ? 'font-semibold text-crit-700' : 'text-ink-faint'}>{f.shortWeek ? `${f.shortWeek} KG` : '—'}</td><td>{f.needMonth} KG</td><td className={f.shortMonth ? 'font-semibold text-crit-700' : 'text-ink-faint'}>{f.shortMonth ? `${f.shortMonth} KG` : '—'}</td></tr>)}</tbody>
                     </table>
+                    {moreFeeds}
                 </div>
             ) : null}
         </div>
@@ -458,35 +480,41 @@ function HerdByAge({ h }: { h: HerdAge }) {
     const [view, setView] = useState<'age' | 'breed'>('age');
     const cell = (key: string, n: number, strong = false) => n
         ? <Link href={`/goats?show=${key}`} className={`block rounded-[4px] px-2 py-1 tabular-nums hover:bg-glaze hover:underline ${strong ? 'font-bold text-cobalt-900' : 'font-semibold text-cobalt-800'}`}>{n}</Link>
-        : <span className="block px-2 py-1 text-ink-faint">0</span>;
+        : <span className="block px-2 py-1" aria-label="none" />;
     const pct = (n: number) => (h.total ? Math.round((n / h.total) * 100) : 0);
+    // D-119: rows and columns with nothing in them are not shown.
+    const rows = h.rows.filter((r) => r.total > 0);
+    const [breeds, moreBreeds] = useFive(h.breeds);
+    const showF = h.female > 0;
+    const showM = h.male > 0;
     return (
-        <Panel title="Herd by Age and Gender" description={`${plural(h.total, 'goat', 'goats')} on the farm · ${h.female} female, ${h.male} male`} className="mt-4"
+        <Panel title="Herd by Age and Gender" description={`${plural(h.total, 'goat', 'goats')} on the farm${showF && showM ? ` · ${h.female} female, ${h.male} male` : showF ? ', all female' : ', all male'}`} className="mt-4"
             actions={<div className="flex gap-1" role="group" aria-label="View">{(['age', 'breed'] as const).map((v) => <button key={v} type="button" onClick={() => setView(v)} className={`rounded-tile px-2.5 py-1 text-sm font-semibold ${view === v ? 'bg-cobalt-800 text-white' : 'text-cobalt-800 hover:bg-glaze'}`}>{v === 'age' ? 'By Age' : 'By Breed'}</button>)}</div>}>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[26rem] text-sm">
-                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Breed'}</th><th className="px-2 text-right font-semibold">♀ Female</th><th className="px-2 text-right font-semibold">♂ Male</th><th className="px-2 text-right font-semibold">Total</th><th className="w-1/3 pl-3 font-semibold">Share</th></tr></thead>
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Breed'}</th>{showF ? <th className="px-2 text-right font-semibold">♀ Female</th> : null}{showM ? <th className="px-2 text-right font-semibold">♂ Male</th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="w-1/3 pl-3 font-semibold">Share</th></tr></thead>
                     <tbody className="divide-y divide-rule">
-                        {view === 'age' ? h.rows.map((r) => (
+                        {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
                                 <td className="py-1.5 pr-3"><span className="font-semibold text-cobalt-900">{r.label}</span><span className="block text-xs text-ink-soft">{r.range}</span></td>
-                                <td className="text-right">{cell(`${r.key}_female`, r.female)}</td>
-                                <td className="text-right">{cell(`${r.key}_male`, r.male)}</td>
+                                {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
+                                {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>
                                 <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
                             </tr>
-                        )) : h.breeds.map((b) => (
+                        )) : breeds.map((b) => (
                             <tr key={b.breed}>
                                 <td className="py-1.5 pr-3 font-semibold text-cobalt-900">{b.breed}</td>
-                                <td className="px-2 text-right tabular-nums">{b.female}</td>
-                                <td className="px-2 text-right tabular-nums">{b.male}</td>
+                                {showF ? <td className="px-2 text-right tabular-nums">{b.female || ''}</td> : null}
+                                {showM ? <td className="px-2 text-right tabular-nums">{b.male || ''}</td> : null}
                                 <td className="px-2 text-right font-bold tabular-nums text-cobalt-900">{b.total}</td>
                                 <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(b.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(b.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(b.total)}%</span></td>
                             </tr>
                         ))}
                     </tbody>
-                    <tfoot className="border-t-2 border-rule text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td><td className="text-right">{cell('female', h.female, true)}</td><td className="text-right">{cell('male', h.male, true)}</td><td className="text-right">{cell('total', h.total, true)}</td><td /></tr></tfoot>
+                    <tfoot className="border-t-2 border-rule text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td /></tr></tfoot>
                 </table>
+                {view === 'breed' ? moreBreeds : null}
             </div>
         </Panel>
     );
