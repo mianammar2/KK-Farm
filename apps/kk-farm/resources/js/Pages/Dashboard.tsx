@@ -22,7 +22,6 @@ type Props = { pensSummary: PensSummary | null; requirement: FeedSummary | null;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
     kiddings: Array<{ goatId: string; number: string; name: string | null; on: string; days: number }>;
-    activity: Array<{ id: number; actor: string; role: string; action: string; url: string | null; ago: string }>;
     breeds: Array<{ name: string; value: number }>;
     growth: Array<{ month: string; kg: number }>;
     finance: Array<{ month: string; in: number; out: number }> | null;
@@ -61,10 +60,10 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ pensSummary, requirement, stats, feeding, herd, herdAge, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ pensSummary, requirement, stats, feeding, herd, herdAge, attention, missing, kiddings, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
-    usePoll(LIVE_MS, { only: ['pensSummary', 'herdAge', 'requirement', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
+    usePoll(LIVE_MS, { only: ['pensSummary', 'herdAge', 'requirement', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings'] });
 
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
@@ -131,7 +130,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
             {requirement && requirement.sheds.length ? <FeedAtAGlance req={requirement} /> : null}
 
             {/* D-072: charts, activity and kiddings share one two-column grid, so no panel stretches alone across a wide screen. */}
-            {missing.length || charts || activity.length || kiddings.length ? (
+            {missing.length || charts || kiddings.length ? (
                 <div className="mt-4 grid items-start gap-4 lg:grid-cols-2 lg:[&>*:last-child:nth-child(odd)]:col-span-2">
                     {missing.length ? (
                 <Panel title="Missing data" description="No pen, no weight or a wrong birth date · where each came from" flush
@@ -168,30 +167,9 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                             </ul>
                         </Panel>
                     ) : null}
-                    {activity.length ? <Panel title="Recent activity" flush><ActivityList activity={activity} /></Panel> : null}
                 </div>
             ) : null}
         </>
-    );
-}
-
-function ActivityList({ activity }: { activity: Props['activity'] }) {
-    return (
-        <ul className="divide-y divide-rule">
-            <ShowMore items={activity} render={(a) => {
-                const body = (
-                    <>
-                        <span className="min-w-0"><span className="font-semibold text-cobalt-900">{a.actor}</span> {a.action}</span>
-                        <span className="shrink-0 text-ink-faint">{a.ago}</span>
-                    </>
-                );
-                return (
-                    <li key={a.id}>
-                        {a.url ? <Link href={a.url} className="flex items-baseline justify-between gap-3 px-4 py-2 text-sm hover:bg-glaze">{body}</Link> : <div className="flex items-baseline justify-between gap-3 px-4 py-2 text-sm">{body}</div>}
-                    </li>
-                );
-            }} />
-        </ul>
     );
 }
 

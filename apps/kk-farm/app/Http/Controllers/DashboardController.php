@@ -87,9 +87,7 @@ class DashboardController extends Controller
             // D-121: health shortcuts are on Veterinary & Health.
             'attention' => $attention,
             'kiddings' => $kiddings,
-            'activity' => fn () => Activity::latest()->limit(20)
-                ->when(! $user->canModule('finance'), fn ($q) => $q->where('audience', 'farm'))->get()
-                ->map(fn (Activity $a) => ['id' => $a->id, 'actor' => $a->actor, 'role' => $a->role, 'action' => $a->action, 'url' => $a->url, 'ago' => $a->created_at->diffForHumans(short: true)]),
+            // D-122: recent activity is on the Activity Log page.
             'breeds' => DB::table('animals')->join('breeds', 'breeds.id', '=', 'animals.breed_id')->where('status', 'active')
                 ->select('breeds.name', DB::raw('count(*) as value'))->groupBy('breeds.name')->orderByDesc('value')->get(),
             'growth' => DB::table('weight_records')->where('measured_on', '>=', now()->subMonths(8)->startOfMonth())

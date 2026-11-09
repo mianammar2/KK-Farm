@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
 
     Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
+    Route::get('/activity', \App\Http\Controllers\ActivityController::class)->middleware('module:dashboard'); // D-122
     // D-121: the notification bell loads what needs action in the background, after the page has opened.
     Route::get('/notifications', fn (\Illuminate\Http\Request $r) => response()->json(collect(\App\Support\ActionCenter::items($r->user()))
         ->map(fn ($i) => ['key' => $i['key'], 'label' => $i['label'], 'count' => $i['count'], 'severity' => $i['severity'], 'url' => $i['url'], 'action' => $i['action']])->values()));
