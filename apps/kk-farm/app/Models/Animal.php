@@ -123,7 +123,7 @@ class Animal extends Model
         }
         $months = (int) $this->birth_date->diffInMonths($this->exit_date ?? now());
 
-        return ($months >= 24 ? intdiv($months, 12).' yr' : $months.' mo').($this->birth_date_is_estimate ? ' (est.)' : '');
+        return $months.' mo'.($this->birth_date_is_estimate ? ' (est.)' : ''); // D-092: the farm counts age in months only
     }
 
     /** Compact shape used by lists, tiles and search. */

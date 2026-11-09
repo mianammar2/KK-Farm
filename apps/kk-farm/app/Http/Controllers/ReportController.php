@@ -21,7 +21,7 @@ class ReportController extends Controller
         return Inertia::render('Reports', [
             'breeds' => $breedRows,
             'ages' => DB::table('animals')->where('status', 'active')
-                ->selectRaw("case when birth_date is null then 'Unknown' when birth_date > now() - interval '6 months' then 'Under 6 mo' when birth_date > now() - interval '18 months' then '6 to 18 mo' when birth_date > now() - interval '48 months' then '18 mo to 4 yr' else 'Over 4 yr' end as band, count(*) as value")
+                ->selectRaw("case when birth_date is null then 'Unknown' when birth_date > now() - interval '6 months' then 'Under 6 mo' when birth_date > now() - interval '18 months' then '6 to 18 mo' when birth_date > now() - interval '48 months' then '18 to 48 mo' else 'Over 48 mo' end as band, count(*) as value")
                 ->groupBy('band')->orderByRaw('min(birth_date) desc nulls last')->get(),
             'exits' => Animal::where('status', '!=', 'active')->selectRaw('exit_reason as name, count(*) as value')->groupBy('exit_reason')->get(),
             'breeding' => [

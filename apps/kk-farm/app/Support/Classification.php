@@ -79,7 +79,7 @@ final class Classification
      * D-091: aging by teeth (permanent lower incisors). The months are the usual middle of each stage, used to fill in
      * an estimated birth date for a bought goat; a person can always change it.
      */
-    public const TEETH = ['milk' => 'Milk teeth only (under 1 year)', '2' => '2 teeth (1 to 1½ years)', '4' => '4 teeth (1½ to 2 years)', '6' => '6 teeth (2½ to 3 years)', '8' => '8 teeth, full mouth (3 to 4 years)', 'worn' => 'Worn or broken mouth (5+ years)'];
+    public const TEETH = ['milk' => 'Milk teeth only (under 12 months)', '2' => '2 teeth (12–18 months)', '4' => '4 teeth (18–24 months)', '6' => '6 teeth (30–36 months)', '8' => '8 teeth, full mouth (36–48 months)', 'worn' => 'Worn or broken mouth (60+ months)'];
 
     public const TEETH_MONTHS = ['milk' => 8, '2' => 15, '4' => 21, '6' => 32, '8' => 42, 'worn' => 66];
 
