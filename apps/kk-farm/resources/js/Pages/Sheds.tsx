@@ -15,7 +15,7 @@ type Shed = { id: number; farmId: number | null; code: string; name: string; sta
 type UnitType = { code: string; name: string; purpose: string };
 /** D-128: a farm (location). Organization → Farm → Shed → Pen. */
 type FarmLoc = { id: number; code: string; name: string; address: string | null; city: string | null; district: string | null; province: string | null; country: string | null; latitude: number | null; longitude: number | null; notes: string | null; active: boolean; place: string; sheds: number };
-type Props = { farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string; recent: Array<{ id: number; goat_id: string; number: string; summary: string; recorded_by: string }> };
+type Props = { farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string };
 
 /** Same rule as Pen::standardName on the server (D-055): the part after the "Pen" prefix. */
 /** D-057: the pen number from what was typed or stored ("P01", "pen 1", "1" → 1); 0 when there is none. */
@@ -25,8 +25,8 @@ const penCode = (n: number, area = false) => `${area ? 'OA' : 'P'}${String(n).pa
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
 type Editing = { kind: 'farm'; farm?: FarmLoc } | { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen; area?: boolean } | null;
 
-export default function Sheds({ farms, sheds, types, prefix, recent, board }: Props & { board: ShedBoardData }) {
-    usePoll(LIVE_MS, { only: ['farms', 'sheds', 'recent', 'board'] }); // D-086: live
+export default function Sheds({ farms, sheds, types, prefix, board }: Props & { board: ShedBoardData }) {
+    usePoll(LIVE_MS, { only: ['farms', 'sheds', 'board'] }); // D-086: live
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
     // D-129: the page shows one farm at a time when there are several; its sheds, pens and goats follow.
@@ -40,7 +40,6 @@ export default function Sheds({ farms, sheds, types, prefix, recent, board }: Pr
     const [selected, setSelected] = useState<number | null>(pens[0]?.id ?? null);
     const [editing, setEditing] = useState<Editing>(null);
     const pen = pens.find((p) => p.id === selected);
-    const form = useForm({ animal_id: goats[0]?.id ?? '', pen_id: String(pens[0]?.id ?? '') });
 
     const editButton = (label: string, onClick: () => void, icon = <Pencil className="size-4" aria-hidden />) =>
         canManage ? <Button type="button" variant="quiet" onClick={onClick} aria-label={label} title={label}>{icon}</Button> : null;
@@ -71,7 +70,7 @@ export default function Sheds({ farms, sheds, types, prefix, recent, board }: Pr
             {/* D-120: drag or tick goats into another pen; moved here from the dashboard. */}
             <div className="mb-4"><ShedBoard board={farmId === null ? board : { ...board, sheds: board.sheds.filter((x) => shownIds.has(x.id)) }} canMove /></div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div>
                 <div className="space-y-4">
 
                     {shown.length === 0 ? <Empty title={sheds.length ? 'No sheds on this farm yet' : 'No sheds yet'}>{canManage ? 'Add your first shed, then add pens inside it.' : 'The owner or manager adds sheds and pens.'}</Empty> : null}
@@ -125,25 +124,6 @@ export default function Sheds({ farms, sheds, types, prefix, recent, board }: Pr
                     ) : null}
                 </div>
 
-                <div className="space-y-4">
-                    {goats.length && pens.length > 1 ? (
-                        <Panel title="Move a goat">
-                            <form onSubmit={(e) => { e.preventDefault(); form.post('/sheds/transfer', { preserveScroll: true }); }} className="space-y-3">
-                                <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</select></Field>
-                                <Field label="To pen" error={form.errors.pen_id}><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)}>{active.map((s) => <optgroup key={s.id} label={s.typeName ? `${s.name} · ${s.typeName}` : s.name}>{s.pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</optgroup>)}</select></Field>
-                                <Button type="submit" className="w-full" disabled={form.processing}>Move goat</Button>
-                            </form>
-                        </Panel>
-                    ) : null}
-                    <Panel title="Recent moves" flush>
-                        {recent.length ? <ul className="divide-y divide-rule text-sm">{recent.map((r) => <li key={r.id} className="px-4 py-2"><Link href={`/goats/${r.goat_id}`} className="font-semibold text-cobalt-800 hover:underline">{r.number}</Link> {r.summary}<div className="text-ink-faint">{r.recorded_by}</div></li>)}</ul> : <p className="p-4 text-sm text-ink-soft">Moves you make appear here and on each goat's lifecycle.</p>}
-                    </Panel>
-                    {planned.length ? (
-                        <Panel title="Planned sheds">
-                            <div className="flex flex-wrap gap-2">{planned.map((s) => <Chip key={s.id} className="bg-cobalt-100 px-2.5 py-1.5 text-sm text-cobalt-800">{s.name}</Chip>)}</div>
-                        </Panel>
-                    ) : null}
-                </div>
             </div>
         </>
     );
