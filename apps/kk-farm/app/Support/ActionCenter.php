@@ -81,8 +81,12 @@ final class ActionCenter
             collect($alerts['check_overdue'] ?? [])->merge($alerts['recheck_overdue'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'mated '.$m->mated_on->format('j M').($m->check_due_on ? ' · check was due '.$m->check_due_on->format('j M') : ''))));
         $add('breeding', 'edd_passed', 'Kidding overdue', 'critical', 'Check the doe and record the kidding or the outcome.', '/breeding',
             collect($alerts['edd_passed'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'expected '.$m->expected_kidding_on->format('j M'))));
-        $add('breeding', 'kidding_soon', 'Kidding soon', 'info', 'Prepare the kidding area and watch the doe.', '/breeding',
-            collect($alerts['kidding_soon'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'expected '.$m->expected_kidding_on->format('j M'))));
+        // D-103: from 10 days before the expected kidding; urgent in the last 3 days.
+        $left = fn (Mating $m) => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false);
+        $add('breeding', 'kidding_imminent', 'Kidding within 3 days', 'critical', 'Move her to the kidding pen, keep watch and have the vet on call.', '/breeding',
+            collect($alerts['kidding_imminent'] ?? [])->map(fn (Mating $m) => $goat($m->dam, ($left($m) === 0 ? 'due today' : "in {$left($m)} day".($left($m) === 1 ? '' : 's')).' · day '.$m->mated_on->diffInDays(now()->startOfDay()).' of pregnancy')));
+        $add('breeding', 'kidding_soon', 'Kidding in the next '.$org->kidding_alert_days.' days', 'warning', 'Prepare the kidding pen, bedding and colostrum; watch the doe.', '/breeding',
+            collect($alerts['kidding_soon'] ?? [])->map(fn (Mating $m) => $goat($m->dam, "in {$left($m)} days · expected ".$m->expected_kidding_on->format('j M'))));
 
         $weaningDue = Animal::active()->where('origin', 'born_on_farm')->where(fn ($q) => $q->whereNull('kid_stage')->orWhere('kid_stage', '!=', 'weaned'))
             ->whereNotNull('birth_date')->whereBetween('birth_date', [$today->copy()->subDays($org->weaning_age_days + 90)->toDateString(), $today->copy()->subDays($org->weaning_age_days)->toDateString()])

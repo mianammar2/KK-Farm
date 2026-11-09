@@ -133,4 +133,27 @@ class CheckupTest extends TestCase
             ->where('healthEntry.goats.0.id', $this->doe->id)->where('healthEntry.canCheck', true)->where('healthEntry.goats.0.matedOn', now()->subDays(42)->toDateString()));
         $this->actingAs($this->user('finance'))->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('healthEntry', null));
     }
+
+    /** D-103: the kidding alert starts 10 days before (gestation 150), urgent in the last 3; a preparation task is made by itself. */
+    public function test_the_kidding_alert_starts_ten_days_before_with_a_task(): void
+    {
+        $vet = $this->user('vet');
+        // 142 days pregnant today: kidding in 8 days.
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'ultrasound' => 'pregnant', 'days_pregnant' => 142, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+        $task = \App\Models\Task::where('title', 'Prepare for kidding: TD141026-01')->sole();
+        $this->assertSame(['kidding', now()->subDays(2)->toDateString()], [$task->type, $task->due_on->toDateString()], 'due 10 days before the expected kidding');
+        $items = collect(ActionCenter::items($this->user('ceo')))->keyBy('key');
+        $this->assertSame(['TD141026-01', 'warning'], [$items['kidding_soon']['items'][0]['text'], $items['kidding_soon']['severity']]);
+        $this->assertStringContainsString('in 8 days', $items['kidding_soon']['items'][0]['sub']);
+
+        // 6 days later: within 3 days, urgent; the goat page warns.
+        $this->travel(6)->days();
+        $items = collect(ActionCenter::items($this->user('ceo')))->keyBy('key');
+        $this->assertSame('critical', $items['kidding_imminent']['severity']);
+        $this->actingAs($vet)->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('pregnancy.daysLeft', 2)->where('pregnancy.alertDays', 10));
+
+        // Kidded: the task is done.
+        Mating::sole()->update(['status' => 'kidded']);
+        $this->assertSame('completed', $task->fresh()->status);
+    }
 }

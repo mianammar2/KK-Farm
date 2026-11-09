@@ -65,7 +65,8 @@ class GoatEditTest extends TestCase
         $check = HealthRecord::where('animal_id', $doe->id)->sole();
         $this->assertSame(['Arrival check: fever', 'open'], [$check->title, $check->status]);
         $this->assertStringContainsString('Temperature 104.4 °F (fever: above 103.5 °F)', $check->notes);
-        $task = \App\Models\Task::where('animal_id', $doe->id)->sole();
+        $task = \App\Models\Task::where('animal_id', $doe->id)->where('type', 'health')->sole();
+        $this->assertSame(1, \App\Models\Task::where('animal_id', $doe->id)->where('type', 'kidding')->count(), 'pregnant on arrival: the kidding preparation task is made (D-103)');
         $this->assertSame(['critical', 'health'], [$task->priority, $task->type], 'the vets are alerted');
         $this->assertSame(3, $doe->weights()->first()->body_score);
 

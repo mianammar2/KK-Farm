@@ -91,7 +91,7 @@ class ActionCenterTest extends TestCase
         $this->assertSame(['Old vial'], array_column($items['medicine']['items'], 'text'));
         $this->assertSame(['Straw'], array_column($items['feed_low']['items'], 'text'));
         $this->assertContains('LOOSE-1', array_column($items['missing']['items'], 'text'));
-        $this->assertSame(['Fix the gate'], array_column($items['tasks_overdue']['items'], 'text'));
+        $this->assertSame(['Prepare for kidding: DOE-2', 'Fix the gate'], array_column($items['tasks_overdue']['items'], 'text'), 'the kidding preparation task of an overdue kidding is overdue too (D-103)');
         $this->assertSame('critical', ActionCenter::items($this->user('ceo'))[0]['severity'], 'most urgent first');
     }
 

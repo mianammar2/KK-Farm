@@ -9,7 +9,7 @@ import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
 import GoatPortrait from '../../components/GoatPortrait';
 import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
-import { Button, Chip, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
+import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 
 type Goat = GoatCard & { withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
@@ -32,7 +32,7 @@ type Props = {
     healthEntry: (CheckupData & { conditions: string[]; severities: Record<string, string> }) | null;
 };
 type Pregnancy = {
-    matedOn: string; expected: string | null; sire: string | null; day: number; gestation: number; daysLeft: number | null;
+    matedOn: string; expected: string | null; sire: string | null; day: number; gestation: number; daysLeft: number | null; alertDays: number;
     checks: Array<{ on: string; day: number; weight: number | null; temp: number | null; ultrasound: string | null; fetuses: number | null; by: string }>;
     weights: Array<{ day: number; kg: number; on: string }>;
 };
@@ -396,6 +396,13 @@ function PregnancyPanel({ p }: { p: Pregnancy }) {
     } : null), [p]);
     return (
         <Panel title={`Pregnant · day ${p.day} of ${p.gestation}`} description={`Mated ${p.matedOn}${p.sire ? ` with ${p.sire}` : ''} · kidding about ${p.expected ?? '—'}${p.daysLeft !== null ? ` (${p.daysLeft} days)` : ''}`}>
+            {/* D-103: from 10 days before the expected kidding */}
+            {p.daysLeft !== null && p.daysLeft <= p.alertDays ? (
+                <div role="alert" className={cx('mb-3 flex items-start gap-2 rounded-tile border px-3 py-2 text-sm font-semibold', p.daysLeft <= 3 ? 'border-crit-500 bg-crit-100 text-crit-700' : 'border-watch-400 bg-watch-100 text-watch-700')}>
+                    <span className={cx('kk-beat mt-1.5 size-2.5 shrink-0 rounded-full', p.daysLeft <= 3 ? 'bg-crit-500' : 'bg-watch-400')} aria-hidden />
+                    <span>{p.daysLeft < 0 ? `Kidding overdue by ${-p.daysLeft} day${p.daysLeft === -1 ? '' : 's'}: check her now.` : p.daysLeft === 0 ? 'Kidding expected today.' : `Kidding in ${p.daysLeft} day${p.daysLeft === 1 ? '' : 's'}.`} Kidding pen, clean bedding, colostrum ready; watch her closely.</span>
+                </div>
+            ) : null}
             <div className="h-2.5 overflow-hidden rounded-full bg-manganese-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Pregnancy progress">
                 <div className="h-full rounded-full bg-manganese-600" style={{ width: `${pct}%` }} />
             </div>

@@ -102,6 +102,7 @@ final class Checkups
             'matedOn' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'sire' => $m->sire?->farm_number,
             'day' => (int) $m->mated_on->diffInDays(now()->startOfDay()), 'gestation' => $gestation,
             'daysLeft' => $m->expected_kidding_on ? (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false) : null,
+            'alertDays' => (int) (Tenant::org()?->kidding_alert_days ?: 10), // D-103
             'checks' => $checks->map(fn (HealthCheckup $c) => [
                 'on' => $c->checked_on->format('j M Y'), 'day' => (int) $m->mated_on->diffInDays($c->checked_on), 'weight' => $c->weight_kg, 'temp' => $c->temperature_f,
                 'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'by' => $c->examiner,
