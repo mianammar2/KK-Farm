@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
-import { Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
+import { CountUp, Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
 import { useFive } from '../lib/useFive';
@@ -290,7 +290,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
                                 {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>
-                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
+                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="kk-grow bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="kk-grow bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
                             </tr>
                         )) : classes.map((c) => (
                             <tr key={c.key}>
@@ -298,7 +298,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
                                 {showF ? <td className="text-right">{cell(`${c.key}`, c.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${c.key}`, c.male)}</td> : null}
                                 <td className="text-right">{cell(c.key, c.total, true)}</td>
-                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(c.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
+                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="kk-grow bg-[#c2185b]/70" style={{ width: `${pct(c.female)}%` }} /><div className="kk-grow bg-cobalt-700/70" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
                             </tr>
                         ))}
                     </tbody>
@@ -339,7 +339,7 @@ function ShedRow({ shed }: { shed: PensSummary['sheds'][number] }) {
                     return (
                         <Link key={p.id} href={`/goats?pen=${encodeURIComponent(p.name)}`} className="kk-lift rounded-tile border border-rule bg-glaze/60 px-3 py-2 hover:border-cobalt-700">
                             <span className="block truncate font-mono text-xs font-semibold text-ink-soft" title={p.name}>{p.name}</span>
-                            <span className={`block text-2xl font-bold tabular-nums ${full ? 'text-crit-700' : 'text-cobalt-900'}`}>{p.goats}{p.capacity !== null ? <span className="text-sm font-semibold text-ink-soft">/{p.capacity}</span> : null}</span>
+                            <span className={`block text-2xl font-bold tabular-nums ${full ? 'text-crit-700' : 'text-cobalt-900'}`}><CountUp to={p.goats} />{p.capacity !== null ? <span className="text-sm font-semibold text-ink-soft">/{p.capacity}</span> : null}</span>
                             <span className="block text-xs text-ink-soft">{[p.female ? `♀ ${p.female}` : null, p.male ? `♂ ${p.male}` : null, p.attention ? `${p.attention} need attention` : null].filter(Boolean).join(' · ')}</span>
                         </Link>
                     );
@@ -390,7 +390,7 @@ function FeedShedRow({ shed, tracking }: { shed: FeedSummary['sheds'][number]; t
                 {pens.map((p) => (
                     <Link key={p.id ?? 'none'} href={p.id ? `/feeding?tab=requirement&pen=${p.id}` : '/feeding?tab=requirement'} className="kk-lift rounded-tile border border-rule bg-glaze/60 px-3 py-2 hover:border-cobalt-700">
                         <span className="block truncate font-mono text-xs font-semibold text-ink-soft" title={p.name}>{p.name}</span>
-                        <span className="block text-2xl font-bold tabular-nums text-cobalt-900">{p.kgDay}<span className="text-sm font-semibold text-ink-soft"> KG/day</span></span>
+                        <span className="block text-2xl font-bold tabular-nums text-cobalt-900"><CountUp to={p.kgDay} /><span className="text-sm font-semibold text-ink-soft"> KG/day</span></span>
                         <span className="block text-xs text-ink-soft">{[plural(p.count, 'goat', 'goats'), p.cpDay ? `CP ${Math.round(p.cpDay * 1000).toLocaleString('en-PK')} g` : null, p.unplanned ? `${p.unplanned} not planned` : null].filter(Boolean).join(' · ')}</span>
                         {tracking ? <BalanceTag balance={p.balance} diff={p.diff} className="mt-1" /> : null}
                     </Link>

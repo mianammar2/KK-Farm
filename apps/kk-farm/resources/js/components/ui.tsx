@@ -1,4 +1,6 @@
 import { Link } from '@inertiajs/react';
+import { motion, useReducedMotion } from 'motion/react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { AlertTriangle, Baby, HeartPulse, Inbox, Mars, Venus } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import GoatPortrait from './GoatPortrait';
@@ -85,7 +87,7 @@ export function Stat({ label, value, note, tone }: { label: string; value: React
     return (
         <div className="min-w-0 px-3 py-2.5 sm:px-4 sm:py-3">
             <div className="truncate text-xs font-medium text-ink-soft sm:text-sm sm:font-normal">{titleCase(label)}</div>
-            <div className={cx('mt-0.5 text-xl font-bold tracking-tight tabular-nums sm:text-2xl', tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-cobalt-900')}>{value}</div>
+            <div className={cx('mt-0.5 text-xl font-bold tracking-tight tabular-nums sm:text-2xl', tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-cobalt-900')}>{typeof value === 'number' ? <CountUp to={value} /> : value}</div>
             {note ? <div className="line-clamp-2 text-xs leading-snug text-ink-faint sm:truncate sm:text-sm">{note}</div> : null}
         </div>
     );
@@ -177,6 +179,7 @@ export function Note({ children }: { children: ReactNode }) {
 }
 
 export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; label: string; count?: number }>; value: string; onChange: (id: string) => void }) {
+    const group = useId();
     return (
         <div role="tablist" className="-mx-1 mb-4 flex gap-1 overflow-x-auto border-b border-rule px-1">
             {tabs.map((tab) => (
@@ -187,14 +190,42 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; labe
                     aria-selected={value === tab.id}
                     onClick={() => onChange(tab.id)}
                     className={cx(
-                        '-mb-px min-h-11 whitespace-nowrap border-b-2 px-3 text-sm font-semibold transition-colors',
-                        value === tab.id ? 'border-turq-600 text-cobalt-900' : 'border-transparent text-ink-soft hover:text-cobalt-800',
+                        'relative -mb-px min-h-11 whitespace-nowrap px-3 text-sm font-semibold transition-colors',
+                        value === tab.id ? 'text-cobalt-900' : 'text-ink-soft hover:text-cobalt-800',
                     )}
                 >
+                    {/* D-126: the underline slides to the chosen tab. */}
+                    {value === tab.id ? <motion.span layoutId={`tab-line-${group}`} className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-turq-600" transition={{ type: 'spring', stiffness: 520, damping: 40 }} /> : null}
                     {titleCase(tab.label)}
                     {tab.count !== undefined ? <span className="ml-1.5 text-ink-faint">{tab.count}</span> : null}
                 </button>
             ))}
         </div>
     );
+}
+
+/**
+ * D-126: a number that counts up to its value when it first appears (and glides when it changes), like an app.
+ * Plain number with reduced motion or on the RFID gun.
+ */
+export function CountUp({ to, duration = 700 }: { to: number; duration?: number }) {
+    const reduced = useReducedMotion();
+    const [shown, setShown] = useState(reduced ? to : 0);
+    const from = useRef(reduced ? to : 0);
+    useEffect(() => {
+        if (reduced || (typeof document !== 'undefined' && document.documentElement.classList.contains('lite')) || !Number.isFinite(to)) { setShown(to); return; }
+        const start = performance.now();
+        const a = from.current;
+        let raf = 0;
+        const tick = (now: number) => {
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            setShown(a + (to - a) * eased);
+            if (t < 1) raf = requestAnimationFrame(tick); else from.current = to;
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [to, duration, reduced]);
+    const decimals = Number.isInteger(to) ? 0 : (String(to).split('.')[1]?.length ?? 1);
+    return <>{shown.toLocaleString('en-PK', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</>;
 }

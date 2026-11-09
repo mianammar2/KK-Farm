@@ -45,11 +45,11 @@ export default function NotificationBell({ path, onDark = false }: { path: strin
         <div ref={box} className="relative">
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={count ? `${count} things need action` : 'Notifications'}
                 className={`relative grid size-11 place-items-center rounded-full ${onDark ? 'text-white active:bg-white/15' : 'text-cobalt-800 hover:bg-cobalt-100'}`}>
-                <Bell size={20} aria-hidden />
-                {count ? <span className={`absolute top-1 right-1 grid min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold leading-5 text-white ${urgent ? 'bg-crit-700' : 'bg-watch-700'}`}>{count}</span> : null}
+                <Bell size={20} aria-hidden className={urgent ? 'kk-shake' : undefined} key={urgent ? `u${count}` : 'n'} />
+                {count ? <span key={count} className={`kk-pop absolute top-1 right-1 grid min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold leading-5 text-white ${urgent ? 'bg-crit-700' : 'bg-watch-700'}`}>{count}</span> : null}
             </button>
             {open ? (
-                <div className="absolute right-0 z-40 mt-1 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-tile border border-rule bg-tile shadow-tile" role="dialog" aria-label="Notifications">
+                <div className="kk-drop absolute right-0 z-40 mt-1 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-tile border border-rule bg-tile shadow-tile" role="dialog" aria-label="Notifications">
                     <div className="border-b border-rule px-4 py-2.5 text-sm font-semibold text-cobalt-900">{count ? `${count} Thing${count === 1 ? '' : 's'} Need Action` : 'Nothing Needs Action'}</div>
                     {notes === null ? <p className="px-4 py-3 text-sm text-ink-soft">Loading…</p> : count ? (
                         <ul className="max-h-[60vh] divide-y divide-rule overflow-y-auto">

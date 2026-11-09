@@ -239,7 +239,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 initial={reduced ? { opacity: 0 } : { opacity: 0, x: 22 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={reduced ? { duration: 0.15 } : { type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
-                className="mx-auto max-w-[1440px] px-3 pt-4 pb-28 sm:px-5 lg:py-5"
+                className="kk-page mx-auto max-w-[1440px] px-3 pt-4 pb-28 sm:px-5 lg:py-5"
             >
                 {children}
             </motion.main>
