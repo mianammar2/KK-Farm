@@ -74,7 +74,7 @@ export default function Dashboard({ health, shedBoard, canMove, requirement, act
     const growthChart = useMemo(() => (growth.length >= 2 ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
         xAxis: axis.category(growth.map((g) => monthLabel(g.month))),
-        yAxis: { ...axis.value((v) => `${v} KG`), scale: true },
+        yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
         series: [{ type: 'line', data: growth.map((g) => g.kg), smooth: true, symbolSize: 6, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 } }],
     } : null), [growth]);
 

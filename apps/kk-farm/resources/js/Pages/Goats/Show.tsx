@@ -56,7 +56,7 @@ export default function GoatShow(props: Props) {
         tooltip: { trigger: 'axis', formatter: (x: Array<{ data: [number, number] }>) => `${new Date(x[0].data[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}: ${x[0].data[1]} KG` },
         grid: { left: 8, right: 16, top: 24, bottom: 6, containLabel: true },
         xAxis: { type: 'time', axisLabel: { color: '#5e6a5f', formatter: (v: number) => new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }, splitLine: { show: false }, minInterval: 86400000 },
-        yAxis: { ...axis.value((v) => `${v}`), scale: true },
+        yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
         series: [{ type: 'line', data: weights.map((w) => [new Date(`${w.on}T12:00:00`).getTime(), w.kg]), symbolSize: 8, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 },
             label: { show: weights.length <= 12, position: 'top', formatter: (p: { data: [number, number] }) => `${p.data[1]}`, color: '#163d22', fontWeight: 600 } }],
     }), [weights]);
@@ -390,7 +390,7 @@ function PregnancyPanel({ p }: { p: Pregnancy }) {
         tooltip: { trigger: 'axis', formatter: (x: Array<{ data: [number, number] }>) => `Day ${x[0].data[0]}: ${x[0].data[1]} KG` },
         grid: { left: 8, right: 12, top: 14, bottom: 6, containLabel: true },
         xAxis: { type: 'value', name: 'Day', min: 0, max: p.gestation, splitLine: { show: false }, axisLabel: { color: '#5e6a5f' } },
-        yAxis: { ...axis.value((v) => `${v}`), scale: true },
+        yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
         series: [{ type: 'line', data: p.weights.map((w) => [w.day, w.kg]), symbolSize: 8, lineStyle: { width: 2.5, color: '#7a3e8f' }, itemStyle: { color: '#7a3e8f' },
             markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#c9a23f' }, data: [{ xAxis: p.day }], label: { formatter: 'today' } } }],
     } : null), [p]);

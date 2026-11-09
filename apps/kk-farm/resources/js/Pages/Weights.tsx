@@ -36,7 +36,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
             legend: { bottom: 0, itemWidth: 12, itemHeight: 8, type: 'scroll' },
             grid: { left: 8, right: 12, top: 14, bottom: 32, containLabel: true },
             xAxis: axis.category(months.map(monthLabel)),
-            yAxis: { ...axis.value((v) => `${v} KG`), scale: true },
+            yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
             series: breeds.map((breed) => ({ name: breed, type: 'line', smooth: true, symbolSize: 5, data: months.map((m) => byBreed.find((r) => r.breed === breed && r.month === m)?.kg ?? null) })),
         };
     }, [byBreed]);
