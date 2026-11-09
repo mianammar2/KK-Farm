@@ -237,3 +237,52 @@
 button:active:not(:disabled) { transition: transform 0.08s; }
 .lite .kk-page > * { animation-duration: 0.12s; animation-delay: 0ms !important; }
 .lite .kk-grow { animation: none; }
+
+/* D-133: the dashboard's sheds drawn like the real farm (FarmScene.tsx). Earth, timber, straw, tin and grass. */
+.kk-barn { border-radius: 14px; overflow: hidden; background: #eadfc6; box-shadow: 0 8px 22px -14px rgb(60 40 15 / 0.55); }
+.kk-board {
+    display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15;
+    padding: 3px 14px 4px; border-radius: 5px; color: #fff7e6;
+    background: repeating-linear-gradient(90deg, #7a4f2a 0 22px, #6e4624 22px 23px), #7a4f2a;
+    border: 2px solid #4f321a; box-shadow: 0 3px 0 #3a2412, 0 6px 10px -4px rgb(0 0 0 / 0.45);
+    text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+}
+.kk-barn-body {
+    position: relative; padding: 10px 14px 12px;
+    /* timber posts at both ends, a plastered wall band at the back, a straw floor */
+    background:
+        linear-gradient(90deg, #7a4f2a 0 8px, transparent 8px calc(100% - 8px), #7a4f2a calc(100% - 8px)),
+        linear-gradient(180deg, #d9c9a3 0 6px, transparent 6px),
+        repeating-linear-gradient(115deg, rgb(160 120 50 / 0.13) 0 2px, transparent 2px 7px),
+        repeating-linear-gradient(65deg, rgb(140 100 40 / 0.1) 0 1px, transparent 1px 9px),
+        #e8d6a8;
+}
+.kk-pen {
+    display: block; position: relative; padding: 7px 8px 7px; border-radius: 6px;
+    background: #dcc48c;
+    /* wooden rail fence: two rails and posts drawn as borders and an inset pattern */
+    border: 3px solid #8d6238;
+    box-shadow: inset 0 0 0 2px #c79a62, inset 0 6px 0 -2px rgb(141 98 56 / 0.35);
+}
+.kk-pen::before, .kk-pen::after { /* fence posts at the corners */
+    content: ''; position: absolute; top: -6px; width: 6px; height: 10px; border-radius: 2px; background: #6b4524;
+}
+.kk-pen::before { left: -5px; }
+.kk-pen::after { right: -5px; }
+.kk-pen:hover { border-color: #6b4524; background: #e3cd98; }
+.kk-pen-sign {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; color: #fff7e6;
+    padding: 1px 6px; border-radius: 3px; background: #6e4624; box-shadow: 0 1px 0 #3a2412;
+}
+.kk-herd { display: flex; flex-wrap: wrap; gap: 1px 2px; min-height: 30px; margin-top: 5px; align-content: flex-start; }
+.kk-goat { width: 30px; height: 25px; flex: none; overflow: visible; transform-origin: 50% 100%; animation: kk-graze 2.6s ease-in-out infinite; }
+@keyframes kk-graze { 0%, 100% { translate: 0 0; rotate: 0deg; } 40% { translate: 0 -1px; rotate: -2deg; } 70% { translate: 0 0; rotate: 1.5deg; } }
+.kk-trough { flex: 1; height: 6px; border-radius: 1px 1px 4px 4px; background: linear-gradient(#a7c36b 0 2px, #7b5530 2px); box-shadow: 0 1px 0 #4f321a; }
+.kk-grass {
+    height: 14px;
+    background:
+        radial-gradient(circle at 6px 14px, #5f8f3a 0 5px, transparent 5.5px) 0 0 / 12px 14px repeat-x,
+        linear-gradient(#7aa64a, #5f8f3a);
+}
+.lite .kk-goat { animation: none; }
+@media (max-width: 639px) { .kk-goat { width: 22px; height: 18px; } .kk-barn-body { padding: 8px 10px 10px; } }

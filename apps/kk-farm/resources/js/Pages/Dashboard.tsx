@@ -10,6 +10,7 @@ import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
 import { useFive } from '../lib/useFive';
 import { BalanceTag, type Balance, type Requirement } from '../components/FeedRequirement';
+import FarmScene from '../components/FarmScene';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -317,38 +318,15 @@ type PensSummary = {
 
 /** D-120: sheds, then their pens with how many goats; a pen opens its goats. Moving goats is on the Sheds page. */
 function PensAtAGlance({ data }: { data: PensSummary }) {
-    const [sheds, moreSheds] = useFive(data.sheds);
     return (
         <Panel title="Sheds and Pens" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a pen` : ''}`} className="mt-4" flush
             actions={<Link href="/sheds" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
-            <ul className="divide-y divide-rule">{sheds.map((s) => <ShedRow key={s.id} shed={s} />)}</ul>
-            {moreSheds}
+            <FarmScene sheds={data.sheds} /> {/* D-133: drawn like the real farm */}
             {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a pen →</Link> : null}
         </Panel>
     );
 }
 
-function ShedRow({ shed }: { shed: PensSummary['sheds'][number] }) {
-    const [pens, more] = useFive(shed.pens);
-    return (
-        <li className="px-4 py-3">
-            <div className="mb-2 flex flex-wrap items-baseline gap-x-2"><span className="font-mono font-semibold text-cobalt-900">{shed.name}</span>{shed.typeName ? <span className="text-xs text-ink-soft">{shed.typeName}</span> : null}<span className="ml-auto text-sm font-semibold text-cobalt-900">{plural(shed.goats, 'goat', 'goats')}</span></div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                {pens.map((p) => {
-                    const full = p.capacity !== null && p.goats > p.capacity;
-                    return (
-                        <Link key={p.id} href={`/goats?pen=${encodeURIComponent(p.name)}`} className="kk-lift rounded-tile border border-rule bg-glaze/60 px-3 py-2 hover:border-cobalt-700">
-                            <span className="block truncate font-mono text-xs font-semibold text-ink-soft" title={p.name}>{p.name}</span>
-                            <span className={`block text-2xl font-bold tabular-nums ${full ? 'text-crit-700' : 'text-cobalt-900'}`}><CountUp to={p.goats} />{p.capacity !== null ? <span className="text-sm font-semibold text-ink-soft">/{p.capacity}</span> : null}</span>
-                            <span className="block text-xs text-ink-soft">{[p.female ? `♀ ${p.female}` : null, p.male ? `♂ ${p.male}` : null, p.attention ? `${p.attention} need attention` : null].filter(Boolean).join(' · ')}</span>
-                        </Link>
-                    );
-                })}
-            </div>
-            {more ? <div className="mt-2 -mx-4">{more}</div> : null}
-        </li>
-    );
-}
 
 type FeedSummary = Omit<Requirement, 'sheds' | 'feeds'> & {
     sheds: Array<{ id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; count: number;
