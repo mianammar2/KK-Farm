@@ -30,6 +30,7 @@ struct FarmView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate {
         weak var web: WKWebView?
         private var hiddenAt: Date?
+        private var offline = false
 
         override init() {
             super.init()
@@ -40,12 +41,13 @@ struct FarmView: UIViewRepresentable {
         @objc func background() { hiddenAt = Date() }
 
         @objc func foreground() {
-            if let at = hiddenAt, Date().timeIntervalSince(at) > 300 { web?.reload() }
+            if let at = hiddenAt, Date().timeIntervalSince(at) > 300 || offline { if offline { _ = web?.load(URLRequest(url: FarmView.server)) } else { _ = web?.reload() }; offline = false }
             hiddenAt = nil
         }
 
         @objc func pulled(_ control: UIRefreshControl) {
-            web?.reload()
+            // After the "No connection" page, reloading would only show it again: go back to the farm instead.
+            if let web, web.url?.host == FarmView.server.host, !offline { web.reload() } else { offline = false; web?.load(URLRequest(url: FarmView.server)) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { control.endRefreshing() }
         }
 
@@ -64,6 +66,8 @@ struct FarmView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { showOffline(webView) }
 
         private func showOffline(_ webView: WKWebView) {
+            if (webView.url?.absoluteString ?? "").isEmpty == false, offline { return }
+            offline = true
             webView.loadHTMLString("""
             <html><body style="font-family:-apple-system;background:#f7f6ef;color:#163d22;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">
             <div><h2>No connection</h2><p>KK Farms needs the internet. Pull down to try again.</p></div></body></html>
