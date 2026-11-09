@@ -1,16 +1,17 @@
 import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { inScannerApp } from '../lib/native';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
-import { CountUp, Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
+import { CountUp, Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
 import { useFive } from '../lib/useFive';
 import { BalanceTag, type Balance, type Requirement } from '../components/FeedRequirement';
 import FarmScene, { GoatFigure } from '../components/FarmScene';
+import { FarmStat, FarmStatRow } from '../components/FarmStats';
 import FeedScene from '../components/FeedScene';
 
 type Meal = 'morning' | 'midday' | 'evening';
@@ -53,10 +54,6 @@ function ShowMore<T>({ items, render, empty, limit = 5 }: { items: T[]; render: 
     );
 }
 
-/** A dashboard number that opens the goats (or page) it counts. */
-function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[0]) {
-    return <Link href={href} className="group relative block min-w-0 transition-colors hover:bg-glaze"><Stat {...stat} /><ChevronRight size={15} className="absolute right-2 top-3 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100" aria-hidden /></Link>;
-}
 
 /**
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
@@ -110,14 +107,14 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
 
             {/* D-121: actions are in the notification bell; health + buttons on Veterinary & Health. */}
 
-            <StatRow>
+            <FarmStatRow>
                 {/* D-119: a number that is zero is not shown. */}
-                <StatLink href="/goats" label="Goats on farm" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
-                {stats.unwell || stats.overdueCare ? <StatLink href="/goats?show=attention" label="Need attention" value={stats.unwell} note={stats.overdueCare ? `${plural(stats.overdueCare, 'goat', 'goats')} overdue for care` : 'Sick or on watch'} tone="alert" /> : null}
-                {stats.pregnant ? <StatLink href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note="Does" /> : null}
-                {feeding ? <StatLink href="/feeding" label="Meals fed today" value={`${stats.feedingDone}/${stats.feedingTotal}`} note={stats.feedingTotal ? 'Pen meals due so far' : 'None due yet'} tone={stats.feedingTotal && stats.feedingDone < stats.feedingTotal ? 'alert' : undefined} /> : null}
-                {stats.tasksTotal ? <StatLink href="/tasks" label="Tasks today" value={`${stats.tasksDone}/${stats.tasksTotal}`} note="Done" /> : null}
-            </StatRow>
+                <FarmStat icon="herd" href="/goats" label="Goats on farm" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
+                {stats.unwell || stats.overdueCare ? <FarmStat icon="attention" href="/goats?show=attention" label="Need attention" value={stats.unwell} note={stats.overdueCare ? `${plural(stats.overdueCare, 'goat', 'goats')} overdue for care` : 'Sick or on watch'} tone="alert" /> : null}
+                {stats.pregnant ? <FarmStat icon="pregnant" href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note="Does" /> : null}
+                {feeding ? <FarmStat icon="meals" href="/feeding" label="Meals fed today" value={`${stats.feedingDone}/${stats.feedingTotal}`} note={stats.feedingTotal ? 'Pen meals due so far' : 'None due yet'} tone={stats.feedingTotal && stats.feedingDone < stats.feedingTotal ? 'alert' : undefined} /> : null}
+                {stats.tasksTotal ? <FarmStat icon="tasks" href="/tasks" label="Tasks today" value={`${stats.tasksDone}/${stats.tasksTotal}`} note="Done" /> : null}
+            </FarmStatRow> {/* D-136: wooden signs */}
 
             {/* D-118: the herd by age and gender (and by breed); health is in Needs Attention. */}
             {total && total.value ? <HerdByAge h={herdAge} /> : <div className="mt-4"><Empty title="No goats yet">Scan a tag or open the Goat Register to add the first goat.</Empty></div>}

@@ -318,3 +318,29 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .kk-rail { display: flex; height: 12px; overflow: hidden; border-radius: 3px; background: #c9ad7c; box-shadow: inset 0 0 0 1.5px #8d6238; }
 .kk-rail-f { background: #fffdf7; box-shadow: inset 0 -2px 0 #e9dcc0, inset 0 0 0 1px #b8935c; }
 .kk-rail-m { background: #8b5a33; box-shadow: inset 0 -2px 0 #6b4226; }
+
+/* D-136: the top numbers as wooden signs nailed to a plank wall. */
+.kk-signs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 1rem; }
+.kk-signs > :last-child:nth-child(odd) { grid-column: span 2; }
+@media (min-width: 640px) { .kk-signs { display: flex; gap: 10px; } .kk-signs > * { flex: 1 1 0; min-width: 0; } }
+.kk-sign {
+    position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 6px; border-radius: 8px;
+    background: repeating-linear-gradient(180deg, #9a6c3e 0 15px, #85592f 15px 16px), #9a6c3e;
+    border: 2px solid #5a3b1e; box-shadow: 0 3px 0 #3f2914, 0 8px 14px -10px rgb(40 25 10 / 0.6);
+}
+.kk-sign-nail { position: absolute; top: 5px; width: 5px; height: 5px; border-radius: 50%; background: #d9d4c7; box-shadow: inset -1px -1px 0 #7d776a; }
+.kk-sign-icon { flex: none; display: grid; place-items: center; width: 44px; height: 40px; border-radius: 6px; background: #f0e2bf; box-shadow: inset 0 0 0 1.5px #c79a62; padding: 3px; }
+.kk-sign-icon .kk-goat, .kk-sign-icon svg { width: 100%; height: auto; animation: none; }
+.kk-sign-icon svg.kk-heart { width: 42%; }
+.kk-sign-paper { min-width: 0; flex: 1; padding: 3px 8px 4px; border-radius: 4px; background: #fff8e6; box-shadow: inset 0 0 0 1px #d8c49a, 0 1px 0 #5a3b1e; }
+@media (max-width: 639px) { .kk-sign-icon { width: 34px; height: 32px; } }
+.kk-herd-icon { display: flex; align-items: flex-end; width: 100%; }
+.kk-herd-icon > span { flex: 0 0 62%; }
+.kk-herd-icon > span + span { margin-left: -24%; }
+@media (max-width: 639px) {
+    .kk-noticeboard { padding: 4px 6px 4px; border-width: 4px; }
+    .kk-noticeboard td, .kk-noticeboard th { padding-left: 4px !important; padding-right: 4px !important; }
+    .kk-age-goat { width: 28px; height: 24px; }
+    .kk-age-goat > svg { width: calc(28px * var(--s, 1)); height: calc(23px * var(--s, 1)); }
+    .kk-th-goat { display: none; }
+}
