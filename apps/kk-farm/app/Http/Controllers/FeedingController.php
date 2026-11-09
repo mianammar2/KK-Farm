@@ -78,7 +78,7 @@ class FeedingController extends Controller
             })->sortBy([['shed', 'asc'], ['name', 'asc']])->values(),
             'groups' => $this->groups(),
             'items' => $items->map(fn (FeedItem $i) => [
-                'id' => $i->id, 'code' => $i->code, 'name' => $i->name, 'category' => $i->category, 'costPerKg' => $i->cost_per_kg_minor / 100, 'reorder' => $i->reorder_level_kg,
+                'id' => $i->id, 'code' => $i->code, 'name' => $i->name, 'category' => $i->category, 'costPerKg' => $i->cost_per_kg_minor / 100, 'cp' => $i->cp_pct !== null ? (float) $i->cp_pct : null, 'reorder' => $i->reorder_level_kg,
                 'supplier' => $i->supplier, 'notes' => $i->notes, 'active' => $i->active, 'stock' => $stock[$i->id] ?? 0,
                 'value' => round(max(0, $stock[$i->id] ?? 0) * $i->cost_per_kg_minor / 100), 'status' => Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg),
                 'daysLeft' => ($weekUse[$i->id] ?? 0) > 0 ? (int) floor(max(0, $stock[$i->id] ?? 0) / ($weekUse[$i->id] / 7)) : null,
@@ -116,7 +116,8 @@ class FeedingController extends Controller
         $show = fn (?RationPlan $p) => $p ? [
             'id' => $p->id, 'from' => $p->effective_from->format('j M Y'), 'fromIso' => $p->effective_from->toDateString(), 'status' => $p->status, 'basis' => $p->basis,
             'split' => ['morning' => $p->split_morning, 'midday' => $p->split_midday, 'evening' => $p->split_evening],
-            'lines' => $p->lines->map(fn ($l) => ['feedItemId' => $l->feed_item_id, 'name' => $l->item->name, 'code' => $l->item->code, 'kg' => $l->kg_per_head, 'share' => $l->share_pct]),
+            'lines' => $p->lines->map(fn ($l) => ['feedItemId' => $l->feed_item_id, 'name' => $l->item->name, 'code' => $l->item->code, 'kg' => $l->kg_per_head, 'share' => $l->share_pct, 'cp' => $l->item->cp_pct !== null ? (float) $l->item->cp_pct : null]),
+            'cpMix' => self::mixCp($p), // D-112
             'costPerKg' => round($p->lines->sum(fn ($l) => ($l->share_pct ?? 0) * $l->item->cost_per_kg_minor) / 10000, 2), // body-weight rations: PKR per kg of the mix
             'kgPerHead' => round($p->lines->sum('kg_per_head'), 3),
             'costPerHead' => round($p->lines->sum(fn ($l) => ($l->kg_per_head ?? 0) * $l->item->cost_per_kg_minor) / 100, 2),
@@ -243,6 +244,7 @@ class FeedingController extends Controller
             'name' => ['required', 'string', 'max:80'],
             'category' => ['required', Rule::in(array_keys(FeedItem::CATEGORIES))],
             'cost_per_kg' => ['required', 'numeric', 'min:0', 'max:1000000'],
+            'cp_pct' => ['nullable', 'numeric', 'between:0.5,60'], // D-112: from the bag label
             'reorder_level_kg' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'opening_kg' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'supplier' => ['nullable', 'string', 'max:80'],
@@ -251,7 +253,7 @@ class FeedingController extends Controller
 
         DB::transaction(function () use ($data, $request) {
             $item = FeedItem::create([
-                'code' => $data['code'], 'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100),
+                'code' => $data['code'], 'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100), 'cp_pct' => $data['cp_pct'] ?? null,
                 'reorder_level_kg' => $data['reorder_level_kg'] ?? 0, 'supplier' => $data['supplier'] ?? null, 'notes' => $data['notes'] ?? null,
             ]);
             if (($data['opening_kg'] ?? 0) > 0) {
@@ -270,18 +272,34 @@ class FeedingController extends Controller
             'name' => ['required', 'string', 'max:80'],
             'category' => ['required', Rule::in(array_keys(FeedItem::CATEGORIES))],
             'cost_per_kg' => ['required', 'numeric', 'min:0', 'max:1000000'],
+            'cp_pct' => ['nullable', 'numeric', 'between:0.5,60'], // D-112: from the bag label
             'reorder_level_kg' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'supplier' => ['nullable', 'string', 'max:80'],
             'notes' => ['nullable', 'string', 'max:200'],
             'active' => ['boolean'],
         ]);
         $item->update([
-            'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100), 'reorder_level_kg' => $data['reorder_level_kg'] ?? 0,
+            'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100), 'cp_pct' => $data['cp_pct'] ?? null, 'reorder_level_kg' => $data['reorder_level_kg'] ?? 0,
             'supplier' => $data['supplier'] ?? null, 'notes' => $data['notes'] ?? null, 'active' => $data['active'] ?? $item->active,
         ]);
         Farm::log($request->user(), "Updated feed {$item->name}", '/feeding');
 
         return back()->with('success', "{$item->name} saved.");
+    }
+
+    /**
+     * D-112: the CP % of a ration's mix, from each feed's bag label: by share for a %-of-body-weight ration, by KG for a
+     * fixed one. Null when any feed in it has no CP on record, so a partial figure is never shown as the whole.
+     */
+    public static function mixCp(RationPlan $p): ?float
+    {
+        if ($p->lines->isEmpty() || $p->lines->contains(fn ($l) => $l->item->cp_pct === null)) {
+            return null;
+        }
+        $weight = fn ($l) => (float) ($p->basis === 'body_weight' ? $l->share_pct : $l->kg_per_head);
+        $total = $p->lines->sum($weight);
+
+        return $total > 0 ? round($p->lines->sum(fn ($l) => $weight($l) * (float) $l->item->cp_pct) / $total, 1) : null;
     }
 
     /** Receipts and adjustments. A purchase also records the expense, so it is entered once (D-054). */

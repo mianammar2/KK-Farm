@@ -456,4 +456,26 @@ class FeedTest extends TestCase
         $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
             'grower_min' => 3, 'grower_max' => 4, 'adult_min' => 2, 'adult_max' => 3, 'adult_cp' => 55])->assertSessionHasErrors('adult_cp');
     }
+
+    /** D-112: each feed carries the CP from its bag label; a ration shows the CP of its mix. */
+    public function test_a_feed_has_its_bag_label_cp_and_a_ration_shows_the_mix_cp(): void
+    {
+        $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'C32', 'name' => 'Concentrate', 'category' => 'concentrate', 'cost_per_kg' => 120, 'cp_pct' => 32])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'WS', 'name' => 'Wheat straw', 'category' => 'concentrate', 'cost_per_kg' => 30])->assertSessionHasNoErrors();
+        $conc = FeedItem::where('code', 'C32')->first();
+        $straw = FeedItem::where('code', 'WS')->first();
+        $this->assertSame(32.0, (float) $conc->cp_pct);
+        $this->assertNull($straw->cp_pct);
+        $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'BAD', 'name' => 'Bad', 'category' => 'concentrate', 'cost_per_kg' => 1, 'cp_pct' => 80])->assertSessionHasErrors('cp_pct');
+
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
+            'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => $conc->id, 'share_pct' => 25], ['feed_item_id' => $straw->id, 'share_pct' => 75]]])->assertSessionHasNoErrors();
+        $plan = RationPlan::sole();
+        $this->assertNull(\App\Http\Controllers\FeedingController::mixCp($plan->load('lines.item')), 'straw has no CP yet: no partial figure');
+
+        $this->actingAs($this->user('manager'))->post("/feeding/items/{$straw->id}", ['name' => 'Wheat straw', 'category' => 'concentrate', 'cost_per_kg' => 30, 'cp_pct' => 4])->assertSessionHasNoErrors();
+        // 25% at CP 32 + 75% at CP 4 = 8 + 3 = 11%
+        $this->assertSame(11.0, \App\Http\Controllers\FeedingController::mixCp($plan->fresh()->load('lines.item')));
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('items.0.cp', 32)->where('items.1.cp', 4));
+    }
 }

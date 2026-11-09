@@ -9,9 +9,9 @@ type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
 type Usage = { id: string; offered: number; refused: number | null; by: string; at: string };
 type Line = { feedItemId: number; code: string; name: string; planned: number; min: number; max: number; usage: Usage | null; stock: number };
 type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; onMilk: number; auto: number; balance: 'over' | 'short' | 'ok' | null; diff: number; minKg: number; maxKg: number; day: { planned: number; given: number; balance: 'over' | 'short' | 'ok' | null; diff: number }; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
-type Plan = { id: number; from: string; fromIso: string; status: string; basis: 'per_head' | 'body_weight'; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number | null; share: number | null }>; kgPerHead: number; costPerHead: number; costPerKg: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
+type Plan = { id: number; from: string; fromIso: string; status: string; basis: 'per_head' | 'body_weight'; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number | null; share: number | null; cp: number | null }>; cpMix: number | null; kgPerHead: number; costPerHead: number; costPerKg: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
 type Group = { id: number; name: string; criteria: string | null; head: number; current: Plan | null; upcoming: Plan | null; draft: Plan | null };
-type Item = { id: number; code: string; name: string; category: string; costPerKg: number; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number; value: number; status: 'ok' | 'low' | 'out' | 'negative'; daysLeft: number | null };
+type Item = { id: number; code: string; name: string; category: string; costPerKg: number; cp: number | null; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number; value: number; status: 'ok' | 'low' | 'out' | 'negative'; daysLeft: number | null };
 type Movement = { id: number; on: string; item: string; type: string; qty: number; rate: number | null; party: string | null; reference: string | null; by: string };
 type History = { id: string; on: string; meal: Meal; pen: string; feed: string; headcount: number; planned: number; offered: number; refused: number | null; consumed: number; perHead: number | null; cost: number; by: string; corrected: boolean; off: boolean };
 type Props = {
@@ -209,8 +209,8 @@ function PlanView({ plan, label }: { plan: Plan; label: string }) {
     return (
         <div>
             <div className="mb-1 flex flex-wrap items-center gap-2 text-sm"><Chip className={plan.status === 'approved' ? 'bg-ok-100 text-ok-700' : 'bg-watch-100 text-watch-700'}>{label}</Chip>
-                <span className="text-ink-soft">{plan.basis === 'body_weight' ? `% of body weight a day · ${pkr(plan.costPerKg)} per KG of mix` : `${kg(plan.kgPerHead)} per goat per day · ${pkr(plan.costPerHead)}`} · meals {plan.split.morning}/{plan.split.midday}/{plan.split.evening}%</span></div>
-            <ul className="flex flex-wrap gap-1.5">{plan.lines.map((l) => <li key={l.feedItemId} className="rounded-[4px] border border-rule px-2 py-1 text-sm"><Wheat size={13} className="mr-1 inline text-turq-700" aria-hidden />{l.name} <span className="font-semibold">{plan.basis === 'body_weight' ? `${l.share}%` : `${l.kg} KG`}</span></li>)}</ul>
+                <span className="text-ink-soft">{plan.basis === 'body_weight' ? `% of body weight a day · ${pkr(plan.costPerKg)} per KG of mix` : `${kg(plan.kgPerHead)} per goat per day · ${pkr(plan.costPerHead)}`} · meals {plan.split.morning}/{plan.split.midday}/{plan.split.evening}%</span>{plan.cpMix !== null ? <CpTag cp={plan.cpMix} label="Mix CP" /> : null}</div>
+            <ul className="flex flex-wrap gap-1.5">{plan.lines.map((l) => <li key={l.feedItemId} className="rounded-[4px] border border-rule px-2 py-1 text-sm"><Wheat size={13} className="mr-1 inline text-turq-700" aria-hidden />{l.name} <span className="font-semibold">{plan.basis === 'body_weight' ? `${l.share}%` : `${l.kg} KG`}</span>{l.cp !== null ? <CpTag cp={l.cp} className="ml-1" /> : null}</li>)}</ul>
             {plan.approvedBy ? <p className="mt-1 text-xs text-ink-faint">Approved by {plan.approvedBy} on {plan.approvedOn}</p> : null}
             {plan.notes ? <p className="mt-1 text-sm text-ink-soft">{plan.notes}</p> : null}
         </div>
@@ -236,6 +236,10 @@ function RationForm({ group, items, settings, onDone }: { group: Group; items: I
     const setLine = (i: number, key: 'feed_item_id' | 'kg_per_head', v: string) => form.setData('lines', form.data.lines.map((l, j) => (j === i ? { ...l, [key]: key === 'feed_item_id' ? Number(v) : v } : l)));
     const perHead = form.data.lines.reduce((s, l) => s + Number(l.kg_per_head || 0), 0);
     const cost = form.data.lines.reduce((s, l) => s + Number(l.kg_per_head || 0) * (items.find((i) => i.id === l.feed_item_id)?.costPerKg ?? 0), 0);
+    // D-112: CP of the mix from each feed's bag label; shown only when every feed in it has one.
+    const cpKnown = perHead > 0 && form.data.lines.every((l) => items.find((i) => i.id === l.feed_item_id)?.cp != null);
+    const cpMix = cpKnown ? Math.round(form.data.lines.reduce((s, l) => s + Number(l.kg_per_head || 0) * (items.find((i) => i.id === l.feed_item_id)?.cp ?? 0), 0) / perHead * 10) / 10 : null;
+    const cpTarget = [settings.cp.grower !== null ? `growers ${settings.cp.grower}%` : null, settings.cp.adult !== null ? `adults ${settings.cp.adult}%` : null].filter(Boolean).join(', ');
 
     if (!items.length) return <Note>Add feeds in the Feed store before setting a ration.</Note>;
 
@@ -266,6 +270,7 @@ function RationForm({ group, items, settings, onDone }: { group: Group; items: I
                     {byWeight
                         ? <p className={cx('text-sm', Math.abs(shareTotal - 100) < 0.01 ? 'text-ok-700' : 'text-crit-700')}>Shares add up to {shareTotal}%{Math.abs(shareTotal - 100) < 0.01 ? '' : ' (must be 100%)'} · {pkr(cost / 100)} per KG of the mix. Example: a 30 KG adult gets {kg(30 * settings.intake.adult[0] / 100)}–{kg(30 * settings.intake.adult[1] / 100)} a day (planned at the middle).</p>
                         : <p className="text-sm text-ink-soft">{kg(perHead)} per goat per day · {pkr(cost)} per goat per day · {pkr(cost * group.head)} a day for {group.head} goats</p>}
+                    {cpMix !== null ? <p className="text-sm font-semibold text-cobalt-900">Mix CP {cpMix}%{cpTarget ? <span className="font-normal text-ink-soft"> · target {cpTarget}</span> : null}</p> : null}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                     {MEALS.map((m) => (
@@ -301,6 +306,7 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-semibold text-cobalt-900">{i.name}</span>
                                         <span className="font-mono text-xs text-ink-soft">{i.code}</span>
+                                        {i.cp !== null ? <CpTag cp={i.cp} /> : null}
                                         <span className="text-sm text-ink-soft">{categories[i.category] ?? i.category}</span>
                                         {!i.active ? <Chip className="bg-rule text-ink-soft">Not used</Chip> : null}
                                         <span className="ml-auto flex items-center gap-2"><span className="font-semibold">{kg(i.stock)}</span><Chip className={STOCK[i.status].className}>{STOCK[i.status].label}</Chip></span>
@@ -328,7 +334,7 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
 }
 
 function ItemForm({ item, categories, onDone }: { item?: Item; categories: Record<string, string>; onDone?: () => void }) {
-    const form = useForm({ code: item?.code ?? '', name: item?.name ?? '', category: item?.category ?? 'concentrate', cost_per_kg: item ? String(item.costPerKg) : '', reorder_level_kg: item ? String(item.reorder) : '', opening_kg: '', supplier: item?.supplier ?? '', notes: item?.notes ?? '', active: item?.active ?? true });
+    const form = useForm({ code: item?.code ?? '', name: item?.name ?? '', category: item?.category ?? 'concentrate', cost_per_kg: item ? String(item.costPerKg) : '', cp_pct: item?.cp != null ? String(item.cp) : '', reorder_level_kg: item ? String(item.reorder) : '', opening_kg: '', supplier: item?.supplier ?? '', notes: item?.notes ?? '', active: item?.active ?? true });
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         form.post(item ? `/feeding/items/${item.id}` : '/feeding/items', { preserveScroll: true, onSuccess: () => { if (item) onDone?.(); else form.reset(); } });
@@ -340,6 +346,7 @@ function ItemForm({ item, categories, onDone }: { item?: Item; categories: Recor
             <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Wheat straw (Bhoosa)" /></Field>
             <Field label="Category" error={form.errors.category}><select className="field" value={form.data.category} onChange={(e) => form.setData('category', e.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Cost PKR per KG" error={form.errors.cost_per_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" value={form.data.cost_per_kg} onChange={(e) => form.setData('cost_per_kg', e.target.value)} /></Field>
+            <Field label="CP % (Bag Label)" error={form.errors.cp_pct} hint="Crude protein printed on the bag, e.g. 32 for CP 32"><input className="field" type="number" inputMode="decimal" min={0.5} max={60} step="0.1" placeholder="Not known" value={form.data.cp_pct} onChange={(e) => form.setData('cp_pct', e.target.value)} /></Field>
             <Field label="Reorder when below (KG)" error={form.errors.reorder_level_kg}><input className="field" type="number" inputMode="decimal" min={0} value={form.data.reorder_level_kg} onChange={(e) => form.setData('reorder_level_kg', e.target.value)} /></Field>
             {!item ? <Field label="Stock now (KG)" error={form.errors.opening_kg} hint="Opening stock. Later receipts go through Stock in / out."><input className="field" type="number" inputMode="decimal" min={0} value={form.data.opening_kg} onChange={(e) => form.setData('opening_kg', e.target.value)} /></Field> : null}
             <Field label="Supplier" error={form.errors.supplier}><input className="field" value={form.data.supplier} onChange={(e) => form.setData('supplier', e.target.value)} /></Field>
@@ -458,4 +465,9 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
             </form>
         </Panel>
     );
+}
+
+/** D-112: a feed's crude protein, shown like its bag label: "CP 32". */
+function CpTag({ cp, label = 'CP', className }: { cp: number; label?: string; className?: string }) {
+    return <span className={cx('rounded-[4px] bg-turq-100 px-1.5 py-0.5 font-mono text-xs font-bold text-turq-800', className)} title={`Crude protein ${cp}%`}>{label} {cp}{label === 'CP' ? '' : '%'}</span>;
 }
