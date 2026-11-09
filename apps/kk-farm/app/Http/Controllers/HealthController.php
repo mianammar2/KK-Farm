@@ -22,7 +22,7 @@ class HealthController extends Controller
     /** D-078: workbook "Preventive Care" types. */
     public const CARE_TYPES = ['vaccination' => 'Vaccine', 'deworming' => 'Deworming', 'hoof_care' => 'Hoof care', 'examination' => 'Routine examination', 'other_care' => 'Other'];
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $row = fn (HealthRecord $r) => [
             'id' => $r->id, 'goatId' => $r->animal_id, 'number' => $r->animal->farm_number, 'name' => $r->animal->name, 'coat' => $r->animal->coat, 'sex' => $r->animal->sex,
@@ -38,7 +38,28 @@ class HealthController extends Controller
             ->orderByRaw("case severity when 'emergency' then 0 when 'high' then 1 when 'moderate' then 2 else 3 end")->orderByDesc('onset_on')->get();
         $today = now()->startOfDay();
 
+        // D-095: routine checkups: every goat with its latest checkup and whether one is due.
+        $latest = \App\Support\Checkups::latest();
+        $interval = \App\Support\Checkups::interval();
+        $since = now()->subDays($interval)->toDateString();
+        $checkupGoats = Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => [
+            'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'pen' => $a->pen?->fullName(), 'repro' => $a->repro_status,
+            'last' => isset($latest[$a->id]) ? ['on' => $latest[$a->id]->checked_on->format('j M'), 'outcome' => $latest[$a->id]->outcome, 'by' => $latest[$a->id]->examiner] : null,
+            'due' => ! isset($latest[$a->id]) || $latest[$a->id]->checked_on->toDateString() <= $since,
+        ])->values();
+
         return Inertia::render('Health', [
+            'checkups' => [
+                'goats' => $checkupGoats, 'interval' => $interval,
+                'recent' => \App\Models\HealthCheckup::with('animal')->orderByDesc('checked_on')->orderByDesc('id')->limit(60)->get()->map(fn ($c) => [
+                    'id' => $c->id, 'on' => $c->checked_on->format('j M Y'), 'goat' => $c->animal->farm_number, 'goatId' => $c->animal_id, 'outcome' => $c->outcome,
+                    'temp' => $c->temperature_f, 'heart' => $c->heart_rate, 'breath' => $c->respiration_rate, 'score' => $c->body_score, 'weight' => $c->weight_kg,
+                    'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'flags' => $c->flags(), 'findings' => $c->findings, 'caseId' => $c->health_case_id, 'by' => $c->examiner,
+                ]),
+                'normal' => \App\Models\HealthCheckup::NORMAL,
+                'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number]),
+                'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'),
+            ],
             'cases' => $cases->map(fn (HealthCase $c) => $this->caseRow($c, $withdrawal[$c->animal_id] ?? null)),
             // Concerns reported by staff (and older records) that no case covers yet.
             'reports' => HealthRecord::with('animal')->where('status', 'open')->whereNotIn('id', HealthCase::whereNotNull('report_id')->pluck('report_id'))
@@ -113,6 +134,29 @@ class HealthController extends Controller
     }
 
     /** D-073: the goat's health flag follows its cases: active case = Sick (Quarantine if isolated), monitoring = Recovering. */
+    /** D-095: one goat's routine (or any-time) health checkup. */
+    public function checkup(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('health_checkup'), 403);
+        $data = $request->validate([
+            'animal_id' => ['required', 'exists:animals,id'], 'checked_on' => ['required', 'date', 'before_or_equal:today'],
+            'temperature_f' => ['nullable', 'numeric', 'between:93,110'], 'heart_rate' => ['nullable', 'integer', 'between:20,250'], 'respiration_rate' => ['nullable', 'integer', 'between:5,120'],
+            'body_score' => ['nullable', 'integer', 'between:1,5'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
+            'ultrasound' => ['nullable', Rule::in(array_keys(\App\Models\HealthCheckup::ULTRASOUND))], 'fetuses' => ['nullable', 'integer', 'between:1,6'],
+            'months_pregnant' => ['nullable', 'required_if:ultrasound,pregnant', 'numeric', 'between:0.5,5.5'], 'sire_id' => ['nullable', 'exists:animals,id'],
+            'findings' => ['nullable', 'string', 'max:2000'], 'outcome' => ['required', Rule::in(array_keys(\App\Models\HealthCheckup::OUTCOMES))],
+            'open_case' => ['boolean'], 'condition' => ['nullable', 'required_if:open_case,true', 'string', 'max:120'],
+            'severity' => ['nullable', Rule::in(array_keys(HealthCase::SEVERITIES))], 'isolated' => ['boolean'],
+        ], ['months_pregnant.required_if' => 'About how many months pregnant?', 'condition.required_if' => 'What did you find? (the condition for the case)'], ['heart_rate' => 'heart rate', 'respiration_rate' => 'breathing rate']);
+        abort_if(! empty($data['open_case']) && ! $request->user()->passes('open_cases'), 403, 'Only a veterinarian or the administrator opens a health case.');
+        $goat = Animal::findOrFail($data['animal_id']);
+        abort_unless($goat->status === 'active', 422, 'This goat is no longer on the farm.');
+        $c = \App\Support\Checkups::record($goat, $data, $request->user());
+        Farm::log($request->user(), "Health checkup of {$goat->farm_number}: ".\App\Models\HealthCheckup::OUTCOMES[$c->outcome], "/goats/{$goat->id}");
+
+        return back()->with('success', "{$goat->farm_number} checked: ".\App\Models\HealthCheckup::OUTCOMES[$c->outcome].($c->ultrasound === 'pregnant' ? '. Pregnant: added to Breeding.' : '.').($c->flags() ? ' Outside normal: '.implode(', ', $c->flags()).'.' : ''));
+    }
+
     private function syncHealth(Animal $animal): void
     {
         $active = HealthCase::where('animal_id', $animal->id)->whereIn('status', HealthCase::ACTIVE)->get();
@@ -175,7 +219,7 @@ class HealthController extends Controller
     /** Opens a case (optionally from a reported concern, which it then covers). Veterinarian only. */
     public function openCase(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian opens a health case.');
+        abort_unless($request->user()->passes('open_cases'), 403, 'Only a veterinarian or the administrator opens a health case.'); // D-095
         $data = $request->validate([
             'animal_id' => ['required', 'exists:animals,id'], 'onset_on' => ['required', 'date', 'before_or_equal:today'],
             'condition' => ['required', 'string', 'max:120'], 'symptoms' => ['nullable', 'string', 'max:1000'],

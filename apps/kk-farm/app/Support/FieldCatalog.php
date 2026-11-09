@@ -52,7 +52,6 @@ final class FieldCatalog
             ['key' => 'tag_id', 'label' => 'Tag ID', 'type' => 'text', 'section' => 'Origin and identity', 'help' => 'Set automatically: breed code, date (DDMMYY: purchase or birth date) with origin (P bought, T transferred, B born), and number, for example TD-141026P-03. Type one only to use a different Tag ID.'],
             ['key' => 'rfid_epc', 'label' => 'RFID EPC', 'type' => 'scan', 'section' => 'Origin and identity', 'help' => 'Filled by the scanner. Scan a tag, or type the code.'],
             ['key' => 'sex', 'label' => 'Gender', 'type' => 'select', 'section' => 'Origin and identity', 'required' => true],
-            ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Origin and identity'],
             ['key' => 'source_farm', 'label' => 'Source Farm', 'type' => 'text', 'section' => 'Origin and identity'],
             ['key' => 'purchase_cost_pkr', 'label' => 'Purchase Cost PKR', 'type' => 'number', 'section' => 'Origin and identity'],
             ['key' => 'teeth', 'label' => 'Teeth (permanent incisors)', 'type' => 'select', 'section' => 'Birth', 'help' => 'Count the big front teeth on the lower jaw. Fills in the estimated age.'], // D-091
@@ -82,6 +81,7 @@ final class FieldCatalog
             ['key' => 'temperature_f', 'label' => 'Body Temperature (°F)', 'type' => 'number', 'section' => 'Status', 'help' => 'Normal 101.3–103.5 °F. Required for a pregnant goat. Outside normal, the vet is alerted.'], // D-093
             ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing', 'required' => true],
             ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership', 'active' => false], // D-066
+            ['key' => 'name', 'label' => 'Name (optional)', 'type' => 'text', 'section' => 'Notes'], // D-096: goats are known by their Tag ID
             ['key' => 'notes', 'label' => 'Notes', 'type' => 'long_text', 'section' => 'Notes'],
         ];
     }

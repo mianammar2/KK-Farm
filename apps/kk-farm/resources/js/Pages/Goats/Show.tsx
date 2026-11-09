@@ -51,7 +51,7 @@ export default function GoatShow(props: Props) {
 
     return (
         <>
-            <Head title={goat.name ?? goat.number} />
+            <Head title={goat.number} />
             {/* D-073: withdrawal from the veterinarian's treatment dates. */}
             {goat.withdrawal ? (
                 <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 rounded-tile border border-crit-500/40 bg-crit-100 px-4 py-3 text-crit-700">
@@ -84,12 +84,12 @@ export default function GoatShow(props: Props) {
                     {profile ? <img src={`/media/${profile.id}`} alt={`Profile of ${goat.number}`} className="size-36 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-2xl font-bold tracking-tight text-cobalt-900">{goat.name ?? 'Unnamed goat'}</h1>
+                            <h1 className="font-mono text-2xl font-bold tracking-tight text-cobalt-900">{goat.number}</h1>
                             <SexIcon sex={goat.sex} />
                             {onFarm ? <HealthChip health={goat.health} /> : removed ? <Chip className="bg-glaze text-ink-soft">Removed (wrong entry)</Chip> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}
                             <ReproChip repro={goat.repro} />
                         </div>
-                        <p className="text-ink-soft">{goat.number} · {goat.breed} · {goat.age}</p>
+                        <p className="text-ink-soft">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} · </span> : null}{goat.breed} · {goat.age}</p>
                         {goat.classification ? <p className="mt-1 inline-flex rounded-full bg-cobalt-900 px-3 py-1 text-sm font-semibold text-white">{goat.classification}</p> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}

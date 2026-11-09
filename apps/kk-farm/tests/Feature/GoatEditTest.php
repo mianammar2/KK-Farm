@@ -101,7 +101,7 @@ class GoatEditTest extends TestCase
         $doe->refresh();
         $this->assertSame(['Rani', '6', 6500000, $this->other->id], [$doe->name, $doe->teeth, $doe->purchase_cost_minor, $doe->pen_id]);
         $edit = $doe->events()->where('type', 'edit')->sole()->summary;
-        $this->assertStringContainsString('Animal Name: empty → Rani', $edit);
+        $this->assertStringContainsString('Name (optional): empty → Rani', $edit);
         $this->assertStringContainsString('Teeth (permanent incisors): 4 → 6', $edit);
         $this->assertStringContainsString('Purchase Cost PKR: empty → PKR 65,000', $edit);
         $this->assertSame(1, AnimalMovement::where('animal_id', $doe->id)->where('type', 'transfer')->count(), 'a pen change is a recorded move');

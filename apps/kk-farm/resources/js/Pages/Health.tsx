@@ -3,6 +3,7 @@ import { AlertTriangle, ChevronDown, Pill, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, GoatLabel, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import type { Health as HealthState, Option, SharedProps } from '../types';
+import Checkups, { type CheckupData } from '../components/Checkups';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -15,6 +16,7 @@ type Medicine = { id: number; code: string; name: string; category: string; unit
 type MedMove = { id: number; on: string; medicine: string; unit: string; type: string; qty: number; batch: string | null; expiry: string | null; by: string; party: string | null };
 type WithdrawalRow = { goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; meat: string | null; milk: string | null };
 type Props = {
+    checkups: CheckupData;
     cases: Case[]; reports: Row[]; care: Row[]; withdrawal: WithdrawalRow[]; counts: Record<string, number>; goats: Option[];
     severities: Record<string, string>; statuses: Record<string, string>; routes: Record<string, string>;
     medicines: Medicine[]; medicineMoves: MedMove[]; medicineCategories: Record<string, string>; medicineUnits: Record<string, string>;
@@ -40,7 +42,7 @@ export default function Health(props: Props) {
     const { cases, reports, care, withdrawal, counts, goats, severities } = props;
     const { auth } = usePage<SharedProps>().props;
     const isVet = !!auth?.gates.includes('clinical');
-    const [tab, setTab] = useState('cases');
+    const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') ?? 'cases');
     const [fromReport, setFromReport] = useState<Row | null>(null);
 
     return (
@@ -58,6 +60,7 @@ export default function Health(props: Props) {
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
                 <div className="min-w-0">
                     <Tabs value={tab} onChange={setTab} tabs={[
+                        { id: 'checkups', label: 'Checkups', count: props.checkups.goats.filter((g) => g.due).length || undefined },
                         { id: 'cases', label: 'Cases', count: counts.active },
                         { id: 'reports', label: 'Reported concerns', count: reports.length },
                         { id: 'withdrawal', label: 'Withdrawal', count: withdrawal.length },
@@ -65,6 +68,7 @@ export default function Health(props: Props) {
                         { id: 'store', label: 'Medicine store', count: props.medicineAlerts || undefined },
                     ]} />
                     {tab === 'store' ? <MedicineStore {...props} /> : null}
+                    {tab === 'checkups' ? <Checkups data={props.checkups} /> : null}
                     {tab === 'cases' ? (
                         <div className="space-y-3">
                             {cases.length ? cases.map((c) => <CaseCard key={c.id} c={c} isVet={isVet} {...props} />) : <Panel><Empty title="No health cases">{isVet ? 'Open a case from a reported concern or with the form.' : 'A veterinarian opens cases.'}</Empty></Panel>}

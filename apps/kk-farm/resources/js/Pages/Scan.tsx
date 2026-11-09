@@ -107,8 +107,8 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                     {goat.photo ? <img src={`/media/${goat.photo}`} alt="" className="size-36 rounded-3xl object-cover shadow-float" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}
                 </motion.div>
                 <div className="min-w-0">
-                    <h2 className="text-xl font-bold text-cobalt-900">{goat.name ?? 'Unnamed goat'}</h2>
-                    <p className="text-ink-soft">{goat.number} · {goat.breed} · {goat.age}</p>
+                    <h2 className="font-mono text-xl font-bold text-cobalt-900">{goat.number}</h2>
+                    <p className="text-ink-soft">{goat.name ? `${goat.name} · ` : ''}{goat.breed} · {goat.age}</p>
                     <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} KG` : ''}</p>
                     <div className="mt-1 flex gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} /></div>
                     {goat.withdrawal ? (

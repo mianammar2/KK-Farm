@@ -118,6 +118,11 @@ final class ActionCenter
                 $low->map(fn (FeedItem $i) => ['text' => $i->name, 'sub' => round($stock[$i->id] ?? 0, 1).' KG · reorder at '.round($i->reorder_level_kg).' KG', 'url' => '/feeding'])->values());
         }
 
+        // ---- Routine checkups (D-095) ----
+        $due = \App\Support\Checkups::due();
+        $add('health', 'checkups_due', 'Health checkups due', 'info', 'Every '.\App\Support\Checkups::interval().' days. Open Veterinary & Health → Checkups.', '/health?tab=checkups',
+            $due->map(fn ($a) => ['text' => $a->farm_number, 'sub' => $a->pen?->fullName(), 'url' => '/health?tab=checkups'])->values());
+
         // ---- Wrong entries waiting for a decision (D-091) ----
         if ($user->passes('remove_goats')) {
             $asked = Animal::whereNotNull('removal_requested_at')->where('status', '!=', 'voided')->orderBy('removal_requested_at')->get();

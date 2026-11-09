@@ -129,8 +129,9 @@ export function GoatLabel({ goat, size = 38 }: { goat: Pick<GoatCard, 'id' | 'nu
         <Link href={`/goats/${goat.id}`} prefetch className="group flex min-w-0 items-center gap-2.5">
             {goat.photo ? <img src={`/media/${goat.photo}`} alt="" width={size} height={size} loading="lazy" className="shrink-0 rounded-tile object-cover" style={{ width: size, height: size }} /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={size} />}
             <span className="min-w-0">
-                <span className="block truncate font-semibold text-cobalt-800 group-hover:underline">{goat.name ?? 'Unnamed'}</span>
-                <span className="block truncate text-sm text-ink-soft">{goat.number}</span>
+                {/* D-096: the Tag ID is the goat's name on the farm; a name, if given, is small underneath. */}
+                <span className="block truncate font-mono font-semibold text-cobalt-800 group-hover:underline">{goat.number}</span>
+                {goat.name ? <span className="block truncate text-sm text-ink-soft">{goat.name}</span> : null}
             </span>
         </Link>
     );
