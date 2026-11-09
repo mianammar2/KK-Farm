@@ -106,7 +106,7 @@ class DashboardController extends Controller
         $card = fn (Animal $a) => [
             'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'age' => $a->effectiveAge(), 'ageLabel' => $a->ageLabel(),
             'flag' => $a->health_flag, 'weight' => isset($weights[$a->id]) ? round($weights[$a->id], 1) : null,
-            'out' => isset($out[$a->id]) ? ['area' => $out[$a->id]->area?->name, 'since' => $out[$a->id]->at->diffForHumans(short: true)] : null,
+            'out' => isset($out[$a->id]) ? ['area' => $out[$a->id]->area?->fullName(), 'since' => $out[$a->id]->at->diffForHumans(short: true)] : null,
         ];
         $byPen = $goats->groupBy(fn ($g) => $g->pen_id ?? 0);
         $byId = $goats->keyBy('id');

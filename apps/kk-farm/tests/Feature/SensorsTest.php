@@ -124,7 +124,7 @@ class SensorsTest extends TestCase
 
         $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn (AssertableInertia $p) => $p
             ->where('shedBoard.sheds.0.areas.0.code', 'OA01')->where('shedBoard.sheds.0.areas.0.goats.0.number', 'G-1')
-            ->where('shedBoard.sheds.0.pens.0.goats.0.out.area', 'OA01'));
+            ->where('shedBoard.sheds.0.pens.0.goats.0.out.area', 'KKF-BDU-01-OA01'));
 
         $this->travel(9)->hours();
         $this->assertSame(['G-1'], array_column(collect(ActionCenter::items($this->user('manager')))->firstWhere('key', 'out_too_long')['items'], 'text'));

@@ -74,7 +74,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
             <div key={p.id} onDragOver={canMove ? (e) => { e.preventDefault(); setOver(p.id); } : undefined} onDragLeave={() => setOver((o) => (o === p.id ? null : o))} onDrop={canMove ? (e) => onDrop(e, p.id) : undefined}
                 className={cx('flex min-h-32 flex-col rounded-tile border bg-glaze/60 p-2 transition-colors', over === p.id ? 'border-turq-600 bg-turq-100 ring-2 ring-turq-600' : 'border-rule')}>
                 <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                    <span className="truncate font-mono text-sm font-semibold text-cobalt-900" title={p.name}>{p.code}</span>
+                    <span className="min-w-0 truncate font-mono text-sm font-semibold text-cobalt-900" title={p.name}>{p.name}</span>
                     <span className={cx('shrink-0 text-xs font-semibold tabular-nums', full ? 'text-crit-700' : 'text-ink-soft')}>{p.goats.length}{p.capacity !== null ? `/${p.capacity}` : ''} goat{p.goats.length === 1 && p.capacity === null ? '' : 's'}</span>
                 </div>
                 <div className="mb-1.5 truncate text-xs text-ink-soft">{p.purpose}</div>
@@ -92,7 +92,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
                 onDrop={canMove ? (e) => { e.preventDefault(); try { presence(JSON.parse(e.dataTransfer.getData('text/plain')) as string[], 'out', a.id); } catch { setOver(null); } } : undefined}
                 className={cx('flex min-h-32 flex-col rounded-tile border border-dashed p-2 transition-colors', over === a.id ? 'border-turq-600 bg-turq-100 ring-2 ring-turq-600' : 'border-watch-400 bg-watch-100/50')}>
                 <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                    <span className="flex items-center gap-1 truncate font-mono text-sm font-semibold text-cobalt-900" title={a.name}><Sun size={14} className="text-watch-700" aria-hidden />{a.code}</span>
+                    <span className="flex items-center gap-1 truncate font-mono text-sm font-semibold text-cobalt-900" title={a.name}><Sun size={14} className="shrink-0 text-watch-700" aria-hidden /><span className="min-w-0 truncate">{a.name}</span></span>
                     <span className="shrink-0 text-xs font-semibold tabular-nums text-ink-soft">{a.goats.length} out{a.capacity !== null ? ` / ${a.capacity}` : ''}</span>
                 </div>
                 <div className="mb-1.5 truncate text-xs text-ink-soft">Open area{a.purpose ? ` · ${a.purpose}` : ''}</div>
