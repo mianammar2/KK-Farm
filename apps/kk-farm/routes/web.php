@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/health/records/{record}/close', [HealthController::class, 'close']);
         Route::post('/health/cases', [HealthController::class, 'openCase']);
         Route::post('/health/checkups', [HealthController::class, 'checkup']); // D-095
+        Route::post('/health/checkups/{checkup}', [HealthController::class, 'updateCheckup']); // D-099
         Route::post('/health/preventive', [HealthController::class, 'preventive']);
         Route::post('/health/cases/{case}', [HealthController::class, 'updateCase']);
         Route::post('/health/cases/{case}/treatments', [HealthController::class, 'addTreatment']);
@@ -95,6 +96,7 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:weights')->group(function (): void {
         Route::get('/weights', [WeightController::class, 'index']);
         Route::post('/weights', [WeightController::class, 'store']);
+        Route::post('/weights/{record}', [WeightController::class, 'update']); // D-099
     });
 
     Route::middleware('module:feeding')->group(function (): void {

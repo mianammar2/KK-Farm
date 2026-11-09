@@ -46,15 +46,23 @@ class HealthController extends Controller
             'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'pen' => $a->pen?->fullName(), 'repro' => $a->repro_status,
             'last' => isset($latest[$a->id]) ? ['on' => $latest[$a->id]->checked_on->format('j M'), 'outcome' => $latest[$a->id]->outcome, 'by' => $latest[$a->id]->examiner] : null,
             'due' => ! isset($latest[$a->id]) || $latest[$a->id]->checked_on->toDateString() <= $since,
+            'next' => isset($latest[$a->id]) ? $latest[$a->id]->checked_on->copy()->addDays($interval)->format('j M') : null, // D-099
+            'recheck' => isset($latest[$a->id]) && $latest[$a->id]->follow_up_on ? $latest[$a->id]->follow_up_on->format('j M') : null,
         ])->values();
+
+        $revisions = \App\Support\Revisions::counts('checkup', \App\Models\HealthCheckup::orderByDesc('checked_on')->orderByDesc('id')->limit(60)->pluck('id'));
 
         return Inertia::render('Health', [
             'checkups' => [
                 'goats' => $checkupGoats, 'interval' => $interval,
-                'recent' => \App\Models\HealthCheckup::with('animal')->orderByDesc('checked_on')->orderByDesc('id')->limit(60)->get()->map(fn ($c) => [
+                'recent' => ($recent = \App\Models\HealthCheckup::with('animal')->orderByDesc('checked_on')->orderByDesc('id')->limit(60)->get())->map(fn ($c) => [
                     'id' => $c->id, 'on' => $c->checked_on->format('j M Y'), 'goat' => $c->animal->farm_number, 'goatId' => $c->animal_id, 'outcome' => $c->outcome,
                     'temp' => $c->temperature_f, 'score' => $c->body_score, 'weight' => $c->weight_kg,
                     'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'flags' => $c->flags(), 'findings' => $c->findings, 'caseId' => $c->health_case_id, 'by' => $c->examiner,
+                    // D-099: what a correction form needs, and whether this person may correct it
+                    'dateIso' => $c->checked_on->toDateString(), 'days' => $c->days_pregnant, 'followUp' => $c->follow_up_on?->toDateString(), 'followUpNote' => $c->follow_up_note,
+                    'sex' => $c->animal->sex, 'canEdit' => $request->user()->passes('health_checkup') && \App\Support\Revisions::canCorrect($request->user(), $c->examiner),
+                    'edits' => (int) ($revisions[$c->id] ?? 0),
                 ]),
                 'normal' => \App\Models\HealthCheckup::NORMAL,
                 'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number]),
@@ -147,6 +155,7 @@ class HealthController extends Controller
             'findings' => ['nullable', 'string', 'max:2000'], 'outcome' => ['required', Rule::in(array_keys(\App\Models\HealthCheckup::OUTCOMES))],
             'open_case' => ['boolean'], 'condition' => ['nullable', 'required_if:open_case,true', 'string', 'max:120'],
             'severity' => ['nullable', Rule::in(array_keys(HealthCase::SEVERITIES))], 'isolated' => ['boolean'],
+            'follow_up_on' => ['nullable', 'date', 'after_or_equal:checked_on'], 'follow_up_note' => ['nullable', 'string', 'max:200'], // D-099
         ], ['days_pregnant.required_if' => 'About how many days pregnant?', 'condition.required_if' => 'What did you find? (the condition for the case)']);
         abort_if(! empty($data['open_case']) && ! $request->user()->passes('open_cases'), 403, 'Only a veterinarian or the administrator opens a health case.');
         $goat = Animal::findOrFail($data['animal_id']);
@@ -155,6 +164,24 @@ class HealthController extends Controller
         Farm::log($request->user(), "Health checkup of {$goat->farm_number}: ".\App\Models\HealthCheckup::OUTCOMES[$c->outcome], "/goats/{$goat->id}");
 
         return back()->with('success', "{$goat->farm_number} checked: ".\App\Models\HealthCheckup::OUTCOMES[$c->outcome].($c->ultrasound === 'pregnant' ? '. Pregnant: added to Breeding.' : '.').($c->flags() ? ' Outside normal: '.implode(', ', $c->flags()).'.' : ''));
+    }
+
+    /** D-099: correct a checkup: the vet who did it, or the administrator. */
+    public function updateCheckup(Request $request, \App\Models\HealthCheckup $checkup): RedirectResponse
+    {
+        abort_unless($request->user()->passes('health_checkup') && \App\Support\Revisions::canCorrect($request->user(), $checkup->examiner), 403, 'Only the person who did this checkup, or the administrator, can correct it.');
+        $data = $request->validate([
+            'checked_on' => ['required', 'date', 'before_or_equal:today'], 'temperature_f' => ['nullable', 'numeric', 'between:93,110'],
+            'body_score' => ['nullable', 'integer', 'between:1,5'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
+            'ultrasound' => ['nullable', Rule::in(array_keys(\App\Models\HealthCheckup::ULTRASOUND))], 'fetuses' => ['nullable', 'integer', 'between:1,6'],
+            'days_pregnant' => ['nullable', 'required_if:ultrasound,pregnant', 'integer', 'between:1,160'], 'sire_id' => ['nullable', 'exists:animals,id'],
+            'findings' => ['nullable', 'string', 'max:2000'], 'outcome' => ['required', Rule::in(array_keys(\App\Models\HealthCheckup::OUTCOMES))],
+            'follow_up_on' => ['nullable', 'date', 'after_or_equal:checked_on'], 'follow_up_note' => ['nullable', 'string', 'max:200'],
+            'reason' => ['nullable', 'string', 'max:300'],
+        ], ['days_pregnant.required_if' => 'About how many days pregnant?']);
+        $changes = \App\Support\Checkups::correct($checkup->load('animal'), $data, $request->user());
+
+        return back()->with('success', $changes ? 'Checkup corrected: '.implode(', ', array_keys($changes)).'. The old values stay in the history.' : 'Nothing changed.');
     }
 
     private function syncHealth(Animal $animal): void

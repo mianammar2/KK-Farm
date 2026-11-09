@@ -41,6 +41,7 @@ class WeightController extends Controller
                 'previous' => $prev ? (float) $prev->weight_kg : null, 'days' => $days, 'gain' => $prev ? round($w->weight_kg - $prev->weight_kg, 2) : null,
                 'adg' => $prev ? (int) round(($w->weight_kg - $prev->weight_kg) * 1000 / $days) : null, 'score' => $w->body_score,
                 'heightIn' => $w->height_cm !== null ? round($w->height_cm / 2.54, 1) : null, 'context' => $w->context, 'by' => $w->measured_by,
+                'dateIso' => $w->measured_on->toDateString(), 'canEdit' => \App\Support\Revisions::canCorrect(request()->user(), $w->measured_by), // D-099
             ];
         });
 
@@ -71,5 +72,29 @@ class WeightController extends Controller
         Farm::log($request->user(), "Weighed {$animal->farm_number} at {$data['weight_kg']} KG", "/goats/{$animal->id}");
 
         return back()->with('success', "Weight saved for {$animal->farm_number}.");
+    }
+
+    /** D-099: correct a weighing: the person who weighed, or the administrator. The old values stay as a revision. */
+    public function update(Request $request, WeightRecord $record): RedirectResponse
+    {
+        abort_unless(\App\Support\Revisions::canCorrect($request->user(), $record->measured_by), 403, 'Only the person who weighed, or the administrator, can correct this.');
+        $data = $request->validate([
+            'measured_on' => ['required', 'date', 'before_or_equal:today'], 'weight_kg' => ['required', 'numeric', 'between:0.5,150'],
+            'body_score' => ['nullable', 'integer', 'between:1,5'], 'reason' => ['nullable', 'string', 'max:300'],
+        ]);
+        $changes = [];
+        foreach (['measured_on' => 'Date', 'weight_kg' => 'Weight KG', 'body_score' => 'Body condition'] as $key => $label) {
+            $before = $record->{$key} instanceof \DateTimeInterface ? $record->{$key}->toDateString() : $record->{$key};
+            $after = $data[$key] ?? null;
+            if (is_numeric($before) && is_numeric($after) ? (float) $before !== (float) $after : (string) ($before ?? '') !== (string) ($after ?? '')) {
+                $changes[$label] = [$before, $after];
+            }
+        }
+        if ($changes) {
+            $record->update(['measured_on' => $data['measured_on'], 'weight_kg' => $data['weight_kg'], 'body_score' => $data['body_score'] ?? null]);
+            \App\Support\Revisions::log('weighing', $record->id, $record->animal, $changes, $request->user(), $data['reason'] ?? null);
+        }
+
+        return back()->with('success', $changes ? 'Weighing corrected. The old values stay in the history.' : 'Nothing changed.');
     }
 }

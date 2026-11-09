@@ -16,7 +16,7 @@ class HealthCheckup extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['checked_on' => 'date', 'temperature_f' => 'float', 'weight_kg' => 'float', 'days_pregnant' => 'integer'];
+    protected $casts = ['checked_on' => 'date', 'temperature_f' => 'float', 'weight_kg' => 'float', 'days_pregnant' => 'integer', 'follow_up_on' => 'date'];
 
     public function animal()
     {

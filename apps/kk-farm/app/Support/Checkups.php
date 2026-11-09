@@ -82,6 +82,7 @@ final class Checkups
                 ]);
             }
 
+            self::followUp($goat, $checkup, $data, $by);
             self::syncHealth($goat);
             $readings = array_filter([
                 $checkup->temperature_f !== null ? "{$checkup->temperature_f} °F" : null, $checkup->body_score ? "body {$checkup->body_score}/5" : null,
@@ -89,6 +90,117 @@ final class Checkups
             Farm::event($goat, 'health', 'Health checkup: '.HealthCheckup::OUTCOMES[$checkup->outcome].(($readings || $parts) ? ' · '.implode(' · ', [...$readings, ...$parts]) : ''), $by->name, Carbon::parse($on));
 
             return $checkup;
+        });
+    }
+
+    /** D-099: after the checkup: a recheck on a date becomes a task for the vets (moved or cancelled when corrected). */
+    private static function followUp(Animal $goat, HealthCheckup $c, array $data, User $by): void
+    {
+        $on = $data['follow_up_on'] ?? null;
+        $task = $c->follow_up_task_id ? \App\Models\Task::find($c->follow_up_task_id) : null;
+        if (! $on) {
+            if ($task && in_array($task->status, \App\Models\Task::OPEN, true)) {
+                $task->update(['status' => 'cancelled', 'completed_at' => now(), 'completed_by' => $by->name]);
+            }
+            $c->update(['follow_up_on' => null, 'follow_up_note' => null, 'follow_up_task_id' => $task?->id]);
+
+            return;
+        }
+        $title = mb_substr("Recheck {$goat->farm_number}".(($data['follow_up_note'] ?? '') !== '' ? ": {$data['follow_up_note']}" : ''), 0, 190);
+        if ($task && in_array($task->status, \App\Models\Task::OPEN, true)) {
+            $task->update(['title' => $title, 'due_on' => $on]);
+        } else {
+            $task = \App\Models\Task::create([
+                'title' => $title, 'type' => 'health', 'priority' => $c->outcome === 'sick' ? 'high' : 'medium', 'status' => 'open', 'due_on' => $on,
+                'animal_id' => $goat->id, 'pen_id' => $goat->pen_id, 'department_id' => \App\Models\Department::where('name', 'Veterinary')->value('id'),
+                'notes' => mb_substr('Follow-up of the checkup on '.$c->checked_on->format('j M Y')." by {$by->name}.", 0, 500),
+            ]);
+        }
+        $c->update(['follow_up_on' => $on, 'follow_up_note' => $data['follow_up_note'] ?? null, 'follow_up_task_id' => $task->id]);
+    }
+
+    /**
+     * D-099: correct a checkup (the examiner, or the administrator). Every changed field is kept as a revision with
+     * who and why; what the checkup made follows: the weighing, the pregnancy (mating dates, check) and the recheck task.
+     *
+     * @return array<string, array{0: mixed, 1: mixed}> the changes
+     */
+    public static function correct(HealthCheckup $c, array $data, User $by): array
+    {
+        return DB::transaction(function () use ($c, $data, $by) {
+            $goat = $c->animal;
+            $labels = ['checked_on' => 'Date', 'temperature_f' => 'Temperature °F', 'body_score' => 'Body condition', 'weight_kg' => 'Weight KG', 'ultrasound' => 'Ultrasound',
+                'days_pregnant' => 'Days pregnant', 'fetuses' => 'Fetuses', 'findings' => 'Findings', 'outcome' => 'Result', 'follow_up_on' => 'Recheck', 'follow_up_note' => 'Recheck note'];
+            $old = ['checked_on' => $c->checked_on->toDateString(), 'weight_kg' => $c->weight_kg, 'ultrasound' => $c->ultrasound, 'days_pregnant' => $c->days_pregnant];
+            $changes = [];
+            foreach ($labels as $key => $label) {
+                if (! array_key_exists($key, $data)) {
+                    continue;
+                }
+                $before = $c->{$key} instanceof \DateTimeInterface ? $c->{$key}->toDateString() : $c->{$key};
+                $after = $data[$key] === '' ? null : $data[$key];
+                if ($key === 'ultrasound' && $goat->sex !== 'female') {
+                    $after = null;
+                }
+                $same = is_numeric($before) && is_numeric($after) ? (float) $before === (float) $after : (string) ($before ?? '') === (string) ($after ?? '');
+                if (! $same) {
+                    $changes[$label] = [$before, $after];
+                }
+            }
+            if (! $changes) {
+                return [];
+            }
+            $c->update(array_intersect_key($data, array_flip(['checked_on', 'temperature_f', 'body_score', 'weight_kg', 'ultrasound', 'days_pregnant', 'fetuses', 'findings', 'outcome'])) + ($goat->sex !== 'female' ? ['ultrasound' => null] : []));
+            $c->refresh();
+            $on = $c->checked_on->toDateString();
+
+            // The weighing it made follows.
+            $weighing = WeightRecord::where('animal_id', $goat->id)->where('context', 'checkup')->whereDate('measured_on', $old['checked_on'])->orderByDesc('id')->first();
+            if ($weighing && $c->weight_kg) {
+                $weighing->update(['measured_on' => $on, 'weight_kg' => $c->weight_kg, 'body_score' => $c->body_score]);
+            } elseif (! $weighing && $c->weight_kg) {
+                WeightRecord::create(['animal_id' => $goat->id, 'measured_on' => $on, 'weight_kg' => $c->weight_kg, 'body_score' => $c->body_score, 'context' => 'checkup', 'measured_by' => $c->examiner]);
+            }
+
+            // The pregnancy it made follows.
+            $mating = $c->mating_id ? Mating::find($c->mating_id) : null;
+            $madeHere = $mating && str_starts_with((string) $mating->notes, 'Found pregnant at the health checkup');
+            $gestation = (int) (Tenant::org()?->gestation_days ?? 150);
+            if ($c->ultrasound === 'pregnant' && $mating) {
+                $update = ['status' => 'pregnant'];
+                if ($madeHere && $c->days_pregnant) {
+                    $mated = $c->checked_on->copy()->subDays($c->days_pregnant);
+                    $update += ['mated_on' => $mated, 'expected_kidding_on' => $mated->copy()->addDays($gestation)];
+                }
+                $mating->update($update);
+                $goat->update(['repro_status' => 'pregnant', 'repro_state' => Classification::LEGACY_REPRO['pregnant'] ?? 'pregnant']);
+            } elseif ($c->ultrasound === 'pregnant' && ! $mating) {
+                $c->update(['mating_id' => self::pregnancy($goat, $c, $data, $by)?->id]);
+            } elseif ($old['ultrasound'] === 'pregnant' && $mating) {
+                $mating->update(['status' => 'not_pregnant']);
+                if ($goat->repro_status === 'pregnant') {
+                    $goat->update(['repro_status' => 'open', 'repro_state' => Classification::LEGACY_REPRO['open'] ?? null]);
+                }
+            }
+            if ($mating) {
+                PregnancyCheck::where('mating_id', $mating->id)->where('notes', 'At the health checkup.')->whereDate('checked_on', $old['checked_on'])
+                    ->update(['checked_on' => $on, 'result' => $c->ultrasound ?? 'inconclusive', 'fetuses' => $c->fetuses]);
+            }
+
+            if (array_key_exists('follow_up_on', $data)) {
+                self::followUp($goat, $c, $data, $by);
+            }
+            // A reading now outside normal with nothing open yet: an open report keeps it in view.
+            if ($c->flags() && ! $c->health_case_id && ! HealthRecord::where('animal_id', $goat->id)->where('status', 'open')->exists()) {
+                HealthRecord::create([
+                    'animal_id' => $goat->id, 'kind' => 'observation', 'occurred_on' => $on, 'title' => 'Checkup: '.implode(', ', $c->flags()), 'notes' => $c->findings,
+                    'severity' => 'medium', 'recorded_by' => $by->name, 'recorded_role' => $by->roleLabel(), 'status' => 'open',
+                ]);
+            }
+            self::syncHealth($goat);
+            Revisions::log('checkup', $c->id, $goat, $changes, $by, $data['reason'] ?? null);
+
+            return $changes;
         });
     }
 
