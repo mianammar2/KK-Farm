@@ -26,6 +26,16 @@ class ScanController extends Controller
             $open = $tag ? RfidAssignment::with('animal.breed', 'animal.pen', 'animal.latestWeight', 'animal.photos')->where('rfid_tag_id', $tag->id)->whereNull('valid_to')->first() : null;
             $past = $tag && ! $open ? RfidAssignment::with('animal')->where('rfid_tag_id', $tag->id)->orderByDesc('valid_to')->get() : collect();
 
+            // D-144: "Scan RFID" was pressed on a goat in the registry: this scan is for that goat.
+            if ($armed = RfidAttachController::armed($request)) {
+                return Inertia::render('Scan', $this->pageProps() + ['result' => null, 'attach' => [
+                    'code' => $code, 'goat' => ['id' => $armed->id, 'number' => $armed->farm_number, 'name' => $armed->name],
+                    'current' => $armed->openAssignment?->tag?->tag_code,
+                    'holder' => $open && $open->animal_id !== $armed->id ? $open->animal->farm_number : null,
+                    'same' => $open?->animal_id === $armed->id,
+                ]]);
+            }
+
             // The scan starts the goat register when there is nothing to show (D-040): a tag the farm has never seen,
             // or one that was never used on any goat.
             if (! $tag || (! $open && $past->isEmpty() && $tag->status !== 'lost')) {
@@ -44,8 +54,12 @@ class ScanController extends Controller
             ];
         }
 
-        return Inertia::render('Scan', [
-            'result' => $result,
+        return Inertia::render('Scan', $this->pageProps() + ['result' => $result, 'attach' => null]);
+    }
+
+    private function pageProps(): array
+    {
+        return [
             'samples' => [
                 'assigned' => RfidAssignment::with('tag')->whereNull('valid_to')->orderBy('id')->limit(4)->get()->pluck('tag.tag_code'),
                 'free' => RfidTag::where('status', 'in_stock')->whereHas('assignments')->limit(2)->pluck('tag_code'),
@@ -53,7 +67,7 @@ class ScanController extends Controller
             ],
             'untagged' => Animal::active()->whereDoesntHave('openAssignment')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
-        ]);
+        ];
     }
 
     public function assign(Request $request): RedirectResponse

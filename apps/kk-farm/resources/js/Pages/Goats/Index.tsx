@@ -3,10 +3,11 @@ import { ArrowDown, ArrowUp, Download, LayoutGrid, List, Plus, Search } from 'lu
 import { useMemo, useState, type CSSProperties } from 'react';
 import { inScannerApp } from '../../lib/native';
 import GoatPortrait from '../../components/GoatPortrait';
+import { RfidAttachSheet, RfidButton } from '../../components/RfidAttach';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
-type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; teethOptions: Record<string, string>; canEdit: boolean };
+type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; teethOptions: Record<string, string>; canEdit: boolean; canTag?: boolean };
 /** D-106: short labels for the teeth column */
 const TEETH_SHORT: Record<string, string> = { milk: 'Milk', '2': '2', '4': '4', '6': '6', '8': '8 (full)', worn: 'Worn' };
 type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen' | 'teeth';
@@ -32,7 +33,8 @@ const PAGE = LITE ? 25 : 60; // rows drawn at once; the gun draws fewer (D-089)
 /** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
 const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
 
-export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptions, canEdit }: Props) {
+export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptions, canEdit, canTag = false }: Props) {
+    const [tagging, setTagging] = useState<Goat | null>(null); // D-144
     const url = usePage().url;
     const params = new URLSearchParams(url.split('?')[1] ?? '');
     const [query, setQuery] = useState(() => params.get('q') ?? '');
@@ -171,7 +173,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                         <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors hover:bg-glaze', TONES[t].row)}>
                                             <td className="relative">
                                                 <span aria-hidden className={cx('absolute inset-y-1.5 left-0 w-1 rounded-r-full', TONES[t].bar)} />
-                                                <div className="flex items-center gap-1.5 pl-1"><GoatLabel goat={g} />{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
+                                                <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
                                             </td>
                                             <td>{g.breed}</td>
                                             <td><SexIcon sex={g.sex} label /></td>
@@ -188,7 +190,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} /></div></td>
-                                            <td className="text-sm text-ink-soft">{g.tag ? <span className="font-mono">{g.tag}</span> : 'No tag'}</td>
+                                            <td className="text-sm text-ink-soft"><span className="flex items-center gap-1.5">{g.tag ? <span className="font-mono">{g.tag}</span> : 'No tag'}{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}</span></td>
                                         </tr>
                                     );
                                 })}
@@ -205,7 +207,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                     <span aria-hidden className={cx('absolute inset-y-0 left-0 w-1.5', TONES[t].bar)} />
                                     {g.photo ? <img src={`/media/${g.photo}`} alt="" loading="lazy" className="size-14 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={g.number} coat={g.coat} sex={g.sex} size={56} />}
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-1.5"><span className="truncate font-mono font-semibold text-cobalt-900">{g.number}</span><SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
+                                        <div className="flex items-center gap-1.5"><span className="truncate font-mono font-semibold text-cobalt-900">{g.number}</span>{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
                                         <div className="truncate text-xs text-ink-soft">{g.breed} · {g.age ?? 'age unknown'}{g.teeth ? ` · ${TEETH_SHORT[g.teeth] ?? g.teeth} teeth` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
@@ -221,6 +223,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                     </button>
                 ) : null}
             </Panel>
+            {tagging ? <RfidAttachSheet goat={tagging} onClose={() => setTagging(null)} /> : null}
         </>
     );
 }

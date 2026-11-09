@@ -53,6 +53,9 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/goats/register', [GoatController::class, 'register']);
         Route::post('/goats', [GoatController::class, 'store']);
         Route::get('/goats/{animal}', [GoatController::class, 'show']);
+        Route::post('/goats/{animal}/rfid/arm', [\App\Http\Controllers\RfidAttachController::class, 'arm']); // D-144
+        Route::post('/goats/rfid/disarm', [\App\Http\Controllers\RfidAttachController::class, 'disarm']);
+        Route::post('/goats/{animal}/rfid', [\App\Http\Controllers\RfidAttachController::class, 'attach']);
         Route::post('/goats/{animal}/photos', [GoatController::class, 'addPhoto']);
         Route::post('/goats/{animal}/photos/{photo}/profile', [GoatController::class, 'setProfilePhoto']);
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);

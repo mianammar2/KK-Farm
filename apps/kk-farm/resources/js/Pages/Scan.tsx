@@ -7,14 +7,15 @@ import { haptic } from '../lib/native';
 import GoatPortrait from '../components/GoatPortrait';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
 import type { GoatCard, Option } from '../types';
+import { AttachPrompt } from '../components/RfidAttach';
 
 type Result = { code: string; state: 'assigned' | 'free' | 'lost' | 'unknown'; goat: (GoatCard & { withdrawal?: { meat: string | null; milk: string | null } | null; pregnancyDay?: number | null; can?: { health: boolean; check: boolean; weigh: boolean; move: boolean } }) | null; since: string | null; history: Array<{ id: string; number: string; to: string | null; reason: string | null }> };
-type Props = { result: Result | null; samples: { assigned: string[]; free: string[]; new: string[] }; untagged: Option[]; goats: Option[] };
+type Props = { attach?: Parameters<typeof AttachPrompt>[0]['attach'] | null; result: Result | null; samples: { assigned: string[]; free: string[]; new: string[] }; untagged: Option[]; goats: Option[] };
 
 // Inside the KK Farm Android app on the RFID gun (its user agent carries "KKFarmScanner").
 const IN_APP = typeof navigator !== 'undefined' && navigator.userAgent.includes('KKFarmScanner');
 
-export default function Scan({ result, samples, goats }: Props) {
+export default function Scan({ result, samples, goats, attach = null }: Props) {
     const [code, setCode] = useState(result?.code ?? '');
     const [scanning, setScanning] = useState(false);
     useEffect(() => setScanning(false), [result]);
@@ -68,7 +69,8 @@ export default function Scan({ result, samples, goats }: Props) {
                 <AnimatePresence mode="wait">
                     {/* On a phone or the gun the result comes first, above the reader panel. */}
                     <motion.div key={result?.code ?? 'idle'} className="order-first lg:order-none" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ type: 'spring', stiffness: 360, damping: 30 }}>
-                        {!result ? <Idle scanning={scanning} /> : null}
+                        {attach ? <AttachPrompt attach={attach} /> : null}
+                        {!result && !attach ? <Idle scanning={scanning} /> : null}
                         {result?.state === 'assigned' && result.goat ? <Found goat={result.goat} result={result} /> : null}
                         {result && result.state !== 'assigned' ? <Unassigned result={result} goats={goats} /> : null}
                     </motion.div>
