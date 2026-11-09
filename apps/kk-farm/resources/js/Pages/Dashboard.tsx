@@ -166,15 +166,24 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                     {financeChart && showCharts ? <Panel title="Income and spending" description="Last 6 months"><div className="kk-graph"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></div></Panel> : null}
                     {kiddings.length ? (
                         <Panel title="Next kiddings" flush description="Mating date + gestation days">
-                            <ul className="divide-y divide-rule">
-                                <ShowMore items={kiddings} render={(k) => (
-                                    <li key={k.goatId}>
-                                        <Link href={`/goats/${k.goatId}`} className="flex items-center justify-between gap-2 px-4 py-2 text-sm hover:bg-glaze">
-                                            <span className="min-w-0 truncate font-semibold text-cobalt-800">{k.name ?? k.number}</span>
-                                            <span className="shrink-0 text-ink-soft">{k.on} · {k.days < 0 ? `${-k.days}d over` : `${k.days}d`}</span>
-                                        </Link>
-                                    </li>
-                                )} />
+                            {/* D-140: the barn's kidding calendar: a tear-off date, the doe's ear tag and a countdown with a newborn kid. */}
+                            <ul className="kk-kidding-board">
+                                <ShowMore items={kiddings} render={(k) => {
+                                    const [day, ...rest] = k.on.split(' ');
+                                    const soon = k.days >= 0 && k.days <= 10;
+                                    return (
+                                        <li key={k.goatId}>
+                                            <Link href={`/goats/${k.goatId}`} className="kk-kidding-row kk-lift">
+                                                <span className={`kk-cal ${k.days < 0 ? 'kk-cal-over' : soon ? 'kk-cal-soon' : ''}`}><span className="kk-cal-month">{rest.join(' ') || ' '}</span><span className="kk-cal-day">{day}</span></span>
+                                                <span className="flex min-w-fit flex-1 items-center gap-2"><EarTag number={k.number} />{k.name ? <span className="truncate font-semibold text-[#3b2e1a]">{k.name}</span> : null}</span>
+                                                <span className={`kk-countdown ${k.days < 0 ? 'kk-countdown-over' : soon ? 'kk-countdown-soon' : ''}`}>
+                                                    <span className="kk-kid" aria-hidden><GoatFigure female flag={false} delay={0} flip={false} /></span>
+                                                    {k.days < 0 ? `${-k.days} days over` : k.days === 0 ? 'Today' : `In ${k.days} days`}
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    );
+                                }} />
                             </ul>
                         </Panel>
                     ) : null}

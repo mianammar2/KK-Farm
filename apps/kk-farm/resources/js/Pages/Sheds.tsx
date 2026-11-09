@@ -4,6 +4,7 @@ import { LocateFixed, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
+import { BarnRoof, GoatFigure } from '../components/FarmScene';
 import { Button, Chip, cx, Empty, Field, HealthChip, PageHeader, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { useFive } from '../lib/useFive';
@@ -77,37 +78,54 @@ export default function Sheds({ farms, sheds, types, prefix, board }: Props & { 
 
                     {shown.length === 0 ? <Empty title={sheds.length ? 'No sheds on this farm yet' : 'No sheds yet'}>{canManage ? 'Add your first shed, then add pens inside it.' : 'The owner or manager adds sheds and pens.'}</Empty> : null}
 
+                    {/* D-141: each shed drawn as the barn, its pens with their real goats (white female, brown male, red tag unwell). */}
                     {[...active, ...planned].map((shed) => (
-                        <Panel
-                            key={shed.id}
-                            title={shed.name}
-                            description={`${farms.length > 1 ? `${farms.find((f) => f.id === shed.farmId)?.name ?? 'No farm'} · ` : ''}${shed.typeName ? `${shed.typeName} · ${shed.purpose}` : 'No unit type yet: edit to choose one'}${shed.status === 'planned' ? ' · planned' : ''} · ${shed.pens.length} pen${shed.pens.length === 1 ? '' : 's'}`}
-                            actions={canManage ? (
-                                <div className="flex gap-1">
-                                    {editButton(`Edit ${shed.name}`, () => setEditing({ kind: 'shed', shed }))}
-                                    <Button type="button" variant="secondary" onClick={() => setEditing({ kind: 'pen', shed })}><Plus className="mr-1 inline size-4" aria-hidden />Pen</Button>
-                                    <Button type="button" variant="secondary" onClick={() => setEditing({ kind: 'pen', shed, area: true })}><Plus className="mr-1 inline size-4" aria-hidden />Open area</Button>
+                        <section key={shed.id} className={cx('kk-barn', shed.status === 'planned' && 'kk-barn-planned')} aria-label={shed.name}>
+                            <BarnRoof id={`shed-${shed.id}`} name={shed.name} typeName={shed.typeName} />
+                            <div className="kk-barn-body">
+                                <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
+                                    <span className="min-w-[14rem] flex-1 text-sm text-[#4a3a22]">
+                                        {farms.length > 1 ? <span className="font-semibold">{farms.find((f) => f.id === shed.farmId)?.name ?? 'No farm'} · </span> : null}
+                                        {shed.typeName ? `${shed.purpose}` : 'No unit type yet: edit to choose one'}
+                                        {shed.status === 'planned' ? <span className="kk-paper-note ml-2 inline-block !py-0.5 !pl-6 text-xs font-semibold">Planned</span> : null}
+                                    </span>
+                                    {canManage ? (
+                                        <span className="flex flex-wrap gap-1.5">
+                                            <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'shed', shed })} aria-label={`Edit ${shed.name}`}><Pencil className="size-3.5" aria-hidden />Edit</button>
+                                            <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'pen', shed })}><Plus className="size-3.5" aria-hidden />Pen</button>
+                                            <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'pen', shed, area: true })}><Plus className="size-3.5" aria-hidden />Open Area</button>
+                                        </span>
+                                    ) : null}
                                 </div>
-                            ) : null}
-                        >
-                            {shed.pens.length ? (
-                                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                                    {shed.pens.map((p) => {
-                                        const fill = p.capacity ? Math.min(100, Math.round((p.count / p.capacity) * 100)) : 0;
-                                        return (
-                                            <div key={p.id} className={cx('relative rounded-tile border transition-colors', selected === p.id ? 'border-cobalt-700 bg-cobalt-100' : 'border-rule hover:border-rule-strong')}>
-                                                <button type="button" aria-pressed={selected === p.id} onClick={() => setSelected(p.id)} className="w-full p-3 pr-10 text-left">
-                                                    <div className="flex items-baseline justify-between gap-2"><span className="font-semibold text-cobalt-900">{p.name}{p.kind === 'open_area' ? <span className="ml-1.5 rounded-[4px] bg-watch-100 px-1.5 py-0.5 text-xs font-semibold text-watch-700">Open area</span> : null}</span><span className="text-sm text-ink-soft">{p.kind === 'open_area' ? 'outdoor' : `${p.count}${p.capacity ? ` of ${p.capacity}` : ''}`}</span></div>
-                                                    <div className="text-sm text-ink-soft">{p.purpose}</div>
-                                                    <div className="mt-2 h-1.5 overflow-hidden rounded-sm bg-rule" role="progressbar" aria-valuenow={fill} aria-valuemin={0} aria-valuemax={100} aria-label={`${p.name} occupancy`}><div className={cx('h-full', fill > 90 ? 'bg-treat-400' : 'bg-turq-600')} style={{ width: `${fill}%` }} /></div>
-                                                </button>
-                                                {canManage ? <button type="button" onClick={() => setEditing({ kind: 'pen', shed, pen: p })} aria-label={`Edit ${p.name}`} className="absolute right-1.5 top-1.5 rounded-md p-1.5 text-ink-soft hover:bg-white hover:text-cobalt-800"><Pencil className="size-4" aria-hidden /></button> : null}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : <p className="text-sm text-ink-soft">No pens yet.{canManage ? ' Tap “Pen” to add one.' : ''}</p>}
-                        </Panel>
+                                {shed.pens.length ? (
+                                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                                        {shed.pens.map((p) => {
+                                            const area = p.kind === 'open_area';
+                                            const shown = p.goats.slice(0, 18);
+                                            const full = p.capacity !== null && p.count > p.capacity;
+                                            return (
+                                                <div key={p.id} className={cx('kk-pen relative !p-0', area && 'kk-yard', selected === p.id && 'kk-pen-selected')}>
+                                                    <button type="button" aria-pressed={selected === p.id} onClick={() => setSelected(p.id)} className="block w-full px-2 pt-1.5 pb-2 pr-8 text-left">
+                                                        <span className="flex items-center justify-between gap-1">
+                                                            <span className="kk-pen-sign">{p.code}</span>
+                                                            <span className={cx('text-sm font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#3b2e1a]')}>{area ? 'Outdoor' : <>{p.count}{p.capacity ? <span className="text-xs font-semibold opacity-70">/{p.capacity}</span> : null}</>}</span>
+                                                        </span>
+                                                        <span className="mt-0.5 block truncate text-xs text-[#4a3a22]">{p.purpose}</span>
+                                                        <span className="kk-herd" aria-hidden>
+                                                            {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
+                                                            {p.goats.length > shown.length ? <span className="self-center text-xs font-bold text-[#4a3a22]">+{p.goats.length - shown.length}</span> : null}
+                                                        </span>
+                                                        {!area ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
+                                                    </button>
+                                                    {canManage ? <button type="button" onClick={() => setEditing({ kind: 'pen', shed, pen: p })} aria-label={`Edit ${p.name}`} className="absolute right-1 top-1 rounded-md p-1.5 text-[#5a3b1e] hover:bg-white/70"><Pencil className="size-4" aria-hidden /></button> : null}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : <p className="px-1 text-sm text-[#4a3a22]">No pens yet.{canManage ? ' Tap “Pen” to add one.' : ''}</p>}
+                            </div>
+                            <div className="kk-grass" aria-hidden />
+                        </section>
                     ))}
 
                     {pen ? (
