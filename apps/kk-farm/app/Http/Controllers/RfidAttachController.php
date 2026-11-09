@@ -71,15 +71,15 @@ class RfidAttachController extends Controller
             if ($open && $open->animal_id !== $animal->id) {
                 $holder = Animal::find($open->animal_id);
                 if (! ($data['move'] ?? false)) {
-                    throw ValidationException::withMessages(['tag' => "This tag is on {$holder->farm_number}. Move it to {$animal->farm_number}?", 'holder' => $holder->farm_number]);
+                    throw ValidationException::withMessages(['tag' => "This RFID is linked to {$holder->farm_number}. Link it to {$animal->farm_number} instead?", 'holder' => $holder->farm_number]);
                 }
                 Farm::closeOpenTag($holder, 'reassigned', $user); // its history keeps the tag
             }
             Farm::assignTag($animal, $tag, $hadTag ? 'replacement' : 'initial', $user);
         });
         $request->session()->forget(self::SESSION);
-        Farm::log($user, "Attached RFID tag {$data['tag']} to {$animal->farm_number}", "/goats/{$animal->id}");
-        $message = "RFID tag {$data['tag']} is now on {$animal->farm_number}. Scanning it opens this goat.";
+        Farm::log($user, "Linked RFID {$data['tag']} to {$animal->farm_number}", "/goats/{$animal->id}");
+        $message = "RFID {$data['tag']} is linked to {$animal->farm_number}. Scanning it opens this goat; the tag ID stays {$animal->farm_number}.";
 
         return $request->input('from') === 'scan'
             ? redirect("/goats/{$animal->id}")->with('success', $message)

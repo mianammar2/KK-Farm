@@ -111,4 +111,17 @@ class RfidAttachTest extends TestCase
         $this->actingAs($this->user('manager'))->post("/goats/{$goat->id}/rfid", ['tag' => 'AB'])->assertSessionHasErrors('tag');
         $this->assertNull($this->tagOf($goat));
     }
+
+    public function test_linking_an_rfid_never_changes_the_tag_id(): void
+    {
+        $manager = $this->user('manager');
+        $goat = $this->goat('TD141026-07');
+        $before = $goat->fresh()->only(['id', 'farm_number', 'name', 'pen_id']);
+
+        $this->actingAs($manager)->post("/goats/{$goat->id}/rfid", ['tag' => 'E2801170000003AA'])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/goats/{$goat->id}/rfid", ['tag' => 'E2801170000003BB'])->assertSessionHasNoErrors();
+
+        $this->assertSame($before, $goat->fresh()->only(['id', 'farm_number', 'name', 'pen_id']), 'the tag ID and the goat stay exactly the same');
+        $this->actingAs($manager)->get('/scan?tag=E2801170000003BB')->assertInertia(fn (AssertableInertia $p) => $p->where('result.goat.number', 'TD141026-07'));
+    }
 }

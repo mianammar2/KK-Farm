@@ -36,12 +36,12 @@ export function RfidAttachSheet({ goat, onClose }: { goat: TagGoat; onClose: () 
             onSuccess: () => onClose(),
             onError: async (e) => {
                 if (e.holder) {
-                    if (await ask({ title: `Move this tag to ${goat.number}?`, message: `${tag} is on ${e.holder}. It will be taken off ${e.holder} (kept in its history) and put on ${goat.number}.`, confirm: 'Yes, move tag', danger: false })) {
+                    if (await ask({ title: `Link this RFID to ${goat.number}?`, message: `${tag} is linked to ${e.holder}. It will be unlinked from ${e.holder} (kept in its history) and linked to ${goat.number}. Tag IDs do not change.`, confirm: 'Yes, link it', danger: false })) {
                         send(tag, true);
                         return;
                     }
                 }
-                setError(e.tag ?? 'Could not attach the tag.');
+                setError(e.tag ?? 'Could not link the RFID.');
             },
             onFinish: () => setBusy(false),
         });
@@ -52,20 +52,20 @@ export function RfidAttachSheet({ goat, onClose }: { goat: TagGoat; onClose: () 
             {confirmBox}
             <div className="space-y-4 rounded-tile bg-tile p-4 shadow-tile">
                 <div className="pr-10">
-                    <h2 className="text-lg font-semibold text-cobalt-900">{goat.tag ? 'Replace RFID Tag' : 'Attach RFID Tag'}</h2>
-                    <p className="mt-0.5 text-sm text-ink-soft">The RFID tag will open this goat when it is scanned.</p>
+                    <h2 className="text-lg font-semibold text-cobalt-900">Link RFID to {goat.number}</h2>
+                    <p className="mt-0.5 text-sm text-ink-soft">The tag ID <span className="font-mono font-semibold">{goat.number}</span> stays the same. The RFID is only linked to it: scanning the RFID opens this goat.</p>
                 </div>
                 <div className="flex items-center gap-3"><EarTag number={goat.number} />{goat.name ? <span className="font-semibold text-cobalt-900">{goat.name}</span> : null}</div>
-                {goat.tag ? <p className="rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">Now: <span className="font-mono font-semibold">{goat.tag}</span>. A new scan replaces it; the old tag stays in this goat's history.</p> : null}
+                {goat.tag ? <p className="rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">Linked RFID now: <span className="font-mono font-semibold">{goat.tag}</span>. Scanning a new RFID links that one instead (for a lost or broken RFID); the old one stays in this goat's history.</p> : null}
                 <div className="flex items-center gap-3 rounded-tile border-2 border-dashed border-turq-600 bg-turq-100 p-3">
                     <span className="relative grid size-12 shrink-0 place-items-center rounded-full bg-turq-700 text-white"><Radio size={22} aria-hidden /><span className="kk-ring absolute inset-0 rounded-full border-2 border-turq-600" aria-hidden /></span>
-                    <p className="text-sm text-cobalt-900"><span className="font-semibold">Pull the trigger on the RFID gun now.</span> The scan opens a page that asks to attach it to {goat.number}. This waits for 3 minutes.</p>
+                    <p className="text-sm text-cobalt-900"><span className="font-semibold">Pull the trigger on the RFID gun now.</span> The scan opens a page that asks to link it to {goat.number}. This waits for 3 minutes.</p>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (code.trim()) send(code.trim()); }} className="space-y-2">
-                    <Field label="Or type the tag code" error={error ?? undefined}>
+                    <Field label="Or type the RFID code" error={error ?? undefined}>
                         <input ref={input} className="field font-mono uppercase" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="E28011700000020C…" />
                     </Field>
-                    <Button type="submit" className="w-full" disabled={busy || !code.trim()}><ScanLine size={16} className="mr-1 inline" aria-hidden />{goat.tag ? 'Replace Tag' : 'Attach Tag'}</Button>
+                    <Button type="submit" className="w-full" disabled={busy || !code.trim()}><ScanLine size={16} className="mr-1 inline" aria-hidden />Link RFID</Button>
                 </form>
             </div>
         </Sheet>
@@ -76,9 +76,9 @@ export function RfidAttachSheet({ goat, onClose }: { goat: TagGoat; onClose: () 
 export function RfidButton({ goat, onOpen }: { goat: TagGoat; onOpen: () => void }) {
     return (
         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
-            title={goat.tag ? `RFID ${goat.tag}: tap to replace` : 'No RFID tag: tap to scan one'}
+            title={goat.tag ? `RFID ${goat.tag} is linked: tap to link a different one` : 'No RFID linked: tap to scan one'}
             className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${goat.tag ? 'border-ok-700/40 bg-ok-100 text-ok-700' : 'border-turq-600 bg-turq-100 text-turq-800 hover:bg-turq-400/40'}`}>
-            <Radio size={12} aria-hidden />{goat.tag ? 'RFID' : 'Scan RFID'}
+            <Radio size={12} aria-hidden />{goat.tag ? 'RFID Linked' : 'Link RFID'}
         </button>
     );
 }
@@ -89,18 +89,18 @@ export function AttachPrompt({ attach }: { attach: { code: string; goat: TagGoat
     const [error, setError] = useState<string | null>(null);
     const go = () => {
         setBusy(true);
-        router.post(`/goats/${attach.goat.id}/rfid`, { tag: attach.code, move: !!attach.holder, from: 'scan' }, { onError: (e) => setError(e.tag ?? 'Could not attach the tag.'), onFinish: () => setBusy(false) });
+        router.post(`/goats/${attach.goat.id}/rfid`, { tag: attach.code, move: !!attach.holder, from: 'scan' }, { onError: (e) => setError(e.tag ?? 'Could not link the RFID.'), onFinish: () => setBusy(false) });
     };
     const cancel = () => router.post('/goats/rfid/disarm', {}, { onSuccess: () => router.visit('/goats') });
     return (
         <section className="kk-rise space-y-3 rounded-tile border-2 border-turq-600 bg-tile p-4 shadow-tile">
-            <h2 className="text-lg font-semibold text-cobalt-900">{attach.same ? 'Already on this goat' : `Attach this tag to ${attach.goat.number}?`}</h2>
+            <h2 className="text-lg font-semibold text-cobalt-900">{attach.same ? `Already linked to ${attach.goat.number}` : `Link this RFID to ${attach.goat.number}?`}</h2>
             <div className="flex flex-wrap items-center gap-3"><span className="rounded-tile bg-glaze px-2 py-1 font-mono text-sm font-semibold">{attach.code}</span><span aria-hidden>→</span><EarTag number={attach.goat.number} />{attach.goat.name ? <span className="font-semibold">{attach.goat.name}</span> : null}</div>
-            {attach.holder ? <p className="rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">This tag is on <span className="font-semibold">{attach.holder}</span> now. It will be taken off {attach.holder} (kept in its history).</p> : null}
-            {attach.current && !attach.same ? <p className="text-sm text-ink-soft">{attach.goat.number} now has <span className="font-mono">{attach.current}</span>; it will be replaced and kept in its history.</p> : null}
+            {attach.holder ? <p className="rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">This RFID is linked to <span className="font-semibold">{attach.holder}</span> now. It will be unlinked from {attach.holder} (kept in its history).</p> : null}
+            {attach.current && !attach.same ? <p className="text-sm text-ink-soft">{attach.goat.number} has RFID <span className="font-mono">{attach.current}</span> linked; this one will be linked instead and the old one kept in its history. The tag ID {attach.goat.number} stays the same.</p> : null}
             {error ? <p className="text-sm font-semibold text-crit-700" role="alert">{error}</p> : null}
             <div className="flex flex-wrap gap-2">
-                {attach.same ? <Button type="button" onClick={() => router.visit(`/goats/${attach.goat.id}`)}>Open {attach.goat.number}</Button> : <Button type="button" onClick={go} disabled={busy}>{attach.holder ? 'Yes, Move Tag Here' : 'Yes, Attach Tag'}</Button>}
+                {attach.same ? <Button type="button" onClick={() => router.visit(`/goats/${attach.goat.id}`)}>Open {attach.goat.number}</Button> : <Button type="button" onClick={go} disabled={busy}>{attach.holder ? 'Yes, Link It Here' : 'Yes, Link RFID'}</Button>}
                 <Button type="button" variant="secondary" onClick={cancel}>Cancel</Button>
             </div>
         </section>
