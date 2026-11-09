@@ -54,7 +54,7 @@ class FeedingController extends Controller
             'meal' => $meal,
             'meals' => Feed::MEALS,
             'mealTimes' => Feed::mealTimes($org),
-            'settings' => ['late' => $org->meal_late_minutes, 'window' => $org->meal_window_minutes, 'tolerance' => $org->feed_tolerance_pct, 'timezone' => $org->timezone,
+            'settings' => ['late' => $org->meal_late_minutes, 'window' => $org->meal_window_minutes, 'tolerance' => $org->feed_tolerance_pct, 'timezone' => $org->timezone, 'tracking' => (bool) $org->feed_tracking,
                 'intake' => [ // D-069: % of body weight a day, [min, max]; kids null = milk only
                     'kid' => $org->kid_intake_min_pct !== null ? [(float) $org->kid_intake_min_pct, (float) $org->kid_intake_max_pct] : null,
                     'grower' => [(float) $org->grower_intake_min_pct, (float) $org->grower_intake_max_pct],
@@ -393,6 +393,7 @@ class FeedingController extends Controller
             'grower_max' => ['required', 'numeric', 'between:0.1,10', 'gte:grower_min'],
             'adult_min' => ['required', 'numeric', 'between:0.1,10'],
             'adult_max' => ['required', 'numeric', 'between:0.1,10', 'gte:adult_min'],
+            'tracking' => ['boolean'], // D-107
         ]);
         Organization::whereKey($request->user()->org_id)->update([
             'meal_times' => json_encode(['morning' => $data['morning'], 'midday' => $data['midday'], 'evening' => $data['evening']]),
@@ -400,6 +401,7 @@ class FeedingController extends Controller
             'kid_intake_min_pct' => $data['kid_min'] ?? null, 'kid_intake_max_pct' => $data['kid_max'] ?? null,
             'grower_intake_min_pct' => $data['grower_min'], 'grower_intake_max_pct' => $data['grower_max'],
             'adult_intake_min_pct' => $data['adult_min'], 'adult_intake_max_pct' => $data['adult_max'],
+            'feed_tracking' => (bool) ($data['tracking'] ?? false),
         ]);
         Farm::log($request->user(), 'Changed feeding settings', '/feeding');
 

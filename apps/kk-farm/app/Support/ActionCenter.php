@@ -96,7 +96,8 @@ final class ActionCenter
             $weaningDue->map(fn (Animal $a) => $goat($a, $a->birth_date->diffInDays($today).' days old')));
 
         // ---- Feeding ----
-        if ($user->canModule('feeding')) {
+        // D-107: meals, missed feeding, store and shortage alerts only when the farm records feeding.
+        if ($user->canModule('feeding') && $org->feed_tracking) {
             $board = Feed::board(Feed::now($org)->toDateString(), $org);
             $pens = \App\Models\Pen::with('shed')->whereIn('id', $board->keys())->get()->keyBy('id');
             $missed = $board->flatMap(fn ($meals, $penId) => collect($meals)->filter(fn ($m) => $m['status'] === 'missed')->map(fn ($m, $meal) => ['text' => $pens[$penId]?->fullName() ?? 'Pen', 'sub' => Feed::MEALS[$meal].' meal', 'url' => '/feeding']))->values();

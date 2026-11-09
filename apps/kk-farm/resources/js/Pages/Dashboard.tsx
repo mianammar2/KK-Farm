@@ -20,7 +20,7 @@ type ReqPen = { id: number | null; name: string; kgDay: number; kgMonth: number;
 type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; kgMonth: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
 type Supply = { needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
-type Requirement = { supply: Supply; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
+type Requirement = { supply: Supply; tracking: boolean; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
 type HealthLinks = { checkupsDue: number; openReports: number; canCheck: boolean; canCase: boolean; canCare: boolean };
 type Props = { health: HealthLinks | null; shedBoard: ShedBoardData | null; canMove: boolean; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
     stats: Record<string, number>;
@@ -366,7 +366,7 @@ function FeedRequirement({ req }: { req: Requirement }) {
     return (
         <Panel className="mt-4" title="Feed requirement today" description={`${req.kgDay} KG for ${plural(req.planned, 'goat', 'goats')}${req.cost ? ` · PKR ${req.cost.toLocaleString('en-PK')} a day` : ''} · ${req.kgMonth} KG${req.costMonth ? ` (PKR ${req.costMonth.toLocaleString('en-PK')})` : ''} in ${req.supply.month}${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
             actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Rations</Link>} flush>
-            <SupplyStrip s={req.supply} />
+            <SupplyStrip s={req.supply} tracking={req.tracking} />
             {req.sheds.length ? (
                 <ul className="divide-y divide-rule">
                     {req.sheds.map((s) => {
@@ -425,8 +425,8 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
 }
 
 /** D-080: what the goats need against what is in the feed store. */
-function SupplyStrip({ s }: { s: Supply }) {
-    const short = s.days !== null && s.days < 7;
+function SupplyStrip({ s, tracking }: { s: Supply; tracking: boolean }) {
+    const short = tracking && s.days !== null && s.days < 7;
     const box = (label: string, value: string, note?: string, alert?: boolean) => (
         <div className={`rounded-tile px-3 py-2 ${alert ? 'bg-crit-100' : 'bg-glaze'}`}>
             <div className="text-xs text-ink-soft">{label}</div>
@@ -436,16 +436,18 @@ function SupplyStrip({ s }: { s: Supply }) {
     );
     return (
         <div className="space-y-2 border-b border-rule px-4 py-3">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className={`grid grid-cols-2 gap-2 sm:grid-cols-3 ${tracking ? 'lg:grid-cols-5' : ''}`}>
                 {box('Needed today', `${s.needDay} KG`)}
                 {box('Needed this week', `${s.needWeek} KG`)}
-                {box(`Needed in ${s.month}`, `${s.needMonth} KG`, `${s.needLeft} KG for the ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} left${s.shortMonth ? ` · short ${s.shortMonth} KG` : ''}`, s.shortMonth > 0)}
+                {box(`Needed in ${s.month}`, `${s.needMonth} KG`, `${s.needLeft} KG for the ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} left${tracking && s.shortMonth ? ` · short ${s.shortMonth} KG` : ''}`, tracking && s.shortMonth > 0)}
+                {!tracking ? null : <>
                 {box('In the feed store', `${s.inStore} KG`, undefined, s.needDay > 0 && s.inStore === 0)}
                 {box('Store lasts', s.days === null ? '—' : s.days === 0 ? 'Not today' : `${s.days} day${s.days === 1 ? '' : 's'}`, short ? `Short ${Math.max(0, Math.round(s.needWeek - s.inStore))} KG for a week` : undefined, short)}
+                </>}
             </div>
             {short ? <p className="rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">{s.inStore === 0 ? 'No feed recorded in the store.' : 'Feed is running short.'} The goats need {s.needDay} KG a day: record a purchase in Feeding → Feed store.</p> : null}
-            {s.unsplit > 0 ? <p className="text-xs text-ink-soft">{s.unsplit} KG a day is not split into feeds yet: set a ration (Feeding → Rations) to see which feed is short.</p> : null}
-            {s.feeds.length ? (
+            {tracking && s.unsplit > 0 ? <p className="text-xs text-ink-soft">{s.unsplit} KG a day is not split into feeds yet: set a ration (Feeding → Rations) to see which feed is short.</p> : null}
+            {tracking && s.feeds.length ? (
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[40rem] text-sm">
                         <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1 font-semibold">Feed</th><th className="font-semibold">Needed a day</th><th className="font-semibold">In store</th><th className="font-semibold">Lasts</th><th className="font-semibold">Short for a week</th><th className="font-semibold">Needed in {s.month}</th><th className="font-semibold">Short this month</th></tr></thead>

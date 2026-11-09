@@ -16,7 +16,7 @@ type Movement = { id: number; on: string; item: string; type: string; qty: numbe
 type History = { id: string; on: string; meal: Meal; pen: string; feed: string; headcount: number; planned: number; offered: number; refused: number | null; consumed: number; perHead: number | null; cost: number; by: string; corrected: boolean; off: boolean };
 type Props = {
     today: string; meal: Meal; meals: Record<Meal, string>; mealTimes: Record<Meal, string>;
-    settings: { late: number; window: number; tolerance: number; timezone: string; intake: { kid: [number, number] | null; grower: [number, number]; adult: [number, number] } };
+    settings: { late: number; window: number; tolerance: number; timezone: string; tracking: boolean; intake: { kid: [number, number] | null; grower: [number, number]; adult: [number, number] } };
     board: PenRow[]; groups: Group[]; items: Item[]; movements: Movement[]; history: History[];
     categories: Record<string, string>; movementTypes: Record<string, { label: string; direction: number }>;
     can: { store: boolean; plan: boolean; approve: boolean; settings: boolean };
@@ -83,7 +83,8 @@ export default function Feeding(props: Props) {
 
 // ---------- Feed now ----------
 
-function FeedNow({ meal, meals, mealTimes, board, items, groups, onTab }: Props & { onTab: (t: string) => void }) {
+function FeedNow(props: Props & { onTab: (t: string) => void }) {
+    const { meal, meals, mealTimes, board, items, groups, onTab } = props;
     const [open, setOpen] = useState<number | null>(null);
     const noRations = !groups.some((g) => g.current);
 
@@ -97,6 +98,7 @@ function FeedNow({ meal, meals, mealTimes, board, items, groups, onTab }: Props 
                     </button>
                 ))}
             </div>
+            {!props.settings.tracking ? <Note>Feeding is not being recorded yet, so there are no meal or missed-feeding alerts. The plan below is what the goats need. Turn recording on in Settings when you start.</Note> : null}
             {!items.length ? <Note>No feeds yet. Add your feeds in the <button type="button" className="font-semibold underline" onClick={() => onTab('store')}>Feed store</button> first.</Note> : null}
             {items.length && noRations ? <Note>No approved ration yet, so each goat is planned automatically: body weight × the farm's intake % for its age (grower 3–4%, adult 2–3%), split 40/20/40 over the meals. You can change the KG given. For a ration of your own, use the <button type="button" className="font-semibold underline" onClick={() => onTab('rations')}>Rations</button> tab.</Note> : null}
             {!board.length ? <Empty title="No goats in any pen">Goats appear here once they are registered into a pen.</Empty> : null}
@@ -415,7 +417,8 @@ function HistoryTab({ history, meals }: Props) {
 function MealTimes({ mealTimes, settings, meals }: Props) {
     const form = useForm({ morning: mealTimes.morning, midday: mealTimes.midday, evening: mealTimes.evening, late: settings.late, window: settings.window, tolerance: settings.tolerance,
         kid_min: settings.intake.kid ? String(settings.intake.kid[0]) : '', kid_max: settings.intake.kid ? String(settings.intake.kid[1]) : '',
-        grower_min: String(settings.intake.grower[0]), grower_max: String(settings.intake.grower[1]), adult_min: String(settings.intake.adult[0]), adult_max: String(settings.intake.adult[1]) });
+        grower_min: String(settings.intake.grower[0]), grower_max: String(settings.intake.grower[1]), adult_min: String(settings.intake.adult[0]), adult_max: String(settings.intake.adult[1]),
+        tracking: settings.tracking });
     type RangeKey = 'kid' | 'grower' | 'adult';
     const range = (key: RangeKey, label: string, hint?: string) => (
         <div className="grid grid-cols-[7rem_1fr_1fr] items-end gap-2">
@@ -429,6 +432,12 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
     return (
         <Panel title="Feeding settings" description={`Meal times mark feeding late or missed (${settings.timezone}). Intake % is used by body-weight rations.`} className="max-w-xl">
             <form onSubmit={(e) => { e.preventDefault(); form.post('/feeding/settings', { preserveScroll: true }); }} className="space-y-3">
+                {/* D-107 */}
+                <label className="flex items-start gap-3 rounded-tile border border-rule bg-glaze px-3 py-3">
+                    <input type="checkbox" className="mt-0.5 size-5" checked={form.data.tracking} onChange={(e) => form.setData('tracking', e.target.checked)} />
+                    <span><span className="block font-semibold text-cobalt-900">Record feeding and the feed store</span>
+                        <span className="block text-sm text-ink-soft">On: meals given, missed feeding, feed store and shortage alerts. Off: only how much feed the goats need (dashboard and Feeding).</span></span>
+                </label>
                 <div className="grid grid-cols-3 gap-2">{MEALS.map((m) => <Field key={m} label={meals[m]} error={errors[m]}><input className="field" type="time" value={form.data[m]} onChange={(e) => form.setData(m, e.target.value)} /></Field>)}</div>
                 <Field label="Late after (minutes)" error={errors.late} hint="Feed given this long after the meal time counts as late."><input className="field" type="number" min={5} max={240} value={form.data.late} onChange={(e) => form.setData('late', Number(e.target.value))} /></Field>
                 <Field label="Missed after (minutes)" error={errors.window} hint="With nothing recorded this long after the meal time, the meal is missed."><input className="field" type="number" min={30} max={720} value={form.data.window} onChange={(e) => form.setData('window', Number(e.target.value))} /></Field>

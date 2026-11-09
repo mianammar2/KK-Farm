@@ -55,7 +55,8 @@ class DashboardController extends Controller
         $kiddings = Mating::with('dam')->where('status', 'pregnant')->orderBy('expected_kidding_on')->limit(20)->get()
             ->map(fn (Mating $m) => ['goatId' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'on' => $m->expected_kidding_on->format('j M'), 'days' => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false)]);
 
-        $feedToday = $this->feedingToday(); // D-069: feed section, pens that have goats
+        $tracking = (bool) (\App\Support\Tenant::org()?->feed_tracking ?? true); // D-107
+        $feedToday = $tracking ? $this->feedingToday() : ['compliance' => ['expected' => 0, 'done' => 0, 'late' => 0, 'missed' => 0]]; // D-069: feed section, pens that have goats
         $feeding = $feedToday['compliance'];
 
         return Inertia::render('Dashboard', [
@@ -78,7 +79,8 @@ class DashboardController extends Controller
             'actions' => fn () => collect(\App\Support\ActionCenter::items($user))->map(fn ($i) => ['key' => $i['key'], 'label' => $i['label'], 'count' => $i['count'], 'severity' => $i['severity']])->values(),
             'herd' => collect(['total', ...HerdStats::CATEGORIES])->map(fn ($k) => ['key' => $k, 'label' => HerdStats::LABELS[$k], 'value' => $counts[$k]])->values(),
             'missing' => $missing,
-            'feeding' => $user->canModule('feeding') ? $feedToday : null,
+            'feeding' => $user->canModule('feeding') && $tracking ? $feedToday : null,
+            'feedTracking' => $tracking,
             'requirement' => $user->canModule('feeding') ? $this->feedRequirement($goats) : null,
             'shedBoard' => $user->canModule('sheds') || $user->canModule('goats') ? $this->shedBoard($goats) : null,
             'canMove' => $user->canModule('sheds'),
@@ -264,7 +266,7 @@ class DashboardController extends Controller
         ];
 
         return [
-            'supply' => $supply,
+            'supply' => $supply, 'tracking' => (bool) (\App\Support\Tenant::org()?->feed_tracking ?? true), // D-107
             'kgDay' => round($req->sum('kgDay'), 1), 'cost' => round($req->sum(fn ($r) => $cost($r['lines']))), 'feeds' => $sum($req->values()),
             'kgMonth' => round($req->sum('kgDay') * $monthDays, 1), 'costMonth' => round($req->sum(fn ($r) => $cost($r['lines'])) * $monthDays),
             'planned' => $req->where('state', 'planned')->count(), 'milk' => $req->where('state', 'milk')->count(),

@@ -415,4 +415,21 @@ class FeedTest extends TestCase
         $this->assertNotContains('age_conflict', \App\Support\HerdStats::tags($buck->fresh(), true));
         $this->actingAs($this->user('caretaker'))->post("/goats/{$buck->id}/birth-date", ['age_months' => 30, 'reason' => 'x'])->assertForbidden();
     }
+
+    /** D-107: with feeding not recorded, only the requirement shows: no meal, missed, store or shortage alerts. */
+    public function test_without_recording_feeding_only_the_requirement_shows(): void
+    {
+        \App\Models\WeightRecord::create(['animal_id' => Animal::where('farm_number', 'D-1')->value('id'), 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']);
+        Carbon::setTestNow(Carbon::parse('2026-11-10 12:00:00', 'UTC')); // well past the morning meal: it would be "missed"
+        $keys = fn () => array_column(\App\Support\ActionCenter::items($this->user('ceo')), 'key');
+        $this->assertContains('feed_short', $keys(), 'recording on: the empty store is a shortage');
+
+        $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
+            'grower_min' => 3, 'grower_max' => 4, 'adult_min' => 2, 'adult_max' => 3, 'tracking' => false])->assertSessionHasNoErrors();
+        \App\Support\Tenant::flush();
+        $this->assertNotContains('feeding_missed', $keys());
+        $this->assertNotContains('feed_short', $keys());
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('feeding', null)->where('feedTracking', false)
+            ->where('requirement.tracking', false)->where('requirement.supply.needDay', 1));
+    }
 }
