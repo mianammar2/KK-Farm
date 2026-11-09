@@ -223,7 +223,7 @@ class DashboardController extends Controller
                     'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
                     'goats' => $rows->map(fn ($r) => [
                         'id' => $r['id'], 'number' => $r['number'], 'group' => $r['group'], 'weight' => $r['weight'], 'state' => $r['state'], 'rule' => $r['rule'],
-                        'kgDay' => $r['kgDay'], 'kgMonth' => round($r['kgDay'] * $md, 1), 'cp' => $r['cp'], 'cpKg' => $r['cpKg'], 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
+                        'kgDay' => $r['kgDay'], 'kgMonth' => round($r['kgDay'] * $md, 1), 'cp' => $r['cp'], 'cpKg' => $r['cpKg'], 'cpStandard' => $r['standard'] ?? null, 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
                     ])->values()->all(),
                     '_rows' => $rows,
                 ];

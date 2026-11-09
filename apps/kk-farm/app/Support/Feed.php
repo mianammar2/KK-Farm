@@ -55,6 +55,106 @@ final class Feed
         'other' => ['Other', 'Anyone not matched above'],
     ];
 
+    /**
+     * D-116: nutrition groups from the KK Farms CP chart, in the order a goat is matched: the first that fits wins.
+     * key => [name, CP min, CP max, purpose]. 'high_lactating' is never matched automatically (no milk yield yet).
+     */
+    public const NUTRITION_CATEGORIES = [
+        'young_kid' => ['Young Kid (Starter Feed)', 16, 18, 'Early growth and development'],
+        'weaned_kid' => ['Weaned Kid', 14, 16, 'Healthy growth after weaning'],
+        'late_pregnant' => ['Late Pregnant Female', 12, 16, 'Fetal development, especially twins'],
+        'early_pregnant' => ['Early Pregnant Female', 9, 11, 'Pregnancy maintenance'],
+        'high_lactating' => ['High-Producing Lactating Female', 16, 20, 'Higher milk production demands'],
+        'lactating' => ['Lactating Female', 12, 16, 'Milk production and kid nutrition'],
+        'ready_female' => ['Female Ready for Breeding', 10, 12, 'Breeding preparation'],
+        'fattening' => ['Fattening Goat', 11, 14, 'Weight gain and finishing'],
+        'growing_male' => ['Growing Male Goat', 12, 14, 'Body and muscle development'],
+        'growing_female' => ['Growing Female Goat', 12, 14, 'Growth and future breeding'],
+        'adult_male' => ['Adult Breeding Male', 8, 12, 'Maintenance and breeding condition'],
+        'adult_female' => ['Adult Breeding Female', 8, 10, 'Normal maintenance'],
+    ];
+
+    /** D-116: days before kidding from which a doe counts as late pregnant (the last third of 150 days). */
+    public const LATE_PREGNANCY_DAYS = 50;
+
+    public static function seedStandards(string $orgId): void
+    {
+        if (DB::table('nutrition_standards')->where('org_id', $orgId)->exists()) {
+            return;
+        }
+        foreach (self::NUTRITION_CATEGORIES as $key => [$name, $min, $max, $purpose]) {
+            DB::table('nutrition_standards')->insert([
+                'org_id' => $orgId, 'name' => $name, 'category' => $key === 'high_lactating' ? null : $key, 'cp_min_pct' => $min, 'cp_max_pct' => $max, 'purpose' => $purpose,
+                'active' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /** D-116: which nutrition group a goat is in today. */
+    public static function nutritionCategory(Animal $goat): string
+    {
+        $age = self::intakeAge($goat);
+        $female = $goat->sex === 'female';
+        $mating = $female ? self::pregnancies()[$goat->id] ?? null : null;
+        $category = $goat->effectiveCategory();
+
+        return match (true) {
+            $age === 'kid' => $goat->kid_stage === 'weaned' ? 'weaned_kid' : 'young_kid',
+            $mating !== null => $mating->expected_kidding_on && now()->startOfDay()->diffInDays($mating->expected_kidding_on, false) <= self::LATE_PREGNANCY_DAYS ? 'late_pregnant' : 'early_pregnant',
+            $female && in_array($goat->repro_status, ['pregnant', 'expected_kidding'], true) => 'early_pregnant',
+            $female && in_array($goat->repro_status, ['kidded', 'lactating', 'nursing'], true) => 'lactating',
+            $female && in_array($goat->repro_status, ['ready', 'heat'], true) => 'ready_female',
+            in_array($goat->animal_purpose, ['fattening', 'meat'], true) || in_array($category, ['fattening_male', 'wether', 'cull'], true) => 'fattening',
+            $age === 'grower' => $female ? 'growing_female' : 'growing_male',
+            default => $female ? 'adult_female' : 'adult_male',
+        };
+    }
+
+    /** @return Collection<string, \App\Models\Mating> each pregnant doe's current pregnancy */
+    private static function pregnancies(): Collection
+    {
+        return Tenant::memo('feed.pregnancies', fn () => \App\Models\Mating::where('status', 'pregnant')->orderBy('mated_on')->get()->keyBy('dam_id'));
+    }
+
+    /**
+     * D-116: the goat's nutrition standard: one it was put on by hand, else the first active standard of its group,
+     * preferring one for its breed, then one whose weight range holds its weight.
+     */
+    public static function standardFor(Animal $goat, ?float $weight): ?\App\Models\NutritionStandard
+    {
+        $all = Tenant::memo('feed.standards', fn () => \App\Models\NutritionStandard::where('active', true)->orderBy('id')->get());
+        if ($goat->nutrition_standard_id && ($own = $all->firstWhere('id', $goat->nutrition_standard_id))) {
+            return $own;
+        }
+        $category = self::nutritionCategory($goat);
+
+        return $all->filter(fn ($s) => $s->category === $category && (! $s->breed_id || $s->breed_id === $goat->breed_id)
+            && ($weight === null ? $s->min_weight_kg === null && $s->max_weight_kg === null : ($s->min_weight_kg === null || $weight >= $s->min_weight_kg) && ($s->max_weight_kg === null || $weight <= $s->max_weight_kg)))
+            ->sortBy(fn ($s) => [$s->breed_id ? 0 : 1, $s->min_weight_kg !== null || $s->max_weight_kg !== null ? 0 : 1, $s->id])->first();
+    }
+
+    /**
+     * D-112/D-116: CP % of a ration's mix. With a dry matter % on every feed it is on a dry-matter basis (CP from the
+     * bag, as fed, over the dry matter), else as fed. Null when any feed has no CP, so a partial figure is never shown.
+     *
+     * @return array{cp: float, basis: string}|null
+     */
+    public static function mix(RationPlan $p): ?array
+    {
+        if ($p->lines->isEmpty() || $p->lines->contains(fn ($l) => $l->item->cp_pct === null)) {
+            return null;
+        }
+        $w = fn ($l) => (float) ($p->basis === 'body_weight' ? $l->share_pct : $l->kg_per_head);
+        $cp = $p->lines->sum(fn ($l) => $w($l) * (float) $l->item->cp_pct);
+        $dry = $p->lines->contains(fn ($l) => $l->item->dm_pct === null) ? null : $p->lines->sum(fn ($l) => $w($l) * (float) $l->item->dm_pct);
+        $total = $p->lines->sum($w);
+        if ($total <= 0) {
+            return null;
+        }
+
+        return $dry ? ['cp' => round($cp / $dry * 100, 1), 'basis' => 'dry_matter'] : ['cp' => round($cp / $total, 1), 'basis' => 'as_fed'];
+    }
+
     public static function seedGroups(string $orgId): void
     {
         $sort = 0;
@@ -246,7 +346,7 @@ final class Feed
         });
     }
 
-    /** D-111: the crude protein % the feed should carry for this goat's age, or null when the farm has not set it. */
+    /** D-111: the farm's fallback CP % for the goat's age, used only when no nutrition standard fits (D-116). */
     public static function cpPct(Animal $goat, Organization $org): ?float
     {
         $pct = match (self::intakeAge($goat)) { 'kid' => $org->kid_cp_pct, 'grower' => $org->grower_cp_pct, default => $org->adult_cp_pct };
@@ -254,12 +354,43 @@ final class Feed
         return $pct === null ? null : (float) $pct;
     }
 
-    /** D-115: the CP target for a feeding group's ration: kids, growers, or adults for every other group. Null when not set. */
-    public static function groupCpTarget(?string $code, Organization $org): ?float
+    /**
+     * D-115/D-116: the lowest CP a feeding group's ration may carry: the highest minimum among the nutrition standards
+     * of the goats in it, so the neediest goat is covered (e.g. a late-pregnant doe among breeding does). A group with
+     * no goats on a standard uses the farm's fallback % for its age.
+     *
+     * @return array<int, array{target: float, standard: ?string, goats: int}> by feeding group id
+     */
+    public static function groupCpTargets(): array
     {
-        $pct = match ($code) { 'kids' => $org->kid_cp_pct, 'growers' => $org->grower_cp_pct, default => $org->adult_cp_pct };
+        $org = self::org();
+        $goats = Animal::active()->get();
+        $groups = self::groupIds($goats);
+        $weights = self::latestWeights();
+        $out = [];
+        foreach ($goats as $g) {
+            $std = self::standardFor($g, $weights[$g->id] ?? null);
+            $gid = $groups[$g->id];
+            if ($gid === null || ! $std) {
+                continue;
+            }
+            $out[$gid] ??= ['target' => 0.0, 'standard' => null, 'goats' => 0];
+            $out[$gid]['goats']++;
+            if ($std->cp_min_pct > $out[$gid]['target']) {
+                $out[$gid]['target'] = $std->cp_min_pct;
+                $out[$gid]['standard'] = $std->name;
+            }
+        }
+        foreach (FeedingGroup::all() as $group) {
+            if (! isset($out[$group->id])) {
+                $pct = match ($group->code) { 'kids' => $org->kid_cp_pct, 'growers' => $org->grower_cp_pct, default => $org->adult_cp_pct };
+                if ($pct !== null) {
+                    $out[$group->id] = ['target' => (float) $pct, 'standard' => null, 'goats' => 0];
+                }
+            }
+        }
 
-        return $pct === null ? null : (float) $pct;
+        return $out;
     }
 
     /**
@@ -273,23 +404,29 @@ final class Feed
         $org = self::org();
         $head = self::groupIds(Animal::active()->get())->countBy();
         $groups = FeedingGroup::all()->keyBy('id');
+        $targets = self::groupCpTargets();
 
-        return self::plansOn(self::now($org)->toDateString())->map(function ($plan, $groupId) use ($org, $head, $groups) {
+        return self::plansOn(self::now($org)->toDateString())->map(function ($plan, $groupId) use ($head, $groups, $targets) {
             $plan->loadMissing('lines.item');
-            $mix = \App\Http\Controllers\FeedingController::mixCp($plan);
-            $target = self::groupCpTarget($groups[$groupId]?->code, $org);
+            $mix = self::mix($plan)['cp'] ?? null;
+            $target = $targets[$groupId]['target'] ?? null;
 
             return ($head[$groupId] ?? 0) > 0 && $mix !== null && $target !== null && $mix < $target
-                ? ['group' => $groups[$groupId]->name, 'mix' => $mix, 'target' => $target, 'head' => $head[$groupId]] : null;
+                ? ['group' => $groups[$groupId]->name, 'mix' => $mix, 'target' => $target, 'head' => $head[$groupId], 'standard' => $targets[$groupId]['standard']] : null;
         })->filter()->values();
     }
 
-    /** D-111: add the goat's CP need (KG of protein a day = feed KG × CP %) to its requirement row. */
+    /**
+     * D-111/D-116: add the goat's CP need to its requirement row. The target is the middle of its nutrition standard's
+     * range (12–14% → 13%); the need is its daily intake (dry matter) × that %, e.g. 0.9 KG × 14% = 126 g.
+     */
     private static function withCp(array $row, Animal $goat, Organization $org): array
     {
-        $cp = $row['state'] === 'planned' ? self::cpPct($goat, $org) : null;
+        $std = self::standardFor($goat, $row['weight'] ?? null);
+        $cp = $row['state'] !== 'planned' ? null : ($std ? $std->target() : self::cpPct($goat, $org));
 
-        return $row + ['cp' => $cp, 'cpKg' => $cp === null ? 0.0 : round($row['kgDay'] * $cp / 100, 3)];
+        return $row + ['cp' => $cp, 'cpKg' => $cp === null ? 0.0 : round($row['kgDay'] * $cp / 100, 3),
+            'standard' => $std?->name, 'standardId' => $std?->id, 'cpRange' => $std?->range()];
     }
 
     /** @return Collection<string, float> each goat's most recent weight in kg */

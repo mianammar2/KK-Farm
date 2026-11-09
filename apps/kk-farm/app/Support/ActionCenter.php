@@ -125,7 +125,7 @@ final class ActionCenter
 
         // D-115: a ration in force whose mix CP is below the target for its group. Shown whether or not feeding is recorded.
         $add('feeding', 'ration_low_cp', 'Ration Crude Protein Below Target', 'warning', 'Add a higher-CP feed or change the shares in Feeding → Rations.', '/feeding?tab=rations',
-            Feed::lowCpRations()->map(fn ($r) => ['text' => $r['group'], 'sub' => "Mix CP {$r['mix']}%, target {$r['target']}% (short ".round($r['target'] - $r['mix'], 1)."%) · {$r['head']} goats", 'url' => '/feeding?tab=rations']));
+            Feed::lowCpRations()->map(fn ($r) => ['text' => $r['group'], 'sub' => "Mix CP {$r['mix']}%, target {$r['target']}%".($r['standard'] ? " for {$r['standard']}" : '')." (short ".round($r['target'] - $r['mix'], 1)."%) · {$r['head']} goats", 'url' => '/feeding?tab=rations']));
 
         // ---- Routine checkups (D-095) ----
         $due = \App\Support\Checkups::due();

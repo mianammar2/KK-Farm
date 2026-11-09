@@ -433,24 +433,26 @@ class FeedTest extends TestCase
             ->where('requirement.tracking', false)->where('requirement.supply.needDay', 1));
     }
 
-    /** D-111: CP % per age in Feeding Settings; the dashboard shows the protein the feed should carry. */
-    public function test_crude_protein_percent_per_age_gives_the_protein_needed(): void
+    /** D-111/D-116: each goat's CP target comes from its nutrition standard; the farm's CP % per age is the fallback. */
+    public function test_crude_protein_comes_from_the_nutrition_standard_with_the_age_percent_as_fallback(): void
     {
         $d1 = Animal::where('farm_number', 'D-1')->first();
         \App\Models\WeightRecord::create(['animal_id' => $d1->id, 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']);
-        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.cpDay', null));
 
+        // 40 KG adult doe × 2.5% = 1 KG a day; Adult Breeding Female is 8–10% CP, so 9% → 90 g of protein.
+        $req = Feed::perGoat(Animal::active()->get(), now());
+        $this->assertSame([9.0, 0.09, 'Adult Breeding Female', '8–10%'], [$req[$d1->id]['cp'], $req[$d1->id]['cpKg'], $req[$d1->id]['standard'], $req[$d1->id]['cpRange']]);
+        $this->assertNull($req[Animal::where('farm_number', 'K-1')->value('id')]['cp'], 'kid on milk: no CP');
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.cpDay', 0.09)
+            ->where('requirement.sheds.0.cpDay', 0.09)->where('requirement.sheds.0.pens.0.goats.0.cpKg', 0.09));
+
+        // No standard for adults any more: the farm's adult CP % is used.
+        \App\Models\NutritionStandard::where('category', 'adult_female')->update(['active' => false]);
         $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
             'grower_min' => 3, 'grower_max' => 4, 'adult_min' => 2, 'adult_max' => 3, 'tracking' => false, 'grower_cp' => 16, 'adult_cp' => 12])->assertSessionHasNoErrors();
         \App\Support\Tenant::flush();
-        $this->assertSame(12.0, (float) Organization::find(Tenant::current())->adult_cp_pct);
-
-        // 40 KG adult × 2.5% = 1 KG of feed a day; at 12% CP that is 0.12 KG of protein.
         $req = Feed::perGoat(Animal::active()->get(), now());
-        $this->assertSame([12.0, 0.12], [$req[$d1->id]['cp'], $req[$d1->id]['cpKg']]);
-        $this->assertNull($req[Animal::where('farm_number', 'K-1')->value('id')]['cp'], 'kid on milk: no CP');
-        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.cpDay', 0.12)
-            ->where('requirement.sheds.0.cpDay', 0.12)->where('requirement.sheds.0.pens.0.goats.0.cpKg', 0.12));
+        $this->assertSame([12.0, 0.12, null], [$req[$d1->id]['cp'], $req[$d1->id]['cpKg'], $req[$d1->id]['standard']]);
         $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('settings.cp.adult', 12)->where('settings.cp.kid', null));
 
         $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
@@ -484,19 +486,19 @@ class FeedTest extends TestCase
     {
         $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'C32', 'name' => 'Concentrate', 'category' => 'concentrate', 'cost_per_kg' => 120, 'cp_pct' => 32])->assertSessionHasNoErrors();
         $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'WS', 'name' => 'Wheat straw', 'category' => 'concentrate', 'cost_per_kg' => 30, 'cp_pct' => 4])->assertSessionHasNoErrors();
-        $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
-            'grower_min' => 3, 'grower_max' => 4, 'adult_min' => 2, 'adult_max' => 3, 'tracking' => false, 'grower_cp' => 16, 'adult_cp' => 14])->assertSessionHasNoErrors();
+        // The farm raises its adult doe standard to 14–16% CP; 25% CP 32 + 75% CP 4 = 11% is then too low for breeding does.
+        $std = \App\Models\NutritionStandard::where('category', 'adult_female')->first();
+        $this->actingAs($this->user('vet'))->post("/feeding/standards/{$std->id}", ['name' => 'Adult Breeding Female', 'category' => 'adult_female', 'cp_min_pct' => 14, 'cp_max_pct' => 16, 'active' => true])->assertSessionHasNoErrors();
         \App\Support\Tenant::flush();
-        // 25% CP 32 + 75% CP 4 = 11%, for breeding does (adults, target 14%).
         $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
             'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => FeedItem::where('code', 'C32')->value('id'), 'share_pct' => 25], ['feed_item_id' => FeedItem::where('code', 'WS')->value('id'), 'share_pct' => 75]]])->assertSessionHasNoErrors();
         $this->assertCount(0, Feed::lowCpRations(), 'a draft is not in use yet');
         $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
         \App\Support\Tenant::flush();
 
-        $this->assertSame([['group' => 'Breeding Does', 'mix' => 11.0, 'target' => 14.0, 'head' => 2]], Feed::lowCpRations()->all());
+        $this->assertSame([['group' => 'Breeding Does', 'mix' => 11.0, 'target' => 14.0, 'head' => 2, 'standard' => 'Adult Breeding Female']], Feed::lowCpRations()->all());
         $item = collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'ration_low_cp');
-        $this->assertSame('Mix CP 11%, target 14% (short 3%) · 2 goats', $item['items'][0]['sub']);
-        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('groups', fn ($groups) => collect($groups)->firstWhere('name', 'Breeding Does')['cpTarget'] == 14 && collect($groups)->firstWhere('name', 'Growers and Replacements')['cpTarget'] == 16));
+        $this->assertSame('Mix CP 11%, target 14% for Adult Breeding Female (short 3%) · 2 goats', $item['items'][0]['sub']);
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('groups', fn ($groups) => collect($groups)->firstWhere('name', 'Breeding Does')['cpTarget'] == 14 && collect($groups)->firstWhere('name', 'Breeding Does')['cpStandard'] === 'Adult Breeding Female'));
     }
 }

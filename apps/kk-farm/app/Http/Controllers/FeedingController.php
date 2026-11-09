@@ -78,7 +78,7 @@ class FeedingController extends Controller
             })->sortBy([['shed', 'asc'], ['name', 'asc']])->values(),
             'groups' => $this->groups(),
             'items' => $items->map(fn (FeedItem $i) => [
-                'id' => $i->id, 'code' => $i->code, 'name' => $i->name, 'category' => $i->category, 'costPerKg' => $i->cost_per_kg_minor / 100, 'cp' => $i->cp_pct !== null ? (float) $i->cp_pct : null, 'reorder' => $i->reorder_level_kg,
+                'id' => $i->id, 'code' => $i->code, 'name' => $i->name, 'category' => $i->category, 'costPerKg' => $i->cost_per_kg_minor / 100, 'cp' => $i->cp_pct !== null ? (float) $i->cp_pct : null, 'dm' => $i->dm_pct !== null ? (float) $i->dm_pct : null, 'reorder' => $i->reorder_level_kg,
                 'supplier' => $i->supplier, 'notes' => $i->notes, 'active' => $i->active, 'stock' => $stock[$i->id] ?? 0,
                 'value' => round(max(0, $stock[$i->id] ?? 0) * $i->cost_per_kg_minor / 100), 'status' => Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg),
                 'daysLeft' => ($weekUse[$i->id] ?? 0) > 0 ? (int) floor(max(0, $stock[$i->id] ?? 0) / ($weekUse[$i->id] / 7)) : null,
@@ -99,6 +99,10 @@ class FeedingController extends Controller
                         : $u->planned_kg > 0 && abs($u->offered_kg - $u->planned_kg) / $u->planned_kg * 100 > $org->feed_tolerance_pct,
                 ]),
             'categories' => FeedItem::CATEGORIES,
+            'standards' => $this->standards(), // D-116
+            'nutritionCategories' => collect(Feed::NUTRITION_CATEGORIES)->map(fn ($c) => $c[0])->except('high_lactating')->all(),
+            'methods' => \App\Models\NutritionStandard::METHODS,
+            'breeds' => \App\Models\Breed::orderBy('name')->get(['id', 'name']),
             'movementTypes' => collect(FeedStockMovement::TYPES)->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
             'can' => [
                 'store' => $user->passes('manage_feed_store'), 'plan' => $user->passes('plan_rations'),
@@ -117,21 +121,21 @@ class FeedingController extends Controller
             'id' => $p->id, 'from' => $p->effective_from->format('j M Y'), 'fromIso' => $p->effective_from->toDateString(), 'status' => $p->status, 'basis' => $p->basis,
             'split' => ['morning' => $p->split_morning, 'midday' => $p->split_midday, 'evening' => $p->split_evening],
             'lines' => $p->lines->map(fn ($l) => ['feedItemId' => $l->feed_item_id, 'name' => $l->item->name, 'code' => $l->item->code, 'kg' => $l->kg_per_head, 'share' => $l->share_pct, 'cp' => $l->item->cp_pct !== null ? (float) $l->item->cp_pct : null]),
-            'cpMix' => self::mixCp($p), // D-112
+            'cpMix' => Feed::mix($p)['cp'] ?? null, 'cpBasis' => Feed::mix($p)['basis'] ?? null, // D-112, D-116
             'costPerKg' => round($p->lines->sum(fn ($l) => ($l->share_pct ?? 0) * $l->item->cost_per_kg_minor) / 10000, 2), // body-weight rations: PKR per kg of the mix
             'kgPerHead' => round($p->lines->sum('kg_per_head'), 3),
             'costPerHead' => round($p->lines->sum(fn ($l) => ($l->kg_per_head ?? 0) * $l->item->cost_per_kg_minor) / 100, 2),
             'notes' => $p->notes, 'createdBy' => $p->created_by, 'approvedBy' => $p->approved_by, 'approvedOn' => $p->approved_at?->format('j M Y'),
         ] : null;
 
-        $org = Feed::org();
+        $targets = Feed::groupCpTargets(); // D-116
 
-        return FeedingGroup::orderBy('sort')->orderBy('id')->get()->map(function (FeedingGroup $g) use ($plans, $inForce, $head, $show, $today, $org) {
+        return FeedingGroup::orderBy('sort')->orderBy('id')->get()->map(function (FeedingGroup $g) use ($plans, $inForce, $head, $show, $today, $targets) {
             $mine = $plans[$g->id] ?? collect();
 
             return [
                 'id' => $g->id, 'name' => $g->name, 'criteria' => $g->criteria, 'head' => $head[$g->id] ?? 0,
-                'cpTarget' => Feed::groupCpTarget($g->code, $org), // D-115
+                'cpTarget' => $targets[$g->id]['target'] ?? null, 'cpStandard' => $targets[$g->id]['standard'] ?? null, // D-115, D-116
                 'current' => $show($inForce[$g->id] ?? null),
                 'upcoming' => $show($mine->first(fn ($p) => $p->status === 'approved' && $p->effective_from->toDateString() > $today)),
                 'draft' => $show($mine->firstWhere('status', 'draft')),
@@ -248,6 +252,7 @@ class FeedingController extends Controller
             'category' => ['required', Rule::in(array_keys(FeedItem::CATEGORIES))],
             'cost_per_kg' => ['required', 'numeric', 'min:0', 'max:1000000'],
             'cp_pct' => ['nullable', 'numeric', 'between:0.5,60'], // D-112: from the bag label
+            'dm_pct' => ['nullable', 'numeric', 'between:5,100'], // D-116: dry matter
             'reorder_level_kg' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'opening_kg' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'supplier' => ['nullable', 'string', 'max:80'],
@@ -256,7 +261,7 @@ class FeedingController extends Controller
 
         DB::transaction(function () use ($data, $request) {
             $item = FeedItem::create([
-                'code' => $data['code'], 'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100), 'cp_pct' => $data['cp_pct'] ?? null,
+                'code' => $data['code'], 'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100), 'cp_pct' => $data['cp_pct'] ?? null, 'dm_pct' => $data['dm_pct'] ?? null,
                 'reorder_level_kg' => $data['reorder_level_kg'] ?? 0, 'supplier' => $data['supplier'] ?? null, 'notes' => $data['notes'] ?? null,
             ]);
             if (($data['opening_kg'] ?? 0) > 0) {
@@ -276,13 +281,14 @@ class FeedingController extends Controller
             'category' => ['required', Rule::in(array_keys(FeedItem::CATEGORIES))],
             'cost_per_kg' => ['required', 'numeric', 'min:0', 'max:1000000'],
             'cp_pct' => ['nullable', 'numeric', 'between:0.5,60'], // D-112: from the bag label
+            'dm_pct' => ['nullable', 'numeric', 'between:5,100'], // D-116: dry matter
             'reorder_level_kg' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             'supplier' => ['nullable', 'string', 'max:80'],
             'notes' => ['nullable', 'string', 'max:200'],
             'active' => ['boolean'],
         ]);
         $item->update([
-            'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100), 'cp_pct' => $data['cp_pct'] ?? null, 'reorder_level_kg' => $data['reorder_level_kg'] ?? 0,
+            'name' => $data['name'], 'category' => $data['category'], 'cost_per_kg_minor' => (int) round($data['cost_per_kg'] * 100), 'cp_pct' => $data['cp_pct'] ?? null, 'dm_pct' => $data['dm_pct'] ?? null, 'reorder_level_kg' => $data['reorder_level_kg'] ?? 0,
             'supplier' => $data['supplier'] ?? null, 'notes' => $data['notes'] ?? null, 'active' => $data['active'] ?? $item->active,
         ]);
         Farm::log($request->user(), "Updated feed {$item->name}", '/feeding');
@@ -296,13 +302,103 @@ class FeedingController extends Controller
      */
     public static function mixCp(RationPlan $p): ?float
     {
-        if ($p->lines->isEmpty() || $p->lines->contains(fn ($l) => $l->item->cp_pct === null)) {
-            return null;
-        }
-        $weight = fn ($l) => (float) ($p->basis === 'body_weight' ? $l->share_pct : $l->kg_per_head);
-        $total = $p->lines->sum($weight);
+        return Feed::mix($p)['cp'] ?? null; // D-116: on dry matter when every feed has a DM %
+    }
 
-        return $total > 0 ? round($p->lines->sum(fn ($l) => $weight($l) * (float) $l->item->cp_pct) / $total, 1) : null;
+    // ---------- D-116: Nutrition Standards ----------
+
+    private function standards(): array
+    {
+        $org = Feed::org();
+        $goats = \App\Models\Animal::active()->with('pen.shed')->get();
+        $req = Feed::perGoat($goats, Feed::now($org)->toDateString());
+        $cost = FeedItem::pluck('cost_per_kg_minor', 'id');
+        $price = $org->feed_price_minor_per_kg;
+        $byStd = $goats->groupBy(fn ($g) => $req[$g->id]['standardId'] ?? 0);
+
+        return \App\Models\NutritionStandard::with('breed')->orderByRaw('active desc')->orderBy('id')->get()->map(function ($s) use ($byStd, $req, $cost, $price) {
+            $mine = $byStd[$s->id] ?? collect();
+            $feedCost = $mine->sum(function ($g) use ($req, $cost, $price) {
+                $r = $req[$g->id];
+                $lines = collect($r['lines'])->sum(fn ($kg, $id) => $kg * ($cost[$id] ?? 0));
+
+                return $lines > 0 ? $lines : $r['kgDay'] * ($price ?? 0);
+            });
+
+            return [
+                'id' => $s->id, 'name' => $s->name, 'category' => $s->category, 'breedId' => $s->breed_id, 'breed' => $s->breed?->name,
+                'minKg' => $s->min_weight_kg, 'maxKg' => $s->max_weight_kg, 'cpMin' => $s->cp_min_pct, 'cpMax' => $s->cp_max_pct, 'range' => $s->range(), 'target' => $s->target(),
+                'tdnMin' => $s->tdn_min_pct, 'tdnMax' => $s->tdn_max_pct, 'method' => $s->feeding_method, 'meals' => $s->meals_per_day, 'formula' => $s->feed_formula,
+                'purpose' => $s->purpose, 'reviewedOn' => $s->reviewed_on?->format('j M Y'), 'reviewedIso' => $s->reviewed_on?->toDateString(), 'reviewedBy' => $s->reviewed_by, 'active' => $s->active,
+                'goats' => $mine->count(), 'tags' => $mine->sortBy('farm_number')->pluck('farm_number')->take(40)->values(),
+                'pens' => $mine->map(fn ($g) => $g->pen?->fullName())->filter()->countBy()->sortDesc()->all(),
+                'cpKgDay' => round($mine->sum(fn ($g) => $req[$g->id]['cpKg']), 2), 'feedKgDay' => round($mine->sum(fn ($g) => $req[$g->id]['kgDay']), 1),
+                'feedCostDay' => $price || $feedCost > 0 ? (int) round($feedCost / 100) : null,
+            ];
+        })->all();
+    }
+
+    private function standardRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:80'],
+            'category' => ['nullable', Rule::in(array_keys(Feed::NUTRITION_CATEGORIES))],
+            'breed_id' => ['nullable', 'integer', 'exists:breeds,id'],
+            'min_weight_kg' => ['nullable', 'numeric', 'between:0.5,200'],
+            'max_weight_kg' => ['nullable', 'numeric', 'between:0.5,200', 'gte:min_weight_kg'],
+            'cp_min_pct' => ['required', 'numeric', 'between:1,40'],
+            'cp_max_pct' => ['required', 'numeric', 'between:1,40', 'gte:cp_min_pct'],
+            'tdn_min_pct' => ['nullable', 'numeric', 'between:20,95'],
+            'tdn_max_pct' => ['nullable', 'numeric', 'between:20,95', 'gte:tdn_min_pct'],
+            'feeding_method' => ['nullable', Rule::in(array_keys(\App\Models\NutritionStandard::METHODS))],
+            'meals_per_day' => ['nullable', 'integer', 'between:1,8'],
+            'feed_formula' => ['nullable', 'string', 'max:40'],
+            'purpose' => ['nullable', 'string', 'max:120'],
+            'reviewed_on' => ['nullable', 'date', 'before_or_equal:today'],
+            'active' => ['boolean'],
+        ];
+    }
+
+    public function storeStandard(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('plan_rations'), 403);
+        $data = $request->validate($this->standardRules());
+        $s = \App\Models\NutritionStandard::create($data + ['reviewed_by' => ! empty($data['reviewed_on']) ? $request->user()->name : null]);
+        Farm::log($request->user(), "Added nutrition standard {$s->name} (CP {$s->range()})", '/feeding?tab=nutrition');
+
+        return back()->with('success', "{$s->name} added.");
+    }
+
+    public function updateStandard(Request $request, \App\Models\NutritionStandard $standard): RedirectResponse
+    {
+        abort_unless($request->user()->passes('plan_rations'), 403);
+        $data = $request->validate($this->standardRules());
+        $before = $standard->range();
+        $reviewedChanged = ($data['reviewed_on'] ?? null) !== $standard->reviewed_on?->toDateString();
+        $standard->update($data + ($reviewedChanged && ! empty($data['reviewed_on']) ? ['reviewed_by' => $request->user()->name] : []));
+        Farm::log($request->user(), "Updated nutrition standard {$standard->name}: CP {$before} → {$standard->range()}", '/feeding?tab=nutrition');
+
+        return back()->with('success', "{$standard->name} saved.");
+    }
+
+    /** D-116: put goats on a standard by hand (e.g. high-producing lactating), or back on automatic matching. */
+    public function assignStandard(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('plan_rations'), 403);
+        $data = $request->validate(['standard_id' => ['nullable', 'integer', 'exists:nutrition_standards,id'], 'tags' => ['required', 'string', 'max:4000']]);
+        $tags = collect(preg_split('/[\s,;]+/', strtoupper($data['tags'])))->filter()->unique();
+        $goats = \App\Models\Animal::active()->whereIn(DB::raw('upper(farm_number)'), $tags)->get();
+        $missing = $tags->diff($goats->pluck('farm_number')->map(fn ($t) => strtoupper($t)));
+        if ($missing->isNotEmpty()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['tags' => 'Not found: '.$missing->implode(', ')]);
+        }
+        $std = isset($data['standard_id']) ? \App\Models\NutritionStandard::find($data['standard_id']) : null;
+        foreach ($goats as $g) {
+            $g->update(['nutrition_standard_id' => $std?->id]);
+            Farm::event($g, 'edit', 'Nutrition standard: '.($std ? "{$std->name} (CP {$std->range()}), set by hand" : 'back to automatic'), $request->user()->name);
+        }
+
+        return back()->with('success', $goats->count().' goats '.($std ? "put on {$std->name}." : 'back on automatic matching.'));
     }
 
     /** Receipts and adjustments. A purchase also records the expense, so it is entered once (D-054). */

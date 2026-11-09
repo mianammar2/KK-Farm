@@ -16,7 +16,7 @@ type Balance = 'over' | 'short' | 'ok' | null;
 type Feeding = { meal: Meal; meals: Record<Meal, string>; times: Record<Meal, string>; plannedKg: number; givenKg: number; cost: number; lowStock: string[]; overPens: number;
     pens: Array<{ id: number; name: string; goats: number; onMilk: number; dayPlanned: number; dayGiven: number; over: boolean; diff: number; meals: Record<Meal, { status: FeedStatus; planned: number; given: number; balance: Balance; diff: number }> }> };
 type ActionSummary = { key: string; label: string; count: number; severity: 'critical' | 'warning' | 'info' };
-type ReqGoat = { cp: number | null; cpKg: number; id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; kgMonth: number; min: number; max: number; feeds: string };
+type ReqGoat = { cp: number | null; cpKg: number; cpStandard: string | null; id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; kgMonth: number; min: number; max: number; feeds: string };
 type ReqPen = { id: number | null; name: string; kgDay: number; cpDay: number; kgMonth: number; givenToday: number; balance: Balance; diff: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
 type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; kgMonth: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
 type Supply = { cpDay: number | null; cpMonth: number | null; cpMissing: number; needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
@@ -413,7 +413,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
                                 <td className="px-3">{g.weight ? `${g.weight} KG` : '—'}</td>
                                 <td className="px-3">{g.state === 'planned' ? <span className="text-ink-soft">{g.rule}</span> : <span className={`rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${REQ_STATE[g.state]}`}>{g.rule}</span>}</td>
                                 <td className="px-3 font-semibold text-cobalt-900">{g.state === 'planned' ? <>{g.kgDay} KG{g.max > g.min ? <span className="block text-xs font-normal text-ink-faint">{g.min}–{g.max}</span> : null}</> : '—'}</td>
-                                <td className="px-3 text-cobalt-900">{g.state === 'planned' && g.cp !== null ? <>{Math.round(g.cpKg * 1000)} g<span className="block text-xs text-ink-faint">{g.cp}% CP</span></> : '—'}</td>
+                                <td className="px-3 text-cobalt-900">{g.state === 'planned' && g.cp !== null ? <>{Math.round(g.cpKg * 1000)} g<span className="block text-xs text-ink-faint" title={g.cpStandard ?? undefined}>{g.cp}% CP{g.cpStandard ? ` · ${g.cpStandard}` : ''}</span></> : '—'}</td>
                                 <td className="px-3 text-cobalt-900">{g.state === 'planned' ? `${g.kgMonth} KG` : '—'}</td>
                                 <td className="px-3 text-xs text-ink-soft">{g.feeds || '—'}</td>
                             </tr>

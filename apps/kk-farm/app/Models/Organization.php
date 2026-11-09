@@ -21,6 +21,7 @@ class Organization extends Model
             \App\Support\FieldCatalog::seed($org->id);
             Department::seedDefaults($org->id); // D-052
             \App\Support\Feed::seedGroups($org->id); // D-054
+            \App\Support\Feed::seedStandards($org->id); // D-116
         });
     }
 }

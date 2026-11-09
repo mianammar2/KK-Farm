@@ -106,6 +106,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/feeding/leftover', [FeedingController::class, 'leftover']);
         Route::post('/feeding/items', [FeedingController::class, 'storeItem']);
         Route::post('/feeding/items/{item}', [FeedingController::class, 'updateItem']);
+        Route::post('/feeding/standards', [FeedingController::class, 'storeStandard']); // D-116
+        Route::post('/feeding/standards/assign', [FeedingController::class, 'assignStandard']);
+        Route::post('/feeding/standards/{standard}', [FeedingController::class, 'updateStandard'])->whereNumber('standard');
         Route::post('/feeding/stock', [FeedingController::class, 'stock']);
         Route::post('/feeding/plans', [FeedingController::class, 'storePlan']);
         Route::post('/feeding/plans/{plan}/approve', [FeedingController::class, 'approve']);
