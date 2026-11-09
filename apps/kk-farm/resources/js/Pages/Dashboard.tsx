@@ -8,6 +8,7 @@ import { axis } from '../lib/chartTheme';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
 import { Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort, Stat, StatRow } from '../components/ui';
 import type { Health, SharedProps } from '../types';
+import { titleCase } from '../lib/titleCase';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -242,7 +243,7 @@ function HealthShortcuts({ h }: { h: HealthLinks }) {
     const item = (href: string, label: string, note: string | null, tone: string) => (
         <Link href={href} className={`kk-lift flex min-h-14 items-center gap-2 rounded-tile border px-3 py-2 ${tone}`}>
             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/70 text-lg font-bold leading-none">+</span>
-            <span className="min-w-0"><span className="block text-sm font-semibold">{label}</span>{note ? <span className="block truncate text-xs opacity-80">{note}</span> : null}</span>
+            <span className="min-w-0"><span className="block text-sm font-semibold">{titleCase(label)}</span>{note ? <span className="block truncate text-xs opacity-80">{note}</span> : null}</span>
         </Link>
     );
     return (
@@ -350,7 +351,7 @@ function ActionBanner({ actions }: { actions: ActionSummary[] }) {
         <Link href="/actions" className={`mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-tile border px-4 py-3 transition-colors ${critical ? 'border-crit-500/40 bg-crit-100 hover:bg-crit-100/70' : 'border-watch-400/60 bg-watch-100 hover:bg-watch-100/70'}`}>
             <span className={`font-bold ${critical ? 'text-crit-700' : 'text-watch-700'}`}>{urgent.length} {urgent.length === 1 ? 'thing needs' : 'things need'} action today</span>
             <span className="flex flex-wrap gap-1.5">
-                {urgent.slice(0, 4).map((a) => <span key={a.key} className="rounded-[4px] bg-tile/80 px-1.5 py-0.5 text-xs font-semibold text-ink">{a.label} · {a.count}</span>)}
+                {urgent.slice(0, 4).map((a) => <span key={a.key} className="rounded-[4px] bg-tile/80 px-1.5 py-0.5 text-xs font-semibold text-ink">{titleCase(a.label)} · {a.count}</span>)}
                 {urgent.length > 4 ? <span className="text-xs text-ink-soft">+{urgent.length - 4} more</span> : null}
             </span>
             <span className="ml-auto flex items-center gap-1 text-sm font-semibold text-cobalt-900">Open Action Center <ChevronRight size={15} aria-hidden /></span>
@@ -403,7 +404,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[46rem] text-sm">
-                    <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-1.5 font-semibold">Goat</th><th className="px-3 font-semibold">Group</th><th className="px-3 font-semibold">Weight</th><th className="px-3 font-semibold">Rule</th><th className="px-3 font-semibold">Per day</th><th className="px-3 font-semibold">This month</th><th className="px-3 font-semibold">Feeds (KG)</th></tr></thead>
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-1.5 font-semibold">Goat</th><th className="px-3 font-semibold">Group</th><th className="px-3 font-semibold">Weight</th><th className="px-3 font-semibold">Rule</th><th className="px-3 font-semibold">Per Day</th><th className="px-3 font-semibold">This Month</th><th className="px-3 font-semibold">Feeds (KG)</th></tr></thead>
                     <tbody className="divide-y divide-rule">
                         {rows.map((g) => (
                             <tr key={g.id}>
@@ -450,7 +451,7 @@ function SupplyStrip({ s, tracking }: { s: Supply; tracking: boolean }) {
             {tracking && s.feeds.length ? (
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[40rem] text-sm">
-                        <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1 font-semibold">Feed</th><th className="font-semibold">Needed a day</th><th className="font-semibold">In store</th><th className="font-semibold">Lasts</th><th className="font-semibold">Short for a week</th><th className="font-semibold">Needed in {s.month}</th><th className="font-semibold">Short this month</th></tr></thead>
+                        <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1 font-semibold">Feed</th><th className="font-semibold">Needed a Day</th><th className="font-semibold">In Store</th><th className="font-semibold">Lasts</th><th className="font-semibold">Short for a Week</th><th className="font-semibold">Needed in {s.month}</th><th className="font-semibold">Short This Month</th></tr></thead>
                         <tbody className="divide-y divide-rule">{s.feeds.map((f) => <tr key={f.name}><td className="py-1 font-medium">{f.name}</td><td>{f.needDay} KG</td><td>{f.stock} KG</td><td className={f.days !== null && f.days < 7 ? 'font-semibold text-crit-700' : ''}>{f.days === null ? '—' : `${f.days} days`}</td><td className={f.shortWeek ? 'font-semibold text-crit-700' : 'text-ink-faint'}>{f.shortWeek ? `${f.shortWeek} KG` : '—'}</td><td>{f.needMonth} KG</td><td className={f.shortMonth ? 'font-semibold text-crit-700' : 'text-ink-faint'}>{f.shortMonth ? `${f.shortMonth} KG` : '—'}</td></tr>)}</tbody>
                     </table>
                 </div>

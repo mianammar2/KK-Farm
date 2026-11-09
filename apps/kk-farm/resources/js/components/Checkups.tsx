@@ -80,7 +80,7 @@ export default function Checkups({ data }: { data: CheckupData }) {
             <Panel flush title="Recent checkups">
                 {data.recent.length ? (
                     <div className="overflow-x-auto"><table className="data-table min-w-[600px]">
-                        <thead><tr><th>Date</th><th>Goat</th><th>Result</th><th>°F</th><th>Body</th><th>KG</th><th>Ultrasound</th><th>Pregnancy day</th><th>Recheck</th><th>By</th><th /></tr></thead>
+                        <thead><tr><th>Date</th><th>Goat</th><th>Result</th><th>°F</th><th>Body</th><th>KG</th><th>Ultrasound</th><th>Pregnancy Day</th><th>Recheck</th><th>By</th><th /></tr></thead>
                         <tbody>{data.recent.map((r) => (
                             <tr key={r.id}>
                                 <td className="whitespace-nowrap">{r.on}</td>

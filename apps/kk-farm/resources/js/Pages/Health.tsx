@@ -6,6 +6,7 @@ import type { Health as HealthState, Option, SharedProps } from '../types';
 import Checkups, { type CheckupData } from '../components/Checkups';
 import HealthEntry from '../components/HealthEntry';
 import Sheet from '../components/Sheet';
+import { titleCase } from '../lib/titleCase';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -49,7 +50,7 @@ export default function Health(props: Props) {
     const [sheet, setSheet] = useState<'entry' | 'case' | 'report' | 'care' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'entry' | 'case' | 'report' | 'care' | null));
     const action = (label: string, icon: React.ReactNode, onClick: () => void, primary = false) => (
         <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
-            <Plus size={16} aria-hidden />{icon}{label}
+            <Plus size={16} aria-hidden />{icon}{titleCase(label)}
         </button>
     );
     const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') ?? 'cases');
@@ -343,7 +344,7 @@ function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineU
                                 {open === m.id ? (
                                     <div className="mt-2 rounded-tile bg-glaze p-2 text-sm">
                                         {m.batches.length ? (
-                                            <table className="w-full"><thead className="text-left text-ink-soft"><tr><th className="py-1 font-semibold">Batch / lot</th><th className="font-semibold">Expiry</th><th className="text-right font-semibold">In stock</th></tr></thead>
+                                            <table className="w-full"><thead className="text-left text-ink-soft"><tr><th className="py-1 font-semibold">Batch / Lot</th><th className="font-semibold">Expiry</th><th className="text-right font-semibold">In Stock</th></tr></thead>
                                                 <tbody>{m.batches.map((b) => <tr key={b.batch}><td className="py-1 font-mono">{b.batch}</td><td className={b.expired ? 'font-semibold text-crit-700' : ''}>{b.expiry ?? '—'}{b.expired ? ' (expired)' : ''}</td><td className="text-right">{b.qty} {m.unit}</td></tr>)}</tbody></table>
                                         ) : <p className="text-ink-soft">No batch numbers recorded.</p>}
                                         {canMedicine ? <MedicineEdit m={m} categories={medicineCategories} /> : null}

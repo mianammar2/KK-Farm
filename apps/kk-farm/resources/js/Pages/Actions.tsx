@@ -2,6 +2,7 @@ import { Head, Link, usePoll } from '@inertiajs/react';
 import { AlertOctagon, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { useState } from 'react';
 import { cx, PageHeader } from '../components/ui';
+import { titleCase } from '../lib/titleCase';
 
 type Item = { key: string; label: string; severity: 'critical' | 'warning' | 'info'; count: number; action: string; url: string; items: Array<{ text: string; sub: string | null; url: string | null }> };
 
@@ -41,7 +42,7 @@ function ActionCard({ item }: { item: Item }) {
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left">
                 <span className={cx('grid size-10 shrink-0 place-items-center rounded-full', look.badge)}><Icon size={19} aria-hidden /></span>
                 <span className="min-w-0 flex-1">
-                    <span className="block font-semibold text-cobalt-900">{item.label}</span>
+                    <span className="block font-semibold text-cobalt-900">{titleCase(item.label)}</span>
                     <span className="block text-sm text-ink-soft">{item.action}</span>
                 </span>
                 <span className="text-2xl font-bold tabular-nums text-cobalt-900">{item.count}</span>

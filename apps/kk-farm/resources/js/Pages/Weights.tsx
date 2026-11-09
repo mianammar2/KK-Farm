@@ -61,7 +61,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
                     {rows.length ? (
                         <div className="max-h-[62vh] overflow-auto">
                             <table className="data-table min-w-[560px]">
-                                <thead><tr><th>Goat</th><th>Latest</th><th>Daily gain</th><th>Body score</th><th>Weighed</th></tr></thead>
+                                <thead><tr><th>Goat</th><th>Latest</th><th>Daily Gain</th><th>Body Score</th><th>Weighed</th></tr></thead>
                                 <tbody>
                                     {rows.map((g) => (
                                         <tr key={g.id}>
@@ -102,7 +102,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
                 {log.length ? (
                     <div className="overflow-x-auto">
                         <table className="data-table min-w-[720px]">
-                            <thead><tr><th>Date</th><th>Goat</th><th>Weight</th><th>Previous</th><th>Days</th><th>Gain</th><th>ADG g/day</th><th>Body score</th><th>Height</th><th>By</th><th /></tr></thead>
+                            <thead><tr><th>Date</th><th>Goat</th><th>Weight</th><th>Previous</th><th>Days</th><th>Gain</th><th>ADG (g/day)</th><th>Body Score</th><th>Height</th><th>By</th><th /></tr></thead>
                             <tbody>
                                 {log.slice(0, logShown).map((w) => (
                                     <Fragment key={w.id}>

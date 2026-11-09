@@ -155,7 +155,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                 ) : view === 'table' ? (
                     <div className="max-h-[70vh] overflow-auto">
                         <table className="data-table min-w-[900px]">
-                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><Th id="teeth" label="Teeth" /><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current tag</th></tr></thead>
+                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><Th id="teeth" label="Teeth" /><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);

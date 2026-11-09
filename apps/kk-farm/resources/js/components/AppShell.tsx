@@ -8,6 +8,7 @@ import { cx } from './ui';
 import { ScanCapture } from '../lib/scanner';
 import { AppBar, TabBar } from './MobileNav';
 import type { SharedProps } from '../types';
+import { titleCase } from '../lib/titleCase';
 
 const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; module: string; icon: typeof Beef }> }> = [
     {
@@ -88,7 +89,7 @@ function NavList({ path, modules, onNavigate }: { path: string; modules: string[
                                             )}
                                         >
                                             <item.icon size={17} aria-hidden className={active ? 'text-turq-700' : 'text-turq-400'} />
-                                            {item.label}
+                                            {titleCase(item.label)}
                                         </Link>
                                     </li>
                                 );

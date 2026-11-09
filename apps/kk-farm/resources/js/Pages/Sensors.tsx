@@ -171,7 +171,7 @@ function ReadingsTab({ readings }: { readings: Reading[] }) {
     return (
         <Panel flush title="Latest readings" description="Raw data from every device, newest first. Kept as received; never edited.">
             <div className="overflow-x-auto"><table className="data-table min-w-[720px]">
-                <thead><tr><th>Time</th><th>Device</th><th>Reading</th><th>Value</th><th>Goat / tag</th><th>Made</th></tr></thead>
+                <thead><tr><th>Time</th><th>Device</th><th>Reading</th><th>Value</th><th>Goat / Tag</th><th>Made</th></tr></thead>
                 <tbody>{readings.map((r) => (
                     <tr key={r.id}><td className="whitespace-nowrap text-sm">{r.at}</td><td>{r.device}</td><td className="font-mono text-sm">{r.metric}</td><td className="tabular-nums">{r.value ?? '—'} {r.unit ?? ''}</td>
                         <td>{r.goat ? <Link href={`/goats/${r.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{r.goat}</Link> : r.rfid ? <span className="font-mono text-xs text-ink-soft">{r.rfid}</span> : '—'}</td>

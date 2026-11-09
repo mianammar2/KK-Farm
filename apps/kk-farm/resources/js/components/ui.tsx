@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { AlertTriangle, Baby, HeartPulse, Inbox, Mars, Venus } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import GoatPortrait from './GoatPortrait';
+import { titleCase } from '../lib/titleCase';
 import type { GoatCard, Health } from '../types';
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
@@ -32,7 +33,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3 lg:mb-5">
             <div className="min-w-0">
                 {/* On phones and the gun the app bar already shows the title. */}
-                <h1 className="hidden text-2xl font-bold tracking-tight text-cobalt-900 lg:block">{title}</h1>
+                <h1 className="hidden text-2xl font-bold tracking-tight text-cobalt-900 lg:block">{titleCase(title)}</h1>
                 {description ? <p className="max-w-[68ch] text-sm text-ink-soft lg:mt-1 lg:text-base">{description}</p> : null}
             </div>
             {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -69,7 +70,7 @@ export function Panel({ title, description, actions, children, className, flush 
             {title ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-3">
                     <div className="min-w-0">
-                        <h2 className="font-semibold text-cobalt-900">{title}</h2>
+                        <h2 className="font-semibold text-cobalt-900">{titleCase(title)}</h2>
                         {description ? <p className="text-sm text-ink-soft">{description}</p> : null}
                     </div>
                     {actions}
@@ -83,7 +84,7 @@ export function Panel({ title, description, actions, children, className, flush 
 export function Stat({ label, value, note, tone }: { label: string; value: ReactNode; note?: string; tone?: 'alert' | 'good' }) {
     return (
         <div className="min-w-0 px-4 py-3">
-            <div className="truncate text-sm text-ink-soft">{label}</div>
+            <div className="truncate text-sm text-ink-soft">{titleCase(label)}</div>
             <div className={cx('mt-0.5 text-2xl font-bold tracking-tight', tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-cobalt-900')}>{value}</div>
             {note ? <div className="truncate text-sm text-ink-faint">{note}</div> : null}
         </div>
@@ -147,7 +148,7 @@ export function GoatLabel({ goat, size = 38 }: { goat: Pick<GoatCard, 'id' | 'nu
 export function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
     return (
         <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-ink">{label}</span>
+            <span className="mb-1 block text-sm font-semibold text-ink">{titleCase(label)}</span>
             {children}
             {hint && !error ? <span className="mt-1 block text-sm text-ink-faint">{hint}</span> : null}
             {error ? <span className="mt-1 block text-sm font-medium text-crit-700">{error}</span> : null}
@@ -189,7 +190,7 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; labe
                         value === tab.id ? 'border-turq-600 text-cobalt-900' : 'border-transparent text-ink-soft hover:text-cobalt-800',
                     )}
                 >
-                    {tab.label}
+                    {titleCase(tab.label)}
                     {tab.count !== undefined ? <span className="ml-1.5 text-ink-faint">{tab.count}</span> : null}
                 </button>
             ))}

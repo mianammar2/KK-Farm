@@ -123,7 +123,7 @@ export default function Breeding(props: Props) {
 
             {tab === 'performance' ? (
                 <Panel title="Does by live kids" flush>
-                    {performance.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Doe</th><th>Kiddings</th><th>Born alive</th><th>Stillborn</th><th>Average litter</th></tr></thead><tbody>{performance.map((p) => <tr key={p.id}><td><Link href={`/goats/${p.id}`} className="font-semibold text-cobalt-800 hover:underline">{p.name ?? p.number}</Link></td><td>{p.kiddings}</td><td>{p.alive}</td><td>{p.stillborn}</td><td>{p.litter}</td></tr>)}</tbody></table></div>
+                    {performance.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Doe</th><th>Kiddings</th><th>Born Alive</th><th>Stillborn</th><th>Average Litter</th></tr></thead><tbody>{performance.map((p) => <tr key={p.id}><td><Link href={`/goats/${p.id}`} className="font-semibold text-cobalt-800 hover:underline">{p.name ?? p.number}</Link></td><td>{p.kiddings}</td><td>{p.alive}</td><td>{p.stillborn}</td><td>{p.litter}</td></tr>)}</tbody></table></div>
                         : <Empty title="No kiddings yet" />}
                 </Panel>
             ) : null}

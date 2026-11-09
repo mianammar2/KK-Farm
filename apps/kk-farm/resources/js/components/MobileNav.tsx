@@ -4,6 +4,7 @@ import { ChevronLeft, Smartphone, ClipboardList, HeartPulse, KeyRound, LayoutGri
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { cx } from './ui';
+import { titleCase } from '../lib/titleCase';
 
 export type NavItem = { href: string; label: string; module: string; icon: typeof LayoutGrid };
 
@@ -28,7 +29,7 @@ export function pageTitle(path: string, items: NavItem[]): string {
         if (re.test(path)) return title;
     }
     const item = items.find((i) => (i.href === '/' ? path === '/' : path.startsWith(i.href)));
-    return item?.label ?? 'KK Farms';
+    return titleCase(item?.label) ?? 'KK Farms';
 }
 
 export function AppBar({ path, items, right }: { path: string; items: NavItem[]; right: ReactNode }) {
@@ -123,7 +124,7 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
                                     <motion.div key={i.href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 * n, duration: 0.2 }}>
                                         <Link href={i.href} onClick={() => setMore(false)} className={cx('flex flex-col items-center gap-1.5 rounded-2xl p-3 text-center text-xs font-semibold transition-transform active:scale-95', active(i.href) ? 'bg-turq-100 text-cobalt-900' : 'bg-glaze text-ink')}>
                                             <span className="grid size-11 place-items-center rounded-xl bg-cobalt-900 text-turq-400"><i.icon size={21} aria-hidden /></span>
-                                            {i.label}
+                                            {titleCase(i.label)}
                                         </Link>
                                     </motion.div>
                                 ))}

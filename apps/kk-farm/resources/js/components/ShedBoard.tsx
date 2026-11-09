@@ -109,7 +109,7 @@ export default function ShedBoard({ board, canMove }: { board: ShedBoardData; ca
                 <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                     <ChevronDown size={18} className={cx('shrink-0 text-ink-soft transition-transform', open && 'rotate-180')} aria-hidden />
                     <span className="min-w-0">
-                        <span className="block font-semibold text-cobalt-900">Sheds and pens</span>
+                        <span className="block font-semibold text-cobalt-900">Sheds and Pens</span>
                         <span className="block truncate text-sm text-ink-soft">
                             {board.sheds.length} shed{board.sheds.length === 1 ? '' : 's'} · {board.sheds.reduce((n, sh) => n + sh.pens.length, 0)} pens · {all.length} goats
                             {board.noPen.length ? ` · ${board.noPen.length} not in a pen` : ''}
