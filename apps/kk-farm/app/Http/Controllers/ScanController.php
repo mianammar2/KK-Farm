@@ -35,7 +35,10 @@ class ScanController extends Controller
             $result = [
                 'code' => $code,
                 'state' => ! $tag ? 'unknown' : ($open ? 'assigned' : ($tag->status === 'lost' ? 'lost' : 'free')),
-                'goat' => $open ? $open->animal->card() + ['withdrawal' => \App\Support\Withdrawal::summary($open->animal)] : null,
+                'goat' => $open ? $open->animal->card() + ['withdrawal' => \App\Support\Withdrawal::summary($open->animal),
+                    // D-102: what the scan pop-up offers, and her day of pregnancy
+                    'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($open->animal, now()->toDateString()),
+                    'can' => ['health' => $request->user()->canModule('health'), 'check' => $request->user()->passes('health_checkup'), 'weigh' => $request->user()->canModule('weights'), 'move' => $request->user()->canModule('sheds')]] : null,
                 'since' => $open?->valid_from->format('j M Y'),
                 'history' => $past->map(fn (RfidAssignment $a) => ['id' => $a->animal_id, 'number' => $a->animal->farm_number, 'to' => $a->valid_to?->format('j M Y'), 'reason' => $a->reason_unassigned])->values(),
             ];

@@ -5,6 +5,7 @@ import { Button, Chip, cx, Empty, Field, GoatLabel, PageHeader, Panel, Stat, Sta
 import type { Health as HealthState, Option, SharedProps } from '../types';
 import Checkups, { type CheckupData } from '../components/Checkups';
 import HealthEntry from '../components/HealthEntry';
+import Sheet from '../components/Sheet';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -435,17 +436,5 @@ function MedicineMoveForm({ medicines, types }: { medicines: Medicine[]; types: 
                 <div className="col-span-2"><Button type="submit" className="w-full" disabled={form.processing}>Save</Button></div>
             </form>
         </Panel>
-    );
-}
-
-/** D-097: a form opened from a + button: a panel from the right on a computer, from the bottom on a phone or the gun. */
-function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-end justify-end bg-cobalt-950/40 sm:items-stretch" onClick={onClose} role="dialog" aria-modal="true">
-            <div className="kk-rise relative max-h-[88dvh] w-full overflow-y-auto rounded-t-3xl bg-glaze p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-float sm:max-h-none sm:w-[26rem] sm:rounded-none sm:p-4" onClick={(e) => e.stopPropagation()}>
-                <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 grid size-10 place-items-center rounded-full bg-tile text-ink-soft shadow-tile hover:text-cobalt-900"><X size={18} aria-hidden /></button>
-                {children}
-            </div>
-        </div>
     );
 }

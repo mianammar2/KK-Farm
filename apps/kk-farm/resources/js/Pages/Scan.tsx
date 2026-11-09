@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Radio, ScanLine } from 'lucide-react';
+import { ClipboardPlus, FileText, MoveRight, Radio, Scale, ScanLine, Stethoscope, TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useScannerDevice } from '../lib/scanner';
@@ -8,7 +8,7 @@ import GoatPortrait from '../components/GoatPortrait';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
 import type { GoatCard, Option } from '../types';
 
-type Result = { code: string; state: 'assigned' | 'free' | 'lost' | 'unknown'; goat: (GoatCard & { withdrawal?: { meat: string | null; milk: string | null } | null }) | null; since: string | null; history: Array<{ id: string; number: string; to: string | null; reason: string | null }> };
+type Result = { code: string; state: 'assigned' | 'free' | 'lost' | 'unknown'; goat: (GoatCard & { withdrawal?: { meat: string | null; milk: string | null } | null; pregnancyDay?: number | null; can?: { health: boolean; check: boolean; weigh: boolean; move: boolean } }) | null; since: string | null; history: Array<{ id: string; number: string; to: string | null; reason: string | null }> };
 type Props = { result: Result | null; samples: { assigned: string[]; free: string[]; new: string[] }; untagged: Option[]; goats: Option[] };
 
 // Inside the KK Farm Android app on the RFID gun (its user agent carries "KKFarmScanner").
@@ -110,14 +110,29 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                     <h2 className="font-mono text-xl font-bold text-cobalt-900">{goat.number}</h2>
                     <p className="text-ink-soft">{goat.name ? `${goat.name} · ` : ''}{goat.breed} · {goat.age}</p>
                     <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} KG` : ''}</p>
-                    <div className="mt-1 flex gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} /></div>
+                    <div className="mt-1 flex flex-wrap gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} />{goat.pregnancyDay ? <span className="rounded-[4px] bg-manganese-100 px-1.5 py-0.5 text-xs font-semibold text-manganese-600">Day {goat.pregnancyDay} of pregnancy</span> : null}</div>
                     {goat.withdrawal ? (
                         <p role="alert" className="mt-2 rounded-tile bg-crit-100 px-2.5 py-1.5 text-sm font-semibold text-crit-700">
                             Under withdrawal{goat.withdrawal.meat ? ` · no sale before ${goat.withdrawal.meat}` : ''}{goat.withdrawal.milk ? ` · no milk before ${goat.withdrawal.milk}` : ''}
                         </p>
                     ) : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <Link href={`/goats/${goat.id}`}><Button>Open full record</Button></Link>
+                    {/* D-102: after a scan, what to do with this goat; each opens on the goat's own page. */}
+                    <p className="mt-3 text-sm font-semibold text-cobalt-900">What do you want to do?</p>
+                    <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {[
+                            goat.can?.check ? { href: 'checkup', label: 'Health checkup', icon: <Stethoscope size={18} aria-hidden />, primary: true } : null,
+                            goat.can?.check && goat.sex === 'female' ? { href: 'pregnancy', label: 'Pregnancy check', icon: <Stethoscope size={18} aria-hidden /> } : null,
+                            goat.can?.health ? { href: 'entry', label: 'New health entry', icon: <ClipboardPlus size={18} aria-hidden /> } : null,
+                            goat.can?.health ? { href: 'concern', label: 'Report concern', icon: <TriangleAlert size={18} aria-hidden /> } : null,
+                            goat.can?.weigh ? { href: 'weight', label: 'Add weight', icon: <Scale size={18} aria-hidden /> } : null,
+                            goat.can?.move ? { href: 'move', label: 'Move pen', icon: <MoveRight size={18} aria-hidden /> } : null,
+                            { href: '', label: 'Open record', icon: <FileText size={18} aria-hidden /> },
+                        ].filter(Boolean).map((a) => (
+                            <Link key={a!.label} href={`/goats/${goat.id}${a!.href ? `?do=${a!.href}` : ''}`}
+                                className={`kk-lift flex min-h-14 items-center gap-2 rounded-tile border px-3 py-2 text-sm font-semibold ${a!.primary ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900'}`}>
+                                {a!.icon}{a!.label}
+                            </Link>
+                        ))}
                     </div>
                     <div className="mt-4 border-t border-rule pt-3">
                         {!confirmLost ? (

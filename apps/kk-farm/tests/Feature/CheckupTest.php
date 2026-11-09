@@ -119,4 +119,18 @@ class CheckupTest extends TestCase
         $this->assertSame(49, HealthCheckup::where('checked_on', '2026-11-04')->sole()->days_pregnant);
         $this->actingAs($vet)->get('/health')->assertInertia(fn (AssertableInertia $p) => $p->where('checkups.recent.0.days', 49));
     }
+
+    /** D-102: scanning a goat offers what to do, with her day of pregnancy; the goat page carries the entry form. */
+    public function test_a_scan_offers_what_to_do_and_the_goat_page_has_the_entry(): void
+    {
+        $vet = $this->user('vet');
+        \App\Support\Farm::assignTag($this->doe, \App\Models\RfidTag::create(['tag_code' => 'E200SCAN01', 'status' => 'in_stock']), 'initial', $this->user('manager'));
+        $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->subDays(7)->toDateString(), 'ultrasound' => 'pregnant', 'days_pregnant' => 35, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
+
+        $this->actingAs($vet)->get('/scan?tag=E200SCAN01')->assertInertia(fn (AssertableInertia $p) => $p
+            ->where('result.goat.number', 'TD141026-01')->where('result.goat.pregnancyDay', 42)->where('result.goat.can.check', true)->where('result.goat.can.weigh', true));
+        $this->actingAs($vet)->get("/goats/{$this->doe->id}?do=checkup")->assertInertia(fn (AssertableInertia $p) => $p
+            ->where('healthEntry.goats.0.id', $this->doe->id)->where('healthEntry.canCheck', true)->where('healthEntry.goats.0.matedOn', now()->subDays(42)->toDateString()));
+        $this->actingAs($this->user('finance'))->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('healthEntry', null));
+    }
 }

@@ -21,11 +21,14 @@ const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-
  * A checkup or a pregnancy check becomes a checkup (a pregnancy updates Breeding); a disease, injury or other problem
  * opens a health case. A doe already pregnant gets her day of pregnancy counted from the mating for the chosen date.
  */
-export default function HealthEntry({ data, severities, onDone }: { data: CheckupData & { conditions: string[] }; severities: Record<string, string>; onDone: () => void }) {
+export default function HealthEntry({ data, severities, onDone, goatId, kind }: { data: CheckupData & { conditions: string[] }; severities: Record<string, string>; onDone: () => void; goatId?: string; kind?: string }) {
+    // D-102: opened from a goat's page or a scan: the goat (and what to do) are already chosen.
+    const start = goatId ? data.goats.find((g) => g.id === goatId) : undefined;
+    const startDay = start?.matedOn ? daysBetween(start.matedOn, TODAY) : null;
     const form = useForm({
-        date: TODAY, animal_id: '', kind: '',
+        date: TODAY, animal_id: goatId ?? '', kind: kind ?? '',
         temperature_f: '', body_score: '', weight_kg: '', findings: '', outcome: 'healthy', follow_up_on: '', follow_up_note: '',
-        ultrasound: '', days_pregnant: '', fetuses: '', sire_id: '',
+        ultrasound: kind === 'pregnancy' && start?.matedOn ? 'pregnant' : '', days_pregnant: kind === 'pregnancy' && startDay && startDay > 0 ? String(startDay) : '', fetuses: '', sire_id: '',
         condition: '', other_condition: '', symptoms: '', severity: 'moderate', isolated: false, diagnosis: '',
     });
     const e = form.errors as Record<string, string>;
@@ -69,13 +72,17 @@ export default function HealthEntry({ data, severities, onDone }: { data: Checku
     const [low, high] = data.normal.temperature_f;
 
     return (
-        <Panel title="New health entry" description="Date, goat, then what it is. The form shows only what that needs.">
+        <Panel title={start ? `${start.number}: health entry` : 'New health entry'} description={start ? 'Date, then what it is. The form shows only what that needs.' : 'Date, goat, then what it is. The form shows only what that needs.'}>
             <form className="space-y-4" onSubmit={submit}>
                 <div className="space-y-2">
                     {step(1, 'Date', Boolean(form.data.date))}
-                    <input type="date" className="field" max={TODAY} value={form.data.date} onChange={(x) => set('date', x.target.value)} aria-label="Date" />
+                    <input type="date" className="field" max={TODAY} value={form.data.date} aria-label="Date" onChange={(x) => {
+                        const date = x.target.value;
+                        // D-102: a pregnant doe's day follows the date chosen
+                        form.setData((d) => ({ ...d, date, days_pregnant: d.kind === 'pregnancy' && goat?.matedOn && d.ultrasound === 'pregnant' ? String(Math.max(1, daysBetween(goat.matedOn, date))) : d.days_pregnant }));
+                    }} />
                 </div>
-                <div className="space-y-2">
+                <div className={cx('space-y-2', start && 'hidden')}>
                     {step(2, 'Goat', Boolean(goat))}
                     <select className="field font-mono" value={form.data.animal_id} onChange={(x) => chooseGoat(x.target.value)} aria-label="Goat">
                         <option value="">Choose the goat…</option>
@@ -85,7 +92,8 @@ export default function HealthEntry({ data, severities, onDone }: { data: Checku
                 </div>
                 {goat ? (
                     <div className="space-y-2">
-                        {step(3, 'What is it?', Boolean(form.data.kind))}
+                        {step(start ? 2 : 3, 'What is it?', Boolean(form.data.kind))}
+                        {goat.matedOn ? <p className="text-xs font-semibold text-manganese-600">Pregnant · day {daysBetween(goat.matedOn, form.data.date)} on {fmt(form.data.date)}</p> : null}
                         <select className="field" value={form.data.kind} onChange={(x) => chooseKind(x.target.value)} aria-label="What is it">
                             <option value="">Choose…</option>
                             {kinds.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}

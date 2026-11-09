@@ -1,6 +1,9 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import PhotoPicker from '../../components/PhotoPicker';
-import { Camera, MoveRight, Pencil, Scale, Star, Trash2, TriangleAlert } from 'lucide-react';
+import { Camera, ClipboardPlus, MoveRight, Pencil, Scale, Star, Stethoscope, Trash2, TriangleAlert } from 'lucide-react';
+import HealthEntry from '../../components/HealthEntry';
+import Sheet from '../../components/Sheet';
+import type { CheckupData } from '../../components/Checkups';
 import { useMemo, useRef, useState } from 'react';
 import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
@@ -26,6 +29,7 @@ type Props = {
     pens: Array<{ id: number; name: string; purpose: string }>;
     can: { edit: boolean; remove: boolean };
     pregnancy: Pregnancy | null;
+    healthEntry: (CheckupData & { conditions: string[]; severities: Record<string, string> }) | null;
 };
 type Pregnancy = {
     matedOn: string; expected: string | null; sire: string | null; day: number; gestation: number; daysLeft: number | null;
@@ -36,20 +40,32 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry } = props;
     const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('overview');
-    const [panel, setPanel] = useState<string | null>(null);
+    // D-102: opened from a scan with ?do=checkup|pregnancy|entry|weight|move|concern, the right form is already open.
+    const todo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('do') : null;
+    const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern'].includes(todo ?? '') ? todo : null);
+    const [entry, setEntry] = useState<string | null>(['checkup', 'pregnancy', 'entry'].includes(todo ?? '') && healthEntry ? (todo === 'entry' ? '' : todo) : null);
     const profile = photos.find((p) => p.isProfile);
     const onFarm = goat.status === 'active';
 
+    // D-102: dates to scale (7 days apart look 7 days apart), each point labelled with its day and weight.
     const chart = useMemo(() => ({
-        tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} KG` },
-        xAxis: axis.category(weights.map((w) => new Date(w.on).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }))),
+        tooltip: { trigger: 'axis', formatter: (x: Array<{ data: [number, number] }>) => `${new Date(x[0].data[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}: ${x[0].data[1]} KG` },
+        grid: { left: 8, right: 16, top: 24, bottom: 6, containLabel: true },
+        xAxis: { type: 'time', axisLabel: { color: '#5e6a5f', formatter: (v: number) => new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }, splitLine: { show: false }, minInterval: 86400000 },
         yAxis: { ...axis.value((v) => `${v}`), scale: true },
-        series: [{ type: 'line', data: weights.map((w) => w.kg), smooth: true, symbolSize: 7, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 } }],
+        series: [{ type: 'line', data: weights.map((w) => [new Date(`${w.on}T12:00:00`).getTime(), w.kg]), symbolSize: 8, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 },
+            label: { show: weights.length <= 12, position: 'top', formatter: (p: { data: [number, number] }) => `${p.data[1]}`, color: '#163d22', fontWeight: 600 } }],
     }), [weights]);
+    const gain = weights.length > 1 ? (() => {
+        const a = weights[0];
+        const b = weights[weights.length - 1];
+        const days = Math.max(1, Math.round((new Date(`${b.on}T12:00:00`).getTime() - new Date(`${a.on}T12:00:00`).getTime()) / 86400000));
+        return { kg: Math.round((b.kg - a.kg) * 10) / 10, days };
+    })() : null;
 
     const fact = (label: string, value: React.ReactNode) => (
         <div className="min-w-0"><dt className="text-sm text-ink-soft">{label}</dt><dd className="truncate font-semibold text-cobalt-900">{value ?? '—'}</dd></div>
@@ -111,6 +127,8 @@ export default function GoatShow(props: Props) {
                         ) : null}
                         {onFarm ? (
                             <div className="mt-3 flex flex-wrap gap-2">
+                                {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><Stethoscope size={16} aria-hidden /> Health checkup</Button> : null}
+                                {healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <Button variant="secondary" onClick={() => setEntry('')}><ClipboardPlus size={16} aria-hidden /> New health entry</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><Scale size={16} aria-hidden /> Add weight</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><TriangleAlert size={16} aria-hidden /> Report concern</Button>
@@ -124,6 +142,11 @@ export default function GoatShow(props: Props) {
                 {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} /></div> : null}
             </section>
 
+            {entry !== null && healthEntry ? (
+                <Sheet onClose={() => setEntry(null)}>
+                    <HealthEntry data={healthEntry} severities={healthEntry.severities} goatId={goat.id} kind={entry || undefined} onDone={() => setEntry(null)} />
+                </Sheet>
+            ) : null}
             <Tabs
                 value={tab}
                 onChange={setTab}
@@ -132,7 +155,7 @@ export default function GoatShow(props: Props) {
 
             {tab === 'overview' ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                    <Panel title="Weight history" description={goat.lifetimeAdg !== null ? `Average ${goat.lifetimeAdg} g/day across recorded weighings` : undefined}>
+                    <Panel title="Weight history" description={gain && goat.lifetimeAdg !== null ? `${gain.kg >= 0 ? '+' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
                         {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={260} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
                     </Panel>
                     <div className="space-y-4">

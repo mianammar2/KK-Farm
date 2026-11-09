@@ -56,6 +56,28 @@ final class Checkups
         return $n;
     }
 
+    /**
+     * D-102: what the guided health entry needs (the same form on the Health page, the goat page and after a scan).
+     *
+     * @param  Collection<int, Animal>  $goats
+     */
+    public static function entryData(User $user, Collection $goats): array
+    {
+        $pregnant = self::pregnancies();
+        $goats->loadMissing('pen.shed');
+
+        return [
+            'goats' => $goats->map(fn (Animal $a) => [
+                'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'pen' => $a->pen?->fullName(), 'repro' => $a->repro_status,
+                'last' => null, 'due' => false, 'next' => null, 'recheck' => null, 'matedOn' => isset($pregnant[$a->id]) ? $pregnant[$a->id]->mated_on->toDateString() : null,
+            ])->values()->all(),
+            'recent' => [], 'interval' => self::interval(), 'normal' => HealthCheckup::NORMAL, 'gestation' => (int) (Tenant::org()?->gestation_days ?: 150),
+            'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->all(),
+            'conditions' => HealthCase::CONDITIONS, 'severities' => HealthCase::SEVERITIES,
+            'canCheck' => $user->passes('health_checkup'), 'canOpenCase' => $user->passes('open_cases'),
+        ];
+    }
+
     /** @return Collection<string, Mating> each doe's current pregnancy (a pregnant mating), by goat id (D-100) */
     public static function pregnancies(): Collection
     {

@@ -234,6 +234,7 @@ class GoatController extends Controller
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
             'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats')],
             'pregnancy' => $animal->sex === 'female' ? \App\Support\Checkups::pregnancyThread($animal) : null, // D-100
+            'healthEntry' => $animal->status === 'active' && $request->user()->canModule('health') ? \App\Support\Checkups::entryData($request->user(), new \Illuminate\Database\Eloquent\Collection([$animal])) : null, // D-102
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
     }
