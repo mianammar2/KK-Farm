@@ -1,5 +1,6 @@
 import { Head, router, useForm, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
+import FeedRequirement, { type Requirement } from '../components/FeedRequirement';
 import { Check, Clock, Pencil, Plus, Trash2, Wheat } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -19,7 +20,7 @@ type Props = {
     settings: { late: number; window: number; tolerance: number; timezone: string; tracking: boolean; intake: { kid: [number, number] | null; grower: [number, number]; adult: [number, number] }; cp: { kid: number | null; grower: number | null; adult: number | null } };
     board: PenRow[]; groups: Group[]; items: Item[]; movements: Movement[]; history: History[];
     categories: Record<string, string>; movementTypes: Record<string, { label: string; direction: number }>;
-    standards: Standard[]; nutritionCategories: Record<string, string>; methods: Record<string, string>; breeds: Array<{ id: number; name: string }>;
+    requirement: Requirement; standards: Standard[]; nutritionCategories: Record<string, string>; methods: Record<string, string>; breeds: Array<{ id: number; name: string }>;
     can: { store: boolean; plan: boolean; approve: boolean; settings: boolean };
 };
 type Standard = {
@@ -54,6 +55,7 @@ export default function Feeding(props: Props) {
     usePoll(LIVE_MS, { only: ['board', 'items', 'history'] });
     const { today, meal, meals, mealTimes, board, groups, items, can } = props;
     const [tab, setTab] = useState(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'now');
+    const focusPen = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('pen') ? Number(new URLSearchParams(window.location.search).get('pen')) : null; // D-121
     const fed = board.filter((p) => p.status === 'done' || p.status === 'late').length;
     const expected = board.filter((p) => p.status !== 'none' && p.status !== 'upcoming').length;
     const unplanned = board.reduce((sum, p) => sum + p.unplanned, 0);
@@ -61,6 +63,7 @@ export default function Feeding(props: Props) {
 
     const tabs = [
         { id: 'now', label: 'Feed now' },
+        { id: 'requirement', label: 'Requirement' },
         { id: 'rations', label: 'Rations', count: groups.filter((g) => g.draft).length || undefined },
         { id: 'store', label: 'Feed store', count: lowStock || undefined },
         { id: 'nutrition', label: 'Nutrition Standards' },
@@ -80,6 +83,7 @@ export default function Feeding(props: Props) {
             </StatRow>
             <Tabs tabs={tabs} value={tab} onChange={setTab} />
             {tab === 'now' ? <FeedNow {...props} onTab={setTab} /> : null}
+            {tab === 'requirement' ? <FeedRequirement req={props.requirement} focusPen={focusPen} /> : null}
             {tab === 'rations' ? <Rations {...props} /> : null}
             {tab === 'store' ? <Store {...props} /> : null}
             {tab === 'nutrition' ? <Nutrition {...props} /> : null}

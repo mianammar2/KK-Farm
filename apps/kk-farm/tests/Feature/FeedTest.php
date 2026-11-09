@@ -317,7 +317,9 @@ class FeedTest extends TestCase
         $this->assertSame('milk', $req[Animal::where('farm_number', 'K-1')->value('id')]['state']);
         $this->assertEqualsWithDelta(Feed::plannedByPen('morning', now())[$this->penA->id]['lines'][$straw->id] * 2, $req[$d1->id]['kgDay'], 0.01, 'per goat adds up to the pen plan');
 
-        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page
+        // D-121: the dashboard shows the summary; each goat's line is on Feeding → Requirement.
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.kgDay', 1)->where('requirement.sheds.0.pens.0.name', 'Shed 1-Pen A')->where('requirement.sheds.0.pens.0.kgDay', 1)->missing('requirement.sheds.0.pens.0.goats'));
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page
             ->where('requirement.kgDay', 1)->where('requirement.cost', 30)->where('requirement.milk', 1)->where('requirement.missing', 1)
             ->where('requirement.sheds.0.name', 'Shed 1')->where('requirement.sheds.0.pens.0.name', 'Shed 1-Pen A')
             ->where('requirement.sheds.0.pens.0.goats.0.number', 'D-1')->where('requirement.sheds.0.pens.0.goats.0.feeds', 'Feed WS 1'));
@@ -364,7 +366,8 @@ class FeedTest extends TestCase
 
         $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('board.0.balance', 'over')->where('board.0.diff', 0.5));
         $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('feeding.overPens', 1)->where('feeding.pens.0.meals.morning.balance', 'over')
-            ->where('requirement.sheds.0.pens.0.givenToday', 1)->where('requirement.sheds.0.pens.0.kgDay', 1.3));
+            ->where('requirement.sheds.0.pens.0.kgDay', 1.3));
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('requirement.sheds.0.pens.0.givenToday', 1));
         $over = collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'feed_over');
         $this->assertSame(['Shed 1-Pen A'], array_column($over['items'], 'text'));
         $this->assertSame(['ok', 'short'], [Feed::balance(1, 0.8, 1.2, 1.1, 10)['state'], Feed::balance(1, 0.8, 1.2, 0.5, 10)['state']]);
@@ -378,7 +381,7 @@ class FeedTest extends TestCase
         $this->item('WS', 30, 5);
 
         // 40 kg × 2.5% = 1 kg a day: November has 30 days, 10 are left including today, the store holds 5 kg.
-        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page
             ->where('requirement.supply.month', 'November')->where('requirement.supply.needMonth', 30)
             ->where('requirement.supply.daysLeft', 10)->where('requirement.supply.needLeft', 10)->where('requirement.supply.shortMonth', 5)
             ->where('requirement.kgMonth', 30)->where('requirement.sheds.0.kgMonth', 30)->where('requirement.sheds.0.pens.0.goats.0.kgMonth', 30));
@@ -443,8 +446,8 @@ class FeedTest extends TestCase
         $req = Feed::perGoat(Animal::active()->get(), now());
         $this->assertSame([9.0, 0.09, 'Adult Breeding Female', '8–10%'], [$req[$d1->id]['cp'], $req[$d1->id]['cpKg'], $req[$d1->id]['standard'], $req[$d1->id]['cpRange']]);
         $this->assertNull($req[Animal::where('farm_number', 'K-1')->value('id')]['cp'], 'kid on milk: no CP');
-        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.cpDay', 0.09)
-            ->where('requirement.sheds.0.cpDay', 0.09)->where('requirement.sheds.0.pens.0.goats.0.cpKg', 0.09));
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('requirement.supply.cpDay', 0.09)->where('requirement.sheds.0.cpDay', 0.09));
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('requirement.sheds.0.pens.0.goats.0.cpKg', 0.09));
 
         // No standard for adults any more: the farm's adult CP % is used.
         \App\Models\NutritionStandard::where('category', 'adult_female')->update(['active' => false]);

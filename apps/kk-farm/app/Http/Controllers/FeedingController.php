@@ -12,6 +12,7 @@ use App\Models\Pen;
 use App\Models\RationPlan;
 use App\Support\Farm;
 use App\Support\Feed;
+use App\Support\FeedRequirement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -100,6 +101,7 @@ class FeedingController extends Controller
                 ]),
             'categories' => FeedItem::CATEGORIES,
             'standards' => $this->standards(), // D-116
+            'requirement' => FeedRequirement::build(\App\Models\Animal::with(['pen.shed'])->active()->orderBy('farm_number')->get()), // D-121
             'nutritionCategories' => collect(Feed::NUTRITION_CATEGORIES)->map(fn ($c) => $c[0])->all(),
             'methods' => \App\Models\NutritionStandard::METHODS,
             'breeds' => \App\Models\Breed::orderBy('name')->get(['id', 'name']),

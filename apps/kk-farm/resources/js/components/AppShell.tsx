@@ -1,4 +1,5 @@
 import BrandMark from './BrandMark';
+import NotificationBell from './NotificationBell';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk } from 'lucide-react';
@@ -213,7 +214,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 ) : null}
             </AnimatePresence>
 
-            <AppBar path={path} items={NAV.flatMap((g) => g.items)} right={<RoleSwitcher auth={auth} roles={roles} compact />} />
+            <AppBar path={path} items={NAV.flatMap((g) => g.items)} right={<div className="flex items-center gap-1"><NotificationBell path={path} /><RoleSwitcher auth={auth} roles={roles} compact /></div>} />
             <header className="sticky top-0 z-20 hidden items-center gap-2 border-b border-rule bg-tile/95 px-3 py-2 backdrop-blur sm:px-5 lg:flex">
                 <button type="button" aria-label="Open menu" onClick={() => setDrawer(true)} className="grid size-11 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100 lg:hidden">
                     <Menu size={21} />
@@ -227,6 +228,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         Synthetic demo data
                     </span>
                 ) : <span className="ml-auto" />}
+                <NotificationBell path={path} />
                 <RoleSwitcher auth={auth} roles={roles} />
             </header>
 

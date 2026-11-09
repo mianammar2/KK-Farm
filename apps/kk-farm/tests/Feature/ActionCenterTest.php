@@ -107,10 +107,12 @@ class ActionCenterTest extends TestCase
         $this->assertArrayHasKey('open_cases', $this->items('vet'));
     }
 
-    public function test_the_page_and_the_dashboard_banner_show_the_same_items(): void
+    public function test_the_page_and_the_notification_bell_show_the_same_items(): void
     {
         Task::create(['title' => 'Late task', 'type' => 'other', 'due_on' => now()->subDay(), 'priority' => 'medium', 'status' => 'open']);
         $this->actingAs($this->user('manager'))->get('/actions')->assertOk()->assertInertia(fn (AssertableInertia $p) => $p->component('Actions')->where('items', fn ($i) => collect($i)->contains('key', 'tasks_overdue')));
-        $this->actingAs($this->user('manager'))->get('/')->assertInertia(fn (AssertableInertia $p) => $p->where('actions', fn ($a) => collect($a)->contains(fn ($x) => $x['key'] === 'tasks_overdue' && $x['count'] === 1)));
+        // D-121: the bell in the top bar loads the same items, each with its page.
+        $this->actingAs($this->user('manager'))->getJson('/notifications')->assertOk()->assertJsonFragment(['key' => 'tasks_overdue', 'count' => 1, 'url' => '/tasks']);
+        $this->actingAs($this->user('manager'))->get('/')->assertInertia(fn (AssertableInertia $p) => $p->missing('actions')->missing('health'));
     }
 }
