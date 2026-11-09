@@ -172,6 +172,30 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
     );
 }
 
+/** D-137: a meal's status written on the feeding chalkboard. */
+function ChalkMark({ status }: { status: FeedStatus }) {
+    const label = FEED_STATUS[status].label;
+    const mark = status === 'done' ? <svg viewBox="0 0 20 16" className="h-4 w-5"><path d="M2 9l5 5L18 2" stroke="#a8e07a" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        : status === 'missed' ? <svg viewBox="0 0 16 16" className="size-4"><path d="M3 3l10 10M13 3L3 13" stroke="#ff8a7a" strokeWidth="2.6" strokeLinecap="round" /></svg>
+            : status === 'late' ? <svg viewBox="0 0 16 16" className="size-4"><circle cx="8" cy="8" r="6" stroke="#ffd36b" strokeWidth="2" fill="none" /><path d="M8 4.5V8l2.5 1.5" stroke="#ffd36b" strokeWidth="2" fill="none" strokeLinecap="round" /></svg>
+                : null;
+    return (
+        <span className={`kk-chalk-mark kk-chalk-${status}`}>{mark}{status === 'none' ? '—' : label}</span>
+    );
+}
+
+/** D-137: morning sunrise, midday sun, evening sunset, drawn in chalk. */
+function MealSun({ meal }: { meal: Meal }) {
+    if (meal === 'midday') return <svg viewBox="0 0 20 20" className="size-4 shrink-0" aria-hidden><circle cx="10" cy="10" r="4" fill="#ffe08a" />{[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <line key={a} x1="10" y1="1.5" x2="10" y2="4" stroke="#ffe08a" strokeWidth="1.6" strokeLinecap="round" transform={`rotate(${a} 10 10)`} />)}</svg>;
+    return (
+        <svg viewBox="0 0 20 20" className="size-4 shrink-0" aria-hidden>
+            <path d="M4 14a6 6 0 0 1 12 0Z" fill={meal === 'morning' ? '#ffd27a' : '#ff9e6b'} />
+            {[-60, -30, 0, 30, 60].map((a) => <line key={a} x1="10" y1="3" x2="10" y2="5.5" stroke={meal === 'morning' ? '#ffd27a' : '#ff9e6b'} strokeWidth="1.5" strokeLinecap="round" transform={`rotate(${a} 10 14)`} />)}
+            <line x1="1.5" y1="14.5" x2="18.5" y2="14.5" stroke="#f3f0e6" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 const FEED_STATUS: Record<FeedStatus, { label: string; className: string }> = {
     done: { label: 'Fed', className: 'bg-ok-100 text-ok-700' },
     late: { label: 'Late', className: 'bg-watch-100 text-watch-700' },
@@ -191,25 +215,26 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
     return (
         <Panel title="Feeding today" description={`${kg(feeding.givenKg)} given of ${kg(feeding.plannedKg)} planned · PKR ${feeding.cost.toLocaleString('en-PK')}`}
             actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Feed now</Link>}>
-            {feeding.lowStock.length ? <p className="mb-3 rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">Low or out of stock: {feeding.lowStock.join(', ')}</p> : null}
-            {feeding.overPens ? <p className="mb-3 rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">{plural(feeding.overPens, 'pen was', 'pens were')} given more feed today than its goats need now. Plans follow the goats, so a move after feeding shows here.</p> : null}
+            {feeding.lowStock.length ? <p className="kk-paper-note mb-3 text-sm">Low or out of stock: {feeding.lowStock.join(', ')}</p> : null}
+            {feeding.overPens ? <p className="kk-paper-note kk-paper-alert mb-3 text-sm font-semibold">{plural(feeding.overPens, 'pen was', 'pens were')} given more feed today than its goats need now. Plans follow the goats, so a move after feeding shows here.</p> : null}
             {feeding.pens.length ? (
-                <>
+                <div className="kk-chalkboard"> {/* D-137: the farm's feeding chalkboard */}
                 {/* Phones and the gun: one row per pen with its three meals side by side. */}
-                <ul className="divide-y divide-rule sm:hidden">
+                <ul className="kk-chalk-rows sm:hidden">
                     {pens.map((p) => (
                         <li key={p.id} className="py-2.5">
                             <div className="flex items-baseline justify-between gap-2">
-                                <Link href="/feeding" className="font-mono font-semibold text-cobalt-900">{p.name}</Link>
-                                <span className="text-xs text-ink-soft">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''} · {kg(p.dayGiven)} / {kg(p.dayPlanned)} today</span>
+                                <Link href="/feeding" className="kk-chalk-pen">{p.name}</Link>
+                                <span className="kk-chalk-soft text-xs">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''} · {kg(p.dayGiven)} / {kg(p.dayPlanned)} today</span>
                             </div>
                             <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                                 {meals.map((m) => {
                                     const x = p.meals[m];
                                     return (
-                                        <div key={m} className={`rounded-tile px-2 py-1.5 ${m === feeding.meal ? 'ring-1 ring-cobalt-200' : ''} ${FEED_STATUS[x.status].className}`}>
-                                            <div className="text-[11px] font-semibold">{feeding.meals[m]} · {FEED_STATUS[x.status].label}</div>
-                                            <div className="text-[11px] opacity-80">{x.planned || x.given ? `${kg(x.given)} / ${kg(x.planned)}` : '—'}</div>
+                                        <div key={m} className={`kk-chalk-cell ${m === feeding.meal ? 'kk-chalk-now' : ''}`}>
+                                            <div className="flex items-center gap-1 text-[11px] font-semibold"><MealSun meal={m} />{feeding.meals[m]}</div>
+                                            <ChalkMark status={x.status} />
+                                            <div className="kk-chalk-soft text-[11px]">{x.planned || x.given ? `${kg(x.given)} / ${kg(x.planned)}` : '—'}</div>
                                             <BalanceTag balance={x.balance} diff={x.diff} className="mt-0.5 !px-1 !text-[10px]" />
                                         </div>
                                     );
@@ -220,25 +245,25 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                 </ul>
                 <div className="hidden overflow-x-auto sm:block">
                     <table className="w-full min-w-[34rem] text-sm">
-                        <thead className="text-left text-ink-soft">
+                        <thead className="text-left">
                             <tr>
                                 <th className="py-1.5 pr-3 font-semibold">Pen</th>
-                                {meals.map((m) => <th key={m} className={`px-2 py-1.5 font-semibold ${m === feeding.meal ? 'text-cobalt-900' : ''}`}>{feeding.meals[m]} <span className="font-normal text-ink-faint">{feeding.times[m]}</span></th>)}
+                                {meals.map((m) => <th key={m} className={`px-2 py-1.5 font-semibold ${m === feeding.meal ? 'kk-chalk-now-head' : ''}`}><span className="inline-flex items-center gap-1.5"><MealSun meal={m} />{feeding.meals[m]} <span className="kk-chalk-soft font-normal">{feeding.times[m]}</span></span></th>)}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#d9c39a]">
+                        <tbody className="kk-chalk-body">
                             {pens.map((p) => (
                                 <tr key={p.id}>
                                     <td className="py-2 pr-3">
-                                        <Link href="/feeding" className="font-mono font-semibold text-cobalt-900 hover:underline">{p.name}</Link>
-                                        <div className="text-xs text-ink-soft">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''} · {kg(p.dayGiven)} / {kg(p.dayPlanned)} today</div>
+                                        <Link href="/feeding" className="kk-chalk-pen hover:underline">{p.name}</Link>
+                                        <div className="kk-chalk-soft text-xs">{p.goats} goats{p.onMilk ? ` · ${p.onMilk} on milk` : ''} · {kg(p.dayGiven)} / {kg(p.dayPlanned)} today</div>
                                     </td>
                                     {meals.map((m) => {
                                         const x = p.meals[m];
                                         return (
                                             <td key={m} className="px-2 py-2">
-                                                <span className={`inline-block rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${FEED_STATUS[x.status].className}`}>{FEED_STATUS[x.status].label}</span>
-                                                {x.planned || x.given ? <div className="mt-0.5 text-xs text-ink-soft">{kg(x.given)} / {kg(x.planned)}</div> : null}
+                                                <ChalkMark status={x.status} />
+                                                {x.planned || x.given ? <div className="kk-chalk-soft mt-0.5 text-xs">{kg(x.given)} / {kg(x.planned)}</div> : null}
                                                 <BalanceTag balance={x.balance} diff={x.diff} className="mt-0.5" />
                                             </td>
                                         );
@@ -249,11 +274,11 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                     </table>
                 </div>
                 {feeding.pens.length > 5 ? (
-                    <button type="button" onClick={() => setAll(!all)} className="mt-1 flex w-full items-center justify-center gap-1 rounded-tile py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">
+                    <button type="button" onClick={() => setAll(!all)} className="kk-chalk-more mt-1 flex w-full items-center justify-center gap-1 rounded-tile py-2 text-sm font-semibold">
                         <ChevronDown size={15} className={all ? 'rotate-180' : ''} aria-hidden />{all ? 'Show less' : `Show ${feeding.pens.length - 5} more pens`}
                     </button>
                 ) : null}
-                </>
+                </div>
             ) : <p className="text-sm text-ink-soft">No goats in any pen yet.</p>}
         </Panel>
     );

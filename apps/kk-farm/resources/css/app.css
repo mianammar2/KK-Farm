@@ -344,3 +344,34 @@ button:active:not(:disabled) { transition: transform 0.08s; }
     .kk-age-goat > svg { width: calc(28px * var(--s, 1)); height: calc(23px * var(--s, 1)); }
     .kk-th-goat { display: none; }
 }
+
+/* D-137: the feeding schedule on a farm chalkboard in a timber frame; statuses written in chalk. */
+.kk-chalkboard {
+    padding: 10px 14px 8px; border-radius: 8px; color: #f3f0e6;
+    border: 8px solid #8d6238; box-shadow: inset 0 0 0 2px #5a3b1e, inset 0 0 40px rgb(0 0 0 / 0.35), 0 4px 12px -6px rgb(40 25 10 / 0.6);
+    background:
+        radial-gradient(ellipse at 30% 20%, rgb(255 255 255 / 0.06), transparent 60%),
+        radial-gradient(ellipse at 80% 90%, rgb(255 255 255 / 0.04), transparent 50%),
+        #2c3e33;
+}
+.kk-chalkboard thead { color: #f3f0e6; border-bottom: 2px dashed rgb(243 240 230 / 0.45); }
+.kk-chalk-body > tr + tr, .kk-chalk-rows > li + li { border-top: 1px dashed rgb(243 240 230 / 0.25); }
+.kk-chalk-pen { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: #fffbe9; letter-spacing: 0.01em; }
+.kk-chalk-soft { color: rgb(243 240 230 / 0.72); }
+.kk-chalk-mark { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+.kk-chalk-done { color: #a8e07a; }
+.kk-chalk-late { color: #ffd36b; }
+.kk-chalk-missed { color: #ff8a7a; }
+.kk-chalk-due { color: #fffbe9; padding: 0 7px; border: 1.8px solid #fffbe9; border-radius: 999px 900px 999px 850px; }
+.kk-chalk-upcoming, .kk-chalk-none { color: rgb(243 240 230 / 0.55); }
+.kk-chalk-cell { padding: 5px 6px; border-radius: 6px; background: rgb(255 255 255 / 0.04); }
+.kk-chalk-now { box-shadow: inset 0 0 0 1.5px rgb(255 251 233 / 0.55); }
+.kk-chalk-now-head { text-decoration: underline wavy rgb(255 224 138 / 0.8); text-underline-offset: 6px; }
+.kk-chalk-more { color: #fffbe9; }
+.kk-chalk-more:hover { background: rgb(255 255 255 / 0.08); }
+.kk-paper-note {
+    position: relative; padding: 8px 12px 8px 26px; border-radius: 3px; color: #5a4628; background: #fff3c4;
+    box-shadow: 0 2px 0 #d8c08a, 0 6px 10px -8px rgb(40 25 10 / 0.5); transform: rotate(-0.4deg);
+}
+.kk-paper-note::before { content: ''; position: absolute; left: 9px; top: 11px; width: 9px; height: 9px; border-radius: 50%; background: #c8312a; box-shadow: inset -2px -2px 0 rgb(0 0 0 / 0.25); }
+.kk-paper-alert { background: #ffe1d9; color: #8a2a1f; box-shadow: 0 2px 0 #e6b3a6, 0 6px 10px -8px rgb(40 25 10 / 0.5); }
