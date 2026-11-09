@@ -375,3 +375,33 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 }
 .kk-paper-note::before { content: ''; position: absolute; left: 9px; top: 11px; width: 9px; height: 9px; border-radius: 50%; background: #c8312a; box-shadow: inset -2px -2px 0 rgb(0 0 0 / 0.25); }
 .kk-paper-alert { background: #ffe1d9; color: #8a2a1f; box-shadow: 0 2px 0 #e6b3a6, 0 6px 10px -8px rgb(40 25 10 / 0.5); }
+
+/* D-138: Missing Data on a farm clipboard: hardboard, a metal clip, lined paper, yellow ear tags, red pencil circles. */
+.kk-clipboard { position: relative; margin: 12px; padding: 22px 10px 10px; border-radius: 10px; background: #a8784a; box-shadow: inset 0 0 0 2px #7a5230, 0 5px 12px -8px rgb(40 25 10 / 0.6); }
+.kk-clip {
+    position: absolute; left: 50%; top: -6px; width: 86px; height: 22px; translate: -50% 0; border-radius: 6px 6px 3px 3px;
+    background: linear-gradient(#e6e8e6, #a9adaa); box-shadow: inset 0 -3px 0 #8d918e, 0 2px 3px rgb(0 0 0 / 0.3);
+}
+.kk-clip::after { content: ''; position: absolute; left: 50%; top: 4px; width: 26px; height: 7px; translate: -50% 0; border-radius: 4px; background: #7d817e; }
+.kk-lined {
+    padding: 4px 12px 2px; border-radius: 3px; background-color: #fffdf4;
+    background-image: linear-gradient(90deg, transparent 22px, rgb(214 80 70 / 0.35) 22px 23.5px, transparent 23.5px);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+.kk-lined > li + li { border-top: 1px solid #c9dbe8; }
+.kk-lined > li { padding-left: 18px; }
+.kk-eartag {
+    position: relative; flex: none; display: inline-flex; align-items: flex-end; justify-content: center; min-width: 74px; padding: 17px 9px 5px; white-space: nowrap;
+    color: #1f2a1f; background: #f4c430; border-radius: 10px 10px 18px 18px / 10px 10px 22px 22px;
+    box-shadow: inset 0 -3px 0 #d6a516, inset 0 2px 0 rgb(255 255 255 / 0.45), 0 2px 3px rgb(0 0 0 / 0.25);
+}
+.kk-eartag-hole { position: absolute; top: 5px; left: 50%; width: 9px; height: 9px; translate: -50% 0; border-radius: 50%; background: #fffdf4; box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35); }
+.kk-pencil {
+    font-size: 12px; font-weight: 700; color: #b3261e; padding: 1px 8px;
+    border: 1.7px solid #c8312a; border-radius: 48% 52% 45% 55% / 60% 50% 55% 45%; transform: rotate(-1.5deg);
+}
+.kk-pencil:nth-child(even) { transform: rotate(1.2deg); }
+.kk-fix {
+    font-size: 13px; font-weight: 800; color: #fff7e6; padding: 4px 14px; border-radius: 5px;
+    background: repeating-linear-gradient(90deg, #7a4f2a 0 18px, #6e4624 18px 19px); box-shadow: 0 2px 0 #3f2914;
+}

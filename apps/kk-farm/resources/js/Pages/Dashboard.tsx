@@ -134,18 +134,25 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                     {missing.length ? (
                 <Panel title="Missing data" description="No pen, no weight or a wrong birth date · where each came from" flush
                     actions={<Link href="/goats?show=missing" className="text-sm font-semibold text-turq-800 hover:underline">Open as table</Link>}>
-                    <ul className="divide-y divide-rule">
-                        <ShowMore items={missing} render={(m) => (
-                            <li key={m.goatId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-                                <div className="min-w-0 flex-1">
-                                    <GoatLabel goat={{ id: m.goatId, number: m.number, name: m.name, coat: m.coat, sex: m.sex }} size={34} />
-                                    <p className="mt-0.5 text-xs text-ink-soft">From: {m.source}</p>
-                                </div>
-                                <div className="flex flex-wrap gap-1">{m.missing.map((x) => <span key={x} className="rounded-[4px] bg-crit-100 px-1.5 py-0.5 text-xs font-semibold text-crit-700">{x}</span>)}</div>
-                                <Link href={`/goats/${m.goatId}`} className="text-sm font-semibold text-cobalt-800 hover:underline">Fix</Link>
-                            </li>
-                        )} />
-                    </ul>
+                    {/* D-138: the farm's to-fix clipboard: yellow ear tags, red pencil circles, a wooden Fix button. */}
+                    <div className="kk-clipboard">
+                        <span className="kk-clip" aria-hidden />
+                        <ul className="kk-lined">
+                            <ShowMore items={missing} render={(m) => (
+                                <li key={m.goatId} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2">
+                                    <Link href={`/goats/${m.goatId}`} className="flex min-w-fit flex-1 items-center gap-2.5">
+                                        <EarTag number={m.number} />
+                                        <span className="min-w-0">
+                                            {m.name ? <span className="block truncate font-semibold text-[#3b2e1a]">{m.name}</span> : null}
+                                            <span className="block truncate text-xs text-[#6b5434]">From: {m.source}</span>
+                                        </span>
+                                    </Link>
+                                    <span className="flex flex-wrap gap-1.5">{m.missing.map((x) => <span key={x} className="kk-pencil">{x}</span>)}</span>
+                                    <Link href={`/goats/${m.goatId}`} className="kk-fix kk-lift">Fix</Link>
+                                </li>
+                            )} />
+                        </ul>
+                    </div>
                 </Panel>
                     ) : null}
                     {charts && !showCharts ? <Panel title="Charts" description="Average weight, herd by breed, income and spending"><button type="button" onClick={() => setShowCharts(true)} className="w-full rounded-tile border border-rule py-2.5 text-sm font-semibold text-cobalt-800 hover:bg-glaze">Show charts</button></Panel> : null}
@@ -169,6 +176,16 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                 </div>
             ) : null}
         </>
+    );
+}
+
+/** D-138: a yellow plastic ear tag with the goat's tag number, as on the real goats. */
+function EarTag({ number }: { number: string }) {
+    return (
+        <span className="kk-eartag" title={number}>
+            <span className="kk-eartag-hole" aria-hidden />
+            <span className="font-mono text-xs font-extrabold tracking-tight">{number}</span>
+        </span>
     );
 }
 
