@@ -10,7 +10,7 @@ import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
 import { useFive } from '../lib/useFive';
 import { BalanceTag, type Balance, type Requirement } from '../components/FeedRequirement';
-import FarmScene from '../components/FarmScene';
+import FarmScene, { GoatFigure } from '../components/FarmScene';
 import FeedScene from '../components/FeedScene';
 
 type Meal = 'morning' | 'midday' | 'evening';
@@ -229,7 +229,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                                 {meals.map((m) => <th key={m} className={`px-2 py-1.5 font-semibold ${m === feeding.meal ? 'text-cobalt-900' : ''}`}>{feeding.meals[m]} <span className="font-normal text-ink-faint">{feeding.times[m]}</span></th>)}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-rule">
+                        <tbody className="divide-y divide-[#d9c39a]">
                             {pens.map((p) => (
                                 <tr key={p.id}>
                                     <td className="py-2 pr-3">
@@ -267,6 +267,9 @@ type HerdAge = {
     classes: Array<{ key: string; label: string; local: string | null; female: number; male: number; total: number }>;
 };
 
+/** D-135: how big the goat beside each age row is drawn. */
+const AGE_SCALE: Record<string, number> = { kid: 0.62, grower: 0.82, adult: 1, age_unknown: 0.82 };
+
 /** D-118: Kids, Growers and Adults by gender, from each goat's age today; every number opens those goats. */
 function HerdByAge({ h }: { h: HerdAge }) {
     const [view, setView] = useState<'age' | 'class'>('age');
@@ -282,17 +285,18 @@ function HerdByAge({ h }: { h: HerdAge }) {
     return (
         <Panel title={view === 'age' ? 'Herd by Age and Gender' : 'Herd by Classification'} description={`${plural(h.total, 'goat', 'goats')} on the farm${showF && showM ? ` · ${h.female} female, ${h.male} male` : showF ? ', all female' : ', all male'}`} className="mt-4"
             actions={<div className="flex gap-1" role="group" aria-label="View">{(['age', 'class'] as const).map((v) => <button key={v} type="button" onClick={() => setView(v)} className={`rounded-tile px-2.5 py-1 text-sm font-semibold ${view === v ? 'bg-cobalt-800 text-white' : 'text-cobalt-800 hover:bg-glaze'}`}>{v === 'age' ? 'By Age' : 'By Classification'}</button>)}</div>}>
-            <div className="overflow-x-auto">
+            {/* D-135: the herd on the farm's notice board: goat figures sized by age, white for female, brown for male. */}
+            <div className="kk-noticeboard overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold">♀ Female</th> : null}{showM ? <th className="px-2 text-right font-semibold">♂ Male</th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="hidden w-1/3 pl-3 font-semibold sm:table-cell">Share</th></tr></thead>
+                    <thead className="text-left text-xs text-[#4a3a22]"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female flag={false} delay={0} flip={false} /></span>Female</span></th> : null}{showM ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female={false} flag={false} delay={0} flip={false} /></span>Male</span></th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="hidden w-1/3 pl-3 font-semibold sm:table-cell">Share</th></tr></thead>
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
-                                <td className="py-1.5 pr-3"><span className="font-semibold text-cobalt-900">{r.label}</span><span className="block text-xs text-ink-soft">{r.range}</span></td>
+                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><span className="kk-age-goat" style={{ ['--s' as string]: AGE_SCALE[r.key] ?? 1 }} aria-hidden><GoatFigure female={r.female >= r.male} flag={false} delay={0} flip={false} /></span><span><span className="font-semibold text-cobalt-900">{r.label}</span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
                                 {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>
-                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="kk-grow bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="kk-grow bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
+                                <td className="hidden pl-3 sm:table-cell"><div className="kk-rail" aria-hidden><div className="kk-grow kk-rail-f" style={{ width: `${pct(r.female)}%` }} /><div className="kk-grow kk-rail-m" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
                             </tr>
                         )) : classes.map((c) => (
                             <tr key={c.key}>
@@ -300,11 +304,11 @@ function HerdByAge({ h }: { h: HerdAge }) {
                                 {showF ? <td className="text-right">{cell(`${c.key}`, c.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${c.key}`, c.male)}</td> : null}
                                 <td className="text-right">{cell(c.key, c.total, true)}</td>
-                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="kk-grow bg-[#c2185b]/70" style={{ width: `${pct(c.female)}%` }} /><div className="kk-grow bg-cobalt-700/70" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
+                                <td className="hidden pl-3 sm:table-cell"><div className="kk-rail" aria-hidden><div className="kk-grow kk-rail-f" style={{ width: `${pct(c.female)}%` }} /><div className="kk-grow kk-rail-m" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
                             </tr>
                         ))}
                     </tbody>
-                    <tfoot className="border-t-2 border-rule text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td className="hidden sm:table-cell" /></tr></tfoot>
+                    <tfoot className="border-t-2 border-[#b8935c] text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td className="hidden sm:table-cell" /></tr></tfoot>
                 </table>
                 {view === 'class' ? moreClasses : null}
             </div>

@@ -74,7 +74,7 @@ function PenYard({ pen }: { pen: ScenePen }) {
 }
 
 /** A small side-on goat: body, neck and head, horns, ear, beard, four legs and a tail. */
-function GoatFigure({ female, flag, delay, flip }: { female: boolean; flag: boolean; delay: number; flip: boolean }) {
+export function GoatFigure({ female, flag, delay, flip }: { female: boolean; flag: boolean; delay: number; flip: boolean }) {
     const coat = female ? '#fffdf7' : '#8b5a33';
     const shade = female ? '#6f5a3a' : '#4a2c16';
     return (

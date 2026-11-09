@@ -46,9 +46,9 @@ function FeedSack({ sack, index }: { sack: Sack; index: number }) {
                 <rect x="28" y="19" width="64" height="5" rx="2.5" fill="#7b5530" />
                 <path d="M22 60 Q60 66 98 60" stroke={green ? '#6f7d43' : '#8a6a3a'} strokeWidth="1.5" strokeDasharray="4 3" fill="none" />
             </svg>
-            <div className="relative flex h-full flex-col items-center justify-center px-2 pt-6 text-center">
+            <div className="relative flex h-full flex-col items-center justify-center px-2 pt-5 text-center">
                 <span className="kk-sack-tag">{sack.label}</span>
-                <span className="mt-1 text-lg font-bold tabular-nums text-[#3b2e1a] sm:text-xl">{sack.value}</span>
+                <span className="mt-0.5 text-base font-bold tabular-nums text-[#3b2e1a]">{sack.value}</span>
                 {sack.note ? <span className="max-w-[78%] text-[11px] font-semibold leading-tight text-[#4a3a22]/80">{sack.note}</span> : null}
             </div>
         </div>
