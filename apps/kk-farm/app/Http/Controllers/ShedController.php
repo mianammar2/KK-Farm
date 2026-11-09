@@ -74,6 +74,23 @@ class ShedController extends Controller
         return back()->with('success', "{$farm->name} saved.");
     }
 
+    /** D-130: a farm can be deleted only when it has no sheds (move or reassign them first), and never the last farm. */
+    public function destroyFarm(Request $request, FarmLocation $farm): RedirectResponse
+    {
+        abort_unless($request->user()->passes('manage_sheds'), 403);
+        if ($farm->sheds()->exists()) {
+            throw ValidationException::withMessages(['farm' => "{$farm->name} still has sheds. Move them to another farm first (edit each shed and choose the farm)."]);
+        }
+        if (FarmLocation::count() <= 1) {
+            throw ValidationException::withMessages(['farm' => 'This is the only farm. Add another farm before deleting it.']);
+        }
+        $name = $farm->name;
+        $farm->delete();
+        Farm::log($request->user(), "Deleted farm $name ({$farm->code})", '/sheds');
+
+        return back()->with('success', "$name deleted.");
+    }
+
     private function farmData(Request $request, ?FarmLocation $farm = null): array
     {
         $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);

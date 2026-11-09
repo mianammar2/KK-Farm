@@ -1,6 +1,6 @@
-import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
-import { LocateFixed, MapPin, Pencil, Plus } from 'lucide-react';
+import { LocateFixed, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
@@ -130,7 +130,7 @@ export default function Sheds({ farms, sheds, types, prefix, board }: Props & { 
 }
 
 function Editor({ editing, farms, sheds, types, prefix, onDone }: { editing: NonNullable<Editing>; farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string; onDone: () => void }) {
-    if (editing.kind === 'farm') return <FarmForm farm={editing.farm} onDone={onDone} />;
+    if (editing.kind === 'farm') return <FarmForm farm={editing.farm} only={farms.length <= 1} onDone={onDone} />;
     return editing.kind === 'shed' ? <ShedForm shed={editing.shed} farms={farms} sheds={sheds} types={types} prefix={prefix} onDone={onDone} /> : <PenForm shed={editing.shed} pen={editing.pen} area={editing.area || editing.pen?.kind === 'open_area'} onDone={onDone} />;
 }
 
@@ -231,7 +231,7 @@ function PenForm({ shed, pen, area = false, onDone }: { shed: Shed; pen?: Pen; a
 }
 
 /** D-128: a farm and where it is. "Use My Location" fills the GPS from the phone or computer (the browser asks first). */
-function FarmForm({ farm, onDone }: { farm?: FarmLoc; onDone: () => void }) {
+function FarmForm({ farm, only = false, onDone }: { farm?: FarmLoc; only?: boolean; onDone: () => void }) {
     const form = useForm({
         name: farm?.name ?? '', code: farm?.code ?? '', address: farm?.address ?? '', city: farm?.city ?? '', district: farm?.district ?? '', province: farm?.province ?? '',
         country: farm?.country ?? 'Pakistan', latitude: farm?.latitude != null ? String(farm.latitude) : '', longitude: farm?.longitude != null ? String(farm.longitude) : '', notes: farm?.notes ?? '', active: farm?.active ?? true,
@@ -251,6 +251,13 @@ function FarmForm({ farm, onDone }: { farm?: FarmLoc; onDone: () => void }) {
     const input = (key: keyof typeof form.data, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
         <input className="field" value={String(form.data[key])} onChange={(x) => form.setData(key, x.target.value as never)} {...props} />
     );
+    // D-130: delete only an empty farm, and never the last one.
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const blocked = farm ? (farm.sheds > 0 ? `Move its ${farm.sheds} shed${farm.sheds === 1 ? '' : 's'} to another farm first.` : only ? 'This is the only farm. Add another before deleting it.' : null) : null;
+    const remove = () => {
+        if (!farm || blocked || !window.confirm(`Delete ${farm.name} (${farm.code})? This cannot be undone.`)) return;
+        router.delete(`/farms/${farm.id}`, { preserveScroll: true, onSuccess: onDone, onError: (er) => setDeleteError(er.farm ?? 'Could not delete this farm.') });
+    };
     const submit = (ev: React.FormEvent) => {
         ev.preventDefault();
         const options = { preserveScroll: true, onSuccess: onDone };
@@ -286,6 +293,13 @@ function FarmForm({ farm, onDone }: { farm?: FarmLoc; onDone: () => void }) {
                     <Button type="submit" disabled={form.processing}>{farm ? 'Save farm' : 'Add farm'}</Button>
                     <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
                 </div>
+                {farm ? (
+                    <div className="border-t border-rule pt-3">
+                        <button type="button" onClick={remove} disabled={!!blocked} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-crit-700 px-4 text-sm font-semibold text-crit-700 hover:bg-crit-100 disabled:cursor-not-allowed disabled:border-rule disabled:text-ink-faint disabled:hover:bg-transparent"><Trash2 size={16} aria-hidden />Delete Farm</button>
+                        {blocked ? <p className="mt-1 text-sm text-ink-soft">{blocked}</p> : null}
+                        {deleteError ? <p className="mt-1 text-sm text-crit-700" role="alert">{deleteError}</p> : null}
+                    </div>
+                ) : null}
             </form>
         </Panel>
     );

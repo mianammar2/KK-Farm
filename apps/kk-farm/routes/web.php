@@ -126,6 +126,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/movements', [\App\Http\Controllers\MovementController::class, 'store']);
         Route::post('/farms', [ShedController::class, 'storeFarm']); // D-128
         Route::patch('/farms/{farm}', [ShedController::class, 'updateFarm']);
+        Route::delete('/farms/{farm}', [ShedController::class, 'destroyFarm']); // D-130
         Route::post('/sheds', [ShedController::class, 'store']);
         Route::patch('/sheds/{shed}', [ShedController::class, 'update']);
         Route::post('/sheds/{shed}/pens', [ShedController::class, 'storePen']);

@@ -81,4 +81,23 @@ class FarmLocationsTest extends TestCase
         $this->actingAs($this->user('caretaker'))->post('/farms', ['name' => 'X', 'code' => 'XX'])->assertForbidden();
         $this->assertSame(0, FarmLocation::count());
     }
+
+    public function test_only_an_empty_farm_that_is_not_the_last_one_can_be_deleted(): void
+    {
+        $manager = $this->user('manager');
+        $this->actingAs($manager)->post('/sheds', ['type' => 'BDU', 'status' => 'active'])->assertSessionHasNoErrors();
+        $main = FarmLocation::firstOrFail();
+
+        $this->actingAs($manager)->delete("/farms/{$main->id}")->assertSessionHasErrors('farm'); // has a shed
+        $this->actingAs($manager)->post('/farms', ['name' => 'Spare', 'code' => 'SP'])->assertSessionHasNoErrors();
+        $spare = FarmLocation::where('code', 'SP')->firstOrFail();
+
+        $this->actingAs($this->user('caretaker'))->delete("/farms/{$spare->id}")->assertForbidden();
+        $this->actingAs($manager)->delete("/farms/{$spare->id}")->assertSessionHasNoErrors();
+        $this->assertNull(FarmLocation::find($spare->id));
+
+        Shed::query()->update(['farm_id' => null]); // the remaining farm is empty but it is the last one
+        $this->actingAs($manager)->delete("/farms/{$main->id}")->assertSessionHasErrors('farm');
+        $this->assertNotNull($main->fresh());
+    }
 }
