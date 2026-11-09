@@ -17,6 +17,10 @@ final class HerdStats
         'pregnant' => 'Pregnant Females', 'ready' => 'Ready for Breeding', 'male_kids' => 'Male Kids', 'female_kids' => 'Female Kids',
         'growing' => 'Growing Goats', 'lactating' => 'Lactating Females', 'sick' => 'Sick Goats', 'treatment' => 'Goats Under Treatment',
         'for_sale' => 'Goats Ready for Sale',
+        // D-118: the dashboard's herd by age (kid, grower, adult, from the birth date) and gender.
+        'kid' => 'Kids', 'grower' => 'Growers', 'adult' => 'Adults', 'age_unknown' => 'Age Not Known', 'female' => 'Females', 'male' => 'Males',
+        'kid_female' => 'Female Kids', 'kid_male' => 'Male Kids', 'grower_female' => 'Female Growers', 'grower_male' => 'Male Growers',
+        'adult_female' => 'Adult Females', 'adult_male' => 'Adult Males', 'age_unknown_female' => 'Females, Age Not Known', 'age_unknown_male' => 'Males, Age Not Known',
         // Not CEO categories, but filters the dashboard links to.
         'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data',
     ];
@@ -49,6 +53,12 @@ final class HerdStats
             'age_conflict' => $a->effectiveAge() === 'kid' && in_array($a->animal_class, \App\Support\Feed::ADULT_CATEGORIES, true),
         ];
         $tests['missing'] = $tests['no_pen'] || $tests['no_weight'] || $tests['age_conflict'];
+        // D-118: age band and gender.
+        $age = $a->effectiveAge() ?? 'age_unknown';
+        $sex = $female ? 'female' : 'male';
+        $tests[$age] = true;
+        $tests[$sex] = true;
+        $tests["{$age}_{$sex}"] = true;
 
         return array_keys(array_filter($tests));
     }

@@ -23,7 +23,7 @@ class DashboardController extends Controller
         $today = now()->toDateString();
 
         // D-071: every number comes from HerdStats, the same rules the Goat Registry filters with (/goats?show=KEY).
-        $goats = Animal::with(['pen.shed'])->active()->orderBy('farm_number')->get();
+        $goats = Animal::with(['pen.shed', 'breed'])->active()->orderBy('farm_number')->get();
         $tags = HerdStats::tagsFor($goats);
         $counts = collect(array_keys(HerdStats::LABELS))->mapWithKeys(fn ($k) => [$k => $tags->filter(fn ($t) => in_array($k, $t, true))->count()]);
         $byId = $goats->keyBy('id');
@@ -78,6 +78,7 @@ class DashboardController extends Controller
             // D-077: the Action Center in one line on the dashboard.
             'actions' => fn () => collect(\App\Support\ActionCenter::items($user))->map(fn ($i) => ['key' => $i['key'], 'label' => $i['label'], 'count' => $i['count'], 'severity' => $i['severity']])->values(),
             'herd' => collect(['total', ...HerdStats::CATEGORIES])->map(fn ($k) => ['key' => $k, 'label' => HerdStats::LABELS[$k], 'value' => $counts[$k]])->values(),
+            'herdAge' => $this->herdByAge($goats, $tags), // D-118
             'missing' => $missing,
             'feeding' => $user->canModule('feeding') && $tracking ? $feedToday : null,
             'feedTracking' => $tracking,
@@ -274,6 +275,26 @@ class DashboardController extends Controller
             'kgMonth' => round($req->sum('kgDay') * $monthDays, 1), 'costMonth' => round($req->sum(fn ($r) => $cost($r['lines'])) * $monthDays),
             'planned' => $req->where('state', 'planned')->count(), 'milk' => $req->where('state', 'milk')->count(),
             'missing' => $req->whereIn('state', ['no_ration', 'no_weight'])->count(), 'sheds' => $sheds->all(),
+        ];
+    }
+
+    /**
+     * D-118: the herd by age band (kid, grower, adult, from each goat's birth date and the farm's age settings) and
+     * gender, and by breed and gender. Each count opens exactly those goats (/goats?show=KEY).
+     */
+    private function herdByAge(\Illuminate\Support\Collection $goats, \Illuminate\Support\Collection $tags): array
+    {
+        [$growerFrom, $adultFrom] = \App\Support\Classification::boundaries();
+        $count = fn (string $key) => $tags->filter(fn ($t) => in_array($key, $t, true))->count();
+        $bands = ['kid' => "Under {$growerFrom} months", 'grower' => "{$growerFrom} to {$adultFrom} months", 'adult' => "{$adultFrom} months and over", 'age_unknown' => 'No birth date or teeth yet'];
+        $rows = collect($bands)->map(fn ($range, $age) => ['key' => $age, 'label' => HerdStats::LABELS[$age], 'range' => $range,
+            'female' => $count("{$age}_female"), 'male' => $count("{$age}_male"), 'total' => $count($age)])
+            ->filter(fn ($r) => $r['key'] !== 'age_unknown' || $r['total'] > 0)->values();
+
+        return [
+            'rows' => $rows, 'female' => $count('female'), 'male' => $count('male'), 'total' => $goats->count(),
+            'breeds' => $goats->groupBy(fn ($g) => $g->breed?->name ?? 'Breed not set')->map(fn ($gs, $b) => ['breed' => $b,
+                'female' => $gs->where('sex', 'female')->count(), 'male' => $gs->where('sex', '!=', 'female')->count(), 'total' => $gs->count()])->sortBy([['total', 'desc'], ['breed', 'asc']])->values(),
         ];
     }
 }

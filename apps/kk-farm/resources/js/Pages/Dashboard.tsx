@@ -23,7 +23,7 @@ type Supply = { cpDay: number | null; cpMonth: number | null; cpMissing: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
 type Requirement = { supply: Supply; tracking: boolean; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
 type HealthLinks = { checkupsDue: number; openReports: number; canCheck: boolean; canCase: boolean; canCare: boolean };
-type Props = { health: HealthLinks | null; shedBoard: ShedBoardData | null; canMove: boolean; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>;
+type Props = { health: HealthLinks | null; shedBoard: ShedBoardData | null; canMove: boolean; requirement: Requirement | null; actions: ActionSummary[]; feeding: Feeding | null; herd: Array<{ key: string; label: string; value: number }>; herdAge: HerdAge;
     stats: Record<string, number>;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
@@ -67,7 +67,7 @@ function StatLink({ href, ...stat }: { href: string } & Parameters<typeof Stat>[
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ health, shedBoard, canMove, requirement, actions, stats, feeding, herd, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
+export default function Dashboard({ health, shedBoard, canMove, requirement, actions, stats, feeding, herd, herdAge, attention, missing, kiddings, activity, breeds, growth, finance }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
     usePoll(LIVE_MS, { only: ['shedBoard', 'requirement', 'actions', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings', 'activity'] });
@@ -104,7 +104,6 @@ export default function Dashboard({ health, shedBoard, canMove, requirement, act
     } : null), [finance]);
 
     const total = herd.find((h) => h.key === 'total');
-    const categories = herd.filter((h) => h.key !== 'total' && h.value > 0);
     const charts = [growthChart, breedChart, financeChart].filter(Boolean).length;
     // D-088: on the RFID gun charts wait for a tap; drawing them is the heaviest work on its processor.
     const [showCharts, setShowCharts] = useState(() => !inScannerApp());
@@ -125,21 +124,8 @@ export default function Dashboard({ health, shedBoard, canMove, requirement, act
                 <StatLink href="/tasks" label="Tasks today" value={`${stats.tasksDone}/${stats.tasksTotal}`} note="Done" />
             </StatRow>
 
-            {/* CEO categories (D-046): only the categories that have goats. */}
-            {total && total.value ? (
-                <Panel title="Herd by category" description={`${plural(total.value, 'goat', 'goats')} on the farm`} className="mt-4" actions={<Link href="/goats" className="text-sm font-semibold text-turq-800 hover:underline">All goats</Link>}>
-                    {categories.length ? (
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                            {categories.map((h) => (
-                                <Link key={h.key} href={`/goats?show=${h.key}`} className={`rounded-2xl p-3 ring-cobalt-200 transition hover:ring-2 ${(h.key === 'sick' || h.key === 'treatment') ? 'bg-crit-100' : 'bg-glaze'}`}>
-                                    <div className="text-2xl font-bold tabular-nums text-cobalt-900">{h.value}</div>
-                                    <div className="text-xs font-semibold leading-tight text-ink-soft">{h.label}</div>
-                                </Link>
-                            ))}
-                        </div>
-                    ) : <p className="text-sm text-ink-soft">Classify goats on their record to see them by category.</p>}
-                </Panel>
-            ) : <div className="mt-4"><Empty title="No goats yet">Scan a tag or open the Goat Register to add the first goat.</Empty></div>}
+            {/* D-118: the herd by age and gender (and by breed); health is in Needs Attention. */}
+            {total && total.value ? <HerdByAge h={herdAge} /> : <div className="mt-4"><Empty title="No goats yet">Scan a tag or open the Goat Register to add the first goat.</Empty></div>}
 
             {shedBoard ? <ShedBoard board={shedBoard} canMove={canMove} /> : null}
 
@@ -459,5 +445,49 @@ function SupplyStrip({ s, tracking }: { s: Supply; tracking: boolean }) {
                 </div>
             ) : null}
         </div>
+    );
+}
+
+type HerdAge = {
+    rows: Array<{ key: string; label: string; range: string; female: number; male: number; total: number }>; female: number; male: number; total: number;
+    breeds: Array<{ breed: string; female: number; male: number; total: number }>;
+};
+
+/** D-118: Kids, Growers and Adults by gender, from each goat's age today; every number opens those goats. */
+function HerdByAge({ h }: { h: HerdAge }) {
+    const [view, setView] = useState<'age' | 'breed'>('age');
+    const cell = (key: string, n: number, strong = false) => n
+        ? <Link href={`/goats?show=${key}`} className={`block rounded-[4px] px-2 py-1 tabular-nums hover:bg-glaze hover:underline ${strong ? 'font-bold text-cobalt-900' : 'font-semibold text-cobalt-800'}`}>{n}</Link>
+        : <span className="block px-2 py-1 text-ink-faint">0</span>;
+    const pct = (n: number) => (h.total ? Math.round((n / h.total) * 100) : 0);
+    return (
+        <Panel title="Herd by Age and Gender" description={`${plural(h.total, 'goat', 'goats')} on the farm · ${h.female} female, ${h.male} male`} className="mt-4"
+            actions={<div className="flex gap-1" role="group" aria-label="View">{(['age', 'breed'] as const).map((v) => <button key={v} type="button" onClick={() => setView(v)} className={`rounded-tile px-2.5 py-1 text-sm font-semibold ${view === v ? 'bg-cobalt-800 text-white' : 'text-cobalt-800 hover:bg-glaze'}`}>{v === 'age' ? 'By Age' : 'By Breed'}</button>)}</div>}>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[26rem] text-sm">
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Breed'}</th><th className="px-2 text-right font-semibold">♀ Female</th><th className="px-2 text-right font-semibold">♂ Male</th><th className="px-2 text-right font-semibold">Total</th><th className="w-1/3 pl-3 font-semibold">Share</th></tr></thead>
+                    <tbody className="divide-y divide-rule">
+                        {view === 'age' ? h.rows.map((r) => (
+                            <tr key={r.key}>
+                                <td className="py-1.5 pr-3"><span className="font-semibold text-cobalt-900">{r.label}</span><span className="block text-xs text-ink-soft">{r.range}</span></td>
+                                <td className="text-right">{cell(`${r.key}_female`, r.female)}</td>
+                                <td className="text-right">{cell(`${r.key}_male`, r.male)}</td>
+                                <td className="text-right">{cell(r.key, r.total, true)}</td>
+                                <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
+                            </tr>
+                        )) : h.breeds.map((b) => (
+                            <tr key={b.breed}>
+                                <td className="py-1.5 pr-3 font-semibold text-cobalt-900">{b.breed}</td>
+                                <td className="px-2 text-right tabular-nums">{b.female}</td>
+                                <td className="px-2 text-right tabular-nums">{b.male}</td>
+                                <td className="px-2 text-right font-bold tabular-nums text-cobalt-900">{b.total}</td>
+                                <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(b.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(b.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(b.total)}%</span></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="border-t-2 border-rule text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td><td className="text-right">{cell('female', h.female, true)}</td><td className="text-right">{cell('male', h.male, true)}</td><td className="text-right">{cell('total', h.total, true)}</td><td /></tr></tfoot>
+                </table>
+            </div>
+        </Panel>
     );
 }
