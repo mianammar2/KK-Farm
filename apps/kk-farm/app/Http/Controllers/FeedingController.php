@@ -124,11 +124,14 @@ class FeedingController extends Controller
             'notes' => $p->notes, 'createdBy' => $p->created_by, 'approvedBy' => $p->approved_by, 'approvedOn' => $p->approved_at?->format('j M Y'),
         ] : null;
 
-        return FeedingGroup::orderBy('sort')->orderBy('id')->get()->map(function (FeedingGroup $g) use ($plans, $inForce, $head, $show, $today) {
+        $org = Feed::org();
+
+        return FeedingGroup::orderBy('sort')->orderBy('id')->get()->map(function (FeedingGroup $g) use ($plans, $inForce, $head, $show, $today, $org) {
             $mine = $plans[$g->id] ?? collect();
 
             return [
                 'id' => $g->id, 'name' => $g->name, 'criteria' => $g->criteria, 'head' => $head[$g->id] ?? 0,
+                'cpTarget' => Feed::groupCpTarget($g->code, $org), // D-115
                 'current' => $show($inForce[$g->id] ?? null),
                 'upcoming' => $show($mine->first(fn ($p) => $p->status === 'approved' && $p->effective_from->toDateString() > $today)),
                 'draft' => $show($mine->firstWhere('status', 'draft')),

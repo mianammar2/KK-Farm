@@ -478,4 +478,25 @@ class FeedTest extends TestCase
         $this->assertSame(11.0, \App\Http\Controllers\FeedingController::mixCp($plan->fresh()->load('lines.item')));
         $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('items.0.cp', 32)->where('items.1.cp', 4));
     }
+
+    /** D-115: a ration in use whose mix CP is below its group's target is flagged on Feeding and in the Action Center. */
+    public function test_a_ration_below_the_cp_target_is_flagged(): void
+    {
+        $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'C32', 'name' => 'Concentrate', 'category' => 'concentrate', 'cost_per_kg' => 120, 'cp_pct' => 32])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'WS', 'name' => 'Wheat straw', 'category' => 'concentrate', 'cost_per_kg' => 30, 'cp_pct' => 4])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
+            'grower_min' => 3, 'grower_max' => 4, 'adult_min' => 2, 'adult_max' => 3, 'tracking' => false, 'grower_cp' => 16, 'adult_cp' => 14])->assertSessionHasNoErrors();
+        \App\Support\Tenant::flush();
+        // 25% CP 32 + 75% CP 4 = 11%, for breeding does (adults, target 14%).
+        $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
+            'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => FeedItem::where('code', 'C32')->value('id'), 'share_pct' => 25], ['feed_item_id' => FeedItem::where('code', 'WS')->value('id'), 'share_pct' => 75]]])->assertSessionHasNoErrors();
+        $this->assertCount(0, Feed::lowCpRations(), 'a draft is not in use yet');
+        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
+        \App\Support\Tenant::flush();
+
+        $this->assertSame([['group' => 'Breeding Does', 'mix' => 11.0, 'target' => 14.0, 'head' => 2]], Feed::lowCpRations()->all());
+        $item = collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'ration_low_cp');
+        $this->assertSame('Mix CP 11%, target 14% (short 3%) · 2 goats', $item['items'][0]['sub']);
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('groups', fn ($groups) => collect($groups)->firstWhere('name', 'Breeding Does')['cpTarget'] == 14 && collect($groups)->firstWhere('name', 'Growers and Replacements')['cpTarget'] == 16));
+    }
 }

@@ -254,6 +254,36 @@ final class Feed
         return $pct === null ? null : (float) $pct;
     }
 
+    /** D-115: the CP target for a feeding group's ration: kids, growers, or adults for every other group. Null when not set. */
+    public static function groupCpTarget(?string $code, Organization $org): ?float
+    {
+        $pct = match ($code) { 'kids' => $org->kid_cp_pct, 'growers' => $org->grower_cp_pct, default => $org->adult_cp_pct };
+
+        return $pct === null ? null : (float) $pct;
+    }
+
+    /**
+     * D-115: rations in force today whose mix carries less crude protein than the target for their group, for groups
+     * that have goats. Mix CP needs a CP on every feed in the ration (D-112), so an unknown mix is never flagged.
+     *
+     * @return Collection<int, array{group: string, mix: float, target: float, head: int}>
+     */
+    public static function lowCpRations(): Collection
+    {
+        $org = self::org();
+        $head = self::groupIds(Animal::active()->get())->countBy();
+        $groups = FeedingGroup::all()->keyBy('id');
+
+        return self::plansOn(self::now($org)->toDateString())->map(function ($plan, $groupId) use ($org, $head, $groups) {
+            $plan->loadMissing('lines.item');
+            $mix = \App\Http\Controllers\FeedingController::mixCp($plan);
+            $target = self::groupCpTarget($groups[$groupId]?->code, $org);
+
+            return ($head[$groupId] ?? 0) > 0 && $mix !== null && $target !== null && $mix < $target
+                ? ['group' => $groups[$groupId]->name, 'mix' => $mix, 'target' => $target, 'head' => $head[$groupId]] : null;
+        })->filter()->values();
+    }
+
     /** D-111: add the goat's CP need (KG of protein a day = feed KG × CP %) to its requirement row. */
     private static function withCp(array $row, Animal $goat, Organization $org): array
     {

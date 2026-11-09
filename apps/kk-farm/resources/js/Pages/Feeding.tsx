@@ -10,7 +10,7 @@ type Usage = { id: string; offered: number; refused: number | null; by: string; 
 type Line = { feedItemId: number; code: string; name: string; planned: number; min: number; max: number; usage: Usage | null; stock: number };
 type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; onMilk: number; auto: number; balance: 'over' | 'short' | 'ok' | null; diff: number; minKg: number; maxKg: number; day: { planned: number; given: number; balance: 'over' | 'short' | 'ok' | null; diff: number }; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
 type Plan = { id: number; from: string; fromIso: string; status: string; basis: 'per_head' | 'body_weight'; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number | null; share: number | null; cp: number | null }>; cpMix: number | null; kgPerHead: number; costPerHead: number; costPerKg: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
-type Group = { id: number; name: string; criteria: string | null; head: number; current: Plan | null; upcoming: Plan | null; draft: Plan | null };
+type Group = { id: number; name: string; criteria: string | null; head: number; cpTarget: number | null; current: Plan | null; upcoming: Plan | null; draft: Plan | null };
 type Item = { id: number; code: string; name: string; category: string; costPerKg: number; cp: number | null; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number; value: number; status: 'ok' | 'low' | 'out' | 'negative'; daysLeft: number | null };
 type Movement = { id: number; on: string; item: string; type: string; qty: number; rate: number | null; party: string | null; reference: string | null; by: string };
 type History = { id: string; on: string; meal: Meal; pen: string; feed: string; headcount: number; planned: number; offered: number; refused: number | null; consumed: number; perHead: number | null; cost: number; by: string; corrected: boolean; off: boolean };
@@ -47,7 +47,7 @@ export default function Feeding(props: Props) {
     // D-086: live. Moves on other screens change pen plans; this picks them up within 10 seconds.
     usePoll(LIVE_MS, { only: ['board', 'items', 'history'] });
     const { today, meal, meals, mealTimes, board, groups, items, can } = props;
-    const [tab, setTab] = useState('now');
+    const [tab, setTab] = useState(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'now');
     const fed = board.filter((p) => p.status === 'done' || p.status === 'late').length;
     const expected = board.filter((p) => p.status !== 'none' && p.status !== 'upcoming').length;
     const unplanned = board.reduce((sum, p) => sum + p.unplanned, 0);
@@ -191,11 +191,11 @@ function Rations({ groups, items, can, settings }: Props) {
             {groups.map((g) => (
                 <Panel key={g.id} title={`${g.name} · ${g.head} goats`} description={g.criteria ?? undefined}
                     actions={can.plan && editing?.id !== g.id ? <Button type="button" variant="secondary" onClick={() => setEditing(g)}>{g.draft ? 'Edit draft' : g.current ? 'Change ration' : 'Set ration'}</Button> : null}>
-                    {g.current ? <PlanView plan={g.current} label="In use" /> : <p className="text-sm text-ink-soft">No approved ration. {g.head ? `${g.head} goats in this group get no planned feed.` : ''}</p>}
-                    {g.upcoming ? <div className="mt-3"><PlanView plan={g.upcoming} label={`Starts ${g.upcoming.from}`} /></div> : null}
+                    {g.current ? <PlanView plan={g.current} label="In use" target={g.cpTarget} /> : <p className="text-sm text-ink-soft">No approved ration. {g.head ? `${g.head} goats in this group get no planned feed.` : ''}</p>}
+                    {g.upcoming ? <div className="mt-3"><PlanView plan={g.upcoming} label={`Starts ${g.upcoming.from}`} target={g.cpTarget} /></div> : null}
                     {g.draft ? (
                         <div className="mt-3 rounded-tile border border-dashed border-watch-400 p-3">
-                            <PlanView plan={g.draft} label={`Draft by ${g.draft.createdBy}, from ${g.draft.from}`} />
+                            <PlanView plan={g.draft} label={`Draft by ${g.draft.createdBy}, from ${g.draft.from}`} target={g.cpTarget} />
                             {can.approve ? <Button type="button" className="mt-2" onClick={() => approve(g.draft!)}><Check size={16} className="mr-1 inline" aria-hidden />Approve ration</Button> : <p className="mt-2 flex items-center gap-1.5 text-sm text-watch-700"><Clock size={14} aria-hidden /> Waiting for veterinary approval</p>}
                         </div>
                     ) : null}
@@ -205,12 +205,13 @@ function Rations({ groups, items, can, settings }: Props) {
     );
 }
 
-function PlanView({ plan, label }: { plan: Plan; label: string }) {
+function PlanView({ plan, label, target = null }: { plan: Plan; label: string; target?: number | null }) {
     return (
         <div>
             <div className="mb-1 flex flex-wrap items-center gap-2 text-sm"><Chip className={plan.status === 'approved' ? 'bg-ok-100 text-ok-700' : 'bg-watch-100 text-watch-700'}>{label}</Chip>
                 <span className="text-ink-soft">{plan.basis === 'body_weight' ? `% of body weight a day · ${pkr(plan.costPerKg)} per KG of mix` : `${kg(plan.kgPerHead)} per goat per day · ${pkr(plan.costPerHead)}`} · meals {plan.split.morning}/{plan.split.midday}/{plan.split.evening}%</span>{plan.cpMix !== null ? <CpTag cp={plan.cpMix} label="Mix CP" /> : null}</div>
             <ul className="flex flex-wrap gap-1.5">{plan.lines.map((l) => <li key={l.feedItemId} className="rounded-[4px] border border-rule px-2 py-1 text-sm"><Wheat size={13} className="mr-1 inline text-turq-700" aria-hidden />{l.name} <span className="font-semibold">{plan.basis === 'body_weight' ? `${l.share}%` : `${l.kg} KG`}</span>{l.cp !== null ? <CpTag cp={l.cp} className="ml-1" /> : null}</li>)}</ul>
+            <CpWarning mix={plan.cpMix} target={target} />
             {plan.approvedBy ? <p className="mt-1 text-xs text-ink-faint">Approved by {plan.approvedBy} on {plan.approvedOn}</p> : null}
             {plan.notes ? <p className="mt-1 text-sm text-ink-soft">{plan.notes}</p> : null}
         </div>
@@ -270,7 +271,8 @@ function RationForm({ group, items, settings, onDone }: { group: Group; items: I
                     {byWeight
                         ? <p className={cx('text-sm', Math.abs(shareTotal - 100) < 0.01 ? 'text-ok-700' : 'text-crit-700')}>Shares add up to {shareTotal}%{Math.abs(shareTotal - 100) < 0.01 ? '' : ' (must be 100%)'} · {pkr(cost / 100)} per KG of the mix. Example: a 30 KG adult gets {kg(30 * settings.intake.adult[0] / 100)}–{kg(30 * settings.intake.adult[1] / 100)} a day (planned at the middle).</p>
                         : <p className="text-sm text-ink-soft">{kg(perHead)} per goat per day · {pkr(cost)} per goat per day · {pkr(cost * group.head)} a day for {group.head} goats</p>}
-                    {cpMix !== null ? <p className="text-sm font-semibold text-cobalt-900">Mix CP {cpMix}%{cpTarget ? <span className="font-normal text-ink-soft"> · target {cpTarget}</span> : null}</p> : null}
+                    {cpMix !== null ? <p className="text-sm font-semibold text-cobalt-900">Mix CP {cpMix}%{group.cpTarget !== null ? <span className="font-normal text-ink-soft"> · target {group.cpTarget}% for {group.name}</span> : cpTarget ? <span className="font-normal text-ink-soft"> · target {cpTarget}</span> : null}</p> : null}
+                    <CpWarning mix={cpMix} target={group.cpTarget} />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                     {MEALS.map((m) => (
@@ -470,4 +472,14 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
 /** D-112: a feed's crude protein, shown like its bag label: "CP 32". */
 function CpTag({ cp, label = 'CP', className }: { cp: number; label?: string; className?: string }) {
     return <span className={cx('rounded-[4px] bg-turq-100 px-1.5 py-0.5 font-mono text-xs font-bold text-turq-800', className)} title={`Crude protein ${cp}%`}>{label} {cp}{label === 'CP' ? '' : '%'}</span>;
+}
+
+/** D-115: a ration whose mix carries less crude protein than its group needs. */
+function CpWarning({ mix, target }: { mix: number | null; target: number | null }) {
+    if (mix === null || target === null || mix >= target) return null;
+    return (
+        <p role="alert" className="mt-2 rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">
+            Crude protein too low: Mix CP {mix}% is {Math.round((target - mix) * 10) / 10}% below the {target}% target. Add a higher-CP feed or raise its share.
+        </p>
+    );
 }
