@@ -41,10 +41,11 @@ export default function Milking(props: Props) {
             <Head title="Milking" />
             <PageHeader title="Milking" description="A doe that kids is in milk by herself: she moves to the Lactating Does feeding group and the Lactating nutrition standard. Record milk each session; dry her off when the lactation ends." />
             <StatRow>
+                {/* D-119: a number that is zero is not shown. */}
                 <Stat label="Does in Milk" value={stats.inMilk} note={stats.high ? `${stats.high} high-producing` : undefined} />
-                <Stat label="Milk Today" value={litres(stats.today)} note={stats.todayDiscarded ? `${litres(stats.todayDiscarded)} discarded` : undefined} />
-                <Stat label="7-Day Average" value={`${litres(stats.weekAvg)}/day`} />
-                <Stat label={`Milk in ${stats.monthName}`} value={litres(stats.month)} note={stats.monthDiscarded ? `${litres(stats.monthDiscarded)} discarded (withdrawal)` : undefined} tone={stats.monthDiscarded ? 'alert' : undefined} />
+                {stats.today || stats.todayDiscarded ? <Stat label="Milk Today" value={litres(stats.today)} note={stats.todayDiscarded ? `${litres(stats.todayDiscarded)} discarded` : undefined} /> : null}
+                {stats.weekAvg ? <Stat label="7-Day Average" value={`${litres(stats.weekAvg)}/day`} /> : null}
+                {stats.month || stats.monthDiscarded ? <Stat label={`Milk in ${stats.monthName}`} value={litres(stats.month)} note={stats.monthDiscarded ? `${litres(stats.monthDiscarded)} discarded (withdrawal)` : undefined} tone={stats.monthDiscarded ? 'alert' : undefined} /> : null}
             </StatRow>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -93,7 +94,7 @@ function RecordMilk({ today, sessions, does }: Props) {
     return (
         <Panel title="Record Milk" description="Litres per doe for one session. Saving the same doe, day and session again corrects it; nothing is deleted." flush>
             <form onSubmit={submit}>
-                <div className="flex flex-wrap items-end gap-3 border-b border-rule px-4 py-3">
+                <div className="flex flex-wrap items-end gap-2 border-b border-rule px-3 py-3 sm:gap-3 sm:px-4">
                     <Field label="Date" error={errors.milked_on}><input className="field" type="date" max={today} value={on} onChange={(e) => setOn(e.target.value)} /></Field>
                     <div className="flex gap-1.5" role="group" aria-label="Session">{(Object.keys(sessions) as Session[]).map((s) => (
                         <button key={s} type="button" onClick={() => setSession(s)} className={cx('min-h-11 rounded-tile border px-3 text-sm font-semibold', session === s ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900')}>{sessions[s]}</button>
@@ -101,18 +102,20 @@ function RecordMilk({ today, sessions, does }: Props) {
                     <span className="ml-auto text-sm text-ink-soft">{filled.length} of {eligible.length} does · <strong className="text-cobalt-900">{litres(sum)}</strong></span>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[36rem] text-sm">
-                        <thead className="text-left text-xs text-ink-soft"><tr><th className="px-4 py-2 font-semibold">Doe</th><th className="px-3 font-semibold">Pen</th><th className="px-3 font-semibold">Day in Milk</th><th className="px-3 font-semibold">7-Day Average</th><th className="px-3 font-semibold">Litres</th></tr></thead>
+                    <table className="w-full text-sm sm:min-w-[36rem]">
+                        <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-2 font-semibold sm:px-4">Doe</th><th className="px-3 font-semibold max-sm:hidden">Pen</th><th className="px-3 font-semibold max-sm:hidden">Day in Milk</th><th className="px-3 font-semibold max-sm:hidden">7-Day Average</th><th className="px-3 text-right font-semibold sm:text-left">Litres</th></tr></thead>
                         <tbody className="divide-y divide-rule">
                             {eligible.map((d, i) => {
                                 const done = on === today ? d.todayBySession[session] : undefined;
                                 return (
                                     <tr key={d.id} className={cx(d.withdrawal && 'bg-crit-100/40')}>
-                                        <td className="px-4 py-1.5"><span className="font-mono font-semibold text-cobalt-900">{d.number}</span>{d.withdrawal ? <span className="block text-xs font-semibold text-crit-700">Discard: milk withdrawal until {d.withdrawal}</span> : null}</td>
-                                        <td className="px-3 text-xs text-ink-soft">{d.pen ?? '—'}</td>
-                                        <td className="px-3 tabular-nums">{d.dim}</td>
-                                        <td className="px-3 tabular-nums">{litres(d.avg7)}</td>
-                                        <td className="px-3 py-1">
+                                        <td className="px-3 py-1.5 sm:px-4"><span className="font-mono font-semibold text-cobalt-900">{d.number}</span>
+                                            <span className="block text-xs text-ink-soft sm:hidden">Day {d.dim}{d.avg7 !== null ? ` · ${litres(d.avg7)}/day` : ''}</span>
+                                            {d.withdrawal ? <span className="block text-xs font-semibold text-crit-700">Discard: milk withdrawal until {d.withdrawal}</span> : null}</td>
+                                        <td className="px-3 text-xs text-ink-soft max-sm:hidden">{d.pen ?? '—'}</td>
+                                        <td className="px-3 tabular-nums max-sm:hidden">{d.dim}</td>
+                                        <td className="px-3 tabular-nums max-sm:hidden">{litres(d.avg7)}</td>
+                                        <td className="px-3 py-1 text-right sm:text-left">
                                             <input className="field w-28 text-right tabular-nums" type="number" inputMode="decimal" min={0} max={20} step="0.05" aria-label={`Litres for ${d.number}`}
                                                 placeholder={done !== undefined ? `${done} saved` : '0.0'} value={values[d.id] ?? ''} onChange={(e) => setValues({ ...values, [d.id]: e.target.value })} />
                                             {errors[`rows.${i}.litres`] ? <span className="block text-xs text-crit-700">{errors[`rows.${i}.litres`]}</span> : null}
@@ -123,8 +126,8 @@ function RecordMilk({ today, sessions, does }: Props) {
                         </tbody>
                     </table>
                 </div>
-                <div className="flex items-center gap-3 border-t border-rule px-4 py-3">
-                    <Button type="submit" disabled={form.processing || !filled.length}>Save {sessions[session]} Milk</Button>
+                <div className="flex items-center gap-3 border-t border-rule bg-tile px-3 py-3 max-sm:sticky max-sm:bottom-[calc(5.75rem+env(safe-area-inset-bottom))] max-sm:z-10 max-sm:shadow-[0_-6px_16px_-10px_rgb(0_0_0/0.25)] sm:px-4">
+                    <Button type="submit" className="max-sm:flex-1" disabled={form.processing || !filled.length}>Save {sessions[session]} Milk{filled.length ? ` (${litres(sum)})` : ''}</Button>
                     {errors.rows ? <span className="text-sm text-crit-700">{errors.rows}</span> : null}
                 </div>
             </form>

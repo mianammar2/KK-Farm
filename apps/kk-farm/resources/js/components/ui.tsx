@@ -34,7 +34,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
             <div className="min-w-0">
                 {/* On phones and the gun the app bar already shows the title. */}
                 <h1 className="hidden text-2xl font-bold tracking-tight text-cobalt-900 lg:block">{titleCase(title)}</h1>
-                {description ? <p className="max-w-[68ch] text-sm text-ink-soft lg:mt-1 lg:text-base">{description}</p> : null}
+                {description ? <p className="line-clamp-2 max-w-[68ch] text-[13px] leading-snug text-ink-soft sm:line-clamp-none sm:text-sm lg:mt-1 lg:text-base">{description}</p> : null}
             </div>
             {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </header>
@@ -68,31 +68,32 @@ export function Panel({ title, description, actions, children, className, flush 
     return (
         <section className={cx('rounded-tile border border-rule bg-tile shadow-tile', className)}>
             {title ? (
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2.5 sm:px-4 sm:py-3">
                     <div className="min-w-0">
-                        <h2 className="font-semibold text-cobalt-900">{titleCase(title)}</h2>
-                        {description ? <p className="text-sm text-ink-soft">{description}</p> : null}
+                        <h2 className="text-[15px] font-semibold text-cobalt-900 sm:text-base">{titleCase(title)}</h2>
+                        {description ? <p className="text-[13px] leading-snug text-ink-soft sm:text-sm">{description}</p> : null}
                     </div>
                     {actions}
                 </div>
             ) : null}
-            <div className={flush ? '' : 'p-4'}>{children}</div>
+            <div className={flush ? '' : 'p-3 sm:p-4'}>{children}</div>
         </section>
     );
 }
 
 export function Stat({ label, value, note, tone }: { label: string; value: ReactNode; note?: string; tone?: 'alert' | 'good' }) {
     return (
-        <div className="min-w-0 px-4 py-3">
-            <div className="truncate text-sm text-ink-soft">{titleCase(label)}</div>
-            <div className={cx('mt-0.5 text-2xl font-bold tracking-tight', tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-cobalt-900')}>{value}</div>
-            {note ? <div className="truncate text-sm text-ink-faint">{note}</div> : null}
+        <div className="min-w-0 px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="truncate text-xs font-medium text-ink-soft sm:text-sm sm:font-normal">{titleCase(label)}</div>
+            <div className={cx('mt-0.5 text-xl font-bold tracking-tight tabular-nums sm:text-2xl', tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-cobalt-900')}>{value}</div>
+            {note ? <div className="line-clamp-2 text-xs leading-snug text-ink-faint sm:truncate sm:text-sm">{note}</div> : null}
         </div>
     );
 }
 
 export function StatRow({ children }: { children: ReactNode }) {
-    return <div className="mb-4 grid grid-cols-2 divide-rule rounded-tile border border-rule bg-tile shadow-tile sm:flex sm:divide-x [&>*]:sm:flex-1">{children}</div>;
+    // Phones: a compact two-column grid with hairline gaps (an odd last tile spans both); wider: one row.
+    return <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-tile border border-rule bg-rule shadow-tile sm:flex sm:gap-0 sm:divide-x sm:divide-rule sm:bg-tile [&>*]:bg-tile [&>*]:sm:flex-1 [&>*:last-child:nth-child(odd)]:col-span-2">{children}</div>;
 }
 
 export function Chip({ className, children }: { className?: string; children: ReactNode }) {

@@ -281,8 +281,8 @@ function HerdByAge({ h }: { h: HerdAge }) {
         <Panel title={view === 'age' ? 'Herd by Age and Gender' : 'Herd by Classification'} description={`${plural(h.total, 'goat', 'goats')} on the farm${showF && showM ? ` · ${h.female} female, ${h.male} male` : showF ? ', all female' : ', all male'}`} className="mt-4"
             actions={<div className="flex gap-1" role="group" aria-label="View">{(['age', 'class'] as const).map((v) => <button key={v} type="button" onClick={() => setView(v)} className={`rounded-tile px-2.5 py-1 text-sm font-semibold ${view === v ? 'bg-cobalt-800 text-white' : 'text-cobalt-800 hover:bg-glaze'}`}>{v === 'age' ? 'By Age' : 'By Classification'}</button>)}</div>}>
             <div className="overflow-x-auto">
-                <table className="w-full min-w-[26rem] text-sm">
-                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold">♀ Female</th> : null}{showM ? <th className="px-2 text-right font-semibold">♂ Male</th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="w-1/3 pl-3 font-semibold">Share</th></tr></thead>
+                <table className="w-full text-sm">
+                    <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold">♀ Female</th> : null}{showM ? <th className="px-2 text-right font-semibold">♂ Male</th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="hidden w-1/3 pl-3 font-semibold sm:table-cell">Share</th></tr></thead>
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
@@ -290,7 +290,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
                                 {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>
-                                <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
+                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(r.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(r.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(r.total)}%</span></td>
                             </tr>
                         )) : classes.map((c) => (
                             <tr key={c.key}>
@@ -298,11 +298,11 @@ function HerdByAge({ h }: { h: HerdAge }) {
                                 {showF ? <td className="text-right">{cell(`${c.key}`, c.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${c.key}`, c.male)}</td> : null}
                                 <td className="text-right">{cell(c.key, c.total, true)}</td>
-                                <td className="pl-3"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(c.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
+                                <td className="hidden pl-3 sm:table-cell"><div className="flex h-2.5 overflow-hidden rounded-full bg-glaze" aria-hidden><div className="bg-[#c2185b]/70" style={{ width: `${pct(c.female)}%` }} /><div className="bg-cobalt-700/70" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
                             </tr>
                         ))}
                     </tbody>
-                    <tfoot className="border-t-2 border-rule text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td /></tr></tfoot>
+                    <tfoot className="border-t-2 border-rule text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td className="hidden sm:table-cell" /></tr></tfoot>
                 </table>
                 {view === 'class' ? moreClasses : null}
             </div>

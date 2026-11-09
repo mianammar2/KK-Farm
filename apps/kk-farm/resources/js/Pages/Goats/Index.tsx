@@ -41,8 +41,10 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
     const [breed, setBreed] = useState(() => params.get('breed') ?? '');
     const [sex, setSex] = useState('');
     const [pen, setPen] = useState(() => params.get('pen') ?? ''); // D-120: opened from a pen on the dashboard
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const [health, setHealth] = useState('');
     const [status, setStatus] = useState('active');
+    const activeFilters = [breed, sex, pen, health].filter(Boolean).length + (status !== 'active' ? 1 : 0);
     // Phones and the gun open on cards (a wide table needs sideways scrolling there); the choice is remembered.
     const [view, setViewState] = useState<'table' | 'cards'>(() => {
         try { const v = localStorage.getItem('kk.goats.view'); if (v === 'table' || v === 'cards') return v; } catch { /* storage off */ }
@@ -91,7 +93,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                 description={`${rows.length} of ${goats.length} goats shown. Goats that left the farm stay on record.`}
                 actions={
                     <>
-                        <a href="/goats/export"><Button variant="secondary"><Download size={16} aria-hidden /> Export CSV</Button></a>
+                        <a href="/goats/export" className="max-sm:hidden"><Button variant="secondary"><Download size={16} aria-hidden /> Export CSV</Button></a>
                         <Button onClick={() => router.visit('/goats/register')}><Plus size={16} aria-hidden /> Register goat</Button>
                     </>
                 }
@@ -123,10 +125,15 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
 
             <Panel flush>
                 <div className="flex flex-wrap items-center gap-2 border-b border-rule p-3">
-                    <div className="relative min-w-52 flex-1">
+                    <div className="relative min-w-0 flex-1 sm:min-w-52">
                         <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint" />
                         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Number, name, breed or tag" aria-label="Search the registry" className="field pl-9" />
                     </div>
+                    {/* Phones: the filters fold behind one button, so the goats come first. */}
+                    <button type="button" onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen} className="flex min-h-11 items-center gap-1.5 rounded-tile border border-rule-strong px-3 text-sm font-semibold text-cobalt-900 sm:hidden">
+                        Filters{activeFilters ? <span className="grid size-5 place-items-center rounded-full bg-cobalt-800 text-[11px] text-white">{activeFilters}</span> : null}
+                    </button>
+                    <div className={cx('contents', !filtersOpen && 'max-sm:hidden')}>
                     <select aria-label="Breed" value={breed} onChange={(e) => setBreed(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">All breeds</option>
                         {Object.values(breeds).map((b) => <option key={b}>{b}</option>)}
@@ -144,7 +151,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                     <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="active">On farm</option><option value="left">Left the farm</option><option value="all">All records</option>
                     </select>
-                    <div className="flex rounded-tile border border-rule-strong" role="group" aria-label="View">
+                    </div>
+                    <div className="flex rounded-tile border border-rule-strong max-sm:hidden" role="group" aria-label="View">
                         <button type="button" aria-pressed={view === 'table'} aria-label="Table view" onClick={() => setView('table')} className={cx('grid size-11 place-items-center rounded-l-[5px]', view === 'table' ? 'bg-cobalt-100 text-cobalt-900' : 'text-ink-soft')}><List size={17} /></button>
                         <button type="button" aria-pressed={view === 'cards'} aria-label="Card view" onClick={() => setView('cards')} className={cx('grid size-11 place-items-center rounded-r-[5px]', view === 'cards' ? 'bg-cobalt-100 text-cobalt-900' : 'text-ink-soft')}><LayoutGrid size={17} /></button>
                     </div>

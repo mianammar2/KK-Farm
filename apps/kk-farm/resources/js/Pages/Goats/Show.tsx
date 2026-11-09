@@ -4,7 +4,7 @@ import { Camera, ClipboardPlus, MoveRight, Pencil, Scale, Star, Stethoscope, Tra
 import HealthEntry from '../../components/HealthEntry';
 import Sheet from '../../components/Sheet';
 import type { CheckupData } from '../../components/Checkups';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
 import GoatPortrait from '../../components/GoatPortrait';
@@ -103,16 +103,18 @@ export default function GoatShow(props: Props) {
                 </div>
             ) : null}
             <section className="mb-4 overflow-hidden rounded-tile border border-rule bg-tile shadow-tile">
-                <div className="flex flex-col gap-4 p-4 sm:flex-row">
-                    {profile ? <img src={`/media/${profile.id}`} alt={`Profile of ${goat.number}`} className="size-36 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}
+                <div className="flex flex-col gap-4 p-3 sm:flex-row sm:p-4">
+                    {/* Phones: a small photo beside the tag; wider screens: the large portrait on the left. */}
+                    <div className="max-sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt={`Profile of ${goat.number}`} className="size-36 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}</div>
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="font-mono text-2xl font-bold tracking-tight text-cobalt-900">{goat.number}</h1>
+                            <span className="sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt="" className="size-14 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={56} />}</span>
+                            <h1 className="font-mono text-xl font-bold tracking-tight text-cobalt-900 sm:text-2xl">{goat.number}</h1>
                             <SexIcon sex={goat.sex} />
                             {onFarm ? <HealthChip health={goat.health} /> : removed ? <Chip className="bg-glaze text-ink-soft">Removed (wrong entry)</Chip> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}
                             <ReproChip repro={goat.repro} />
                         </div>
-                        <p className="text-ink-soft">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} · </span> : null}{goat.breed} · {goat.age}</p>
+                        <p className="text-sm text-ink-soft sm:text-base">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} · </span> : null}{goat.breed} · {goat.age}</p>
                         {goat.classification ? <p className="mt-1 inline-flex rounded-full bg-cobalt-900 px-3 py-1 text-sm font-semibold text-white">{goat.classification}</p> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}
@@ -120,14 +122,31 @@ export default function GoatShow(props: Props) {
                             {fact('Pen', goat.pen ?? '—')}
                             {fact('RFID tag', tags.find((t) => !t.to)?.code ?? 'No open tag')}
                         </dl>
+                        {/* Phones: the everyday actions as one tidy grid of icons; rarer ones as links below it. */}
+                        {onFarm || (!removed && can.edit) ? (
+                            <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
+                                {onFarm && healthEntry?.canCheck ? <ActionTile icon={<Stethoscope size={20} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
+                                {onFarm && healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <ActionTile icon={<ClipboardPlus size={20} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
+                                {onFarm ? <ActionTile icon={<Scale size={20} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
+                                {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
+                                {onFarm ? <ActionTile icon={<TriangleAlert size={20} />} label="Concern" active={panel === 'concern'} onClick={() => setPanel(panel === 'concern' ? null : 'concern')} /> : null}
+                                {onFarm ? <ActionTile icon={<MoveRight size={20} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
+                                {!removed && can.edit ? <ActionTile icon={<Pencil size={20} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
+                            </div>
+                        ) : null}
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm sm:hidden">
+                            {onFarm && ['ceo', 'manager'].includes(auth?.role ?? '') ? <button type="button" className="font-semibold text-cobalt-800" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}>Correct Birth Date</button> : null}
+                            {onFarm && auth?.gates.includes('exit_animal') ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}>Record Exit</button> : null}
+                            {!removed && can.edit && !goat.removal ? <button type="button" className="font-semibold text-ink-soft" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}>Remove (Wrong Entry)</button> : null}
+                        </div>
                         {!removed && can.edit ? (
-                            <div className="mt-3 flex flex-wrap gap-2">
+                            <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
                                 <Button onClick={() => router.visit(`/goats/${goat.id}/edit`)}><Pencil size={16} aria-hidden /> Edit details</Button>
                                 {!goat.removal ? <Button variant="quiet" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}><Trash2 size={16} aria-hidden /> Remove (wrong entry)</Button> : null}
                             </div>
                         ) : null}
                         {onFarm ? (
-                            <div className="mt-3 flex flex-wrap gap-2">
+                            <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
                                 {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><Stethoscope size={16} aria-hidden /> Health checkup</Button> : null}
                                 {healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <Button variant="secondary" onClick={() => setEntry('')}><ClipboardPlus size={16} aria-hidden /> New health entry</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><Scale size={16} aria-hidden /> Add weight</Button>
@@ -436,5 +455,14 @@ function MilkingPanel({ m }: { m: Milking }) {
                 <li key={l.number} className="flex flex-wrap gap-x-3 py-1.5"><span className="font-semibold text-cobalt-900">Lactation {l.number}</span><span className="text-ink-soft">{l.started} to {l.dried ?? 'now'} · {l.days} days · {l.total} L</span>{l.reason ? <span className="w-full text-xs text-ink-faint">{l.reason}</span> : null}</li>
             ))}</ul>
         </Panel>
+    );
+}
+
+/** Phones: one action as an icon tile with a short label. */
+function ActionTile({ icon, label, onClick, primary = false, active = false }: { icon: ReactNode; label: string; onClick: () => void; primary?: boolean; active?: boolean }) {
+    return (
+        <button type="button" onClick={onClick} className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-tile border px-1 py-2 text-[11px] font-semibold leading-tight active:scale-[0.97] ${primary ? 'border-cobalt-800 bg-cobalt-800 text-white' : active ? 'border-cobalt-700 bg-cobalt-100 text-cobalt-900' : 'border-rule bg-tile text-cobalt-900'}`}>
+            <span aria-hidden>{icon}</span>{label}
+        </button>
     );
 }

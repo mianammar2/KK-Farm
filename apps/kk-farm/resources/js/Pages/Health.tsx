@@ -49,8 +49,8 @@ export default function Health(props: Props) {
     // D-097: forms open from + buttons (or a dashboard shortcut: /health?new=case|report|care), not always on the page.
     const [sheet, setSheet] = useState<'entry' | 'case' | 'report' | 'care' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'entry' | 'case' | 'report' | 'care' | null));
     const action = (label: string, icon: React.ReactNode, onClick: () => void, primary = false) => (
-        <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
-            <Plus size={16} aria-hidden />{icon}{titleCase(label)}
+        <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center justify-center gap-1.5 rounded-tile border px-2 text-[13px] font-semibold max-sm:flex-col max-sm:py-2 sm:rounded-full sm:px-4 sm:text-sm', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
+            <span className="flex items-center gap-1"><Plus size={14} aria-hidden className="max-sm:hidden" />{icon}</span>{titleCase(label)}
         </button>
     );
     const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') ?? 'cases');
@@ -60,19 +60,22 @@ export default function Health(props: Props) {
         <>
             <Head title="Veterinary & Health" />
             <PageHeader title="Veterinary & health" description={isVet ? 'Checkups, cases, treatments and withdrawal. Every record carries your name.' : canCase ? 'Checkups and cases. Treatments and withdrawal dates are set by a veterinarian.' : 'Report a concern. A veterinarian decides what it is.'} />
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                 {props.checkups.canCheck ? action('Checkup', <Stethoscope size={16} aria-hidden />, () => setTab('checkups'), true) : null}
                 {canCase || props.checkups.canCheck ? action('New health entry', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('entry'); }) : null}
                 {action('Report concern', <AlertTriangle size={16} aria-hidden />, () => setSheet('report'))}
                 {isVet ? action('Preventive care', <Syringe size={16} aria-hidden />, () => setSheet('care')) : null}
             </div>
-            <StatRow>
-                <Stat label="Active cases" value={counts.active} />
-                <Stat label="High or emergency" value={counts.emergency} tone={counts.emergency ? 'alert' : undefined} />
-                <Stat label="Doses due" value={counts.doses} note="Overdue or within 2 days" tone={counts.doses ? 'alert' : undefined} />
-                <Stat label="Under withdrawal" value={counts.withdrawal} note="Do not sell or use milk" tone={counts.withdrawal ? 'alert' : undefined} />
-                <Stat label="Care overdue" value={counts.overdue} note="Vaccine or deworming" tone={counts.overdue ? 'alert' : undefined} />
-            </StatRow>
+            {/* D-119: a number that is zero is not shown. */}
+            {counts.active || counts.emergency || counts.doses || counts.withdrawal || counts.overdue ? (
+                <StatRow>
+                    {counts.active ? <Stat label="Active cases" value={counts.active} /> : null}
+                    {counts.emergency ? <Stat label="High or emergency" value={counts.emergency} tone="alert" /> : null}
+                    {counts.doses ? <Stat label="Doses due" value={counts.doses} note="Overdue or within 2 days" tone="alert" /> : null}
+                    {counts.withdrawal ? <Stat label="Under withdrawal" value={counts.withdrawal} note="Do not sell or use milk" tone="alert" /> : null}
+                    {counts.overdue ? <Stat label="Care overdue" value={counts.overdue} note="Vaccine or deworming" tone="alert" /> : null}
+                </StatRow>
+            ) : null}
 
             <div>
                 <div className="min-w-0">

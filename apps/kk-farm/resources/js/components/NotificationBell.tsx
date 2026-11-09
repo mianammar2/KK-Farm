@@ -11,7 +11,7 @@ const DOT: Record<Note['severity'], string> = { critical: 'bg-crit-700', warning
  * D-121: what needs action (the Action Center) behind a bell in the top bar. It loads after the page has opened, so
  * no page waits for it, and refreshes every minute and on each page change. Each item opens its own page.
  */
-export default function NotificationBell({ path }: { path: string }) {
+export default function NotificationBell({ path, onDark = false }: { path: string; onDark?: boolean }) {
     const [notes, setNotes] = useState<Note[] | null>(null);
     const [open, setOpen] = useState(false);
     const box = useRef<HTMLDivElement>(null);
@@ -44,7 +44,7 @@ export default function NotificationBell({ path }: { path: string }) {
     return (
         <div ref={box} className="relative">
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={count ? `${count} things need action` : 'Notifications'}
-                className="relative grid size-11 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100">
+                className={`relative grid size-11 place-items-center rounded-full ${onDark ? 'text-white active:bg-white/15' : 'text-cobalt-800 hover:bg-cobalt-100'}`}>
                 <Bell size={20} aria-hidden />
                 {count ? <span className={`absolute top-1 right-1 grid min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold leading-5 text-white ${urgent ? 'bg-crit-700' : 'bg-watch-700'}`}>{count}</span> : null}
             </button>
