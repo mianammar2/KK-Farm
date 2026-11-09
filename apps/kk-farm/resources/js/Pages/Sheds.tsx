@@ -1,11 +1,12 @@
 import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
 import ShedBoard, { type ShedBoardData } from '../components/ShedBoard';
-import { Button, Chip, cx, Empty, Field, PageHeader, Panel } from '../components/ui';
+import { Button, Chip, cx, Empty, Field, HealthChip, PageHeader, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
+import { useFive } from '../lib/useFive';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 
@@ -308,6 +309,7 @@ function FarmForm({ farm, only = false, onDone }: { farm?: FarmLoc; only?: boole
 /** D-129: one farm at the top of Sheds: where it is, its numbers, and a map (Google Maps, no key: a pin from the GPS, else the address). */
 function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdit?: () => void }) {
     const [view, setView] = useState<'m' | 'k'>('k');
+    const [open, setOpen] = useState<Detail | null>(null); // D-131: a tile opens its list
     const inUse = sheds.filter((s) => s.status === 'active');
     const pens = inUse.flatMap((s) => s.pens.filter((p) => p.kind === 'pen'));
     const goats = pens.flatMap((p) => p.goats);
@@ -317,13 +319,15 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
     const hasGps = farm.latitude !== null && farm.longitude !== null;
     const address = [farm.address, farm.city, farm.district, farm.province].filter(Boolean).join(', ');
     const query = hasGps ? `${farm.latitude},${farm.longitude}` : address ? `${address}, ${farm.country ?? ''}` : null;
-    const stats: Array<[string, string | number]> = [
-        ['Sheds', `${inUse.length}${sheds.length > inUse.length ? ` + ${sheds.length - inUse.length} planned` : ''}`],
-        ['Pens', pens.length],
-        ['Goats', capacity ? `${goats.length} of ${capacity}` : goats.length],
-        ['Female / Male', `${females} / ${goats.length - females}`],
-        ['Need Attention', watch],
-    ];
+    // D-131: each tile opens its list below the card; tiles that would show 0 are hidden (owner rule).
+    const penOf = new Map(pens.flatMap((p) => p.goats.map((g) => [g.id, p.name] as const)));
+    const stats: Array<{ id: Detail; label: string; value: string | number; count: number }> = [
+        { id: 'sheds', label: 'Sheds', value: `${inUse.length}${sheds.length > inUse.length ? ` + ${sheds.length - inUse.length} planned` : ''}`, count: sheds.length },
+        { id: 'pens', label: 'Pens', value: pens.length, count: pens.length },
+        { id: 'goats', label: 'Goats', value: capacity ? `${goats.length} of ${capacity}` : goats.length, count: goats.length },
+        { id: 'sex', label: 'Female / Male', value: `${females} / ${goats.length - females}`, count: goats.length },
+        { id: 'attention', label: 'Need Attention', value: watch, count: watch },
+    ].filter((t) => t.count > 0) as Array<{ id: Detail; label: string; value: string | number; count: number }>;
 
     return (
         <div className={cx('kk-rise grid overflow-hidden rounded-tile border border-rule bg-tile shadow-tile lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]', !farm.active && 'opacity-70')}>
@@ -337,14 +341,18 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
                     </div>
                     {onEdit ? <Button type="button" variant="quiet" onClick={onEdit} aria-label={`Edit ${farm.name}`} title={`Edit ${farm.name}`}><Pencil className="size-4" aria-hidden /></Button> : null}
                 </div>
-                <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {stats.map(([label, value]) => (
-                        <div key={label} className="rounded-tile bg-glaze px-3 py-2">
-                            <dt className="text-xs font-semibold text-ink-soft">{label}</dt>
-                            <dd className={cx('text-lg font-bold tabular-nums', label === 'Need Attention' && Number(value) > 0 ? 'text-watch-700' : 'text-cobalt-900')}>{value}</dd>
-                        </div>
-                    ))}
-                </dl>
+                {stats.length ? (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {stats.map((t) => (
+                            <button key={t.id} type="button" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}
+                                className={cx('kk-pill rounded-tile border px-3 py-2 text-left transition-colors', open === t.id ? 'border-cobalt-700 bg-cobalt-100' : 'border-transparent bg-glaze hover:border-turq-600')}>
+                                <span className="block text-xs font-semibold text-ink-soft">{t.label}</span>
+                                <span className={cx('block text-lg font-bold tabular-nums', t.id === 'attention' ? 'text-watch-700' : 'text-cobalt-900')}>{t.value}</span>
+                            </button>
+                        ))}
+                    </div>
+                ) : <p className="rounded-tile bg-glaze px-3 py-2 text-sm text-ink-soft">No sheds on this farm yet. Add a shed and choose this farm.</p>}
+                {open ? <FarmDetail detail={open} sheds={sheds} pens={pens} goats={goats} penOf={penOf} onClose={() => setOpen(null)} /> : null}
                 {farm.notes ? <p className="text-sm text-ink-soft">{farm.notes}</p> : null}
             </div>
             <div className="relative min-h-60 border-t border-rule bg-glaze lg:border-t-0 lg:border-l">
@@ -363,6 +371,39 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+type Detail = 'sheds' | 'pens' | 'goats' | 'sex' | 'attention';
+const HEALTH_ORDER: Record<Health, number> = { critical: 0, treatment: 1, watch: 2, healthy: 3 };
+
+/** D-131: the list behind a farm tile: first 5, then Show More. Goats open their page. */
+function FarmDetail({ detail, sheds, pens, goats, penOf, onClose }: { detail: Detail; sheds: Shed[]; pens: Pen[]; goats: Goat[]; penOf: Map<string, string>; onClose: () => void }) {
+    type Row = { key: string | number; href?: string; title: string; sub: string; right: ReactNode };
+    const goatRow = (g: Goat, right: ReactNode): Row => ({ key: g.id, href: `/goats/${g.id}`, title: g.number, sub: [g.name, penOf.get(g.id)].filter(Boolean).join(' · '), right });
+    const rows: Row[] = detail === 'sheds'
+        ? sheds.map((x) => ({ key: x.id, title: x.name, sub: `${x.typeName ?? 'No unit type'}${x.status === 'planned' ? ' · planned' : ''}`, right: `${x.pens.length} pen${x.pens.length === 1 ? '' : 's'} · ${x.pens.reduce((a, p) => a + p.count, 0)} goats` }))
+        : detail === 'pens'
+            ? pens.map((p) => ({ key: p.id, title: p.name, sub: p.purpose, right: `${p.count}${p.capacity ? ` of ${p.capacity}` : ''} goats` }))
+            : detail === 'goats'
+                ? goats.map((g) => goatRow(g, <HealthChip health={g.health} />))
+                : detail === 'sex'
+                    ? [...goats].sort((a, b) => a.sex.localeCompare(b.sex) || a.number.localeCompare(b.number)).map((g) => goatRow(g, <Chip className={g.sex === 'female' ? 'bg-manganese-100 text-manganese-600' : 'bg-cobalt-100 text-cobalt-800'}>{g.sex === 'female' ? '♀ Female' : '♂ Male'}</Chip>))
+                    : goats.filter((g) => g.health !== 'healthy').sort((a, b) => HEALTH_ORDER[a.health] - HEALTH_ORDER[b.health]).map((g) => goatRow(g, <HealthChip health={g.health} />));
+    const [visible, more] = useFive(rows);
+    const title = { sheds: 'Sheds', pens: 'Pens', goats: 'Goats', sex: 'Female and Male', attention: 'Need Attention' }[detail];
+
+    return (
+        <div className="kk-rise overflow-hidden rounded-tile border border-rule bg-white">
+            <div className="flex items-center justify-between border-b border-rule px-3 py-2"><span className="font-semibold text-cobalt-900">{title} · {rows.length}</span><button type="button" onClick={onClose} className="text-sm font-semibold text-turq-800 hover:underline">Close</button></div>
+            <ul className="divide-y divide-rule">
+                {visible.map((r) => {
+                    const body = <><span className="min-w-0 flex-1"><span className="block font-semibold text-cobalt-900">{r.title}</span>{r.sub ? <span className="block truncate text-sm text-ink-soft">{r.sub}</span> : null}</span><span className="shrink-0 text-sm text-ink-soft">{r.right}</span></>;
+                    return <li key={r.key}>{r.href ? <Link href={r.href} className="flex items-center gap-3 px-3 py-2 hover:bg-glaze">{body}</Link> : <div className="flex items-center gap-3 px-3 py-2">{body}</div>}</li>;
+                })}
+            </ul>
+            {more}
         </div>
     );
 }
