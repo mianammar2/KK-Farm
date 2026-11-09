@@ -165,6 +165,7 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:settings')->group(function (): void {
         Route::get('/settings', [SettingsController::class, 'index']);
         Route::post('/settings/breeds', [SettingsController::class, 'addBreed']);
+        Route::post('/settings/breeds/{breed}', [SettingsController::class, 'updateBreed']);
         Route::post('/settings/ages', [SettingsController::class, 'updateAges']);
         Route::get('/settings/users', [UserController::class, 'index']);
         Route::post('/settings/users', [UserController::class, 'store']);

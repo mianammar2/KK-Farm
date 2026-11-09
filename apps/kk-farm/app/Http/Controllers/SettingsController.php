@@ -15,7 +15,7 @@ class SettingsController extends Controller
     public function index(): Response
     {
         return Inertia::render('Settings', [
-            'breeds' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'next' => $b->nextTagId(), 'gestation' => $b->default_gestation_days, 'goats' => Animal::active()->where('breed_id', $b->id)->count()]),
+            'breeds' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'next' => $b->nextTagId(), 'gestation' => $b->default_gestation_days, 'lightBelow' => $b->young_below_kg !== null ? (float) $b->young_below_kg : null, 'goats' => Animal::active()->where('breed_id', $b->id)->count()]),
             'ages' => ['growerFrom' => \App\Support\Classification::boundaries()[0], 'adultFrom' => \App\Support\Classification::boundaries()[1]],
             'matrix' => config('kkfarm.modules'),
             'gates' => config('kkfarm.gates'),
@@ -35,6 +35,16 @@ class SettingsController extends Controller
         Farm::log($request->user(), "Added breed {$data['name']}", '/settings');
 
         return back()->with('success', 'Breed added.');
+    }
+
+    /** D-110: the breed's "light" weight line, used to estimate the age of goats with no teeth recorded. */
+    public function updateBreed(Request $request, Breed $breed): RedirectResponse
+    {
+        $data = $request->validate(['young_below_kg' => ['nullable', 'numeric', 'between:1,150']]);
+        $breed->update(['young_below_kg' => $data['young_below_kg'] ?? null]);
+        Farm::log($request->user(), "Set {$breed->name} light weight line to ".($data['young_below_kg'] ?? 'none').' KG', '/settings');
+
+        return back()->with('success', "{$breed->name}: saved. Goats with no teeth get their age from their first weighing.");
     }
 
     /** Age category boundaries for this farm (D-047): Kid below the first, Adult from the second, Grower between. */
