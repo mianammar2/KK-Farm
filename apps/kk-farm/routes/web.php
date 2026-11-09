@@ -53,6 +53,11 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/photos/{photo}/profile', [GoatController::class, 'setProfilePhoto']);
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);
         Route::post('/goats/{animal}/birth-date', [GoatController::class, 'correctBirth']); // D-080
+        Route::get('/goats/{animal}/edit', [GoatController::class, 'edit']); // D-091
+        Route::post('/goats/{animal}/edit', [GoatController::class, 'update']);
+        Route::post('/goats/{animal}/removal', [GoatController::class, 'requestRemoval']);
+        Route::post('/goats/{animal}/removal/decide', [GoatController::class, 'decideRemoval']);
+        Route::post('/goats/{animal}/restore', [GoatController::class, 'restore']);
         Route::get('/media/{photo}', [GoatController::class, 'media']);
     });
 

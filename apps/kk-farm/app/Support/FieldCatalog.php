@@ -33,6 +33,10 @@ final class FieldCatalog
             'breed_purity' => Classification::PURITY,
             'lifecycle_status' => ['active' => 'Active', 'sold' => 'Sold', 'dead' => 'Dead', 'culled' => 'Culled', 'transferred' => 'Transferred'],
             'health_flag' => ['healthy' => 'Healthy', 'monitor' => 'Monitor', 'sick' => 'Sick', 'quarantine' => 'Quarantine', 'recovering' => 'Recovering'],
+            // D-091
+            'teeth' => \App\Support\Classification::TEETH,
+            'body_score' => ['1' => '1 · Very thin', '2' => '2 · Thin', '3' => '3 · Good', '4' => '4 · Fat', '5' => '5 · Very fat'],
+            'pregnant_at_arrival' => ['yes' => 'Yes, pregnant', 'no' => 'Not pregnant', 'unknown' => 'Not known'],
             'ownership' => ['kk_farms' => 'KK Farms', 'partner' => 'Partner', 'consignment' => 'Consignment', 'other' => 'Other'],
         ];
     }
@@ -51,6 +55,7 @@ final class FieldCatalog
             ['key' => 'name', 'label' => 'Animal Name', 'type' => 'text', 'section' => 'Origin and identity'],
             ['key' => 'source_farm', 'label' => 'Source Farm', 'type' => 'text', 'section' => 'Origin and identity'],
             ['key' => 'purchase_cost_pkr', 'label' => 'Purchase Cost PKR', 'type' => 'number', 'section' => 'Origin and identity'],
+            ['key' => 'teeth', 'label' => 'Teeth (permanent incisors)', 'type' => 'select', 'section' => 'Birth', 'help' => 'Count the big front teeth on the lower jaw. Fills in the estimated age.'], // D-091
             ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth', 'required' => true, 'help' => 'Required for farm-born goats. For a bought goat leave it empty if unknown.'],
             ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth'],
             ['key' => 'birth_weight_kg', 'label' => 'Birth Weight (KG)', 'type' => 'number', 'section' => 'Birth'],
@@ -66,9 +71,15 @@ final class FieldCatalog
             ['key' => 'animal_class', 'label' => 'Goat Category', 'type' => 'select', 'section' => 'Classification', 'help' => 'Suggested from gender, age and purpose if left empty.'],
             ['key' => 'repro_status', 'label' => 'Female Status', 'type' => 'select', 'section' => 'Classification', 'help' => 'Reproductive status. Female goats only.'],
             ['key' => 'kid_stage', 'label' => 'Kid Stage', 'type' => 'select', 'section' => 'Classification'],
+            // D-091: a bought doe may arrive pregnant: she then goes straight into Breeding with an expected kidding date.
+            ['key' => 'pregnant_at_arrival', 'label' => 'Pregnant when bought?', 'type' => 'select', 'section' => 'Classification', 'help' => 'Female goats that were bought or transferred in.'],
+            ['key' => 'pregnancy_months', 'label' => 'Months pregnant (about)', 'type' => 'number', 'section' => 'Classification', 'help' => 'Works out the expected kidding date (gestation about 5 months).'],
             // D-066: off by default (new goats are Active; exits change it). The owner can switch it on in Settings.
             ['key' => 'lifecycle_status', 'label' => 'Lifecycle Status', 'type' => 'select', 'section' => 'Status', 'active' => false],
             ['key' => 'health_flag', 'label' => 'Health Flag', 'type' => 'select', 'section' => 'Status'],
+            // D-091: arrival check, saved as a health record (and the body score with the first weighing).
+            ['key' => 'body_score', 'label' => 'Body Condition (1–5)', 'type' => 'select', 'section' => 'Status'],
+            ['key' => 'temperature_c', 'label' => 'Body Temperature (°C)', 'type' => 'number', 'section' => 'Status', 'help' => 'Normal 38.5–39.7 °C. Above 39.7 °C is a fever: tell the vet.'],
             ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing', 'required' => true],
             ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership', 'active' => false], // D-066
             ['key' => 'notes', 'label' => 'Notes', 'type' => 'long_text', 'section' => 'Notes'],

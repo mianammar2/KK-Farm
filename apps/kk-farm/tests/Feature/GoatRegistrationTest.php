@@ -98,7 +98,7 @@ class GoatRegistrationTest extends TestCase
     public function test_the_register_form_has_the_workbook_fields_in_order_with_their_dropdown_options(): void
     {
         $this->actingAs($this->user('caretaker'))->get('/goats/register?epc='.self::EPC)->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 26) // D-066: Lifecycle Status and Ownership are off by default
+            ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 31) // D-066: Lifecycle Status and Ownership are off by default
                 // D-058: Origin Type, Breed, Purchase Date, then the Tag ID from the breed.
                 ->where('fields.0.key', 'origin')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'acquired_on')->where('fields.2.label', 'Purchase Date')->where('fields.3.key', 'tag_id')
                 ->where('fields', function ($fields) {
@@ -490,7 +490,7 @@ class GoatRegistrationTest extends TestCase
         $this->assertFalse($field->builtin);
         $this->assertSame(['horned', 'polled'], array_column($field->options, 'value'));
 
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 27)->where('fields.26.key', 'horn_status')->where('fields.26.required', true));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 32)->where('fields.31.key', 'horn_status')->where('fields.31.required', true));
 
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasErrors(['custom_fields.horn_status']);
         $this->actingAs($owner)->post('/goats', $this->payload(['custom_fields' => ['horn_status' => 'bogus']]))->assertSessionHasErrors(['custom_fields.horn_status']);
@@ -523,7 +523,7 @@ class GoatRegistrationTest extends TestCase
         $this->actingAs($owner)->post("/settings/fields/{$note->id}", ['label' => 'Coat note', 'active' => false, 'required' => true])->assertSessionHasNoErrors();
 
         // Switched off means hidden and no longer required.
-        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 26));
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 31));
         $this->actingAs($owner)->post('/goats', $this->payload())->assertSessionHasNoErrors();
     }
 
@@ -540,8 +540,8 @@ class GoatRegistrationTest extends TestCase
         $other = Organization::create(['name' => 'Other Farm', 'slug' => 'other-farm']);
         $outsider = $this->user('ceo', $other);
 
-        $this->assertSame(28, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
-        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 26)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
+        $this->assertSame(33, FieldDefinition::withoutGlobalScopes()->where('org_id', $other->id)->count(), 'a new organization starts with the standard fields');
+        $this->actingAs($outsider)->get('/goats/register')->assertInertia(fn (AssertableInertia $page) => $page->has('fields', 31)->where('fields', fn ($f) => ! collect($f)->contains('key', 'horn_status')));
     }
 
     public function test_a_bought_goat_may_have_no_birth_date_but_a_farm_born_goat_must(): void

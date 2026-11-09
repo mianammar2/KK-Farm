@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Copy, ScanLine, Sparkles, Tag } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Fragment, useState, type ReactNode } from 'react';
@@ -10,14 +10,21 @@ type Choice = { value: string | number; label: string; next?: string; nextNumber
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
-type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[] };
+type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[];
+    goat?: { id: string; number: string; values: Record<string, any> } };
+
+/** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
+const REGISTER_ONLY = ['rfid_epc', 'latest_weight_kg', 'height_in', 'body_score', 'temperature_c', 'pregnant_at_arrival', 'pregnancy_months', 'lifecycle_status'];
+/** D-091: aging by teeth; same as Classification::TEETH_MONTHS. */
+const TEETH_MONTHS: Record<string, number> = { milk: 8, '2': 15, '4': 21, '6': 32, '8': 42, worn: 66 };
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
-export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, canAssignTags, untagged }: Props) {
+export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, canAssignTags, untagged, goat }: Props) {
+    const editing = Boolean(goat);
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
     const [estMonths, setEstMonths] = useState('');
-    const form = useForm<Record<string, any>>({
+    const form = useForm<Record<string, any>>(goat ? { ...goat.values, custom_fields: goat.values.custom_fields ?? {} } : {
         rfid_epc: epc ?? '',
         birth_date_is_estimate: false,
         lifecycle_status: 'active',
@@ -60,7 +67,11 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     // D-067: with a birth date the age category is automatic (and moves on as the goat ages); otherwise chosen by hand.
     const age = form.data.birth_date ? ageCategory(form.data.birth_date, classification) : form.data.age_category;
     const isKid = age === 'kid' || ['male_kid', 'female_kid'].includes(form.data.animal_class);
-    const hidden = (f: FieldDef) => (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid)
+    const hidden = (f: FieldDef) => (editing && REGISTER_ONLY.includes(f.key))
+        || ((f.key === 'pregnant_at_arrival' || f.key === 'pregnancy_months') && (form.data.sex !== 'female' || farmBorn))
+        || (f.key === 'pregnancy_months' && form.data.pregnant_at_arrival !== 'yes')
+        || (f.key === 'teeth' && farmBorn && !editing)
+        || (f.key === 'repro_status' && form.data.sex !== 'female') || (f.key === 'kid_stage' && !isKid)
         || f.key === 'birth_date_is_estimate'
         || (f.key === 'age_category' && Boolean(form.data.birth_date)) // D-065: set automatically (estimate for bought goats, exact for farm-born)
         || (farmBorn && ['acquired_on', 'source_farm', 'purchase_cost_pkr'].includes(f.key))
@@ -91,6 +102,17 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
         }
         if (f.key === 'dam_id') {
             return form.setData((d: Record<string, any>) => ({ ...d, ...kidDefaults(d, v) }));
+        }
+        // D-091: the teeth give the estimated age of a bought goat, and from it the estimated birth date.
+        if (f.key === 'teeth' && !farmBorn && TEETH_MONTHS[v]) {
+            const months = TEETH_MONTHS[v];
+            setEstMonths(String(months));
+            const d = new Date(`${TODAY}T12:00:00`);
+            d.setMonth(d.getMonth() - months);
+            return form.setData((data: Record<string, any>) => ({ ...data, teeth: v, birth_date: d.toISOString().slice(0, 10) }));
+        }
+        if (f.key === 'pregnant_at_arrival' && v === 'yes') {
+            return form.setData((d: Record<string, any>) => ({ ...d, pregnant_at_arrival: v, repro_status: 'pregnant' }));
         }
         form.setData(f.key, v);
     };
@@ -247,11 +269,11 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
 
     return (
         <>
-            <Head title="Register goat" />
+            <Head title={goat ? `Edit ${goat.number}` : 'Register goat'} />
             <PageHeader
-                title="Goat Register"
-                description={epc ? 'This tag is not on any goat yet. Fill in the register to add the goat.' : 'Add a goat to the register. Scan its tag first if it has one.'}
-                actions={<Link href="/scan"><Button variant="secondary"><ScanLine size={16} aria-hidden /> Scan a tag</Button></Link>}
+                title={goat ? `Edit ${goat.number}` : 'Goat Register'}
+                description={goat ? 'Change any detail. Each change is kept in the goat\'s history with who made it and when. Weight, temperature and the RFID tag are added as new records on the goat page.' : epc ? 'This tag is not on any goat yet. Fill in the register to add the goat.' : 'Add a goat to the register. Scan its tag first if it has one.'}
+                actions={goat ? <Link href={`/goats/${goat.id}`}><Button variant="secondary">Back to goat</Button></Link> : <Link href="/scan"><Button variant="secondary"><ScanLine size={16} aria-hidden /> Scan a tag</Button></Link>}
             />
 
             {epc ? (
@@ -261,7 +283,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                     <span className="font-mono font-semibold text-cobalt-900">{epc}</span>
                 </div>
             ) : null}
-            {!canAssignTags ? <div className="mb-4"><Note>Your role cannot assign RFID tags, so the tag field is switched off. You can still register the goat.</Note></div> : null}
+            {!canAssignTags && !editing ? <div className="mb-4"><Note>Your role cannot assign RFID tags, so the tag field is switched off. You can still register the goat.</Note></div> : null}
 
             <form onSubmit={(e) => {
                 e.preventDefault();
@@ -270,11 +292,15 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                 form.transform((d: Record<string, any>) => (d.origin === 'born_on_farm'
                     ? { ...d, birth_date_is_estimate: false }
                     : { ...d, birth_date_is_estimate: Boolean(d.birth_date), sire_id: '', dam_id: '', sire_tag: '', dam_tag: '', breed_purity: '', cross_breeds: '' }));
-                form.post('/goats', { forceFormData: true });
+                if (goat) {
+                    form.post(`/goats/${goat.id}/edit`, { preserveScroll: true });
+                } else {
+                    form.post('/goats', { forceFormData: true });
+                }
             }} className="space-y-4">
                 {shown.filter((section) => section.fields.some((f) => !hidden(f))).map((section, index) => (
                     <Fragment key={section.name}>
-                    {index === 1 ? (
+                    {index === 1 && !editing ? (
                         <Panel title="Profile picture" description="Take a photo with the camera, or choose one. Optional.">
                             <PhotoPicker value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
                         </Panel>
@@ -303,13 +329,13 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                     </Fragment>
                 ))}
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button type="submit" disabled={form.processing || !started}>{form.processing ? 'Saving' : 'Register goat'}</Button>
-                    <Link href="/goats"><Button type="button" variant="secondary">Cancel</Button></Link>
+                    <Button type="submit" disabled={form.processing || !started}>{form.processing ? 'Saving' : goat ? 'Save changes' : 'Register goat'}</Button>
+                    <Button type="button" variant="secondary" onClick={() => router.visit(goat ? `/goats/${goat.id}` : '/goats')}>Cancel</Button>
                     {Object.keys(form.errors).length ? <span className="text-sm font-medium text-crit-700">Please fix the highlighted fields.</span> : null}
                 </div>
             </form>
 
-            {epc && canAssignTags && untagged.length ? (
+            {epc && canAssignTags && untagged.length && !editing ? (
                 <Panel title="Or put this tag on a goat that is already registered" description="For goats entered before they had an RFID tag" className="mt-6">
                     <form onSubmit={(e) => { e.preventDefault(); assign.post('/scan/assign'); }} className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                         <Field label="Goat without a tag" error={assign.errors.tag ?? assign.errors.animal_id}>

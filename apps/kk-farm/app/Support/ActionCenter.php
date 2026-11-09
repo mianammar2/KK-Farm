@@ -118,6 +118,13 @@ final class ActionCenter
                 $low->map(fn (FeedItem $i) => ['text' => $i->name, 'sub' => round($stock[$i->id] ?? 0, 1).' KG · reorder at '.round($i->reorder_level_kg).' KG', 'url' => '/feeding'])->values());
         }
 
+        // ---- Wrong entries waiting for a decision (D-091) ----
+        if ($user->passes('remove_goats')) {
+            $asked = Animal::whereNotNull('removal_requested_at')->where('status', '!=', 'voided')->orderBy('removal_requested_at')->get();
+            $add('goats', 'removal_requests', 'Goat records asked to be removed', 'warning', 'Open the goat and confirm or cancel the removal.', '/goats',
+                $asked->map(fn ($a) => ['text' => $a->farm_number, 'sub' => "Asked by {$a->removal_requested_by}: {$a->removal_reason}", 'url' => "/goats/{$a->id}"])->values());
+        }
+
         // ---- Sensors and open areas (D-087) ----
         if ($user->canModule('sensors')) {
             $alerts = \App\Models\SensorAlert::with(['animal', 'pen.shed'])->where('status', 'open')->orderByDesc('id')->get();

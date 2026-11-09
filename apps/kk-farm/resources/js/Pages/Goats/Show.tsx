@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import PhotoPicker from '../../components/PhotoPicker';
-import { Camera, MoveRight, Scale, Star, TriangleAlert } from 'lucide-react';
+import { Camera, MoveRight, Pencil, Scale, Star, Trash2, TriangleAlert } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
@@ -9,7 +9,7 @@ import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 
-type Goat = GoatCard & { withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Goat = GoatCard & { withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
@@ -24,12 +24,14 @@ type Props = {
     kiddings: Array<{ id: number; on: string; alive: number; stillborn: number }>;
     cost: { direct: number; sharedPerHead: number; total: number } | null;
     pens: Array<{ id: number; name: string; purpose: string }>;
+    can: { edit: boolean; remove: boolean };
 };
 
-const TYPE_COLOR: Record<string, string> = { origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
+const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can } = props;
+    const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('overview');
     const [panel, setPanel] = useState<string | null>(null);
@@ -58,6 +60,25 @@ export default function GoatShow(props: Props) {
                     {goat.withdrawal.milk ? <span>Do not use milk before {goat.withdrawal.milk}.</span> : null}
                 </div>
             ) : null}
+            {/* D-091: a wrong entry is removed in two steps and never deleted; the trail stays on the goat. */}
+            {removed ? (
+                <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 rounded-tile border border-rule-strong bg-glaze px-4 py-3">
+                    <Trash2 size={18} className="text-ink-soft" aria-hidden />
+                    <span><strong>Removed as a wrong entry</strong> on {goat.removal?.voidedOn}. Asked by {goat.removal?.by}, confirmed by {goat.removal?.voidedBy}: {goat.removal?.reason}</span>
+                    {can.remove ? <Button variant="secondary" className="ml-auto" onClick={() => router.post(`/goats/${goat.id}/restore`, {}, { preserveScroll: true })}>Restore</Button> : null}
+                </div>
+            ) : goat.removal ? (
+                <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 rounded-tile border border-watch-400 bg-watch-100 px-4 py-3 text-watch-700">
+                    <Trash2 size={18} aria-hidden />
+                    <span><strong>Removal asked</strong> by {goat.removal.by} on {goat.removal.on}: {goat.removal.reason}</span>
+                    {can.remove ? (
+                        <span className="ml-auto flex gap-2">
+                            <Button variant="danger" onClick={() => router.post(`/goats/${goat.id}/removal/decide`, { decision: 'confirm' })}>Confirm removal</Button>
+                            <Button variant="secondary" onClick={() => router.post(`/goats/${goat.id}/removal/decide`, { decision: 'cancel' }, { preserveScroll: true })}>Keep the goat</Button>
+                        </span>
+                    ) : <span className="ml-auto text-sm">Waiting for the owner or a manager.</span>}
+                </div>
+            ) : null}
             <section className="mb-4 overflow-hidden rounded-tile border border-rule bg-tile shadow-tile">
                 <div className="flex flex-col gap-4 p-4 sm:flex-row">
                     {profile ? <img src={`/media/${profile.id}`} alt={`Profile of ${goat.number}`} className="size-36 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}
@@ -65,7 +86,7 @@ export default function GoatShow(props: Props) {
                         <div className="flex flex-wrap items-center gap-2">
                             <h1 className="text-2xl font-bold tracking-tight text-cobalt-900">{goat.name ?? 'Unnamed goat'}</h1>
                             <SexIcon sex={goat.sex} />
-                            {onFarm ? <HealthChip health={goat.health} /> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}
+                            {onFarm ? <HealthChip health={goat.health} /> : removed ? <Chip className="bg-glaze text-ink-soft">Removed (wrong entry)</Chip> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}
                             <ReproChip repro={goat.repro} />
                         </div>
                         <p className="text-ink-soft">{goat.number} · {goat.breed} · {goat.age}</p>
@@ -76,6 +97,12 @@ export default function GoatShow(props: Props) {
                             {fact('Pen', goat.pen ?? '—')}
                             {fact('RFID tag', tags.find((t) => !t.to)?.code ?? 'No open tag')}
                         </dl>
+                        {!removed && can.edit ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <Button onClick={() => router.visit(`/goats/${goat.id}/edit`)}><Pencil size={16} aria-hidden /> Edit details</Button>
+                                {!goat.removal ? <Button variant="quiet" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}><Trash2 size={16} aria-hidden /> Remove (wrong entry)</Button> : null}
+                            </div>
+                        ) : null}
                         {onFarm ? (
                             <div className="mt-3 flex flex-wrap gap-2">
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><Scale size={16} aria-hidden /> Add weight</Button>
@@ -107,6 +134,7 @@ export default function GoatShow(props: Props) {
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
+                                {goat.teeth ? fact('Teeth', goat.teeth) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
                                 {fact('Sire', parentLink(goat.sire))}
@@ -245,6 +273,18 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
     const birth = useForm({ birth_date: '', age_months: '', reason: '' });
+    const removal = useForm({ reason: '' });
+
+    if (kind === 'remove') {
+        return (
+            <form onSubmit={(e) => { e.preventDefault(); removal.post(`/goats/${goat.id}/removal`, { preserveScroll: true, onSuccess: close }); }} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <Field label="Why is this goat record wrong?" error={removal.errors.reason} hint="Nothing is deleted. The owner or a manager confirms; the goat then leaves every list and count, and this record keeps who asked, who confirmed and why. It can be restored.">
+                    <input className="field" value={removal.data.reason} onChange={(e) => removal.setData('reason', e.target.value)} placeholder="e.g. Registered twice by mistake, same goat as TD-0002" autoFocus />
+                </Field>
+                <div className="flex gap-2"><Button type="submit" variant="danger" disabled={removal.processing}>Ask to remove</Button><Button type="button" variant="secondary" onClick={close}>Cancel</Button></div>
+            </form>
+        );
+    }
     const options = { preserveScroll: true, onSuccess: close };
 
     // D-080: correct a wrong birth date (often the purchase date). Kept in the lifecycle with the old date and reason.

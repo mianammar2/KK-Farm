@@ -49,8 +49,101 @@ class GoatController extends Controller
     {
         $epc = GoatRegistration::normaliseCode($request->query('epc'));
 
-        return Inertia::render('Goats/Register', [
-            'epc' => $epc !== '' ? $epc : null,
+        return Inertia::render('Goats/Register', ['epc' => $epc !== '' ? $epc : null] + $this->formProps($request));
+    }
+
+    /** D-091: the same form as the register, filled with the goat's details. Every change is kept in its history. */
+    public function edit(Request $request, Animal $animal): Response
+    {
+        abort_unless($request->user()->passes('edit_goats'), 403);
+
+        return Inertia::render('Goats/Register', ['epc' => null, 'goat' => [
+            'id' => $animal->id, 'number' => $animal->farm_number,
+            'values' => [
+                'origin' => $animal->origin, 'breed_id' => (string) $animal->breed_id, 'acquired_on' => $animal->acquired_on?->format('Y-m-d'), 'tag_id' => $animal->farm_number,
+                'sex' => $animal->sex, 'name' => $animal->name, 'source_farm' => $animal->source_farm, 'purchase_cost_pkr' => $animal->purchase_cost_minor !== null ? $animal->purchase_cost_minor / 100 : null,
+                'teeth' => $animal->teeth, 'birth_date' => $animal->birth_date?->format('Y-m-d'), 'birth_weight_kg' => $animal->birth_weight_kg,
+                'sire_id' => $animal->sire_id, 'dam_id' => $animal->dam_id, 'sire_tag' => $animal->sire_tag, 'dam_tag' => $animal->dam_tag,
+                'breed_purity' => $animal->breed_purity, 'cross_breeds' => $animal->cross_breeds, 'age_category' => $animal->age_category, 'animal_purpose' => $animal->animal_purpose,
+                'animal_class' => $animal->animal_class, 'repro_status' => $animal->repro_status, 'kid_stage' => $animal->kid_stage, 'health_flag' => $animal->health_flag,
+                'pen_id' => (string) $animal->pen_id, 'ownership' => $animal->ownership, 'notes' => $animal->notes, 'custom_fields' => $animal->custom_fields ?: (object) [],
+            ],
+        ]] + $this->formProps($request));
+    }
+
+    public function update(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('edit_goats'), 403);
+        if ($request->filled('tag_id')) {
+            $request->merge(['tag_id' => strtoupper(trim((string) $request->input('tag_id')))]);
+        }
+        $defs = FieldCatalog::forAnimal()->filter(fn (FieldDefinition $f) => ! $f->builtin || in_array($f->key, GoatRegistration::EDITABLE, true));
+        $rules = GoatRegistration::rules($defs);
+        $rules['tag_id'] = ['required', 'string', 'max:40'];
+        $data = $request->validate($rules);
+        $changes = GoatRegistration::update($animal, $data, $request->user());
+        if (isset($data['custom_fields']) && $data['custom_fields'] != ($animal->custom_fields ?? [])) {
+            $animal->update(['custom_fields' => $data['custom_fields']]);
+            Farm::event($animal, 'edit', 'Edited: extra fields', $request->user()->name);
+            $changes[] = 'extra fields';
+        }
+
+        return redirect("/goats/{$animal->id}")->with('success', $changes ? 'Saved: '.count($changes).' change'.(count($changes) === 1 ? '' : 's').'. The old values stay in the goat\'s history.' : 'Nothing changed.');
+    }
+
+    /**
+     * D-091: a goat entered by mistake is removed in two steps. Someone asks, with a reason; the owner or a manager
+     * confirms. Nothing is deleted: the goat is marked removed (out of every count, list and plan), its tag is freed,
+     * and its history shows who asked, who confirmed, when and why. It can be restored.
+     */
+    public function requestRemoval(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('edit_goats'), 403);
+        abort_if($animal->status === 'voided', 422, 'This goat is already removed.');
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:300']], [], ['reason' => 'reason']);
+        $animal->update(['removal_requested_by' => $request->user()->name, 'removal_requested_at' => now(), 'removal_reason' => $data['reason']]);
+        Farm::event($animal, 'edit', "Removal asked by {$request->user()->name}: {$data['reason']}", $request->user()->name);
+        Farm::log($request->user(), "Asked to remove goat {$animal->farm_number} (wrong entry)", "/goats/{$animal->id}");
+
+        return back()->with('success', $request->user()->passes('remove_goats') ? 'Removal asked. Confirm it below to remove the goat.' : 'Removal asked. The owner or a manager confirms it.');
+    }
+
+    public function decideRemoval(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('remove_goats'), 403);
+        abort_unless($animal->removal_requested_at && $animal->status !== 'voided', 422, 'There is no removal to decide.');
+        $data = $request->validate(['decision' => ['required', Rule::in(['confirm', 'cancel'])]]);
+        $by = $request->user()->name;
+        if ($data['decision'] === 'cancel') {
+            Farm::event($animal, 'edit', "Removal cancelled by $by (asked by {$animal->removal_requested_by})", $by);
+            $animal->update(['removal_requested_by' => null, 'removal_requested_at' => null, 'removal_reason' => null]);
+
+            return back()->with('success', 'Removal cancelled. The goat stays.');
+        }
+        DB::transaction(function () use ($animal, $request, $by) {
+            Farm::closeOpenTag($animal, 'removed', $request->user());
+            $animal->update(['status_before_void' => $animal->status, 'status' => 'voided', 'voided_by' => $by, 'voided_at' => now()]);
+            Farm::event($animal, 'edit', "Removed as a wrong entry. Asked by {$animal->removal_requested_by}, confirmed by $by: {$animal->removal_reason}", $by);
+        });
+        Farm::log($request->user(), "Removed goat {$animal->farm_number} (wrong entry)", "/goats/{$animal->id}");
+
+        return redirect('/goats')->with('success', "{$animal->farm_number} removed. It stays on record and can be restored from its page.");
+    }
+
+    public function restore(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('remove_goats'), 403);
+        abort_unless($animal->status === 'voided', 422);
+        $animal->update(['status' => $animal->status_before_void ?: 'active', 'status_before_void' => null, 'removal_requested_by' => null, 'removal_requested_at' => null, 'removal_reason' => null, 'voided_by' => null, 'voided_at' => null]);
+        Farm::event($animal, 'edit', "Restored by {$request->user()->name}", $request->user()->name);
+
+        return back()->with('success', "{$animal->farm_number} restored. Put a tag on it again from the scan screen if needed.");
+    }
+
+    /** @return array<string, mixed> what the register and edit form need */
+    private function formProps(Request $request): array
+    {
+        return [
             'fields' => FieldCatalog::forAnimal()->map(fn (FieldDefinition $f) => [
                 'key' => $f->key, 'label' => $f->label, 'type' => $f->type, 'section' => $f->section, 'help' => $f->help, 'builtin' => $f->builtin,
                 'required' => $f->required || in_array($f->key, FieldCatalog::STRUCTURAL, true), 'options' => $f->type === 'select' ? $f->options : null,
@@ -79,7 +172,7 @@ class GoatController extends Controller
             'mixedBreedId' => Breed::whereIn('name', ['Crossbreed', 'Mixed'])->value('id'),
             'canAssignTags' => $request->user()->passes('assign_tags'),
             'untagged' => Animal::active()->whereDoesntHave('openAssignment')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
-        ]);
+        ];
     }
 
     public function store(Request $request): RedirectResponse
@@ -112,6 +205,8 @@ class GoatController extends Controller
                 'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('j M Y'), 'adg' => Farm::adg($weights),
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
                 'identity' => $animal->id,
+                'removal' => $animal->removal_requested_at || $animal->status === 'voided' ? ['by' => $animal->removal_requested_by, 'on' => $animal->removal_requested_at?->format('j M Y g:i A'), 'reason' => $animal->removal_reason, 'voidedBy' => $animal->voided_by, 'voidedOn' => $animal->voided_at?->format('j M Y g:i A')] : null, // D-091
+                'teeth' => $animal->teeth ? (\App\Support\Classification::TEETH[$animal->teeth] ?? $animal->teeth) : null,
                 'classification' => $animal->classification(),
                 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null),
                 'dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null),
@@ -134,6 +229,7 @@ class GoatController extends Controller
                 ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('j M Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('j M Y')]),
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
+            'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats')],
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
     }

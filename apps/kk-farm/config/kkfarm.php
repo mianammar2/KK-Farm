@@ -55,6 +55,8 @@ return [
         'plan_rations' => ['ceo', 'manager', 'vet'], // D-054: draft a ration; approve_feeding_plan approves it
         'manage_medicine_store' => ['ceo', 'manager', 'vet'], // D-074: medicines, receipts, disposals
         'manage_devices' => ['ceo', 'manager'], // D-087: add devices, issue their keys
+        'edit_goats' => ['ceo', 'manager', 'vet'], // D-091: change a goat's details; ask to remove a wrong entry
+        'remove_goats' => ['ceo', 'manager'], // D-091: confirm (or cancel) removing a wrong entry; restore
     ],
 
     // Demonstration assumption (Q-PB-2): the real value is confirmed by the veterinarians.

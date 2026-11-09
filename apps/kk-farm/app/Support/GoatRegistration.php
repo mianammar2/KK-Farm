@@ -86,6 +86,8 @@ final class GoatRegistration
                 'birth_weight_kg' => ['numeric', 'between:0.1,12'],
                 'latest_weight_kg' => ['numeric', 'between:0.5,150'],
                 'height_in' => ['numeric', 'between:4,80'],
+                'temperature_c' => ['numeric', 'between:34,43'], // D-091
+                'pregnancy_months' => ['numeric', 'between:0.5,5.5'],
                 'purchase_cost_pkr' => ['numeric', 'min:0', 'max:100000000'],
                 'name', 'source_farm' => ['string', 'max:60'],
                 default => null,
@@ -172,6 +174,7 @@ final class GoatRegistration
                 'health_status' => self::HEALTH[$data['health_flag'] ?? 'healthy'] ?? 'healthy',
                 'ownership' => $data['ownership'] ?? null,
                 'birth_weight_kg' => $data['birth_weight_kg'] ?? null,
+                'teeth' => $data['teeth'] ?? null, // D-091
                 'height_cm' => self::heightCm($data),
                 'purchase_cost_minor' => isset($data['purchase_cost_pkr']) ? (int) round($data['purchase_cost_pkr'] * 100) : null,
                 'notes' => $data['notes'] ?? null,
@@ -195,8 +198,10 @@ final class GoatRegistration
             }
 
             if (isset($data['latest_weight_kg'])) {
-                WeightRecord::create(['animal_id' => $animal->id, 'measured_on' => now(), 'weight_kg' => $data['latest_weight_kg'], 'height_cm' => self::heightCm($data), 'context' => 'registration', 'measured_by' => $user->name]);
+                WeightRecord::create(['animal_id' => $animal->id, 'measured_on' => now(), 'weight_kg' => $data['latest_weight_kg'], 'height_cm' => self::heightCm($data), 'body_score' => isset($data['body_score']) ? (int) $data['body_score'] : null, 'context' => 'registration', 'measured_by' => $user->name]);
             }
+            self::arrivalCheck($animal, $data, $user);
+            self::pregnantOnArrival($animal, $data, $user);
 
             $origin = ['purchased' => 'Purchased and registered', 'transferred_in' => 'Transferred in and registered'][$data['origin']] ?? 'Born on the farm';
             Farm::event($animal, 'origin', $origin.($via === 'scan' ? ' (started from an RFID scan)' : ''), $user->name);
@@ -208,6 +213,128 @@ final class GoatRegistration
             Farm::log($user, "Registered goat {$animal->farm_number}", "/goats/{$animal->id}");
 
             return $animal;
+        });
+    }
+
+    /** D-091: temperature and body condition taken at registration, kept as an observation in the health history. */
+    private static function arrivalCheck(Animal $animal, array $data, User $user): void
+    {
+        $temp = isset($data['temperature_c']) && $data['temperature_c'] !== '' ? (float) $data['temperature_c'] : null;
+        $score = $data['body_score'] ?? null;
+        if ($temp === null && ! $score) {
+            return;
+        }
+        $fever = $temp !== null && $temp > 39.7;
+        $notes = collect([$temp !== null ? "Temperature {$temp} °C".($fever ? ' (fever: above 39.7 °C)' : ($temp < 38.0 ? ' (low: below 38 °C)' : '')) : null, $score ? "Body condition {$score} of 5" : null])->filter()->implode('. ').'.';
+        \App\Models\HealthRecord::create([
+            'animal_id' => $animal->id, 'kind' => 'observation', 'occurred_on' => now()->toDateString(), 'title' => $fever ? 'Arrival check: fever' : 'Arrival check',
+            'notes' => $notes, 'severity' => $fever ? 'medium' : null, 'recorded_by' => $user->name, 'recorded_role' => $user->roleLabel(), 'status' => $fever ? 'open' : 'closed',
+        ]);
+    }
+
+    /**
+     * D-091: a doe bought or transferred in pregnant goes straight into Breeding: a pregnant mating with the sire unknown,
+     * dated back from the months pregnant, with the farm's gestation for the expected kidding. The vet confirms by check.
+     */
+    private static function pregnantOnArrival(Animal $animal, array $data, User $user): void
+    {
+        if (($data['pregnant_at_arrival'] ?? null) !== 'yes' || $animal->sex !== 'female' || $animal->origin === 'born_on_farm') {
+            return;
+        }
+        $org = \App\Support\Tenant::org();
+        $gestation = (int) ($org->gestation_days ?? 150);
+        $months = isset($data['pregnancy_months']) && $data['pregnancy_months'] !== '' ? (float) $data['pregnancy_months'] : 2.5;
+        $mated = now()->subDays((int) round($months * 30))->startOfDay();
+        Mating::create([
+            'dam_id' => $animal->id, 'sire_id' => null, 'mated_on' => $mated, 'method' => 'natural', 'status' => 'pregnant',
+            'expected_kidding_on' => $mated->copy()->addDays($gestation), 'recorded_by' => $user->name,
+            'notes' => 'Pregnant when she came to the farm; sire unknown. Mating date estimated from about '.rtrim(rtrim(number_format($months, 1), '0'), '.').' months pregnant.',
+        ]);
+        $animal->update(['repro_status' => 'pregnant', 'repro_state' => Classification::LEGACY_REPRO['pregnant'] ?? 'pregnant']);
+        Farm::event($animal, 'breeding', 'Pregnant on arrival. Expected kidding about '.$mated->copy()->addDays($gestation)->format('j M Y'), $user->name);
+    }
+
+    /** Fields a person may change after registering (D-091). Measurements (weight, temperature) are new records instead. */
+    public const EDITABLE = [
+        'origin', 'breed_id', 'acquired_on', 'tag_id', 'sex', 'name', 'source_farm', 'purchase_cost_pkr', 'teeth', 'birth_date', 'birth_weight_kg',
+        'sire_id', 'dam_id', 'breed_purity', 'cross_breeds', 'age_category', 'animal_purpose', 'animal_class', 'repro_status', 'kid_stage',
+        'health_flag', 'pen_id', 'ownership', 'notes', 'lifecycle_status',
+    ];
+
+    /**
+     * D-091: change a goat's details. Each change is kept in the goat's history as "Field: old → new" with who and when,
+     * so nothing is lost. A pen change goes through a recorded transfer.
+     *
+     * @return list<string> the changes made
+     */
+    public static function update(Animal $animal, array $data, User $user): array
+    {
+        $labels = FieldCatalog::forAnimal(true)->pluck('label', 'key');
+        $map = [
+            'tag_id' => 'farm_number', 'purchase_cost_pkr' => 'purchase_cost_minor',
+        ];
+        $changes = [];
+        $updates = [];
+        foreach (self::EDITABLE as $key) {
+            if (! array_key_exists($key, $data) || in_array($key, ['pen_id', 'lifecycle_status'], true)) {
+                continue;
+            }
+            $column = $map[$key] ?? $key;
+            $new = $data[$key] === '' ? null : $data[$key];
+            if ($key === 'tag_id') {
+                $new = $new ? strtoupper(trim((string) $new)) : $animal->farm_number; // the Tag ID can change, never be emptied
+            }
+            if ($key === 'purchase_cost_pkr') {
+                $new = $new === null ? null : (int) round($new * 100);
+            }
+            $old = $animal->getAttribute($column);
+            $oldText = $old instanceof \DateTimeInterface ? $old->format('Y-m-d') : ($old === null ? '' : (string) $old);
+            $newText = $new === null ? '' : (string) $new;
+            if (in_array($key, ['birth_weight_kg'], true) && $oldText !== '' && $newText !== '' && (float) $oldText === (float) $newText) {
+                continue;
+            }
+            if ($oldText === $newText) {
+                continue;
+            }
+            $updates[$column] = $new;
+            $show = fn ($v) => $v === '' ? 'empty' : ($key === 'purchase_cost_pkr' ? 'PKR '.number_format((int) $v / 100) : ($key === 'breed_id' ? (\App\Models\Breed::find($v)?->name ?? $v) : (in_array($key, ['sire_id', 'dam_id'], true) ? (Animal::find($v)?->farm_number ?? $v) : $v)));
+            $changes[] = ($labels[$key] ?? $key).': '.$show($oldText).' → '.$show($newText);
+        }
+        if (isset($updates['sex']) && $updates['sex'] !== 'female') {
+            $updates['repro_status'] = null;
+        }
+        if (array_key_exists('repro_status', $updates)) {
+            $updates['repro_state'] = Classification::LEGACY_REPRO[$updates['repro_status']] ?? null;
+        }
+        if (array_key_exists('health_flag', $updates)) {
+            $updates['health_status'] = self::HEALTH[$updates['health_flag'] ?? 'healthy'] ?? 'healthy';
+        }
+        if (array_key_exists('birth_date', $updates)) {
+            $updates['birth_date_is_estimate'] = ($updates['origin'] ?? $animal->origin) !== 'born_on_farm' && ! empty($updates['birth_date']);
+        }
+        if (isset($updates['farm_number']) && Animal::where('farm_number', $updates['farm_number'])->whereKeyNot($animal->id)->exists()) {
+            throw ValidationException::withMessages(['tag_id' => "{$updates['farm_number']} is already another goat's Tag ID."]);
+        }
+        foreach (['sire_id', 'dam_id'] as $parent) {
+            if (! empty($updates[$parent]) && $updates[$parent] === $animal->id) {
+                throw ValidationException::withMessages([$parent => 'A goat cannot be its own parent.']);
+            }
+        }
+
+        return DB::transaction(function () use ($animal, $data, $user, $updates, $changes) {
+            if ($updates) {
+                $animal->update($updates);
+            }
+            if (! empty($data['pen_id']) && (int) $data['pen_id'] !== (int) $animal->pen_id) {
+                \App\Support\Movements::transfer($animal->fresh('pen.shed'), \App\Models\Pen::with('shed')->findOrFail($data['pen_id']), $user, ['reason' => 'Corrected on the goat record']);
+                $changes[] = 'Pen moved (see Movements)';
+            }
+            if ($changes) {
+                Farm::event($animal, 'edit', 'Edited: '.implode('; ', $changes), $user->name);
+                Farm::log($user, "Edited goat {$animal->fresh()->farm_number}", "/goats/{$animal->id}");
+            }
+
+            return $changes;
         });
     }
 

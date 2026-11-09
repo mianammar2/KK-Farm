@@ -168,7 +168,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                                             <td className="whitespace-nowrap">{g.age}</td>
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
-                                            <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">Left farm</span>}<ReproChip repro={g.repro} /></div></td>
+                                            <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} /></div></td>
                                             <td className="text-sm text-ink-soft">{g.tag ? <span className="font-mono">{g.tag}</span> : 'No tag'}</td>
                                         </tr>
                                     );
@@ -189,7 +189,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels }: Props) {
                                         <div className="flex items-center gap-1.5"><span className="truncate font-semibold text-cobalt-900">{g.name ?? 'Unnamed'}</span><SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         <div className="truncate font-mono text-xs text-ink-soft">{g.number}</div>
                                         <div className="truncate text-xs text-ink-soft">{g.breed} · {g.age}{g.weight ? ` · ${g.weight} KG` : ''}</div>
-                                        <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">Left farm</span>}<ReproChip repro={g.repro} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>
                             );
