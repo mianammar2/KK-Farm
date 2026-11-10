@@ -114,12 +114,17 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings#breeds', 'Breed Weight Lines'),
     ] },
     { key: 'operations', no: '09', label: 'Operations', art: 'ic-active', modules: ['tasks'], linked: ['employees', 'dashboard', 'veterinary', 'feeding'], sections: [
+        S('Overview', '/operations?tab=checklists', "Today's Checklists"),
         S('Operations', '/tasks?tab=open', "Today's Tasks"),
         S('Operations', '/tasks?tab=mine', 'My Tasks'),
-        S('Operations', '/tasks?tab=overdue', 'Overdue'),
+        S('Operations', '/operations?tab=incidents', 'Incident Register'),
+        S('Operations', '/operations?tab=handover', 'Shift Handover'),
+        S('Records', '/operations?tab=history', 'Checklist History'),
         S('Records', '/tasks?tab=closed', 'Done This Week'),
         S('Records', '/activity', 'Daily Activity Log'),
+        S('Reporting', '/tasks?tab=overdue', 'Delayed Tasks'),
         S('Reporting', '/actions', 'Pending Actions'),
+        S('Configuration', '/operations?tab=templates', 'Checklist Setup'),
         S('Configuration', '/employees', 'Departments & Staff'),
     ] },
     { key: 'inventory', no: '10', label: 'Inventory', art: 'mod-inventory', modules: ['inventory', 'feeding', 'health'], linked: ['feeding', 'veterinary', 'purchase', 'maintenance'], sections: [

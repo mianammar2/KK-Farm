@@ -42,6 +42,17 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
+    // D-180: Farm Operations (checklists, incidents, shift handover)
+    Route::middleware('module:tasks')->group(function (): void {
+        Route::get('/operations', [\App\Http\Controllers\OperationsController::class, 'index']);
+        Route::post('/operations/checklists/{template}/tick', [\App\Http\Controllers\OperationsController::class, 'tick']);
+        Route::post('/operations/runs/{run}/verify', [\App\Http\Controllers\OperationsController::class, 'verify']);
+        Route::post('/operations/incidents', [\App\Http\Controllers\OperationsController::class, 'incident']);
+        Route::post('/operations/incidents/{incident}/resolve', [\App\Http\Controllers\OperationsController::class, 'resolve']);
+        Route::post('/operations/handovers', [\App\Http\Controllers\OperationsController::class, 'handover']);
+        Route::post('/operations/templates', [\App\Http\Controllers\OperationsController::class, 'template']);
+        Route::post('/operations/templates/{template}', [\App\Http\Controllers\OperationsController::class, 'template']);
+    });
     // D-179: the worker app for the RFID gun (pick a job, then scan goat after goat)
     Route::get('/worker', [\App\Http\Controllers\WorkerController::class, 'index']);
     Route::post('/worker/start', [\App\Http\Controllers\WorkerController::class, 'start']);
