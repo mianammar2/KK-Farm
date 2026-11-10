@@ -191,6 +191,7 @@ class DashboardController extends Controller
                     // D-147: up to 18 goats to draw (females first): gender, kid/grower/adult, breed, needs attention
                     'figures' => $byPen[$p->id]->sortBy(fn ($g) => $g->sex === 'female' ? 0 : 1)->take(18)->map(fn ($g) => [
                         'female' => $g->sex === 'female', 'stage' => $g->effectiveAge(), 'breed' => $g->breed?->name,
+                        'id' => $g->id, 'number' => $g->farm_number, 'name' => $g->name, 'health' => $g->health_status, // D-156: shown on hover
                         'flag' => $g->health_flag !== null && $g->health_flag !== 'healthy',
                     ])->values()->all()])->values()->all(),
             ])->sortBy('name')->values()->all(),

@@ -1,9 +1,18 @@
 import { Link } from '@inertiajs/react';
 import { useFive } from '../lib/useFive';
-import { BreedBadge } from './GoatBadges';
-import { CountUp } from './ui';
+import { AgeBadge, BreedBadge } from './GoatBadges';
+import { useSyncExternalStore } from 'react';
+import { CountUp, HealthChip, SexIcon } from './ui';
+import type { Health } from '../types';
 
-export type SceneFigure = { female: boolean; stage: string | null; breed: string | null; flag: boolean };
+export type SceneFigure = { female: boolean; stage: string | null; breed: string | null; flag: boolean; id?: number; number?: string; name?: string | null; health?: Health };
+
+/** D-156: the goat under the pointer, shown in the legend area under the sheds. */
+export type HoverGoat = { id?: number | string; number?: string; name?: string | null; breed?: string | null; female: boolean; stage?: string | null; health?: Health; pen?: string };
+let hovered: HoverGoat | null = null;
+const listeners = new Set<() => void>();
+export function hoverGoat(g: HoverGoat | null) { hovered = g; listeners.forEach((l) => l()); }
+function useHovered() { return useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l); }; }, () => hovered, () => null); }
 export type ScenePen = { id: number; name: string; code: string; capacity: number | null; goats: number; female: number; male: number; attention: number; figures?: SceneFigure[] };
 export type SceneShed = { id: number; name: string; typeName: string | null; goats: number; pens: ScenePen[] };
 
@@ -61,7 +70,7 @@ function PenYard({ pen }: { pen: ScenePen }) {
             </div>
             <div className="kk-herd" aria-hidden>
                 {pen.figures?.length
-                    ? pen.figures.map((f, i) => <GoatFigure key={i} female={f.female} flag={f.flag} stage={f.stage} breed={f.breed} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)
+                    ? pen.figures.map((f, i) => <GoatFigure key={i} female={f.female} flag={f.flag} stage={f.stage} breed={f.breed} delay={(i * 0.37) % 2.4} info={{ ...f, pen: pen.name }} />)
                     : Array.from({ length: figures }, (_, i) => <GoatFigure key={i} female={i < females} flag={i < flagged} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
                 {pen.goats > figures ? <span className="self-center text-xs font-bold text-[#3d5446]">+{pen.goats - figures}</span> : null}
             </div>
@@ -100,9 +109,11 @@ export function goatArt(female: boolean, stage?: string | null) {
     return stage === 'kid' ? 'cls-kid' : stage === 'grower' ? 'cls-grw' : female ? 'cls-bdf' : 'cls-bkm';
 }
 
-export function GoatFigure({ female, flag, delay, stage = 'adult' }: { female: boolean; flag: boolean; delay: number; flip?: boolean; stage?: Stage | string | null; breed?: string | null }) {
+export function GoatFigure({ female, flag, delay, stage = 'adult', info }: { female: boolean; flag: boolean; delay: number; flip?: boolean; stage?: Stage | string | null; breed?: string | null; info?: HoverGoat }) {
+    const on = info ? () => hoverGoat(info) : undefined;
     return (
-        <span className={`kk-goat kk-goat-pic ${female ? 'kk-goat-f' : 'kk-goat-m'}`} style={{ animationDelay: `${delay}s` }}>
+        <span className={`kk-goat kk-goat-pic ${female ? 'kk-goat-f' : 'kk-goat-m'}`} style={{ animationDelay: `${delay}s` }}
+            onMouseEnter={on} onMouseLeave={info ? () => hoverGoat(null) : undefined} title={info?.number}>
             <img src={`/icons/${goatArt(female, stage)}.png`} alt="" decoding="async" loading="lazy" />
             {flag ? <img src="/icons/ic-sick.png" alt="" className="kk-goat-flag" /> : null}
         </span>
@@ -115,6 +126,23 @@ export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | u
         <span key={art} className="inline-flex items-center gap-1.5"><img src={`/icons/${art}.png`} alt="" className="kk-legend-pic" />{label}</span>
     );
     const present = [...new Set(breeds.filter(Boolean).map((b) => b!.trim()))].sort();
+    const g = useHovered();
+    if (g) {
+        return (
+            <div className="kk-hover-card flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 text-sm text-[#3d5446]" aria-live="polite">
+                <img src={`/icons/${goatArt(g.female, g.stage)}.png`} alt="" className="size-12 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-black/5" />
+                <span className="min-w-0">
+                    <span className="block font-mono text-base font-bold text-[#022a1c]">{g.number ?? 'Goat'}</span>
+                    {g.name ? <span className="block text-xs">{g.name}</span> : null}
+                </span>
+                {g.breed ? <BreedBadge breed={g.breed} withName /> : null}
+                <AgeBadge stage={g.stage} withLabel />
+                <SexIcon sex={g.female ? 'female' : 'male'} label />
+                {g.health ? <HealthChip health={g.health} /> : null}
+                {g.pen ? <span className="text-xs font-semibold">Pen {g.pen}</span> : null}
+            </div>
+        );
+    }
     return (
         <div className="space-y-2 px-1 text-xs font-semibold text-[#3d5446]">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -123,6 +151,7 @@ export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | u
                 {item('cls-grw', 'Grower')}
                 {item('cls-kid', 'Kid')}
                 {item('ic-sick', 'Needs Attention')}
+                <span className="text-[11px] font-normal opacity-80">Point at a goat to see its details</span>
             </div>
             {present.length ? (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">

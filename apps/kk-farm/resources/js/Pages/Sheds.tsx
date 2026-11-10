@@ -121,7 +121,7 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                                                         </span>
                                                         <span className="mt-0.5 block truncate text-xs text-[#3d5446]">{p.purpose}</span>
                                                         <span className="kk-herd" aria-hidden>
-                                                            {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
+                                                            {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={(i * 0.37) % 2.4} info={{ id: g.id, number: g.number, name: g.name, breed: g.breed, female: g.sex === 'female', stage: g.stage, health: g.health, pen: p.name }} />)}
                                                             {p.goats.length > shown.length ? <span className="self-center text-xs font-bold text-[#3d5446]">+{p.goats.length - shown.length}</span> : null}
                                                         </span>
                                                         {!area ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
