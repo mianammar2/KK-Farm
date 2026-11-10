@@ -167,8 +167,12 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/finance/books?tab=accounts', 'Chart of Accounts'),
     ] },
     { key: 'employees', no: '14', label: 'Employees', art: 'mod-hr', modules: ['employees'], linked: ['operations', 'accounting'], sections: [
-        S('Operations', '/employees', 'Employees & Departments'),
+        S('Overview', '/employees', 'Employees & Departments'),
+        S('Operations', '/hr?tab=attendance', 'Attendance Register'),
+        S('Operations', '/hr?tab=leave', 'Leave Requests'),
+        S('Records', '/hr?tab=roster', 'Shift Roster'),
         S('Records', '/activity', 'Staff Activity'),
+        S('Reporting', '/hr?tab=report', 'Attendance Report'),
         S('Reporting', '/tasks?tab=closed', 'Task Completion'),
         S('Configuration', '/settings#users', 'Users & Permissions'),
     ] },

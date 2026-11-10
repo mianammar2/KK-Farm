@@ -194,6 +194,12 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::middleware('module:employees')->group(function (): void {
+        // D-181: attendance, shift roster and leave
+        Route::get('/hr', [\App\Http\Controllers\HrController::class, 'index']);
+        Route::post('/hr/attendance', [\App\Http\Controllers\HrController::class, 'mark']);
+        Route::post('/hr/attendance/all-present', [\App\Http\Controllers\HrController::class, 'allPresent']);
+        Route::post('/hr/leave', [\App\Http\Controllers\HrController::class, 'requestLeave']);
+        Route::post('/hr/leave/{leave}', [\App\Http\Controllers\HrController::class, 'decide']);
         Route::get('/employees', [EmployeeController::class, 'index']);
         Route::post('/employees', [EmployeeController::class, 'store']);
     });
