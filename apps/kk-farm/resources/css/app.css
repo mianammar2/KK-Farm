@@ -292,8 +292,8 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .kk-sack-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #4d6356; }
 
 /* Icon tiles (like the row on the station: Weighing, RFID, Health Care, Treatment). */
-.kk-icon-tile { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; color: var(--kk-green); background: var(--kk-green-soft); box-shadow: inset 0 0 0 1.5px rgb(31 122 58 / 0.22); }
-.kk-icon-tile-alert { color: #b42318; background: #fdecea; box-shadow: inset 0 0 0 1.5px rgb(180 35 24 / 0.22); }
+.kk-icon-tile { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 12px; color: var(--kk-green); background: #fff; box-shadow: inset 0 0 0 1.5px rgb(31 122 58 / 0.22); }
+.kk-icon-tile-alert { color: #b42318; background: #fff; box-shadow: inset 0 0 0 1.5px rgb(180 35 24 / 0.22); }
 
 /* Herd table and charts: clean cards; the share bar uses the gender colours of the badges. */
 .kk-noticeboard { padding: 8px 12px 6px; }

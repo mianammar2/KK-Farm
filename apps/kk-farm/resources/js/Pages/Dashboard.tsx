@@ -5,7 +5,7 @@ import { ChevronDown, Sun, Sunrise, Sunset } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
 import { axis, FARM } from '../lib/chartTheme';
-import { CountUp, Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort } from '../components/ui';
+import { CountUp, Empty, GoatLabel, LibIcon, monthLabel, PageHeader, Panel, pkrShort } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
 import { useFive } from '../lib/useFive';
@@ -14,6 +14,7 @@ import FarmScene, { EarTag, GoatFigure } from '../components/FarmScene';
 import { FarmStat, FarmStatRow } from '../components/FarmStats';
 import FeedScene from '../components/FeedScene';
 import { AgeBadge, BreedBadge, symbolFor } from '../components/GoatBadges';
+import { ClassPic } from '../components/ArtIcon';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -165,7 +166,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                                                 <span className={`kk-cal ${k.days < 0 ? 'kk-cal-over' : soon ? 'kk-cal-soon' : ''}`}><span className="kk-cal-month">{rest.join(' ') || ' '}</span><span className="kk-cal-day">{day}</span></span>
                                                 <span className="flex min-w-fit flex-1 items-center gap-2"><EarTag number={k.number} />{k.name ? <span className="truncate font-semibold text-[#022a1c]">{k.name}</span> : null}</span>
                                                 <span className={`kk-countdown ${k.days < 0 ? 'kk-countdown-over' : soon ? 'kk-countdown-soon' : ''}`}>
-                                                    <span className="kk-kid" aria-hidden><GoatFigure female flag={false} delay={0} flip={false} stage="kid" /></span>
+                                                    <LibIcon name="ic-kidding" size={20} />
                                                     {k.days < 0 ? `${-k.days} days over` : k.days === 0 ? 'Today' : `In ${k.days} days`}
                                                 </span>
                                             </Link>
@@ -294,7 +295,6 @@ type HerdAge = {
 };
 
 /** D-135: how big the goat beside each age row is drawn. */
-const AGE_SCALE: Record<string, number> = { kid: 1, grower: 1, adult: 1, age_unknown: 1 }; // D-147: the figure itself is drawn by age
 
 /** D-118: Kids, Growers and Adults by gender, from each goat's age today; every number opens those goats. */
 function HerdByAge({ h }: { h: HerdAge }) {
@@ -314,11 +314,11 @@ function HerdByAge({ h }: { h: HerdAge }) {
             {/* D-135: the herd on the farm's notice board: goat figures sized by age, white for female, brown for male. */}
             <div className="kk-noticeboard overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="text-left text-xs text-[#3d5446]"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female flag={false} delay={0} flip={false} /></span>Female</span></th> : null}{showM ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female={false} flag={false} delay={0} flip={false} /></span>Male</span></th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="hidden w-1/3 pl-3 font-semibold sm:table-cell">Share</th></tr></thead>
+                    <thead className="text-left text-xs text-[#3d5446]"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><LibIcon name="ic-female" size={18} className="bg-transparent" />Female</span></th> : null}{showM ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><LibIcon name="ic-male" size={18} className="bg-transparent" />Male</span></th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="hidden w-1/3 pl-3 font-semibold sm:table-cell">Share</th></tr></thead>
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
-                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><span className="kk-age-goat" style={{ ['--s' as string]: AGE_SCALE[r.key] ?? 1 }} aria-hidden><GoatFigure female={r.female >= r.male} flag={false} delay={0} flip={false} stage={r.key} /></span><span><span className="flex items-center gap-1.5 font-semibold text-cobalt-900">{r.label}<AgeBadge stage={r.key} /></span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
+                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><ClassPic group={r.key} size={44} /><span><span className="flex items-center gap-1.5 font-semibold text-cobalt-900">{r.label}<AgeBadge stage={r.key} /></span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
                                 {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>

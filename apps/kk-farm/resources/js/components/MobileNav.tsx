@@ -1,6 +1,7 @@
 import BrandMark from './BrandMark';
 import { Link, router } from '@inertiajs/react';
 import { ChevronLeft, Smartphone, ClipboardList, HeartPulse, KeyRound, LayoutGrid, LogOut, MoreHorizontal, ScanLine, Search, X, CalendarCheck } from 'lucide-react';
+import { NavIcon } from './ArtIcon';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -83,7 +84,7 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
     const tab = (t: { href: string; label: string; icon: typeof LayoutGrid }) => (
         <Link key={t.href} href={t.href} prefetch className="relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold">
             {active(t.href) ? <motion.span layoutId="tab-pill" className="absolute top-1 h-8 w-14 rounded-full bg-turq-100" transition={{ type: 'spring', stiffness: 500, damping: 38 }} /> : null}
-            <t.icon size={22} className={cx('relative', active(t.href) ? 'text-turq-800' : 'text-ink-soft')} aria-hidden />
+            <NavIcon href={t.href} icon={t.icon} size={26} className={cx('relative transition-transform', active(t.href) ? 'scale-110' : 'opacity-90')} />
             <span className={cx('relative', active(t.href) ? 'text-cobalt-900' : 'text-ink-soft')}>{t.label}</span>
         </Link>
     );
@@ -123,7 +124,7 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
                                 {items.filter((i) => can(i.module)).map((i, n) => (
                                     <motion.div key={i.href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 * n, duration: 0.2 }}>
                                         <Link href={i.href} onClick={() => setMore(false)} className={cx('flex flex-col items-center gap-1.5 rounded-2xl p-3 text-center text-xs font-semibold transition-transform active:scale-95', active(i.href) ? 'bg-turq-100 text-cobalt-900' : 'bg-glaze text-ink')}>
-                                            <span className="grid size-11 place-items-center rounded-xl bg-cobalt-900 text-turq-400"><i.icon size={21} aria-hidden /></span>
+                                            <NavIcon href={i.href} icon={i.icon} size={44} />
                                             {titleCase(i.label)}
                                         </Link>
                                     </motion.div>

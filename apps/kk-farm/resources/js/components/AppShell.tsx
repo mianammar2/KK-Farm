@@ -1,5 +1,6 @@
 import BrandMark from './BrandMark';
 import NotificationBell from './NotificationBell';
+import { NavIcon } from './ArtIcon';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
@@ -92,7 +93,7 @@ function NavList({ path, modules, onNavigate }: { path: string; modules: string[
                                                 active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800',
                                             )}
                                         >
-                                            <item.icon size={17} aria-hidden className={active ? 'text-turq-700' : 'text-turq-400'} />
+                                            <NavIcon href={item.href} icon={item.icon} size={26} />
                                             {titleCase(item.label)}
                                         </Link>
                                     </li>

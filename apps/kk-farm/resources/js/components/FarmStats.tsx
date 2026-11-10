@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import { Baby, ClipboardCheck, HeartPulse, PawPrint, Wheat } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { titleCase } from '../lib/titleCase';
 import { CountUp } from './ui';
@@ -11,9 +10,9 @@ export function FarmStatRow({ children }: { children: ReactNode }) {
     return <div className="kk-signs">{children}</div>;
 }
 
-const ICON: Record<FarmIcon, ReactNode> = {
-    herd: <PawPrint size={20} />, attention: <HeartPulse size={20} />, pregnant: <Baby size={20} />, meals: <Wheat size={20} />, tasks: <ClipboardCheck size={20} />,
-};
+// D-153: pictures from the KK Farms icon library
+const ART: Record<FarmIcon, string> = { herd: 'mod-livestock', attention: 'mod-health', pregnant: 'ic-pregnant', meals: 'mod-feeding', tasks: 'ic-active' };
+const ICON = Object.fromEntries(Object.entries(ART).map(([k, n]) => [k, <img key={k} src={`/icons/${n}.png`} alt="" className="size-[86%] object-contain" />])) as Record<FarmIcon, ReactNode>;
 
 export function FarmStat({ href, icon, label, value, note, tone }: { href: string; icon: FarmIcon; label: string; value: number | string; note?: string; tone?: 'alert' | 'good' }) {
     return (

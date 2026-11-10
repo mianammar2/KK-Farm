@@ -24,12 +24,17 @@ export const pkrShort = (value: number): string => {
 
 export const monthLabel = (ym: string): string => new Date(`${ym}-01`).toLocaleDateString('en-GB', { month: 'short' });
 
-export const HEALTH: Record<Health, { label: string; tile: string; chip: string }> = {
-    healthy: { label: 'Healthy', tile: 'bg-cobalt-700', chip: 'bg-ok-100 text-ok-700' },
-    watch: { label: 'Watch', tile: 'bg-watch-400', chip: 'bg-watch-100 text-watch-700' },
-    treatment: { label: 'In treatment', tile: 'bg-treat-400', chip: 'bg-treat-100 text-treat-700' },
-    critical: { label: 'Critical', tile: 'bg-crit-500', chip: 'bg-crit-100 text-crit-700' },
+export const HEALTH: Record<Health, { label: string; tile: string; chip: string; art: string }> = {
+    healthy: { label: 'Healthy', tile: 'bg-cobalt-700', chip: 'bg-ok-100 text-ok-700', art: 'ic-healthy' },
+    watch: { label: 'Watch', tile: 'bg-watch-400', chip: 'bg-watch-100 text-watch-700', art: 'ic-recovery' },
+    treatment: { label: 'In treatment', tile: 'bg-treat-400', chip: 'bg-treat-100 text-treat-700', art: 'ic-under-treatment' },
+    critical: { label: 'Critical', tile: 'bg-crit-500', chip: 'bg-crit-100 text-crit-700', art: 'ic-sick' },
 };
+
+/** D-153: a small picture from the KK Farms icon library (public/icons), on its white tile. */
+export function LibIcon({ name, size = 16, className }: { name: string; size?: number; className?: string }) {
+    return <img src={`/icons/${name}.png`} alt="" aria-hidden width={size} height={size} decoding="async" className={cx('inline-block shrink-0 rounded-[28%] bg-white object-contain', className)} style={{ width: size, height: size }} />;
+}
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
     return (
@@ -104,21 +109,21 @@ export function Chip({ className, children }: { className?: string; children: Re
 }
 
 export function HealthChip({ health }: { health: Health }) {
-    return <Chip className={HEALTH[health].chip}>{HEALTH[health].label}</Chip>;
+    return <Chip className={HEALTH[health].chip}><LibIcon name={HEALTH[health].art} size={14} />{HEALTH[health].label}</Chip>;
 }
 
 export function ReproChip({ repro }: { repro?: string | null }) {
     if (repro === 'pregnant') {
         return (
             <Chip className="bg-manganese-100 text-manganese-600">
-                <HeartPulse size={12} aria-hidden /> Pregnant
+                <LibIcon name="ic-pregnant" size={14} /> Pregnant
             </Chip>
         );
     }
     if (repro === 'lactating') {
         return (
             <Chip className="bg-turq-100 text-turq-800">
-                <Baby size={12} aria-hidden /> Lactating
+                <LibIcon name="ic-lactating" size={14} /> Lactating
             </Chip>
         );
     }
@@ -131,7 +136,7 @@ export function SexIcon({ sex, label = false }: { sex: string; label?: boolean }
     return (
         <span title={male ? 'Male' : 'Female'} aria-label={male ? 'Male' : 'Female'}
             className={`inline-flex shrink-0 items-center gap-1 rounded-full font-bold leading-none ${label ? 'px-2 py-1 text-xs' : 'size-6 justify-center text-base'} ${male ? 'bg-sky-100 text-sky-700 ring-1 ring-sky-300' : 'bg-pink-100 text-pink-700 ring-1 ring-pink-300'}`}>
-            {male ? <Mars size={label ? 13 : 15} strokeWidth={3} aria-hidden /> : <Venus size={label ? 13 : 15} strokeWidth={3} aria-hidden />}{label ? (male ? 'Male' : 'Female') : null}
+            <LibIcon name={male ? 'ic-male' : 'ic-female'} size={label ? 15 : 18} className="bg-transparent" />{label ? (male ? 'Male' : 'Female') : null}
         </span>
     );
 }
