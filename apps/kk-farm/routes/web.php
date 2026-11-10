@@ -152,6 +152,29 @@ Route::middleware('auth')->group(function (): void {
         Route::patch('/pens/{pen}', [ShedController::class, 'updatePen']);
     });
 
+    // D-178: Inventory, Purchase and Sales apps
+    Route::middleware('module:inventory')->group(function (): void {
+        Route::get('/inventory', [\App\Http\Controllers\InventoryController::class, 'index']);
+        Route::post('/inventory/items', [\App\Http\Controllers\InventoryController::class, 'storeItem']);
+        Route::post('/inventory/items/{item}', [\App\Http\Controllers\InventoryController::class, 'updateItem'])->whereNumber('item');
+        Route::post('/inventory/moves', [\App\Http\Controllers\InventoryController::class, 'move']);
+    });
+    Route::middleware('module:purchase')->group(function (): void {
+        Route::get('/purchase', [\App\Http\Controllers\PurchaseController::class, 'index']);
+        Route::post('/purchase/suppliers', [\App\Http\Controllers\PurchaseController::class, 'storeSupplier']);
+        Route::post('/purchase/suppliers/{supplier}', [\App\Http\Controllers\PurchaseController::class, 'updateSupplier'])->whereNumber('supplier');
+        Route::post('/purchase/orders', [\App\Http\Controllers\PurchaseController::class, 'storeOrder']);
+        Route::post('/purchase/orders/{order}/status', [\App\Http\Controllers\PurchaseController::class, 'status'])->whereNumber('order');
+        Route::post('/purchase/orders/{order}/receive', [\App\Http\Controllers\PurchaseController::class, 'receive'])->whereNumber('order');
+    });
+    Route::middleware('module:sales')->group(function (): void {
+        Route::get('/sales', [\App\Http\Controllers\SalesController::class, 'index']);
+        Route::post('/sales/customers', [\App\Http\Controllers\SalesController::class, 'storeCustomer']);
+        Route::post('/sales/customers/{customer}', [\App\Http\Controllers\SalesController::class, 'updateCustomer'])->whereNumber('customer');
+        Route::post('/sales/products', [\App\Http\Controllers\SalesController::class, 'product']);
+        Route::post('/sales/{sale}/customer', [\App\Http\Controllers\SalesController::class, 'linkCustomer'])->whereNumber('sale');
+    });
+
     Route::middleware('module:employees')->group(function (): void {
         Route::get('/employees', [EmployeeController::class, 'index']);
         Route::post('/employees', [EmployeeController::class, 'store']);

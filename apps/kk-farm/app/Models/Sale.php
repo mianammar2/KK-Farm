@@ -22,4 +22,9 @@ class Sale extends Model
     {
         return $this->belongsTo(Animal::class);
     }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class); // D-178
+    }
 }

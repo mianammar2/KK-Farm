@@ -44,6 +44,9 @@ return [
         'reports' => ['ceo', 'manager', 'finance'],
         'settings' => ['ceo'],
         'sensors' => ['ceo', 'manager', 'vet'], // D-087: devices, readings, sensor alerts
+        'inventory' => ['ceo', 'manager', 'vet', 'feeding', 'finance'], // D-178
+        'purchase' => ['ceo', 'manager', 'finance'], // D-178
+        'sales' => ['ceo', 'manager', 'finance'], // D-178
     ],
 
     // Hard gates from SECURITY_AND_RBAC.md: these never come from a configurable override.
@@ -55,6 +58,9 @@ return [
         'manage_sheds' => ['ceo', 'manager'], // D-051: add and rename sheds and pens
         'manage_feed_store' => ['ceo', 'manager', 'feeding'], // D-054: feed items and stock
         'plan_rations' => ['ceo', 'manager', 'vet'], // D-054: draft a ration; approve_feeding_plan approves it
+        'manage_general_store' => ['ceo', 'manager', 'feeding'], // D-178: general store items and moves
+        'manage_purchase' => ['ceo', 'manager', 'finance'], // D-178: suppliers and purchase orders
+        'manage_sales' => ['ceo', 'manager', 'finance'], // D-178: customers and sales
         'manage_medicine_store' => ['ceo', 'manager', 'vet'], // D-074: medicines, receipts, disposals
         'manage_devices' => ['ceo', 'manager'], // D-087: add devices, issue their keys
         'edit_goats' => ['ceo', 'manager', 'vet'], // D-091: change a goat's details; ask to remove a wrong entry

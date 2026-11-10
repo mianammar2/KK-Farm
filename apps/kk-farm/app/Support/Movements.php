@@ -114,7 +114,7 @@ final class Movements
             return Sale::create([
                 'sold_on' => $data['sold_on'], 'animal_id' => $data['animal_id'] ?? null, 'category' => $data['category'] ?? 'other', 'item' => $data['item'] ?? null,
                 'buyer' => $data['buyer'] ?? null, 'gross_minor' => $gross, 'fee_minor' => $fee, 'receipt_ref' => $data['receipt_ref'] ?? null, 'notes' => $data['notes'] ?? null,
-                'movement_id' => $data['movement_id'] ?? null, 'ledger_entry_id' => $ledger->id, 'recorded_by' => $by->name,
+                'movement_id' => $data['movement_id'] ?? null, 'ledger_entry_id' => $ledger->id, 'recorded_by' => $by->name, 'customer_id' => $data['customer_id'] ?? null, // D-178
             ]);
         });
     }
