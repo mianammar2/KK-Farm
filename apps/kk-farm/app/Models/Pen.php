@@ -28,6 +28,14 @@ class Pen extends Model
         return ctype_digit($rest) && (int) $rest > 0 ? sprintf('OA%02d', (int) $rest) : '';
     }
 
+    /** D-163: pens sort by name, except the Maternity Unit's, which follow the delivery flow (pre-kidding → isolation). */
+    public function sortKey(): string
+    {
+        $i = array_search($this->name, array_keys(\App\Support\Maternity::PENS), true);
+
+        return $i === false ? "1{$this->name}" : "0{$i}";
+    }
+
     /** "KKF-BDU-01-P01": the shed's name and the pen's code. Follows the shed if the shed is renamed. */
     public function fullName(): string
     {

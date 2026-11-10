@@ -186,7 +186,7 @@ class DashboardController extends Controller
             'sheds' => $pens->groupBy('shed_id')->map(fn ($ps) => [
                 'id' => $ps->first()->shed->id, 'name' => $ps->first()->shed->name, 'typeName' => $ps->first()->shed->typeName(),
                 'goats' => $ps->sum(fn ($p) => $byPen[$p->id]->count()),
-                'pens' => $ps->sortBy('name')->map(fn ($p) => ['id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'capacity' => $p->capacity,
+                'pens' => $ps->sortBy(fn ($p) => $p->sortKey())->map(fn ($p) => ['id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'capacity' => $p->capacity,
                     'goats' => $byPen[$p->id]->count(), 'female' => $byPen[$p->id]->where('sex', 'female')->count(), 'male' => $byPen[$p->id]->where('sex', '!=', 'female')->count(),
                     'attention' => $byPen[$p->id]->where('health_flag', '!=', 'healthy')->whereNotNull('health_flag')->count(),
                     // D-147: up to 18 goats to draw (females first): gender, kid/grower/adult, breed, needs attention

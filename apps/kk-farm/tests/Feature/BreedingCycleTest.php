@@ -94,7 +94,7 @@ class BreedingCycleTest extends TestCase
         $this->assertSame(['yes', 'Imran', 'Triplet'], [$kidding->assisted, $kidding->attendant, Kidding::litterType(3)]);
         $kids = Animal::where('birth_kidding_id', $kidding->id)->get();
         $this->assertCount(2, $kids);
-        $this->assertTrue($kids->every(fn ($k) => $k->birth_date->toDateString() === $on && $k->dam_id === $this->doe->id && $k->sire_id === $this->buck->id && $k->pen_id === $this->pen->id && $k->kid_stage === 'newborn'));
+        $this->assertTrue($kids->every(fn ($k) => $k->birth_date->toDateString() === $on && $k->dam_id === $this->doe->id && $k->sire_id === $this->buck->id && $k->pen_id === $this->doe->fresh()->pen_id && $k->kid_stage === 'newborn')); // D-163: together in post-kidding care
         $this->assertSame(['kidded', 'lactating'], [$m->fresh()->status, $this->doe->fresh()->repro_status]);
         $this->actingAs($this->user('ceo'))->get('/breeding')->assertInertia(fn (AssertableInertia $p) => $p->where('kiddings.0.litter', 'Triplet')->has('kiddings.0.kids', 2));
     }

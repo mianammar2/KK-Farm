@@ -129,4 +129,23 @@ class PregnancyOutcomeTest extends TestCase
         $this->travel(4)->days();
         $this->assertNull($doe->fresh()->reproNow());
     }
+
+    public function test_the_maternity_unit_takes_the_mother_and_kids_and_isolates_after_a_loss(): void
+    {
+        $oldPen = $this->doe->pen_id;
+        $this->actingAs($this->user())->post("/breeding/matings/{$this->mating->id}/kidding", ['outcome' => 'NKD', 'kids' => [['sex' => 'female'], ['sex' => 'male', 'weak' => true]]])->assertSessionHasNoErrors();
+        $shed = \App\Models\Shed::where('type', 'MTU')->sole();
+        $this->assertSame(['PCU-01', 'ISO-01', 'KDP-01', 'KDP-02', 'NCU-01', 'PKU-01'], \App\Models\Pen::where('shed_id', $shed->id)->orderByRaw("name <> 'PCU-01', name <> 'ISO-01', name")->pluck('name')->all());
+        $doe = $this->doe->fresh();
+        $this->assertSame('PCU-01', $doe->pen->name);
+        $this->assertTrue(\App\Models\AnimalMovement::where('animal_id', $doe->id)->where('from_pen_id', $oldPen)->where('to_pen_id', $doe->pen_id)->exists());
+        $this->assertSame(['female' => 'PCU-01', 'male' => 'NCU-01'], Animal::where('dam_id', $doe->id)->with('pen')->get()->mapWithKeys(fn ($k) => [$k->sex => $k->pen->name])->all());
+
+        // a second doe that aborts goes to isolation, not with the mothers and kids
+        $doe2 = Animal::create(['farm_number' => 'TD-2', 'sex' => 'female', 'breed_id' => $this->doe->breed_id, 'birth_date' => now()->subYears(3), 'origin' => 'purchased', 'pen_id' => $oldPen]);
+        $m2 = Mating::create(['dam_id' => $doe2->id, 'mated_on' => now()->subDays(60), 'status' => 'pregnant', 'recorded_by' => 'Test']);
+        $this->actingAs($this->user())->post("/breeding/matings/{$m2->id}/kidding", ['outcome' => 'ABT', 'kids' => []])->assertSessionHasNoErrors();
+        $this->assertSame('ISO-01', $doe2->fresh()->pen->name);
+        $this->assertSame(1, \App\Models\Shed::where('type', 'MTU')->count());
+    }
 }

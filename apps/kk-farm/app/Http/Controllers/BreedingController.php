@@ -12,6 +12,7 @@ use App\Models\PregnancyCheck;
 use App\Models\Weaning;
 use App\Models\WeightRecord;
 use App\Support\Farm;
+use App\Support\Maternity;
 use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -246,11 +247,11 @@ class BreedingController extends Controller
         $on = Carbon::parse($data['kidded_on'] ?? now());
         $by = $request->user()->name;
 
-        $registered = DB::transaction(function () use ($mating, $data, $kids, $alive, $stillborn, $stillMale, $stillFemale, $outcome, $loss, $method, $mother, $on, $by) {
+        $user = $request->user();
+        $registered = DB::transaction(function () use ($mating, $data, $kids, $alive, $stillborn, $stillMale, $stillFemale, $outcome, $loss, $method, $mother, $on, $by, $user) {
             $dam = $mating->dam;
             $sire = $mating->sire;
-            // D-071: kids stay with their mother; a farm "Kids" pen only when the doe has no pen.
-            $kidsPen = $dam->pen_id ?? Pen::where('purpose', 'Kids')->value('id');
+            // D-163: kids are born into the Maternity Unit: with their mother in post-kidding care, or neonatal care when weak.
             $breedId = $sire && $sire->breed_id === $dam->breed_id ? $dam->breed_id : Breed::where('name', 'Crossbred')->value('id') ?? $dam->breed_id;
             $weak = count(array_filter($kids, fn ($k) => ! empty($k['weak'])));
 
@@ -282,7 +283,7 @@ class BreedingController extends Controller
                 $kid = Animal::create([
                     'farm_number' => ($breedId ? Breed::find($breedId)?->issueTagId($on, 'born_on_farm') : null) ?? Farm::nextFarmNumber(),
                     'sex' => $k['sex'], 'breed_id' => $breedId, 'birth_date' => $on->toDateString(), 'origin' => 'born_on_farm',
-                    'sire_id' => $mating->sire_id, 'dam_id' => $dam->id, 'pen_id' => $kidsPen, 'coat' => $dam->coat, 'birth_kidding_id' => $kidding->id, 'kid_stage' => 'newborn',
+                    'sire_id' => $mating->sire_id, 'dam_id' => $dam->id, 'pen_id' => Maternity::kidPen(! empty($k['weak']))->id, 'coat' => $dam->coat, 'birth_kidding_id' => $kidding->id, 'kid_stage' => 'newborn',
                     'birth_outcome' => ! empty($k['weak']) ? 'BAW' : 'LVB',
                 ]);
                 Farm::event($kid, 'origin', "Born on the farm to {$dam->farm_number}".(! empty($k['weak']) ? ' · born alive, weak' : ''), $by, $on);
@@ -292,6 +293,10 @@ class BreedingController extends Controller
                 $tags[] = $kid->farm_number;
             }
 
+            // D-163: the doe goes to the Maternity Unit: post-kidding care, or isolation after a loss.
+            if ($dam->status === 'active') {
+                Maternity::admit($kidding, $dam->fresh(), $user);
+            }
             \App\Support\PregnancyAlerts::raise($kidding, $dam, $tags);
 
             return $tags;

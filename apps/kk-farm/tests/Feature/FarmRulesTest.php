@@ -404,6 +404,7 @@ class FarmRulesTest extends TestCase
             ->where('showLabels.no_pen', 'Not in a pen'));
     }
 
+    /** D-163: mother and kids move together into the Maternity Unit's Post-Kidding Care pen. */
     public function test_kids_from_a_kidding_go_into_their_mothers_pen(): void
     {
         $vet = $this->user('vet');
@@ -413,6 +414,6 @@ class FarmRulesTest extends TestCase
 
         $this->actingAs($vet)->post("/breeding/matings/{$mating->id}/kidding", ['alive' => 1, 'stillborn' => 0, 'females' => 1])->assertSessionHasNoErrors();
         $kid = Animal::where('dam_id', $doe->id)->sole();
-        $this->assertSame([$doe->pen_id, 'healthy'], [$kid->pen_id, $kid->health_flag]);
+        $this->assertSame([$doe->fresh()->pen_id, 'healthy', 'PCU-01'], [$kid->pen_id, $kid->health_flag, $kid->pen->name]);
     }
 }

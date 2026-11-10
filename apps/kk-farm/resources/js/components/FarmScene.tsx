@@ -177,12 +177,14 @@ export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | u
 /** D-133/D-134: the barn roof (corrugated tin on a pitched frame) with the shed's name board; shared by the farm scenes. */
 export function BarnRoof({ id, name, typeName }: { id: number | string; name: string; typeName: string | null }) {
     // D-146: the shed's header bar: a green band with a building icon tile, the shed name and its unit type.
+    // D-163: the Maternity Unit is signed like a hospital: medical kit, "Kidding & Neonatal Care".
+    const maternity = typeName === 'Maternity Unit';
     return (
-        <div className="kk-roof" data-shed={id}>
-            <span className="kk-roof-icon kk-roof-pic" aria-hidden><img src="/icons/mod-housing.png" alt="" /></span>
+        <div className={`kk-roof ${maternity ? 'kk-roof-maternity' : ''}`} data-shed={id}>
+            <span className="kk-roof-icon kk-roof-pic" aria-hidden><img src={`/icons/${maternity ? 'mod-health' : 'mod-housing'}.png`} alt="" /></span>
             <span className="min-w-0">
                 <span className="block truncate font-mono text-base font-bold tracking-wide">{name}</span>
-                {typeName ? <span className="block truncate text-xs text-white/80">{typeName}</span> : null}
+                {typeName ? <span className="block truncate text-xs text-white/80">{typeName}{maternity ? ' · Kidding & Neonatal Care' : ''}</span> : null}
             </span>
         </div>
     );

@@ -31,7 +31,10 @@ final class KiddingAlert
         }
         $days = (int) (Tenant::org()?->kidding_alert_days ?: 10);
         $due = $m->expected_kidding_on->copy()->subDays($days);
-        $notes = "Expected kidding {$m->expected_kidding_on->format('j M Y')}. Prepare a clean kidding pen, bedding and colostrum; watch her closely and call the vet if labour is difficult.";
+        // D-163: the Maternity Unit's Pre-Kidding Unit, when the farm has one.
+        $pku = \App\Models\Pen::with('shed')->where('name', 'PKU-01')->whereHas('shed', fn ($q) => $q->where('type', 'MTU'))->first();
+        $notes = "Expected kidding {$m->expected_kidding_on->format('j M Y')}.".($pku ? " Move her to {$pku->fullName()} (Pre-Kidding Unit) and a Kidding Pen when labour starts." : ' Prepare a clean kidding pen.')
+            .' Bedding and colostrum ready; watch her closely and call the vet if labour is difficult.';
         if ($task) {
             $task->update(['due_on' => $due, 'notes' => $notes]);
         } else {

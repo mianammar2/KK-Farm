@@ -415,3 +415,5 @@ main { min-width: 0; }
 /* D-157: a full pen shows every goat; tiles get smaller as the pen fills */
 .kk-herd:has(> .kk-goat-pic:nth-child(25)) .kk-goat-pic { width: 24px; height: 24px; }
 .kk-herd:has(> .kk-goat-pic:nth-child(25)) { gap: 3px; }
+/* D-163: the Maternity Unit header reads like a hospital sign: white cross band on KK green with a gold rule */
+.kk-roof-maternity { background: linear-gradient(120deg, #013624, #0b4f35); box-shadow: inset 0 -3px 0 #f3b526; }
