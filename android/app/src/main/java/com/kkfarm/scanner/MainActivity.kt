@@ -155,7 +155,7 @@ class MainActivity : Activity() {
         if (savedInstanceState != null) {
             web.restoreState(savedInstanceState)
         } else {
-            web.loadUrl(intent?.dataString ?: "$server/scan")
+            web.loadUrl(intent?.dataString ?: "$server/apps") // D-169: open on the Apps panel; a scan still opens /scan
         }
         // The scanner service listens to the reader for the whole life of the gun (D-049) and opens this
         // screen with each scan, even after the app was swiped away.
@@ -370,7 +370,7 @@ class MainActivity : Activity() {
                     .apply()
                 Updater.setAuto(this, autoUpdate.isChecked)
                 ScannerService.restart(this)
-                web.loadUrl("$server/scan")
+                web.loadUrl("$server/apps")
             }
             .setNeutralButton("Retry") { _, _ -> web.reload() }
             .setNegativeButton("Close", null)
@@ -416,6 +416,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.6.3"
-    const val CODE = 15 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.6.4"
+    const val CODE = 16 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

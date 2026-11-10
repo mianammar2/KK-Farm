@@ -5,6 +5,8 @@ import WebKit
 /// and when the app returns to the front after 5 minutes it reloads, which also picks up a new version of the app.
 struct FarmView: UIViewRepresentable {
     static let server = URL(string: "https://fms.kkfarms.com.pk/")!
+    /// D-169: the app opens on the Apps panel (the launcher), like signing in on the web.
+    static let start = URL(string: "https://fms.kkfarms.com.pk/apps")!
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -32,7 +34,7 @@ struct FarmView: UIViewRepresentable {
         refresh.addTarget(context.coordinator, action: #selector(Coordinator.pulled(_:)), for: .valueChanged)
         web.scrollView.refreshControl = refresh
         context.coordinator.web = web
-        web.load(URLRequest(url: Self.server))
+        web.load(URLRequest(url: Self.start))
         return web
     }
 
@@ -55,13 +57,13 @@ struct FarmView: UIViewRepresentable {
         @objc func background() { hiddenAt = Date() }
 
         @objc func foreground() {
-            if let at = hiddenAt, Date().timeIntervalSince(at) > 300 || offline { if offline { _ = web?.load(URLRequest(url: FarmView.server)) } else { _ = web?.reload() }; offline = false }
+            if let at = hiddenAt, Date().timeIntervalSince(at) > 300 || offline { if offline { _ = web?.load(URLRequest(url: FarmView.start)) } else { _ = web?.reload() }; offline = false }
             hiddenAt = nil
         }
 
         @objc func pulled(_ control: UIRefreshControl) {
             // After the "No connection" page, reloading would only show it again: go back to the farm instead.
-            if let web, web.url?.host == FarmView.server.host, !offline { web.reload() } else { offline = false; web?.load(URLRequest(url: FarmView.server)) }
+            if let web, web.url?.host == FarmView.server.host, !offline { web.reload() } else { offline = false; web?.load(URLRequest(url: FarmView.start)) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { control.endRefreshing() }
         }
 
