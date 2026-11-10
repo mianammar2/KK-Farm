@@ -73,8 +73,8 @@ function NavList({ path, modules, onNavigate }: { path: string; modules: string[
                     return null;
                 }
                 return (
-                    <div key={group.heading}>
-                        <div className="px-2.5 pb-1 text-xs font-semibold text-cobalt-200">{group.heading}</div>
+                    <div key={group.heading} className="border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
+                        {/* D-159: no group headings (Herd, Care, Farm, Business); a thin line separates the groups */}
                         <ul className="space-y-0.5">
                             {items.map((item) => {
                                 const active = item.href === '/' ? path === '/' : path.startsWith(item.href) && !(item.href === '/finance' && path.startsWith('/finance/books'));
