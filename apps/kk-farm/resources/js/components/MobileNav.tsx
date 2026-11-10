@@ -26,6 +26,7 @@ const TITLES: Array<[RegExp, string]> = [
 const isDetail = (path: string) => path.split('/').filter(Boolean).length > 1 || path.startsWith('/account');
 
 export function pageTitle(path: string, items: NavItem[]): string {
+    if (path === '/apps') return 'KK Farms';
     for (const [re, title] of TITLES) {
         if (re.test(path)) return title;
     }
@@ -76,7 +77,7 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
     const [more, setMore] = useState(false);
     const can = (m: string) => modules.includes(m);
     const tabs = [
-        can('dashboard') && { href: '/', label: 'Home', icon: LayoutGrid },
+        { href: '/apps', label: 'Apps', icon: LayoutGrid }, // D-168: the app launcher
         can('goats') && { href: '/goats', label: 'Goats', icon: ClipboardList },
         can('health') ? { href: '/health', label: 'Health', icon: HeartPulse } : can('tasks') && { href: '/tasks', label: 'Tasks', icon: CalendarCheck },
     ].filter(Boolean) as Array<{ href: string; label: string; icon: typeof LayoutGrid }>;

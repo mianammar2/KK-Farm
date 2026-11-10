@@ -40,6 +40,8 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
+    // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
+    Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
 
     Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
     Route::get('/activity', \App\Http\Controllers\ActivityController::class)->middleware('module:dashboard'); // D-122

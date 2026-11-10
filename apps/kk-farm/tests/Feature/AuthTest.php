@@ -33,7 +33,7 @@ class AuthTest extends TestCase
     {
         $user = $this->account('ali');
 
-        $this->post('/login', ['login' => 'ALI', 'password' => 'correct-horse'])->assertRedirect('/');
+        $this->post('/login', ['login' => 'ALI', 'password' => 'correct-horse'])->assertRedirect('/apps'); // D-168: login lands on the app launcher
         $this->assertAuthenticatedAs($user);
         $this->assertNotNull($user->fresh()->last_login_at);
     }
@@ -78,7 +78,7 @@ class AuthTest extends TestCase
         $this->assertGuest();
 
         config(['kkfarm.demo_login' => true]); // allowed only because the environment is "testing"
-        $this->post('/login', ['role' => 'ceo'])->assertRedirect('/');
+        $this->post('/login', ['role' => 'ceo'])->assertRedirect('/apps');
         $this->assertAuthenticated();
     }
 
@@ -93,7 +93,7 @@ class AuthTest extends TestCase
         $this->post('/login', ['login' => 'dr.sana', 'password' => 'temporary1'])->assertRedirect('/account/password');
         $this->get('/health')->assertRedirect('/account/password');
 
-        $this->post('/account/password', ['current_password' => 'temporary1', 'password' => 'my-own-pass', 'password_confirmation' => 'my-own-pass'])->assertRedirect('/');
+        $this->post('/account/password', ['current_password' => 'temporary1', 'password' => 'my-own-pass', 'password_confirmation' => 'my-own-pass'])->assertRedirect('/apps');
         $this->assertFalse($vet->fresh()->must_change_password);
         $this->assertTrue(Hash::check('my-own-pass', $vet->fresh()->password));
         $this->get('/health')->assertOk();
@@ -135,5 +135,13 @@ class AuthTest extends TestCase
         $this->actingAs($owner)->get('/settings/users')->assertOk()->assertDontSee('outsider');
         $this->actingAs($owner)->post("/settings/users/{$outsider->id}", ['active' => false])->assertNotFound();
         $this->assertTrue($outsider->fresh()->active);
+    }
+
+    /** D-168: the app launcher opens for any signed-in user and needs a login. */
+    public function test_the_app_launcher_needs_a_login(): void
+    {
+        $this->get('/apps')->assertRedirect('/login');
+        $user = \App\Models\User::first() ?? \App\Models\User::create(['name' => 'Caretaker', 'email' => 'c@x.test', 'password' => 'x', 'role' => 'caretaker', 'org_id' => \App\Support\Tenant::current()]);
+        $this->actingAs($user)->get('/apps')->assertOk()->assertInertia(fn ($p) => $p->component('Apps'));
     }
 }

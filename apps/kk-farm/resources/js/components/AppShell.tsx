@@ -12,7 +12,7 @@ import { AppBar, TabBar } from './MobileNav';
 import type { SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
 
-const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; module: string; icon: typeof Beef }> }> = [
+export const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; module: string; icon: typeof Beef }> }> = [
     {
         heading: 'Herd',
         items: [
@@ -58,7 +58,7 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
 function Brand() {
     // D-155: only the KK Farms logo; its badge already carries the name and the tagline.
     return (
-        <Link href="/" className="flex justify-center px-2 py-1" aria-label="KK Farms home">
+        <Link href="/apps" className="flex justify-center px-2 py-1" aria-label="KK Farms apps">
             <BrandMark size={72} />
         </Link>
     );
@@ -167,6 +167,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState<string | null>(null);
     const path = page.url.split('?')[0];
+    const home = path === '/apps'; // D-168: the app launcher has no sidebar, like Odoo's home
     const reduced = useReducedMotion();
 
     useEffect(() => {
@@ -188,13 +189,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
 
     return (
-        <div className="min-h-dvh overflow-x-clip bg-glaze lg:pl-60">
+        <div className={cx('min-h-dvh overflow-x-clip bg-glaze', !home && 'lg:pl-60')}>
             {/* The Scan page and the register page have their own scan field. */}
             <ScanCapture disabled={path === '/scan' || path === '/goats/register'} />
-            <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-cobalt-900 pt-4 lg:flex">
-                <Brand />
-                <NavList path={path} modules={auth.modules} />
-            </aside>
+            {home ? null : (
+                <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-cobalt-900 pt-4 lg:flex">
+                    <Brand />
+                    <NavList path={path} modules={auth.modules} />
+                </aside>
+            )}
 
             <AnimatePresence>
                 {drawer ? (
@@ -218,6 +221,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <button type="button" aria-label="Open menu" onClick={() => setDrawer(true)} className="grid size-11 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100 lg:hidden">
                     <Menu size={21} />
                 </button>
+                {/* D-168: back to the app launcher from anywhere */}
+                <Link href="/apps" aria-label="All apps" title="All apps" className={cx('grid size-10 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100', home && 'bg-cobalt-100')}>
+                    <LayoutGrid size={20} />
+                </Link>
+                {home ? <Link href="/apps" className="shrink-0"><BrandMark size={40} /></Link> : null}
                 <form onSubmit={submitSearch} className="relative min-w-0 flex-1 sm:max-w-sm" role="search">
                     <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint" />
                     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search goats" aria-label="Search goats by number, name or tag" className="field pl-9" />
