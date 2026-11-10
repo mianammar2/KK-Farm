@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
+import { useTabParam } from '../lib/useTabParam';
 
 type Line = { account: string; accountId: number; debit: number; credit: number; goat: string | null };
 type Journal = { id: number; no: number; on: string; memo: string; source: string; reference: string | null; by: string; reversed: boolean; isReversal: boolean; lines: Line[] };
@@ -21,7 +22,7 @@ type Props = {
 const money = (n: number) => (n ? pkr(n) : '—');
 
 export default function Books(p: Props) {
-    const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') ?? 'journal');
+    const [tab, setTab] = useTabParam('journal'); // D-170
     const go = (params: Record<string, string | number>) => router.get('/finance/books', { from: p.from, to: p.to, tab, ...params }, { preserveState: true, preserveScroll: true });
     const openLedger = (id: number) => { setTab('ledger'); go({ account: id, tab: 'ledger' }); };
 

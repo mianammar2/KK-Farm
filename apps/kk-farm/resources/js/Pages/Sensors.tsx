@@ -3,6 +3,7 @@ import { LIVE_MS } from '../lib/live';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import { useConfirm } from '../components/Confirm';
+import { useTabParam } from '../lib/useTabParam';
 
 type Device = { id: number; code: string; name: string; type: string; typeLabel: string; vendor: string | null; model: string | null; place: string; shedId: number | null; penId: number | null; status: string; lastSeen: string | null; keyHint: string | null; settings: Record<string, number>; notes: string | null };
 type Alert = { id: number; kind: string; severity: 'critical' | 'warning' | 'info'; title: string; detail: string | null; status: string; device: string | null; goat: string | null; goatId: string | null; pen: string | null; taskId: number | null; on: string; by: string | null };
@@ -25,7 +26,7 @@ const SETTINGS: Record<string, Array<[string, string]>> = {
 
 export default function Sensors(p: Props) {
     usePoll(LIVE_MS, { only: ['devices', 'alerts', 'readings', 'out'] });
-    const [tab, setTab] = useState(p.devices.length ? 'devices' : 'connect');
+    const [tab, setTab] = useTabParam(p.devices.length ? 'devices' : 'connect'); // D-170
     const open = p.alerts.filter((a) => a.status === 'open');
     return (
         <>

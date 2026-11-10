@@ -7,6 +7,7 @@ import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow,
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 import { BreedBadge } from '../components/GoatBadges';
+import { useTabParam } from '../lib/useTabParam';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -57,7 +58,7 @@ export default function Feeding(props: Props) {
     // D-086: live. Moves on other screens change pen plans; this picks them up within 10 seconds.
     usePoll(LIVE_MS, { only: ['board', 'items', 'history'] });
     const { today, meal, meals, mealTimes, board, groups, items, can } = props;
-    const [tab, setTab] = useState(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'now');
+    const [tab, setTab] = useTabParam('now'); // D-170
     const focusPen = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('pen') ? Number(new URLSearchParams(window.location.search).get('pen')) : null; // D-121
     const fed = board.filter((p) => p.status === 'done' || p.status === 'late').length;
     const expected = board.filter((p) => p.status !== 'none' && p.status !== 'upcoming').length;

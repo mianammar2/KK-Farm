@@ -1,6 +1,7 @@
 import BrandMark from './BrandMark';
 import NotificationBell from './NotificationBell';
-import { NavIcon } from './ArtIcon';
+import { ArtIcon, NavIcon } from './ArtIcon';
+import { APPS, currentApp, isHere, rememberApp, type ErpApp } from '../lib/apps';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
@@ -64,7 +65,52 @@ function Brand() {
     );
 }
 
-function NavList({ path, modules, onNavigate }: { path: string; modules: string[]; onNavigate?: () => void }) {
+function NavList({ path, url, modules, onNavigate }: { path: string; url: string; modules: string[]; onNavigate?: () => void }) {
+    // D-170: inside an app, only that app's sections and the apps its records link to (Odoo style).
+    const app = currentApp(url, modules);
+    if (app) {
+        const here = app.sections.findIndex((x) => isHere(x.href, url));
+        const samePath = app.sections.findIndex((x) => x.href.split('?')[0] === path);
+        const active = here >= 0 ? here : samePath;
+        const linked = app.linked.map((k) => APPS.find((x) => x.key === k)).filter((x): x is ErpApp => !!x && x.modules.some((m) => modules.includes(m)));
+        return (
+            <nav aria-label={`${app.label} menu`} className="mt-4 flex-1 overflow-y-auto px-2 pb-4">
+                <Link href="/apps" onClick={onNavigate} className="mb-3 flex min-h-10 items-center gap-2 rounded-tile px-2.5 text-sm font-semibold text-cobalt-200 hover:bg-cobalt-800 hover:text-white">
+                    <LayoutGrid size={17} aria-hidden /> All Apps
+                </Link>
+                <div className="mb-2 flex items-center gap-2.5 rounded-tile bg-white/10 px-2.5 py-2.5">
+                    <ArtIcon name={app.art} size={38} />
+                    <span className="min-w-0"><span className="block text-base leading-tight font-bold text-white">{app.label}</span>{app.no ? <span className="text-[11px] text-cobalt-200">App {app.no}</span> : null}</span>
+                </div>
+                <ul className="space-y-0.5">
+                    {app.sections.map((x, i) => (
+                        <li key={x.href}>
+                            <Link href={x.href} onClick={() => { rememberApp(app.key); onNavigate?.(); }} aria-current={i === active ? 'page' : undefined}
+                                className={cx('flex min-h-10 items-center gap-2.5 rounded-tile px-3 py-1.5 text-sm font-medium transition-colors duration-150', i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
+                                <span className={cx('size-1.5 shrink-0 rounded-full', i === active ? 'bg-turq-600' : 'bg-cobalt-200/50')} aria-hidden />
+                                {x.label}
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+                {linked.length ? (
+                    <div className="mt-5 border-t border-white/10 pt-3">
+                        <div className="px-2.5 pb-1.5 text-[11px] font-semibold tracking-wide text-cobalt-200/80 uppercase">Linked Apps</div>
+                        <ul className="space-y-0.5">
+                            {linked.map((l) => (
+                                <li key={l.key}>
+                                    <Link href={l.sections[0].href} prefetch onClick={() => { rememberApp(l.key); onNavigate?.(); }} className="flex min-h-10 items-center gap-2.5 rounded-tile px-2.5 py-1.5 text-sm font-medium text-cobalt-100 hover:bg-cobalt-800">
+                                        <ArtIcon name={l.art} size={26} />
+                                        {l.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ) : null}
+            </nav>
+        );
+    }
     return (
         <nav aria-label="Main" className="mt-5 flex-1 space-y-5 overflow-y-auto px-2 pb-4">
             {NAV.map((group) => {
@@ -74,28 +120,15 @@ function NavList({ path, modules, onNavigate }: { path: string; modules: string[
                 }
                 return (
                     <div key={group.heading} className="border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
-                        {/* D-159: no group headings (Herd, Care, Farm, Business); a thin line separates the groups */}
                         <ul className="space-y-0.5">
-                            {items.map((item) => {
-                                const active = item.href === '/' ? path === '/' : path.startsWith(item.href) && !(item.href === '/finance' && path.startsWith('/finance/books'));
-                                return (
-                                    <li key={item.href}>
-                                        <Link
-                                            href={item.href}
-                                            prefetch
-                                            onClick={onNavigate}
-                                            aria-current={active ? 'page' : undefined}
-                                            className={cx(
-                                                'flex min-h-10 items-center gap-2.5 rounded-tile px-2.5 py-1.5 text-sm font-medium transition-colors duration-150',
-                                                active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800',
-                                            )}
-                                        >
-                                            <NavIcon href={item.href} icon={item.icon} size={26} />
-                                            {titleCase(item.label)}
-                                        </Link>
-                                    </li>
-                                );
-                            })}
+                            {items.map((item) => (
+                                <li key={item.href}>
+                                    <Link href={item.href} prefetch onClick={onNavigate} className="flex min-h-10 items-center gap-2.5 rounded-tile px-2.5 py-1.5 text-sm font-medium text-cobalt-100 transition-colors duration-150 hover:bg-cobalt-800">
+                                        <NavIcon href={item.href} icon={item.icon} size={26} />
+                                        {titleCase(item.label)}
+                                    </Link>
+                                </li>
+                            ))}
                         </ul>
                     </div>
                 );
@@ -195,7 +228,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {home ? null : (
                 <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-cobalt-900 pt-4 lg:flex">
                     <Brand />
-                    <NavList path={path} modules={auth.modules} />
+                    <NavList path={path} url={page.url} modules={auth.modules} />
                 </aside>
             )}
 
@@ -210,7 +243,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                                     <X size={20} />
                                 </button>
                             </div>
-                            <NavList path={path} modules={auth.modules} onNavigate={() => setDrawer(false)} />
+                            <NavList path={path} url={page.url} modules={auth.modules} onNavigate={() => setDrawer(false)} />
                         </motion.aside>
                     </motion.div>
                 ) : null}

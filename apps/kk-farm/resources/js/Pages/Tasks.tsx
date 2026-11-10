@@ -5,6 +5,7 @@ import { Button, Chip, cx, Empty, Field, PageHeader, Panel, Tabs } from '../comp
 import type { SharedProps } from '../types';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
+import { useTabParam } from '../lib/useTabParam';
 
 type Task = {
     id: number; title: string; type: string; priority: string; status: string; open: boolean; pen: string | null; goatId: string | null; goat: string | null; notes: string | null;
@@ -23,7 +24,7 @@ const STATUS_CLASS: Record<string, string> = { in_progress: 'bg-cobalt-100 text-
 /** D-078: workbook "Tasks": due dates, related goat or pen, type, priority and status; overdue and due-soon flags. */
 export default function Tasks({ tasks, departments, users, pens, goats, types, priorities, statuses }: Props) {
     const { auth } = usePage<SharedProps>().props;
-    const [tab, setTab] = useState('open');
+    const [tab, setTab] = useTabParam('open'); // D-170
     const [adding, setAdding] = useState(false); // D-127
     const canAssign = ['ceo', 'manager', 'vet'].includes(auth?.role ?? '');
     const open = tasks.filter((t) => t.open);

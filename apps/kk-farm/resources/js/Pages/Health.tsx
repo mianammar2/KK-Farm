@@ -8,6 +8,7 @@ import HealthEntry from '../components/HealthEntry';
 import Sheet from '../components/Sheet';
 import { titleCase } from '../lib/titleCase';
 import AddButton from '../components/AddButton';
+import { useTabParam } from '../lib/useTabParam';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -54,7 +55,7 @@ export default function Health(props: Props) {
             <span className="flex items-center gap-1"><Plus size={14} aria-hidden className="max-sm:hidden" />{icon}</span>{titleCase(label)}
         </button>
     );
-    const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') ?? 'cases');
+    const [tab, setTab] = useTabParam('cases'); // D-170
     const [fromReport, setFromReport] = useState<Row | null>(null);
 
     return (

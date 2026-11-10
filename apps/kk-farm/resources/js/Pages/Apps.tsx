@@ -1,9 +1,8 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { NavIcon } from '../components/ArtIcon';
-import { NAV } from '../components/AppShell';
-import { titleCase } from '../lib/titleCase';
+import { ArtIcon } from '../components/ArtIcon';
+import { rememberApp, visibleApps } from '../lib/apps';
 import type { SharedProps } from '../types';
 
 /** Notes from the Action Center feed (same as the bell). */
@@ -16,7 +15,7 @@ const greeting = () => {
 
 /**
  * D-168: the app launcher, KK Farms' home after login (Odoo style): every part of the system the user may open, as a
- * large icon tile from the KK Farms icon library, with a search box. Action Center shows how many things need action.
+ * large icon tile from the KK Farms icon library (the owner's 16 ERP apps, D-170), with a search box. Action Center shows how many things need action.
  */
 export default function Apps() {
     const { auth } = usePage<SharedProps>().props;
@@ -30,9 +29,12 @@ export default function Apps() {
         return () => { alive = false; };
     }, []);
 
-    const apps = useMemo(() => NAV.flatMap((g) => g.items).filter((i) => auth?.modules.includes(i.module))
-        .filter((i) => !q.trim() || i.label.toLowerCase().includes(q.trim().toLowerCase())), [auth, q]);
-    const badge = (href: string) => (href === '/actions' && notes?.length ? { n: notes.length, urgent: notes.some((x) => x.severity === 'critical') } : null);
+    // D-170: the 16 KK Farms apps (and Settings for administrators); search also finds an app by its menu items.
+    const apps = useMemo(() => visibleApps(auth?.modules ?? []).filter((a) => {
+        const t = q.trim().toLowerCase();
+        return !t || a.label.toLowerCase().includes(t) || a.sections.some((x) => x.label.toLowerCase().includes(t));
+    }), [auth, q]);
+    const badge = (key: string) => (key === 'dashboard' && notes?.length ? { n: notes.length, urgent: notes.some((x) => x.severity === 'critical') } : null);
 
     return (
         <>
@@ -49,15 +51,15 @@ export default function Apps() {
                     </div>
                     <ul className="grid grid-cols-3 gap-x-3 gap-y-7 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                         {apps.map((a, i) => {
-                            const b = badge(a.href);
+                            const b = badge(a.key);
                             return (
-                                <li key={a.href} className="kk-app-tile" style={{ animationDelay: `${Math.min(i, 24) * 25}ms` }}>
-                                    <Link href={a.href} prefetch className="group flex flex-col items-center gap-2 rounded-2xl p-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-turq-400">
+                                <li key={a.key} className="kk-app-tile" style={{ animationDelay: `${Math.min(i, 24) * 25}ms` }}>
+                                    <Link href={a.sections[0].href} prefetch onClick={() => rememberApp(a.key)} className="group flex flex-col items-center gap-2 rounded-2xl p-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-turq-400">
                                         <span className="kk-app-icon relative">
-                                            <NavIcon href={a.href} icon={a.icon} size={68} className="kk-app-art !rounded-[22%] !shadow-none !ring-0" />
+                                            <ArtIcon name={a.art} size={68} className="kk-app-art !rounded-[22%] !shadow-none !ring-0" />
                                             {b ? <span className={`absolute -top-1.5 -right-1.5 grid min-w-6 place-items-center rounded-full px-1.5 text-xs font-bold leading-6 text-white shadow ${b.urgent ? 'bg-crit-700' : 'bg-watch-700'}`}>{b.n}</span> : null}
                                         </span>
-                                        <span className="text-[13px] leading-tight font-semibold text-cobalt-900 sm:text-sm">{titleCase(a.label)}</span>
+                                        <span className="text-[13px] leading-tight font-semibold text-cobalt-900 sm:text-sm">{a.label}</span>
                                     </Link>
                                 </li>
                             );

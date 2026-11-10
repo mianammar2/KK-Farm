@@ -12,6 +12,7 @@ import PregnancyOutcomeForm, { type OutcomeOptions } from '../components/Pregnan
 import { LibIcon } from '../components/ui';
 import ReproKpiTiles from '../components/ReproKpis';
 import UltrasoundForm, { type UltrasoundOptions } from '../components/UltrasoundForm';
+import { useTabParam } from '../lib/useTabParam';
 
 type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null; status: string | null; day: number | null; fetal: string; viability: string | null; action: string | null };
 type MatingRow = {
@@ -61,7 +62,7 @@ const OUTCOME_CLASS: Record<string, string> = { open: 'bg-cobalt-100 text-cobalt
 export default function Breeding(props: Props) {
     const { matings, kiddings, weaning, weaned, performance, focus, goats, settings, kpis, options } = props;
     const { auth } = usePage<SharedProps>().props;
-    const [tab, setTab] = useState('cycle');
+    const [tab, setTab] = useTabParam('cycle'); // D-170
     const [adding, setAdding] = useState(false); // D-127
     const isVet = !!auth?.gates.includes('clinical');
     const canSettings = !!auth?.modules.includes('settings');
