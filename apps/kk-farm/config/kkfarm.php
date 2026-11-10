@@ -30,7 +30,7 @@ return [
     'modules' => [
         'dashboard' => $all,
         'goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'finance'],
-        'scan' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'scan' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'], // D-179: every farm worker can scan
         'breeding' => ['ceo', 'manager', 'vet', 'caretaker'],
         'health' => ['ceo', 'manager', 'vet', 'caretaker'],
         'weights' => ['ceo', 'manager', 'vet', 'caretaker'],

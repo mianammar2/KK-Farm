@@ -42,6 +42,13 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
+    // D-179: the worker app for the RFID gun (pick a job, then scan goat after goat)
+    Route::get('/worker', [\App\Http\Controllers\WorkerController::class, 'index']);
+    Route::post('/worker/start', [\App\Http\Controllers\WorkerController::class, 'start']);
+    Route::post('/worker/stop', [\App\Http\Controllers\WorkerController::class, 'stop']);
+    Route::post('/worker/weigh', [\App\Http\Controllers\WorkerController::class, 'weigh']);
+    Route::post('/worker/health', [\App\Http\Controllers\WorkerController::class, 'health']);
+    Route::post('/worker/move', [\App\Http\Controllers\WorkerController::class, 'move']);
     // D-172: Intake & Quarantine (purchased and transferred goats until veterinary clearance)
     Route::get('/intake', [\App\Http\Controllers\IntakeController::class, 'index'])->middleware('module:goats');
     Route::post('/intake/settings', [\App\Http\Controllers\IntakeController::class, 'settings'])->middleware('module:goats');

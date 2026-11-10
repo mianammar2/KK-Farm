@@ -16,6 +16,16 @@ export type ErpApp = {
 const S = (group: MenuGroup, href: string, label: string) => ({ group, href, label });
 
 export const APPS: ErpApp[] = [
+    // D-179: the worker app for the RFID gun: one job at a time, scan goat after goat
+    { key: 'worker', no: '00', label: 'Field Work', art: 'ic-active', modules: ['scan', 'feeding'], linked: ['livestock', 'veterinary', 'growth', 'feeding', 'operations'], sections: [
+        S('Overview', '/worker', 'Choose a Job'),
+        S('Operations', '/worker', 'Weigh · Health Check · Move · Look Up'),
+        S('Operations', '/scan', 'RFID Scan'),
+        S('Operations', '/feeding?tab=now', 'Feed Pens'),
+        S('Operations', '/tasks?tab=mine', 'My Tasks'),
+        S('Reporting', '/activity', 'Activity Log'),
+        S('Configuration', '/account/app', 'Gun & App Settings'),
+    ] },
     { key: 'dashboard', no: '01', label: 'Farm Dashboard', art: 'mod-dashboard', modules: ['dashboard'], linked: ['livestock', 'breeding', 'veterinary', 'feeding', 'reports'], sections: [
         S('Overview', '/', 'Executive Dashboard'),
         S('Operations', '/actions', 'Alerts & Action Center'),

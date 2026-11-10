@@ -428,3 +428,6 @@ main { min-width: 0; }
 @keyframes kk-app-in { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
 @media (max-width: 639px) { .kk-app-icon { width: 72px; height: 72px; border-radius: 18px; } .kk-app-art { width: 54px !important; height: 54px !important; } }
 @media (prefers-reduced-motion: reduce) { .kk-app-tile { animation: none; } }
+/* D-179: the goat on the worker app's job form */
+.kk-worker-goat { display: inline-flex; flex: none; width: 72px; height: 62px; }
+.kk-worker-goat > svg { width: 100%; height: 100%; }

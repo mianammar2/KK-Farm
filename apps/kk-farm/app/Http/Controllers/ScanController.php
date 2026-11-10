@@ -36,6 +36,11 @@ class ScanController extends Controller
                 ]]);
             }
 
+            // D-179: a worker job is running on this device: the scanned goat goes straight into that job.
+            if (WorkerController::job($request)) {
+                return $open ? redirect('/worker?goat='.$open->animal_id) : redirect('/worker?unknown='.urlencode($code));
+            }
+
             // The scan starts the goat register when there is nothing to show (D-040): a tag the farm has never seen,
             // or one that was never used on any goat.
             if (! $tag || (! $open && $past->isEmpty() && $tag->status !== 'lost')) {
