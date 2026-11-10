@@ -46,9 +46,10 @@ class BreedingController extends Controller
             'matings' => $matings->map(fn (Mating $m) => [
                 'id' => $m->id, 'status' => $m->status, 'outcome' => Mating::OUTCOMES[$m->status] ?? $m->status, 'method' => Mating::METHODS[$m->method] ?? $m->method,
                 'heat' => $m->heat_observed, 'cycle' => $m->service_cycle, 'handler' => $m->handler, 'notes' => $m->notes, 'alert' => $m->alert($org->kidding_alert_days),
+                'pregnancy' => $m->pregnancyStatus($org->kidding_alert_days), // D-161
                 'dam' => ['id' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'coat' => $m->dam->coat, 'breed' => $m->dam->breed?->name, 'stage' => $m->dam->effectiveAge()],
                 'sire' => $m->sire ? ['id' => $m->sire_id, 'number' => $m->sire->farm_number, 'name' => $m->sire->name] : null,
-                'mated' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'checkDue' => $m->check_due_on?->format('j M Y'),
+                'mated' => $m->mated_on->format('j M Y'), 'matedIso' => $m->mated_on->toDateString(), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'checkDue' => $m->check_due_on?->format('j M Y'),
                 'days' => $m->expected_kidding_on ? (int) $today->diffInDays($m->expected_kidding_on, false) : null,
                 'progress' => $m->expected_kidding_on ? min(100, max(0, (int) round($m->mated_on->diffInDays(now()) / max(1, $m->mated_on->diffInDays($m->expected_kidding_on)) * 100))) : 0,
                 'active' => in_array($m->status, ['open', 'pregnant', 'inconclusive'], true),
@@ -60,9 +61,14 @@ class BreedingController extends Controller
             'kiddings' => Kidding::with(['dam', 'kids'])->orderByDesc('kidded_on')->orderByDesc('id')->limit(30)->get()->map(fn (Kidding $k) => [
                 'id' => $k->id, 'goatId' => $k->dam_id, 'dam' => $k->dam->farm_number, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn,
                 'total' => $k->born_alive + $k->stillborn, 'litter' => Kidding::litterType($k->born_alive + $k->stillborn), 'assisted' => Kidding::ASSISTED[$k->assisted] ?? $k->assisted,
-                'attendant' => $k->attendant ?? $k->recorded_by, 'notes' => $k->notes, 'kids' => $k->kids->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->values(),
+                'attendant' => $k->attendant ?? $k->recorded_by, 'notes' => $k->notes, 'kids' => $k->kids->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'weak' => $a->birth_outcome === 'BAW'])->values(),
+                // D-161
+                'outcome' => $k->outcome, 'method' => $k->delivery_method, 'mother' => $k->mother_status, 'premature' => $k->premature, 'gestation' => $k->gestation_days,
+                'liveMale' => $k->live_male, 'liveFemale' => $k->live_female, 'stillMale' => $k->still_male, 'stillFemale' => $k->still_female, 'weak' => $k->weak,
+                'cause' => $k->abortion_cause, 'diagnosis' => $k->diagnosis, 'vet' => $k->vet_officer, 'followUp' => $k->follow_up_on?->format('j M Y'), 'complications' => $k->complications,
             ]),
             'weaning' => $this->weaningDue($org),
+            'kpis' => Kidding::kpis(), // D-161
             'weaned' => Weaning::with('kid')->where('status', 'completed')->orderByDesc('weaned_on')->limit(20)->get()->map(fn (Weaning $w) => [
                 'id' => $w->id, 'kidId' => $w->kid_id, 'kid' => $w->kid->farm_number, 'on' => $w->weaned_on->format('j M Y'),
                 'age' => $w->kid->birth_date ? (int) $w->kid->birth_date->diffInDays($w->weaned_on) : null, 'weight' => $w->weight_kg, 'method' => Weaning::METHODS[$w->method] ?? $w->method, 'by' => $w->handler,
@@ -77,7 +83,7 @@ class BreedingController extends Controller
             'goats' => Animal::orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'settings' => ['gestation' => $org->gestation_days, 'check' => $org->pregnancy_check_days, 'alert' => $org->kidding_alert_days, 'weaning' => $org->weaning_age_days],
-            'options' => ['methods' => Mating::METHODS, 'checkMethods' => PregnancyCheck::METHODS, 'results' => PregnancyCheck::RESULTS, 'assisted' => Kidding::ASSISTED, 'weanMethods' => Weaning::METHODS],
+            'options' => ['methods' => Mating::METHODS, 'checkMethods' => PregnancyCheck::METHODS, 'results' => PregnancyCheck::RESULTS, 'assisted' => Kidding::ASSISTED, 'weanMethods' => Weaning::METHODS, 'pregnancy' => Kidding::PREGNANCY] + Kidding::formOptions(),
         ]);
     }
 
@@ -179,51 +185,115 @@ class BreedingController extends Controller
         return back()->with('success', 'Mating closed.');
     }
 
+    /**
+     * D-161: record a pregnancy outcome (KK Farms classification): outcome, delivery method, each live kid (sex, weak,
+     * birth weight), stillborn kids by sex, the mother's status and the vet follow-up. Live kids are registered as goats
+     * linked to the dam, sire and this event. An abortion or early loss closes the pregnancy as lost and raises a vet
+     * review and a biosecurity task; a mother needing care raises a vet review. The vet decides the treatment.
+     */
     public function kidding(Request $request, Mating $mating): RedirectResponse
     {
         $data = $request->validate([
-            'alive' => ['required', 'integer', 'min:0', 'max:6'], 'stillborn' => ['required', 'integer', 'min:0', 'max:6'], 'females' => ['required', 'integer', 'min:0', 'lte:alive'],
+            'outcome' => ['nullable', Rule::in(array_keys(Kidding::OUTCOMES))],
+            'delivery_method' => ['nullable', Rule::in(array_keys(Kidding::METHODS))],
+            'kids' => ['nullable', 'array', 'max:6'], 'kids.*.sex' => ['required', Rule::in(['female', 'male'])], 'kids.*.weak' => ['nullable', 'boolean'],
+            'kids.*.weight_kg' => ['nullable', 'numeric', 'between:0.3,15'],
+            'alive' => ['nullable', 'integer', 'min:0', 'max:6'], 'females' => ['nullable', 'integer', 'min:0'],
+            'stillborn' => ['nullable', 'integer', 'min:0', 'max:6'], 'still_male' => ['nullable', 'integer', 'min:0', 'max:6'], 'still_female' => ['nullable', 'integer', 'min:0', 'max:6'],
             'kidded_on' => ['nullable', 'date', 'before_or_equal:today', 'after:'.$mating->mated_on->toDateString()],
+            'mother_status' => ['nullable', Rule::in(array_keys(Kidding::MOTHER))],
+            'premature' => ['nullable', 'boolean'],
             'assisted' => ['nullable', Rule::in(array_keys(Kidding::ASSISTED))], 'attendant' => ['nullable', 'string', 'max:80'], 'notes' => ['nullable', 'string', 'max:500'],
-        ]);
+            'complications' => ['nullable', 'string', 'max:500'], 'abortion_cause' => ['nullable', 'string', 'max:255'], 'diagnosis' => ['nullable', 'string', 'max:500'],
+            'vet_officer' => ['nullable', 'string', 'max:80'], 'follow_up_on' => ['nullable', 'date'],
+        ], [], ['kids.*.weight_kg' => 'birth weight', 'mother_status' => 'mother status']);
         abort_unless(in_array($mating->status, ['open', 'pregnant', 'inconclusive'], true), 422, 'This mating is already closed.');
-        if ((int) $data['alive'] + (int) $data['stillborn'] === 0) {
+
+        // Kids: one row each (new form), or the older counts (born alive, of them female).
+        $kids = $data['kids'] ?? null;
+        if ($kids === null) {
+            $alive = (int) ($data['alive'] ?? 0);
+            $females = min((int) ($data['females'] ?? 0), $alive);
+            $kids = array_map(fn ($i) => ['sex' => $i < $females ? 'female' : 'male'], range(0, max(0, $alive - 1)));
+            $kids = $alive ? $kids : [];
+        }
+        $stillMale = (int) ($data['still_male'] ?? 0);
+        $stillFemale = (int) ($data['still_female'] ?? 0);
+        $stillborn = isset($data['still_male']) || isset($data['still_female']) ? $stillMale + $stillFemale : (int) ($data['stillborn'] ?? 0);
+        $alive = count($kids);
+        $outcome = $data['outcome'] ?? ($alive && $stillborn ? 'MBO' : (! $alive && $stillborn ? 'STB' : (($data['assisted'] ?? 'no') !== 'no' ? 'AKD' : 'NKD')));
+        $loss = in_array($outcome, Kidding::LOSSES, true);
+
+        if (! $loss && $outcome !== 'UNK' && $alive + $stillborn === 0) {
             throw ValidationException::withMessages(['alive' => 'Enter the kids born alive or stillborn.']);
         }
+        // The outcome must agree with the kids.
+        $problem = match (true) {
+            $loss && ($alive || $stillborn) => 'An abortion or early loss has no kids: set the kids to 0, or choose Stillbirth.',
+            $outcome === 'STB' && ($alive || ! $stillborn) => 'Stillbirth: enter the stillborn kids and no live kids, or choose Mixed Birth Outcome.',
+            $outcome === 'MBO' && (! $alive || ! $stillborn) => 'Mixed Birth Outcome needs at least one live and one stillborn kid.',
+            in_array($outcome, ['NKD', 'AKD', 'CSD', 'PKD'], true) && ! $alive => 'Add the live kids, or choose Stillbirth or Abortion.',
+            $outcome === 'UNK' => null,
+            default => null,
+        };
+        if ($problem) {
+            throw ValidationException::withMessages(['outcome' => $problem]);
+        }
+        $method = $data['delivery_method'] ?? match ($outcome) {
+            'CSD' => 'CSE', 'AKD' => 'AST', 'ABT', 'EEL', 'UNK' => 'NAP', default => ($data['assisted'] ?? 'no') !== 'no' ? 'AST' : 'NRM',
+        };
+        $mother = $data['mother_status'] ?? ($loss ? 'PAR' : ($alive ? 'LCT' : 'HNR'));
         $on = Carbon::parse($data['kidded_on'] ?? now());
+        $by = $request->user()->name;
 
-        $kids = DB::transaction(function () use ($mating, $data, $request, $on) {
+        $registered = DB::transaction(function () use ($mating, $data, $kids, $alive, $stillborn, $stillMale, $stillFemale, $outcome, $loss, $method, $mother, $on, $by) {
             $dam = $mating->dam;
             $sire = $mating->sire;
             // D-071: kids stay with their mother; a farm "Kids" pen only when the doe has no pen.
             $kidsPen = $dam->pen_id ?? Pen::where('purpose', 'Kids')->value('id');
             $breedId = $sire && $sire->breed_id === $dam->breed_id ? $dam->breed_id : Breed::where('name', 'Crossbred')->value('id') ?? $dam->breed_id;
+            $weak = count(array_filter($kids, fn ($k) => ! empty($k['weak'])));
 
             $kidding = Kidding::create([
-                'dam_id' => $dam->id, 'mating_id' => $mating->id, 'kidded_on' => $on, 'born_alive' => $data['alive'], 'stillborn' => $data['stillborn'],
-                'assisted' => $data['assisted'] ?? 'no', 'attendant' => $data['attendant'] ?? $request->user()->name, 'notes' => $data['notes'] ?? null, 'recorded_by' => $request->user()->name,
+                'dam_id' => $dam->id, 'mating_id' => $mating->id, 'kidded_on' => $on, 'born_alive' => $alive, 'stillborn' => $stillborn,
+                'outcome' => $outcome, 'delivery_method' => $method, 'premature' => $outcome === 'PKD' || ! empty($data['premature']),
+                'live_male' => count(array_filter($kids, fn ($k) => $k['sex'] === 'male')), 'live_female' => count(array_filter($kids, fn ($k) => $k['sex'] === 'female')),
+                'still_male' => $stillMale ?: null, 'still_female' => $stillFemale ?: null, 'weak' => $weak, 'mother_status' => $mother,
+                'gestation_days' => (int) $mating->mated_on->diffInDays($on),
+                'assisted' => $method === 'NRM' || $method === 'NAP' ? 'no' : ($method === 'CSE' ? 'emergency' : 'yes'),
+                'attendant' => $data['attendant'] ?? $by, 'notes' => $data['notes'] ?? null, 'recorded_by' => $by,
+                'complications' => $data['complications'] ?? null, 'abortion_cause' => $data['abortion_cause'] ?? null, 'diagnosis' => $data['diagnosis'] ?? null,
+                'vet_officer' => $data['vet_officer'] ?? null, 'follow_up_on' => $data['follow_up_on'] ?? null,
             ]);
-            $mating->update(['status' => 'kidded']);
-            // D-117: she is in milk after kidding (her lactation was started when the kidding was saved).
-            $total = (int) $data['alive'] + (int) $data['stillborn'];
-            Farm::event($dam, 'breeding', 'Kidded: '.Kidding::litterType($total)." · {$data['alive']} born alive".($data['stillborn'] ? ", {$data['stillborn']} stillborn" : '').(($data['assisted'] ?? 'no') !== 'no' ? ' · assisted' : ''), $request->user()->name, $on);
+            $mating->update(['status' => $loss ? 'aborted' : 'kidded']);
 
-            $kids = [];
-            for ($i = 1; $i <= (int) $data['alive']; $i++) {
+            $label = Kidding::OUTCOMES[$outcome];
+            $summary = $loss ? $label.($data['abortion_cause'] ?? null ? " · suspected cause: {$data['abortion_cause']}" : '')
+                : "{$label}: ".Kidding::litterType($alive + $stillborn)." · {$alive} born alive".($stillborn ? ", {$stillborn} stillborn" : '').($weak ? " ({$weak} weak)" : '').' · '.Kidding::METHODS[$method];
+            Farm::event($dam, 'breeding', $summary.' · mother: '.Kidding::MOTHER[$mother], $by, $on);
+
+            $tags = [];
+            foreach ($kids as $k) {
                 $kid = Animal::create([
                     'farm_number' => ($breedId ? Breed::find($breedId)?->issueTagId($on, 'born_on_farm') : null) ?? Farm::nextFarmNumber(),
-                    'sex' => $i <= $data['females'] ? 'female' : 'male', 'breed_id' => $breedId, 'birth_date' => $on->toDateString(), 'origin' => 'born_on_farm',
+                    'sex' => $k['sex'], 'breed_id' => $breedId, 'birth_date' => $on->toDateString(), 'origin' => 'born_on_farm',
                     'sire_id' => $mating->sire_id, 'dam_id' => $dam->id, 'pen_id' => $kidsPen, 'coat' => $dam->coat, 'birth_kidding_id' => $kidding->id, 'kid_stage' => 'newborn',
+                    'birth_outcome' => ! empty($k['weak']) ? 'BAW' : 'LVB',
                 ]);
-                Farm::event($kid, 'origin', "Born on the farm to {$dam->farm_number}", $request->user()->name, $on);
-                $kids[] = $kid->farm_number;
+                Farm::event($kid, 'origin', "Born on the farm to {$dam->farm_number}".(! empty($k['weak']) ? ' · born alive, weak' : ''), $by, $on);
+                if (! empty($k['weight_kg'])) {
+                    WeightRecord::create(['animal_id' => $kid->id, 'measured_on' => $on->toDateString(), 'weight_kg' => $k['weight_kg'], 'context' => 'birth', 'measured_by' => $by]);
+                }
+                $tags[] = $kid->farm_number;
             }
 
-            return $kids;
-        });
-        Farm::log($request->user(), "Recorded a kidding for {$mating->dam->farm_number}: ".(count($kids) ? implode(', ', $kids) : 'no live kids'), "/goats/{$mating->dam_id}");
+            \App\Support\PregnancyAlerts::raise($kidding, $dam, $tags);
 
-        return back()->with('success', count($kids) ? 'Kids registered: '.implode(', ', $kids).'. Add each kid\'s birth weight on its record.' : 'Kidding recorded.');
+            return $tags;
+        });
+        Farm::log($request->user(), "Recorded a pregnancy outcome for {$mating->dam->farm_number} (".Kidding::OUTCOMES[$outcome].'): '.(count($registered) ? implode(', ', $registered) : 'no live kids'), "/goats/{$mating->dam_id}");
+
+        return back()->with('success', count($registered) ? 'Kids registered: '.implode(', ', $registered).'.' : Kidding::OUTCOMES[$outcome].' recorded.');
     }
 
     /** Weaning one kid: completed (weight goes to the weight log, optional move) or postponed to a date. */

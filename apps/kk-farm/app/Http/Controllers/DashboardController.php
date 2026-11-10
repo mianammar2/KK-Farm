@@ -87,6 +87,7 @@ class DashboardController extends Controller
             // D-121: health shortcuts are on Veterinary & Health.
             'attention' => $attention,
             'kiddings' => $kiddings,
+            'repro' => $request->user()->canModule('breeding') ? \App\Models\Kidding::kpis() : null, // D-161
             // D-122: recent activity is on the Activity Log page.
             'breeds' => DB::table('animals')->join('breeds', 'breeds.id', '=', 'animals.breed_id')->where('status', 'active')
                 ->select('breeds.name', DB::raw('count(*) as value'))->groupBy('breeds.name')->orderByDesc('value')->get(),

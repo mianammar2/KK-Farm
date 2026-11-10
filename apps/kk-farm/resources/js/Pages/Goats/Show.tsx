@@ -9,8 +9,9 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
 import GoatPortrait from '../../components/GoatPortrait';
+import PregnancyOutcomeForm, { type OutcomeOptions } from '../../components/PregnancyOutcomeForm';
 import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
-import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
+import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, LibIcon, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
@@ -29,13 +30,14 @@ type Props = {
     kiddings: Array<{ id: number; on: string; alive: number; stillborn: number }>;
     cost: { direct: number; sharedPerHead: number; total: number } | null;
     pens: Array<{ id: number; name: string; purpose: string }>;
-    can: { edit: boolean; remove: boolean };
+    can: { edit: boolean; remove: boolean; breeding: boolean };
+    outcomeOptions: OutcomeOptions;
     pregnancy: Pregnancy | null;
     milking: Milking | null;
     healthEntry: (CheckupData & { conditions: string[]; severities: Record<string, string> }) | null;
 };
 type Pregnancy = {
-    matedOn: string; expected: string | null; sire: string | null; day: number; gestation: number; daysLeft: number | null; alertDays: number;
+    matingId: number; matedOnIso: string; matedOn: string; expected: string | null; sire: string | null; day: number; gestation: number; daysLeft: number | null; alertDays: number;
     checks: Array<{ on: string; day: number; weight: number | null; temp: number | null; ultrasound: string | null; fetuses: number | null; by: string }>;
     weights: Array<{ day: number; kg: number; on: string }>;
 };
@@ -43,7 +45,8 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions } = props;
+    const [outcome, setOutcome] = useState(false); // D-161
     const [ask, removeBox] = useConfirm(); // D-133
     const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
@@ -129,13 +132,14 @@ export default function GoatShow(props: Props) {
                         {/* Phones: the everyday actions as one tidy grid of icons; rarer ones as links below it. */}
                         {onFarm || (!removed && can.edit) ? (
                             <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
-                                {onFarm && healthEntry?.canCheck ? <ActionTile icon={<Stethoscope size={20} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
-                                {onFarm && healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <ActionTile icon={<ClipboardPlus size={20} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
-                                {onFarm ? <ActionTile icon={<Scale size={20} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
+                                {onFarm && pregnancy && can.breeding ? <ActionTile icon={<LibIcon name="ic-pregnant" size={26} />} label="Pregnancy" primary onClick={() => setOutcome(true)} /> : null}
+                                {onFarm && healthEntry?.canCheck ? <ActionTile icon={<LibIcon name="mod-health" size={26} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
+                                {onFarm && healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
+                                {onFarm ? <ActionTile icon={<LibIcon name="mod-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
-                                {onFarm ? <ActionTile icon={<TriangleAlert size={20} />} label="Concern" active={panel === 'concern'} onClick={() => setPanel(panel === 'concern' ? null : 'concern')} /> : null}
-                                {onFarm ? <ActionTile icon={<MoveRight size={20} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
-                                {!removed && can.edit ? <ActionTile icon={<Pencil size={20} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
+                                {onFarm ? <ActionTile icon={<LibIcon name="ic-sick" size={26} />} label="Concern" active={panel === 'concern'} onClick={() => setPanel(panel === 'concern' ? null : 'concern')} /> : null}
+                                {onFarm ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
+                                {!removed && can.edit ? <ActionTile icon={<LibIcon name="mod-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
                             </div>
                         ) : null}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm sm:hidden">
@@ -145,20 +149,21 @@ export default function GoatShow(props: Props) {
                         </div>
                         {!removed && can.edit ? (
                             <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
-                                <Button onClick={() => router.visit(`/goats/${goat.id}/edit`)}><Pencil size={16} aria-hidden /> Edit details</Button>
+                                <Button onClick={() => router.visit(`/goats/${goat.id}/edit`)}><LibIcon name="mod-settings" size={18} /> Edit details</Button>
                                 {!goat.removal ? <Button variant="quiet" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}><Trash2 size={16} aria-hidden /> Remove (wrong entry)</Button> : null}
                             </div>
                         ) : null}
                         {onFarm ? (
                             <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
-                                {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><Stethoscope size={16} aria-hidden /> Health checkup</Button> : null}
-                                {healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <Button variant="secondary" onClick={() => setEntry('')}><ClipboardPlus size={16} aria-hidden /> New health entry</Button> : null}
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><Scale size={16} aria-hidden /> Add weight</Button>
+                                {pregnancy && can.breeding ? <Button onClick={() => setOutcome(true)}><LibIcon name="ic-pregnant" size={18} /> Pregnancy Outcome</Button> : null}
+                                {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="mod-health" size={18} /> Health checkup</Button> : null}
+                                {healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
+                                <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="mod-growth" size={18} /> Add weight</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><TriangleAlert size={16} aria-hidden /> Report concern</Button>
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><MoveRight size={16} aria-hidden /> Move</Button>
-                                {['ceo', 'manager'].includes(auth?.role ?? '') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}>Correct birth date</Button> : null}
-                                {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}>Record exit</Button> : null}
+                                <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><LibIcon name="ic-sick" size={18} /> Report concern</Button>
+                                <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button>
+                                {['ceo', 'manager'].includes(auth?.role ?? '') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
+                                {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
                             </div>
                         ) : null}
                     </div>
@@ -166,6 +171,11 @@ export default function GoatShow(props: Props) {
                 {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} /></div> : null}
             </section>
 
+            {outcome && pregnancy ? (
+                <Sheet onClose={() => setOutcome(false)}>
+                    <PregnancyOutcomeForm matingId={pregnancy.matingId} damNumber={goat.number} matedOn={pregnancy.matedOnIso} options={outcomeOptions} onDone={() => setOutcome(false)} />
+                </Sheet>
+            ) : null}
             {entry !== null && healthEntry ? (
                 <Sheet onClose={() => setEntry(null)}>
                     <HealthEntry data={healthEntry} severities={healthEntry.severities} goatId={goat.id} kind={entry || undefined} onDone={() => setEntry(null)} />

@@ -250,8 +250,9 @@ class GoatController extends Controller
                 ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('j M Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('j M Y')]),
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
-            'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats')],
+            'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats'), 'breeding' => $request->user()->canModule('breeding')],
             'pregnancy' => $animal->sex === 'female' ? \App\Support\Checkups::pregnancyThread($animal) : null, // D-100
+            'outcomeOptions' => \App\Models\Kidding::formOptions(), // D-161
             'milking' => $animal->sex === 'female' ? $this->milking($animal) : null, // D-117
             'healthEntry' => $animal->status === 'active' && $request->user()->canModule('health') ? \App\Support\Checkups::entryData($request->user(), new \Illuminate\Database\Eloquent\Collection([$animal])) : null, // D-102
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),

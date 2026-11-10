@@ -13,7 +13,7 @@ class Mating extends Model
     public const METHODS = ['natural' => 'Natural', 'ai' => 'Artificial insemination', 'pasture' => 'Pasture exposure'];
 
     /** D-075: the workbook's breeding outcomes (stored value => label). "open" is the workbook's "Pending". */
-    public const OUTCOMES = ['open' => 'Pending', 'pregnant' => 'Confirmed pregnant', 'not_pregnant' => 'Not pregnant', 'inconclusive' => 'Inconclusive', 'kidded' => 'Kidded', 'aborted' => 'Aborted', 'closed' => 'Closed'];
+    public const OUTCOMES = ['open' => 'Pending', 'pregnant' => 'Confirmed pregnant', 'not_pregnant' => 'Not pregnant', 'inconclusive' => 'Inconclusive', 'kidded' => 'Kidded', 'aborted' => 'Aborted / pregnancy loss', 'closed' => 'Closed'];
 
     public function checks()
     {
@@ -28,6 +28,23 @@ class Mating extends Model
     protected static function booted(): void
     {
         static::saved(fn (self $m) => \App\Support\KiddingAlert::sync($m));
+    }
+
+    /** D-161: the pregnancy status code (Kidding::PREGNANCY), derived from the mating; null when there is no pregnancy. */
+    public function pregnancyStatus(int $kiddingAlertDays): ?string
+    {
+        $alert = $this->alert($kiddingAlertDays);
+
+        return match (true) {
+            $this->status === 'kidded' => 'PCM',
+            $this->status === 'aborted' => 'PLS',
+            in_array($this->status, ['open', 'inconclusive'], true) => 'PSU',
+            $this->status === 'pregnant' && in_array($alert, ['kidding_imminent', 'edd_passed'], true) => 'KIP',
+            $this->status === 'pregnant' && $alert === 'kidding_soon' => 'NKP',
+            $this->status === 'pregnant' && $this->mated_on->diffInDays(now()) >= 90 => 'PMN',
+            $this->status === 'pregnant' => 'PCF',
+            default => null,
+        };
     }
 
     public function alert(int $kiddingAlertDays): ?string

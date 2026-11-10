@@ -131,6 +131,7 @@ final class Checkups
         $weights = WeightRecord::where('animal_id', $doe->id)->where('measured_on', '>=', $m->mated_on)->orderBy('measured_on')->get();
 
         return [
+            'matingId' => $m->id, 'matedOnIso' => $m->mated_on->toDateString(), // D-161: record the outcome from the goat page
             'matedOn' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'sire' => $m->sire?->farm_number,
             'day' => (int) $m->mated_on->diffInDays(now()->startOfDay()), 'gestation' => $gestation,
             'daysLeft' => $m->expected_kidding_on ? (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false) : null,

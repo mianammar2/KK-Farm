@@ -8,27 +8,44 @@ import type { Option, SharedProps } from '../types';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 import { useConfirm } from '../components/Confirm';
+import PregnancyOutcomeForm, { type OutcomeOptions } from '../components/PregnancyOutcomeForm';
+import { LibIcon } from '../components/ui';
+import ReproKpiTiles from '../components/ReproKpis';
 
 type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null };
 type MatingRow = {
     id: number; status: string; outcome: string; method: string; heat: string | null; cycle: number | null; handler: string | null; notes: string | null;
     alert: 'check_overdue' | 'recheck_overdue' | 'recheck_due' | 'edd_passed' | 'kidding_soon' | null;
     dam: { id: string; number: string; name: string | null; coat: string }; sire: { id: string; number: string; name: string | null } | null;
-    mated: string; expected: string | null; checkDue: string | null; days: number | null; progress: number; active: boolean; checks: Check[];
+    mated: string; matedIso: string; pregnancy: string | null; expected: string | null; checkDue: string | null; days: number | null; progress: number; active: boolean; checks: Check[];
 };
-type KiddingRow = { id: number; goatId: string; dam: string; on: string; alive: number; stillborn: number; total: number; litter: string; assisted: string; attendant: string; notes: string | null; kids: Array<{ id: string; number: string }> };
+type KiddingRow = {
+    id: number; goatId: string; dam: string; on: string; alive: number; stillborn: number; total: number; litter: string; assisted: string; attendant: string; notes: string | null;
+    kids: Array<{ id: string; number: string; sex: string; weak: boolean }>;
+    // D-161
+    outcome: string | null; method: string | null; mother: string | null; premature: boolean; gestation: number | null; weak: number;
+    liveMale: number | null; liveFemale: number | null; stillMale: number | null; stillFemale: number | null;
+    cause: string | null; diagnosis: string | null; vet: string | null; followUp: string | null; complications: string | null;
+};
+type Kpis = { events: number; deliveries: number; abortions: number; stillborn: number; live: number; kiddingRate: number | null; lossRate: number | null; recovery: number | null };
 type Due = { id: string; number: string; name: string | null; coat: string; sex: string; dam: string | null; age: number; target: string; penId: number | null; state: 'due' | 'soon' | 'postponed'; postponedTo: string | null };
 type Props = {
-    matings: MatingRow[]; kiddings: KiddingRow[]; weaning: Due[];
+    matings: MatingRow[]; kiddings: KiddingRow[]; weaning: Due[]; kpis: Kpis;
     weaned: Array<{ id: number; kidId: string; kid: string; on: string; age: number | null; weight: number | null; method: string | null; by: string }>;
     performance: Array<{ id: string; number: string; name: string | null; kiddings: number; alive: number; stillborn: number; litter: number }>;
     focus: { id: string; number: string; tree: PedigreeNode } | null; pairCheck: { shared: number; sire: string; dam: string } | null;
     does: Option[]; bucks: Option[]; goats: Option[]; pens: Array<{ id: number; name: string }>;
     settings: { gestation: number; check: number; alert: number; weaning: number };
-    options: { methods: Record<string, string>; checkMethods: Record<string, string>; results: Record<string, string>; assisted: Record<string, string>; weanMethods: Record<string, string> };
+    options: { methods: Record<string, string>; checkMethods: Record<string, string>; results: Record<string, string>; assisted: Record<string, string>; weanMethods: Record<string, string>; pregnancy: Record<string, string> } & OutcomeOptions;
 };
 
 const label = (o: Option) => `${o.farm_number}${o.name ? ` · ${o.name}` : ''}`;
+/** D-161: pregnancy status colours. */
+const PREG_CLASS: Record<string, string> = {
+    PSU: 'bg-watch-100 text-watch-700', PCF: 'bg-manganese-100 text-manganese-600', PMN: 'bg-manganese-100 text-manganese-600', NKP: 'bg-treat-100 text-treat-700',
+    KIP: 'bg-crit-100 text-crit-700', PCM: 'bg-ok-100 text-ok-700', PLS: 'bg-crit-100 text-crit-700',
+};
+
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const ALERT: Record<NonNullable<MatingRow['alert']>, { label: string; className: string }> = {
     check_overdue: { label: 'Check overdue', className: 'bg-crit-100 text-crit-700' },
@@ -41,7 +58,7 @@ const OUTCOME_CLASS: Record<string, string> = { open: 'bg-cobalt-100 text-cobalt
 
 /** D-075: workbook "Breeding", "Pregnancy Checks", "Kidding" and "Weaning". */
 export default function Breeding(props: Props) {
-    const { matings, kiddings, weaning, weaned, performance, focus, goats, settings } = props;
+    const { matings, kiddings, weaning, weaned, performance, focus, goats, settings, kpis, options } = props;
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useState('cycle');
     const [adding, setAdding] = useState(false); // D-127
@@ -61,6 +78,7 @@ export default function Breeding(props: Props) {
                 <Stat label={`Kidding in ${settings.alert} days`} value={active.filter((m) => m.alert === 'kidding_soon' || m.alert === 'edd_passed').length} tone={active.some((m) => m.alert === 'edd_passed') ? 'alert' : undefined} note={active.some((m) => m.alert === 'edd_passed') ? 'Some past the due date' : undefined} />
                 <Stat label="Due for weaning" value={due.length} tone={due.length ? 'alert' : undefined} />
             </StatRow>
+            {kpis.events ? <div className="mb-4"><ReproKpiTiles k={kpis} /></div> : null}
             <Tabs value={tab} onChange={setTab} tabs={[
                 { id: 'cycle', label: 'Breeding cycle', count: active.length },
                 { id: 'kidding', label: 'Kidding', count: kiddings.length },
@@ -80,18 +98,22 @@ export default function Breeding(props: Props) {
             ) : null}
 
             {tab === 'kidding' ? (
-                <Panel title="Kiddings" description="One birth event per doe. Each live kid is registered and linked to it." flush>
+                <Panel title="Kidding & Pregnancy Outcomes" description="One outcome per pregnancy: delivery, stillbirth or loss. Each live kid is registered and linked to it." flush>
                     {kiddings.length ? (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[46rem] text-sm">
-                                <thead className="text-left text-ink-soft"><tr>{['Date', 'Dam', 'Litter', 'Alive', 'Stillborn', 'Assisted', 'Attendant', 'Kids registered'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
+                            <table className="w-full min-w-[60rem] text-sm">
+                                <thead className="text-left text-ink-soft"><tr>{['Date', 'Dam', 'Outcome', 'Litter', 'Alive', 'Stillborn', 'Delivery', 'Mother', 'Kids registered'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
                                 <tbody className="divide-y divide-rule">
                                     {kiddings.map((k) => (
                                         <tr key={k.id}>
                                             <td className="px-3 py-2">{k.on}</td>
                                             <td className="px-3 py-2"><Link href={`/goats/${k.goatId}`} className="font-semibold text-cobalt-800 hover:underline">{k.dam}</Link></td>
-                                            <td className="px-3 py-2">{k.litter}</td><td className="px-3 py-2">{k.alive}</td><td className="px-3 py-2">{k.stillborn || '—'}</td>
-                                            <td className="px-3 py-2">{k.assisted}</td><td className="px-3 py-2 text-ink-soft">{k.attendant}</td>
+                                            <td className="px-3 py-2">{k.outcome ? <Chip className={options.losses.includes(k.outcome) || k.outcome === 'STB' ? 'bg-crit-100 text-crit-700' : 'bg-ok-100 text-ok-700'}>{options.outcomes[k.outcome]} <span className="opacity-60">{k.outcome}</span></Chip> : '—'}{k.premature ? <span className="ml-1 text-xs text-treat-700">premature</span> : null}{k.cause ? <div className="text-xs text-ink-soft">Cause: {k.cause}</div> : null}</td>
+                                            <td className="px-3 py-2">{k.litter}{k.gestation ? <div className="text-xs text-ink-soft">day {k.gestation}</div> : null}</td>
+                                            <td className="px-3 py-2">{k.alive}{k.liveMale !== null || k.liveFemale !== null ? <div className="text-xs text-ink-soft">{k.liveFemale ?? 0}♀ {k.liveMale ?? 0}♂{k.weak ? ` · ${k.weak} weak` : ''}</div> : null}</td>
+                                            <td className="px-3 py-2">{k.stillborn || '—'}{k.stillMale || k.stillFemale ? <div className="text-xs text-ink-soft">{k.stillFemale ?? 0}♀ {k.stillMale ?? 0}♂</div> : null}</td>
+                                            <td className="px-3 py-2">{k.method ? options.deliveryMethods[k.method] : k.assisted}<div className="text-xs text-ink-soft">{k.attendant}</div></td>
+                                            <td className="px-3 py-2">{k.mother ? options.mother[k.mother] : '—'}{k.followUp ? <div className="text-xs text-ink-soft">Follow-up {k.followUp}</div> : null}</td>
                                             <td className="px-3 py-2">{k.kids.length ? k.kids.map((kid) => <Link key={kid.id} href={`/goats/${kid.id}`} className="mr-2 font-mono text-cobalt-800 hover:underline">{kid.number}</Link>) : <span className="text-ink-faint">{k.alive ? `${k.alive} not linked` : '—'}</span>}</td>
                                         </tr>
                                     ))}
@@ -154,7 +176,8 @@ function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; i
                 {m.status === 'pregnant' && m.expected ? <div className="text-right text-sm"><div className="font-semibold text-cobalt-900">{m.expected}</div><div className="text-ink-soft">{(m.days ?? 0) < 0 ? `${-(m.days ?? 0)} days over` : `in ${m.days} days`}</div></div> : null}
                 <div className="flex items-center gap-1.5">
                     {m.alert ? <Chip className={ALERT[m.alert].className}><AlertTriangle size={12} aria-hidden />{ALERT[m.alert].label}</Chip> : null}
-                    <Chip className={OUTCOME_CLASS[m.status] ?? 'bg-glaze text-ink-soft'}>{m.outcome}</Chip>
+                    {m.pregnancy ? <Chip className={PREG_CLASS[m.pregnancy] ?? 'bg-glaze text-ink-soft'}><LibIcon name={m.pregnancy === 'PLS' ? 'ic-sick' : m.pregnancy === 'PCM' ? 'ic-kidding' : 'ic-pregnant'} size={14} />{options.pregnancy[m.pregnancy]} <span className="opacity-60">{m.pregnancy}</span></Chip>
+                        : <Chip className={OUTCOME_CLASS[m.status] ?? 'bg-glaze text-ink-soft'}>{m.outcome}</Chip>}
                     <ChevronDown size={16} className={cx('text-ink-faint transition-transform', open && 'rotate-180')} aria-hidden />
                 </div>
             </button>
@@ -168,12 +191,12 @@ function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; i
                     {m.active ? (
                         <div className="flex flex-wrap gap-2">
                             {isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'check' ? 'none' : 'check')}>Pregnancy check</Button> : null}
-                            <Button onClick={() => setMode(mode === 'kidding' ? 'none' : 'kidding')}>Record kidding</Button>
+                            <Button onClick={() => setMode(mode === 'kidding' ? 'none' : 'kidding')}><LibIcon name="ic-kidding" size={18} /> Pregnancy Outcome</Button>
                             {canClose ? <Button variant="quiet" onClick={async () => { if (await ask({ title: 'Close this mating?', message: 'It will be closed without a kidding.', confirm: 'Yes, close mating', danger: false })) router.post(`/breeding/matings/${m.id}/close`, {}, { preserveScroll: true }); }}>Close mating</Button> : null}
                         </div>
                     ) : null}
                     {mode === 'check' ? <CheckForm m={m} options={options} onDone={() => setMode('none')} /> : null}
-                    {mode === 'kidding' ? <KiddingForm m={m} options={options} onDone={() => setMode('none')} /> : null}
+                    {mode === 'kidding' ? <PregnancyOutcomeForm matingId={m.id} damNumber={m.dam.number} matedOn={m.matedIso} options={options} onDone={() => setMode('none')} /> : null}
                     {m.status === 'open' && !isVet ? <p className="text-xs text-ink-faint">Pregnancy checks are due {settings.check} days after mating.</p> : null}
                 </div>
             ) : null}
@@ -193,28 +216,6 @@ function CheckForm({ m, options, onDone }: { m: MatingRow; options: Props['optio
             {form.data.result === 'inconclusive' ? <Field label="Recheck on" error={e.next_check_on}><input type="date" className="field" value={form.data.next_check_on} onChange={(x) => form.setData('next_check_on', x.target.value)} /></Field> : null}
             <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
             <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save check</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
-        </form>
-    );
-}
-
-function KiddingForm({ m, options, onDone }: { m: MatingRow; options: Props['options']; onDone: () => void }) {
-    const form = useForm({ alive: '1', stillborn: '0', females: '1', kidded_on: today(), assisted: 'no', attendant: '', notes: '' });
-    const e = form.errors as Record<string, string>;
-    const total = Number(form.data.alive || 0) + Number(form.data.stillborn || 0);
-    return (
-        <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/breeding/matings/${m.id}/kidding`, { preserveScroll: true, onSuccess: onDone }); }} className="grid gap-3 rounded-tile bg-glaze p-3 sm:grid-cols-3">
-            <Field label="Born alive" error={e.alive}><input type="number" min={0} max={6} className="field" value={form.data.alive} onChange={(x) => form.setData('alive', x.target.value)} /></Field>
-            <Field label="Of them female" error={e.females}><input type="number" min={0} max={6} className="field" value={form.data.females} onChange={(x) => form.setData('females', x.target.value)} /></Field>
-            <Field label="Stillborn" error={e.stillborn}><input type="number" min={0} max={6} className="field" value={form.data.stillborn} onChange={(x) => form.setData('stillborn', x.target.value)} /></Field>
-            <Field label="Kidding date" error={e.kidded_on}><input type="date" max={today()} className="field" value={form.data.kidded_on} onChange={(x) => form.setData('kidded_on', x.target.value)} /></Field>
-            <Field label="Assisted birth" error={e.assisted}><select className="field" value={form.data.assisted} onChange={(x) => form.setData('assisted', x.target.value)}>{Object.entries(options.assisted).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="Attendant" error={e.attendant} hint="Leave empty for yourself"><input className="field" value={form.data.attendant} onChange={(x) => form.setData('attendant', x.target.value)} /></Field>
-            <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
-            <div className="flex items-end gap-2 sm:col-span-2">
-                <Button type="submit" disabled={form.processing}>Save and register {form.data.alive} kid{form.data.alive === '1' ? '' : 's'}</Button>
-                <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
-                <span className="text-sm text-ink-soft">{total ? `${['', 'Single', 'Twin', 'Triplet', 'Quadruplet'][total] ?? '5+'} · each kid goes into the mother's pen` : ''}</span>
-            </div>
         </form>
     );
 }

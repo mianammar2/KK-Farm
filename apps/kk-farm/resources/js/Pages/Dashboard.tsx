@@ -15,6 +15,7 @@ import { FarmStat, FarmStatRow } from '../components/FarmStats';
 import FeedScene from '../components/FeedScene';
 import { AgeBadge, BreedBadge, symbolFor } from '../components/GoatBadges';
 import { ClassPic } from '../components/ArtIcon';
+import ReproKpiTiles, { type ReproKpis } from '../components/ReproKpis';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -27,6 +28,7 @@ type Props = { pensSummary: PensSummary | null; requirement: FeedSummary | null;
     attention: Array<GoatRef & { title: string | null; on: string | null }>;
     missing: Array<GoatRef & { missing: string[]; source: string }>;
     kiddings: Array<{ goatId: string; number: string; name: string | null; on: string; days: number }>;
+    repro: ReproKpis | null;
     breeds: Array<{ name: string; value: number }>;
     growth: Array<{ month: string; kg: number }>;
     finance: Array<{ month: string; in: number; out: number }> | null;
@@ -61,7 +63,7 @@ function ShowMore<T>({ items, render, empty, limit = 5 }: { items: T[]; render: 
  * D-070: the dashboard shows what needs a decision today. Headline numbers use the same rules as the categories,
  * empty boxes and charts with too little data are left out, and the per-goat herd wall lives on the Sheds page.
  */
-export default function Dashboard({ pensSummary, requirement, stats, feeding, herd, herdAge, attention, missing, kiddings, breeds, growth, finance }: Props) {
+export default function Dashboard({ pensSummary, requirement, stats, feeding, herd, herdAge, attention, missing, kiddings, breeds, growth, finance, repro }: Props) {
     const { auth } = usePage<SharedProps>().props;
     // 30 s keeps the dashboard current without keeping the gun's processor busy.
     usePoll(LIVE_MS, { only: ['pensSummary', 'herdAge', 'requirement', 'stats', 'herd', 'feeding', 'attention', 'missing', 'kiddings'] });
@@ -153,6 +155,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                     {growthChart && showCharts ? <Panel title="Average weight" description="All weighings, by month"><div className="kk-graph"><Chart option={growthChart} label="Average herd weight by month" height={220} onSelect={() => router.visit('/weights')} /></div></Panel> : null}
                     {breedChart ? <Panel title="Herd by Breed" description="Goats on the farm · tap a breed to see them"><HerdByBreed breeds={breedChart} /></Panel> : null}
                     {financeChart && showCharts ? <Panel title="Income and spending" description="Last 6 months"><div className="kk-graph"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></div></Panel> : null}
+                    {repro?.events ? <Panel title="Reproduction" description="Pregnancy outcomes so far" actions={<Link href="/breeding" className="text-sm font-semibold text-turq-800 hover:underline">Breeding</Link>}><ReproKpiTiles k={repro} /></Panel> : null}
                     {kiddings.length ? (
                         <Panel title="Next kiddings" flush description="Mating date + gestation days">
                             {/* D-140: the barn's kidding calendar: a tear-off date, the doe's ear tag and a countdown with a newborn kid. */}
