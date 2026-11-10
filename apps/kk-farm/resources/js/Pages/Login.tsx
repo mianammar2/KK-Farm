@@ -25,7 +25,7 @@ export default function Login({ demoLogin }: { demoLogin: boolean }) {
             <Head title="Sign in" />
             {/* D-068: brand panel with the KK Farms logo on its own cream background. */}
             <div className="relative hidden place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,var(--color-tile),var(--color-glaze)_60%,var(--color-cobalt-100))] lg:grid" aria-hidden>
-                <img src="/brand/kk-farms-logo.png" alt="" className="w-[min(70%,28rem)] drop-shadow-sm" decoding="async" />
+                <img src="/brand/kk-farms-logo-v2.png" alt="" className="w-[min(70%,28rem)] drop-shadow-sm" decoding="async" />
                 <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-r from-cobalt-800 via-cobalt-700 to-turq-600" />
             </div>
             <main className="flex flex-col justify-center bg-tile px-6 py-10 sm:px-10">
