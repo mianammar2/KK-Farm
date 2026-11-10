@@ -26,6 +26,10 @@ class PregnancyAlerts
             'animal_id' => $dam->id, 'pen_id' => $dam->pen_id, 'department_id' => $dept, 'notes' => $notes,
         ]);
         $what = Kidding::OUTCOMES[$k->outcome] ?? 'Pregnancy outcome';
+        // D-162: every delivery or loss: watch her daily for the monitoring days.
+        $until = $k->kidded_on->copy()->addDays(Kidding::MONITOR_DAYS);
+        $task("Monitor {$dam->farm_number} for ".Kidding::MONITOR_DAYS." days after {$what}", 'observation', 'high', $care,
+            'Check her every day until '.$until->format('j M Y').': temperature, appetite, discharge, udder and milk, and that the kids suckle. Report anything unusual to the vet.', $until);
 
         if (in_array($k->outcome, Kidding::LOSSES, true)) {
             $task("Vet review: {$what} – {$dam->farm_number}", 'health', 'high', $vet,

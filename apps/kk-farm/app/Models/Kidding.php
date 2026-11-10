@@ -37,6 +37,9 @@ class Kidding extends Model
     /** Mother statuses counted as a normal recovery on the dashboard. */
     public const RECOVERED = ['HNR', 'LCT'];
 
+    /** D-162: days a doe stays under monitoring after a delivery or a pregnancy loss. */
+    public const MONITOR_DAYS = 3;
+
     /** Pregnancy status of a mating (derived from it, never typed in). */
     public const PREGNANCY = [
         'PSU' => 'Pregnancy Suspected', 'PCF' => 'Pregnancy Confirmed', 'PMN' => 'Pregnancy Monitoring', 'NKP' => 'Near Kidding',

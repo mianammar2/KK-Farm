@@ -193,7 +193,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                             <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} withLabel />{g.age ?? <span className="text-ink-faint">Unknown</span>}</span></td>
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
-                                            <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} /></div></td>
+                                            <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} /></div></td>
                                             <td className="text-sm text-ink-soft"><span className="flex items-center gap-1.5">{g.tag ? <span className="font-mono">{g.tag}</span> : 'No tag'}{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}</span></td>
                                         </tr>
                                     );
@@ -214,7 +214,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                         <div className="flex flex-wrap items-center gap-1.5"><span className="shrink-0 font-mono font-semibold text-cobalt-900">{g.number}</span><GoatBadges breed={g.breed} stage={g.stage} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
                                         <div className="truncate text-xs text-ink-soft">{g.breed} · {g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)} · ` : ''}{g.age ?? 'age unknown'}{g.teeth ? ` · ${TEETH_SHORT[g.teeth] ?? g.teeth} teeth` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
-                                        <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>
                             );

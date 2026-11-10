@@ -112,7 +112,15 @@ export function HealthChip({ health }: { health: Health }) {
     return <Chip className={HEALTH[health].chip}><LibIcon name={HEALTH[health].art} size={14} />{HEALTH[health].label}</Chip>;
 }
 
-export function ReproChip({ repro }: { repro?: string | null }) {
+export function ReproChip({ repro, until }: { repro?: string | null; until?: string | null }) {
+    if (repro === 'monitoring') {
+        // D-162: 3 days of monitoring after a delivery or a pregnancy loss
+        return (
+            <Chip className="bg-watch-100 text-watch-700">
+                <LibIcon name="ic-recovery" size={14} /> Monitoring{until ? ` until ${until}` : ''}
+            </Chip>
+        );
+    }
     if (repro === 'pregnant') {
         return (
             <Chip className="bg-manganese-100 text-manganese-600">

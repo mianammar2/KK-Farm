@@ -15,7 +15,7 @@ final class HerdStats
     public const LABELS = [
         'total' => 'Total Goats', 'breeding_males' => 'Breeding Male Goats', 'breeding_females' => 'Breeding Female Goats',
         'pregnant' => 'Pregnant Females', 'ready' => 'Ready for Breeding', 'male_kids' => 'Male Kids', 'female_kids' => 'Female Kids',
-        'growing' => 'Growing Goats', 'lactating' => 'Lactating Females', 'sick' => 'Sick Goats', 'treatment' => 'Goats Under Treatment',
+        'growing' => 'Growing Goats', 'monitoring' => 'After Kidding Monitoring', 'lactating' => 'Lactating Females', 'sick' => 'Sick Goats', 'treatment' => 'Goats Under Treatment',
         'for_sale' => 'Goats Ready for Sale',
         // D-118: the dashboard's herd by age (kid, grower, adult, from the birth date) and gender.
         'kid' => 'Kids', 'grower' => 'Growers', 'adult' => 'Adults', 'age_unknown' => 'Age Not Known', 'female' => 'Females', 'male' => 'Males',
@@ -48,6 +48,7 @@ final class HerdStats
             'male_kids' => $cat === 'male_kid',
             'female_kids' => $cat === 'female_kid',
             'growing' => in_array($cat, ['growing_male', 'growing_female', 'replacement_male', 'replacement_female'], true),
+            'monitoring' => $female && $a->isMonitored(), // D-162
             'lactating' => $female && (in_array($a->repro_status, ['lactating', 'nursing'], true) || $a->repro_state === 'lactating'),
             'sick' => $flag === 'sick',
             'treatment' => in_array($flag, ['sick', 'quarantine'], true),

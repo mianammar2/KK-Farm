@@ -113,7 +113,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                     <h2 className="font-mono text-xl font-bold text-cobalt-900">{goat.number}</h2>
                     <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">{goat.name ? <span>{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName /><span>·</span><AgeBadge stage={goat.stage} withLabel /><span>{goat.age}</span></p>
                     <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} KG` : ''}</p>
-                    <div className="mt-1 flex flex-wrap gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} />{goat.pregnancyDay ? <span className="rounded-[4px] bg-manganese-100 px-1.5 py-0.5 text-xs font-semibold text-manganese-600">Day {goat.pregnancyDay} of pregnancy</span> : null}</div>
+                    <div className="mt-1 flex flex-wrap gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} until={goat.monitorUntil} />{goat.pregnancyDay ? <span className="rounded-[4px] bg-manganese-100 px-1.5 py-0.5 text-xs font-semibold text-manganese-600">Day {goat.pregnancyDay} of pregnancy</span> : null}</div>
                     {goat.withdrawal ? (
                         <p role="alert" className="mt-2 rounded-tile bg-crit-100 px-2.5 py-1.5 text-sm font-semibold text-crit-700">
                             Under withdrawal{goat.withdrawal.meat ? ` · no sale before ${goat.withdrawal.meat}` : ''}{goat.withdrawal.milk ? ` · no milk before ${goat.withdrawal.milk}` : ''}

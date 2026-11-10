@@ -103,4 +103,30 @@ class PregnancyOutcomeTest extends TestCase
         $this->actingAs($this->user())->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p
             ->where('pregnancy.matingId', $this->mating->id)->where('can.breeding', true)->has('outcomeOptions.mother', 8));
     }
+
+    public function test_after_a_delivery_or_loss_the_doe_is_monitored_for_3_days_then_lactating_or_open(): void
+    {
+        $this->doe->update(['repro_status' => 'pregnant', 'repro_state' => 'pregnant']);
+        $this->actingAs($this->user())->post("/breeding/matings/{$this->mating->id}/kidding", ['outcome' => 'NKD', 'kids' => [['sex' => 'female']], 'kidded_on' => now()->toDateString()])->assertSessionHasNoErrors();
+        $doe = $this->doe->fresh();
+        $this->assertSame(['monitoring', 'lactating', 'NKD'], [$doe->reproNow(), $doe->repro_status, $doe->monitor_reason]);
+        $this->assertSame(now()->addDays(3)->toDateString(), $doe->monitor_until->toDateString());
+        $this->assertTrue(Task::where('title', 'like', 'Monitor TD-1 for 3 days%')->whereDate('due_on', now()->addDays(3))->exists());
+        $this->actingAs($this->user())->get("/goats/{$doe->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('goat.repro', 'monitoring'));
+
+        $this->travel(3)->days();
+        $this->assertSame('monitoring', $doe->fresh()->reproNow()); // the 3rd day is still monitored
+        $this->travel(1)->days();
+        $this->assertSame('lactating', $doe->fresh()->reproNow());
+    }
+
+    public function test_after_an_abortion_the_doe_is_open_once_monitoring_ends(): void
+    {
+        $this->doe->update(['repro_status' => 'pregnant', 'repro_state' => 'pregnant']);
+        $this->actingAs($this->user())->post("/breeding/matings/{$this->mating->id}/kidding", ['outcome' => 'EEL', 'kids' => []])->assertSessionHasNoErrors();
+        $doe = $this->doe->fresh();
+        $this->assertSame(['monitoring', 'open'], [$doe->reproNow(), $doe->repro_status]);
+        $this->travel(4)->days();
+        $this->assertNull($doe->fresh()->reproNow());
+    }
 }

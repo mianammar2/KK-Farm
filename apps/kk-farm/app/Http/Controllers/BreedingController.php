@@ -266,6 +266,11 @@ class BreedingController extends Controller
                 'vet_officer' => $data['vet_officer'] ?? null, 'follow_up_on' => $data['follow_up_on'] ?? null,
             ]);
             $mating->update(['status' => $loss ? 'aborted' : 'kidded']);
+            // D-162: she is no longer pregnant: 3 days of monitoring, then lactating (delivery) or open (loss).
+            $dam->update([
+                'repro_status' => $loss ? 'open' : 'lactating', 'repro_state' => $loss ? null : 'lactating',
+                'monitor_until' => $on->copy()->addDays(Kidding::MONITOR_DAYS)->toDateString(), 'monitor_reason' => $outcome,
+            ]);
 
             $label = Kidding::OUTCOMES[$outcome];
             $summary = $loss ? $label.($data['abortion_cause'] ?? null ? " · suspected cause: {$data['abortion_cause']}" : '')

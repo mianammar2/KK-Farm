@@ -11,7 +11,7 @@ class Animal extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
+    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'monitor_until' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
 
     /**
      * Age category, worked out from the birth date today so it moves on by itself as the goat ages (D-067).
@@ -144,9 +144,22 @@ class Animal extends Model
             'penId' => $this->pen_id,
             'status' => $this->status,
             'health' => $this->health_status,
-            'repro' => $this->repro_state,
+            'repro' => $this->reproNow(), // D-162: 'monitoring' for 3 days after a delivery or loss
+            'monitorUntil' => $this->isMonitored() ? $this->monitor_until->format('j M') : null,
             'weight' => $this->latestWeight?->weight_kg,
             'photo' => $this->photos->firstWhere('is_profile', true)?->id,
         ];
+    }
+
+    /** D-162: under monitoring after a delivery or a pregnancy loss (until monitor_until, inclusive). */
+    public function isMonitored(): bool
+    {
+        return $this->monitor_until !== null && $this->monitor_until->greaterThanOrEqualTo(now()->startOfDay());
+    }
+
+    /** D-162: the reproductive state to show: 'monitoring' while monitored, then the stored one. */
+    public function reproNow(): ?string
+    {
+        return $this->isMonitored() ? 'monitoring' : $this->repro_state;
     }
 }

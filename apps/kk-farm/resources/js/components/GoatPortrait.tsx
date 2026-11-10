@@ -3,6 +3,7 @@
  * Pregnant Doe (PGD), Lactating Doe (LCT), Kid (KID), Grower (GRW), Breeding Male (BKM), Breeding Female (BDF).
  */
 export function portraitArt(sex?: string, stage?: string | null, repro?: string | null) {
+    if (repro === 'monitoring') return 'cls-mat'; // D-162: just kidded, under monitoring
     if (repro === 'pregnant' || repro === 'expected_kidding') return 'cls-pgd';
     if (repro === 'lactating' || repro === 'nursing') return 'cls-lct';
     if (stage === 'kid') return 'cls-kid';

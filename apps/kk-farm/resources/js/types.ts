@@ -16,6 +16,7 @@ export type GoatCard = {
     status?: string;
     health: Health;
     repro?: string | null;
+    monitorUntil?: string | null; // D-162
     weight?: number | null;
     photo?: number | null;
     tag?: string | null;
