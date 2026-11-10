@@ -33,7 +33,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports', 'Farm Reports'),
         S('Configuration', '/settings#users', 'Users & Roles'),
     ] },
-    { key: 'livestock', no: '02', label: 'Livestock', art: 'mod-livestock', modules: ['goats'], linked: ['housing', 'breeding', 'maternity', 'veterinary', 'growth', 'sales'], sections: [
+    { key: 'livestock', no: '02', label: 'Livestock Registry', art: 'mod-livestock', modules: ['goats'], linked: ['housing', 'breeding', 'maternity', 'veterinary', 'growth', 'sales'], sections: [
         S('Overview', '/goats', 'All Goats'),
         S('Operations', '/goats/register', 'Register Purchased Goat'),
         S('Operations', '/intake', 'Intake & Quarantine'),
@@ -51,7 +51,7 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings#ages', 'Age Groups'),
         S('Configuration', '/settings#fields', 'Register Fields'),
     ] },
-    { key: 'breeding', no: '03', label: 'Breeding', art: 'mod-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
+    { key: 'breeding', no: '03', label: 'Breeding & Genetics', art: 'mod-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
         S('Operations', '/breeding?tab=heat', 'Heat Detection'),
         S('Operations', '/breeding?tab=cycle', 'Mating, Pregnancy & Ultrasound'),
         S('Records', '/breeding?tab=calendar', 'Pregnancy Calendar'),
@@ -61,7 +61,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports#sires', 'Buck Performance'),
         S('Configuration', '/breeding?tab=settings', 'Gestation & Check Days'),
     ] },
-    { key: 'maternity', no: '04', label: 'Maternity', art: 'ic-kidding', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
+    { key: 'maternity', no: '04', label: 'Maternity & Kid Care', art: 'ic-kidding', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
         S('Overview', '/breeding?tab=calendar', 'Upcoming Deliveries'),
         S('Operations', '/breeding?tab=kidding', 'Kidding & Pregnancy Outcomes'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
@@ -72,7 +72,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/breeding?tab=performance', 'Kidding Rate & Litter Size'),
         S('Configuration', '/breeding?tab=settings', 'Weaning & Kidding Alerts'),
     ] },
-    { key: 'veterinary', no: '05', label: 'Veterinary', art: 'mod-health', modules: ['health'], linked: ['livestock', 'maternity', 'inventory', 'operations'], sections: [
+    { key: 'veterinary', no: '05', label: 'Veterinary & Biosecurity', art: 'mod-health', modules: ['health'], linked: ['livestock', 'maternity', 'inventory', 'operations'], sections: [
         S('Operations', '/health?tab=checkups', 'Daily Health & Checkups'),
         S('Operations', '/health?tab=cases', 'Medical Cases'),
         S('Operations', '/health?tab=reports', 'Reported Concerns'),
@@ -87,7 +87,7 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/health?tab=diseases', 'Disease Master'),
         S('Configuration', '/health?tab=store', 'Medicines & Vaccines'),
     ] },
-    { key: 'feeding', no: '06', label: 'Feeding', art: 'mod-feeding', modules: ['feeding'], linked: ['housing', 'growth', 'inventory', 'accounting'], sections: [
+    { key: 'feeding', no: '06', label: 'Feeding & Nutrition', art: 'mod-feeding', modules: ['feeding'], linked: ['housing', 'growth', 'inventory', 'accounting'], sections: [
         S('Operations', '/feeding?tab=now', 'Daily Feeding'),
         S('Operations', '/feeding?tab=requirement', "Today's Requirement"),
         S('Operations', '/feeding?tab=tmr', 'TMR Mixing Batches'),
@@ -100,20 +100,20 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/feeding?tab=store', 'Feed Master'),
         S('Configuration', '/feeding?tab=times', 'Feeding Times'),
     ] },
-    { key: 'housing', no: '07', label: 'Housing', art: 'mod-housing', modules: ['sheds'], linked: ['livestock', 'feeding', 'maternity', 'maintenance'], sections: [
+    { key: 'housing', no: '07', label: 'Housing & Pens', art: 'mod-housing', modules: ['sheds'], linked: ['livestock', 'feeding', 'maternity', 'maintenance'], sections: [
         S('Overview', '/sheds', 'Farms, Units & Pens'),
         S('Operations', '/movements', 'Animal Movements'),
         S('Records', '/goats?show=no_pen', 'Goats Without a Pen'),
         S('Reporting', '/', 'Pen Occupancy'),
         S('Configuration', '/sheds', 'Unit & Pen Setup'),
     ] },
-    { key: 'growth', no: '08', label: 'Growth', art: 'mod-growth', modules: ['weights'], linked: ['livestock', 'feeding', 'sales'], sections: [
+    { key: 'growth', no: '08', label: 'Growth & Performance', art: 'mod-growth', modules: ['weights'], linked: ['livestock', 'feeding', 'sales'], sections: [
         S('Operations', '/weights', 'Record Weights'),
         S('Records', '/goats?show=no_weight', 'No Weight Yet'),
         S('Reporting', '/weights', 'Daily Gain (ADG)'),
         S('Configuration', '/settings#breeds', 'Breed Weight Lines'),
     ] },
-    { key: 'operations', no: '09', label: 'Operations', art: 'ic-active', modules: ['tasks'], linked: ['employees', 'dashboard', 'veterinary', 'feeding'], sections: [
+    { key: 'operations', no: '09', label: 'Farm Operations', art: 'ic-active', modules: ['tasks'], linked: ['employees', 'dashboard', 'veterinary', 'feeding'], sections: [
         S('Overview', '/operations?tab=checklists', "Today's Checklists"),
         S('Operations', '/tasks?tab=open', "Today's Tasks"),
         S('Operations', '/tasks?tab=mine', 'My Tasks'),
@@ -127,7 +127,7 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/operations?tab=templates', 'Checklist Setup'),
         S('Configuration', '/employees', 'Departments & Staff'),
     ] },
-    { key: 'inventory', no: '10', label: 'Inventory', art: 'mod-inventory', modules: ['inventory', 'feeding', 'health'], linked: ['feeding', 'veterinary', 'purchase', 'maintenance'], sections: [
+    { key: 'inventory', no: '10', label: 'Inventory & Stores', art: 'mod-inventory', modules: ['inventory', 'feeding', 'health'], linked: ['feeding', 'veterinary', 'purchase', 'maintenance'], sections: [
         S('Overview', '/inventory', 'All Stock'),
         S('Operations', '/inventory?tab=general', 'General Store'),
         S('Operations', '/feeding?tab=store', 'Feed Inventory'),
@@ -138,7 +138,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports#spending', 'Consumption & Spending'),
         S('Configuration', '/inventory?tab=general', 'Store Items'),
     ] },
-    { key: 'purchase', no: '11', label: 'Purchase', art: 'mod-procurement', modules: ['purchase', 'finance', 'goats'], linked: ['inventory', 'livestock', 'accounting'], sections: [
+    { key: 'purchase', no: '11', label: 'Purchase & Procurement', art: 'mod-procurement', modules: ['purchase', 'finance', 'goats'], linked: ['inventory', 'livestock', 'accounting'], sections: [
         S('Overview', '/purchase', 'Purchase Orders'),
         S('Operations', '/purchase', 'New Purchase Order'),
         S('Operations', '/goats/register', 'Goat Purchase'),
@@ -147,7 +147,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports#spending', 'Purchase Analysis'),
         S('Configuration', '/finance/books?tab=accounts', 'Purchase Accounts'),
     ] },
-    { key: 'sales', no: '12', label: 'Sales', art: 'mod-sales', modules: ['sales', 'value', 'finance'], linked: ['livestock', 'growth', 'accounting'], sections: [
+    { key: 'sales', no: '12', label: 'Sales & Livestock Trading', art: 'mod-sales', modules: ['sales', 'value', 'finance'], linked: ['livestock', 'growth', 'accounting'], sections: [
         S('Overview', '/sales', 'All Sales'),
         S('Operations', '/movements', 'Sell a Goat (Dispatch)'),
         S('Operations', '/sales', 'Sell Products'),
@@ -157,7 +157,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports#exits', 'Sales & Exits'),
         S('Configuration', '/value', 'Market Rates'),
     ] },
-    { key: 'accounting', no: '13', label: 'Accounting', art: 'mod-finance', modules: ['finance'], linked: ['sales', 'purchase', 'employees', 'reports'], sections: [
+    { key: 'accounting', no: '13', label: 'Accounting & Finance', art: 'mod-finance', modules: ['finance'], linked: ['sales', 'purchase', 'employees', 'reports'], sections: [
         S('Operations', '/finance', 'Income & Farm Expenses'),
         S('Operations', '/finance/books?tab=journal', 'Journal Entries'),
         S('Records', '/finance/books?tab=ledger', 'General Ledger'),
@@ -166,7 +166,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/finance/books?tab=balance', 'Balance Sheet'),
         S('Configuration', '/finance/books?tab=accounts', 'Chart of Accounts'),
     ] },
-    { key: 'employees', no: '14', label: 'Employees', art: 'mod-hr', modules: ['employees'], linked: ['operations', 'accounting'], sections: [
+    { key: 'employees', no: '14', label: 'Employees & Workforce', art: 'mod-hr', modules: ['employees'], linked: ['operations', 'accounting'], sections: [
         S('Overview', '/employees', 'Employees & Departments'),
         S('Operations', '/hr?tab=attendance', 'Attendance Register'),
         S('Operations', '/hr?tab=leave', 'Leave Requests'),
@@ -176,7 +176,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/tasks?tab=closed', 'Task Completion'),
         S('Configuration', '/settings#users', 'Users & Permissions'),
     ] },
-    { key: 'maintenance', no: '15', label: 'Maintenance', art: 'mod-assets', modules: ['maintenance', 'sensors'], linked: ['housing', 'operations', 'accounting', 'inventory'], sections: [
+    { key: 'maintenance', no: '15', label: 'Assets & Maintenance', art: 'mod-assets', modules: ['maintenance', 'sensors'], linked: ['housing', 'operations', 'accounting', 'inventory'], sections: [
         S('Overview', '/maintenance?tab=jobs', 'Open Jobs & Breakdowns'),
         S('Operations', '/maintenance?tab=due', 'Preventive Services Due'),
         S('Operations', '/sensors?tab=alerts', 'Sensor Alerts'),
@@ -187,13 +187,49 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/maintenance?tab=assets', 'Asset Categories & Intervals'),
         S('Configuration', '/sensors?tab=connect', 'Connect a Device'),
     ] },
-    { key: 'reports', no: '16', label: 'Reports', art: 'mod-reports', modules: ['reports'], linked: ['dashboard', 'accounting', 'breeding', 'veterinary'], sections: [
+    { key: 'reports', no: '16', label: 'Reports & Analytics', art: 'mod-reports', modules: ['reports'], linked: ['dashboard', 'accounting', 'breeding', 'veterinary'], sections: [
         S('Overview', '/reports', 'Reports & Analytics'),
         S('Operations', '/', 'CEO Dashboard'),
         S('Reporting', '/reports#herd', 'Livestock Reports'),
         S('Reporting', '/breeding?tab=performance', 'Breeding Reports'),
         S('Reporting', '/finance/books?tab=pl', 'Financial Reports'),
         S('Configuration', '/settings#access', 'Report Access'),
+    ] },
+    // D-184: V3.0 apps 17–21 (owner's blueprint). Each lists the screens that exist today; their own screens follow.
+    { key: 'dairy', no: '17', label: 'Dairy & Milk', art: 'ic-lactating', modules: ['milking'], linked: ['maternity', 'veterinary', 'feeding', 'sales'], sections: [
+        S('Overview', '/milking', 'Lactations & Milk Sessions'),
+        S('Operations', '/milking', 'Record Milking'),
+        S('Records', '/breeding?tab=kidding', 'Kiddings Starting Lactation'),
+        S('Reporting', '/milking', 'Yield per Doe'),
+        S('Configuration', '/milking', 'Milking Settings'),
+    ] },
+    { key: 'fattening', no: '18', label: 'Fattening & Meat', art: 'cls-ftn', modules: ['value'], linked: ['growth', 'feeding', 'sales', 'veterinary'], sections: [
+        S('Overview', '/value', 'Herd Value & Market Rates'),
+        S('Operations', '/weights', 'Weights & Daily Gain'),
+        S('Records', '/goats?show=for_sale', 'Sale & Fattening Goats'),
+        S('Reporting', '/value', 'Value vs Cost'),
+        S('Configuration', '/value', 'Market Rates'),
+    ] },
+    { key: 'welfare', no: '19', label: 'Animal Welfare', art: 'ic-healthy', modules: ['health'], linked: ['veterinary', 'housing', 'operations'], sections: [
+        S('Overview', '/health?tab=reports', 'Reported Concerns'),
+        S('Operations', '/health?tab=checkups', 'Daily Checks'),
+        S('Records', '/goats?show=attention', 'Goats Needing Attention'),
+        S('Reporting', '/health?tab=mortality', 'Mortality'),
+        S('Configuration', '/health?tab=diseases', 'Condition List'),
+    ] },
+    { key: 'environment', no: '20', label: 'Water & Climate', art: 'mod-assets', modules: ['sensors', 'maintenance'], linked: ['housing', 'maintenance', 'veterinary'], sections: [
+        S('Overview', '/sensors?tab=readings', 'Climate & Water Readings'),
+        S('Operations', '/sensors?tab=alerts', 'Environment Alerts'),
+        S('Records', '/maintenance?tab=assets', 'Pumps, Tanks & Fans'),
+        S('Reporting', '/sensors?tab=readings', 'Readings History'),
+        S('Configuration', '/sensors?tab=connect', 'Connect a Sensor'),
+    ] },
+    { key: 'quality', no: '21', label: 'Quality & Compliance', art: 'mod-biosecurity', modules: ['tasks'], linked: ['operations', 'veterinary', 'inventory', 'sales'], sections: [
+        S('Overview', '/operations?tab=incidents', 'Incidents'),
+        S('Operations', '/operations?tab=incidents', 'Report an Incident'),
+        S('Records', '/health?tab=withdrawal', 'Withdrawal Holds'),
+        S('Reporting', '/activity', 'Audit Trail'),
+        S('Configuration', '/operations?tab=templates', 'Checklists & SOPs'),
     ] },
     { key: 'settings', no: '', label: 'Settings', art: 'mod-settings', modules: ['settings'], linked: ['employees', 'housing', 'feeding', 'breeding'], sections: [
         S('Configuration', '/settings#breeds', 'Animal Master Data'),
