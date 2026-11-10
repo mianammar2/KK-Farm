@@ -37,7 +37,7 @@ function FeedSack({ sack, index }: { sack: Sack; index: number }) {
                 <span className="kk-icon-tile size-10!" aria-hidden><img src={`/icons/${green ? 'mod-growth' : ['mod-feeding', 'mod-inventory', 'mod-reports'][index] ?? 'mod-reports'}.png`} alt="" className="size-[86%] object-contain" /></span>
                 <span className="kk-sack-tag truncate">{sack.label}</span>
             </div>
-            <span className="kk-lcd self-start text-lg">{sack.value}</span>
+            <span className="kk-lcd self-start">{sack.value}</span>
             {sack.note ? <span className="text-[11px] leading-tight text-[#4d6356]">{sack.note}</span> : null}
         </div>
     );

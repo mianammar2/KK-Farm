@@ -2,7 +2,7 @@ import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react'
 import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { BarnRoof, EarTag, FigureLegend, GoatFigure } from '../components/FarmScene';
+import { BarnRoof, EarTag, FigureLegend, GoatFigure, useTen } from '../components/FarmScene';
 import { GoatBadges } from '../components/GoatBadges';
 import { Button, Chip, cx, Empty, Field, HealthChip, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
@@ -108,28 +108,7 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                                 </div>
                                 {shed.pens.length ? (
                                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-                                        {shed.pens.map((p) => {
-                                            const area = p.kind === 'open_area';
-                                            const shown = p.goats; // D-157: every goat
-                                            const full = p.capacity !== null && p.count > p.capacity;
-                                            return (
-                                                <div key={p.id} className={cx('kk-pen relative !p-0', area && 'kk-yard', selected === p.id && 'kk-pen-selected')}>
-                                                    <button type="button" aria-pressed={selected === p.id} onClick={() => setSelected(p.id)} className="block w-full px-2 pt-1.5 pb-2 pr-8 text-left">
-                                                        <span className="flex items-center justify-between gap-1">
-                                                            <span className="kk-pen-sign">{p.code}</span>
-                                                            <span className={cx('text-sm font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#022a1c]')}>{area ? 'Outdoor' : <>{p.count}{p.capacity ? <span className="text-xs font-semibold opacity-70">/{p.capacity}</span> : null}</>}</span>
-                                                        </span>
-                                                        <span className="mt-0.5 block truncate text-xs text-[#3d5446]">{p.purpose}</span>
-                                                        <span className="kk-herd" aria-hidden>
-                                                            {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={(i * 0.37) % 2.4} info={{ id: g.id, number: g.number, name: g.name, breed: g.breed, female: g.sex === 'female', stage: g.stage, health: g.health, pen: p.name }} />)}
-                                                            {p.goats.length > shown.length ? <span className="self-center text-xs font-bold text-[#3d5446]">+{p.goats.length - shown.length}</span> : null}
-                                                        </span>
-                                                        {!area ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
-                                                    </button>
-                                                    {canManage ? <button type="button" onClick={() => setEditing({ kind: 'pen', shed, pen: p })} aria-label={`Edit ${p.name}`} className="absolute right-1 top-1 rounded-md p-1.5 text-[#12663f] hover:bg-white/70"><Pencil className="size-4" aria-hidden /></button> : null}
-                                                </div>
-                                            );
-                                        })}
+                                        {shed.pens.map((p) => <ShedPenCard key={p.id} p={p} selected={selected === p.id} onSelect={() => setSelected(p.id)} onEdit={canManage ? () => setEditing({ kind: 'pen', shed, pen: p }) : undefined} />)}
                                     </div>
                                 ) : <p className="px-1 text-sm text-[#3d5446]">No pens yet.{canManage ? ' Tap “Pen” to add one.' : ''}</p>}
                             </div>
@@ -456,5 +435,29 @@ function PenRollCall({ pen }: { pen: Pen }) {
                 ) : <p className="pb-3 text-sm text-[#5d7266]">This pen is empty.</p>}
             </div>
         </section>
+    );
+}
+
+/** D-158: one pen card on the Sheds page: 10 goats, then Load More adds 10 at a time. */
+function ShedPenCard({ p, selected, onSelect, onEdit }: { p: Pen; selected: boolean; onSelect: () => void; onEdit?: () => void }) {
+    const area = p.kind === 'open_area';
+    const [shown, more] = useTen(p.goats);
+    const full = p.capacity !== null && p.count > p.capacity;
+    return (
+        <div className={cx('kk-pen relative !p-0', area && 'kk-yard', selected && 'kk-pen-selected')}>
+                                                    <button type="button" aria-pressed={selected} onClick={onSelect} className="block w-full px-2 pt-1.5 pb-2 pr-8 text-left">
+                                                        <span className="flex items-center justify-between gap-1">
+                                                            <span className="kk-pen-sign">{p.code}</span>
+                                                            <span className={cx('text-sm font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#022a1c]')}>{area ? 'Outdoor' : <>{p.count}{p.capacity ? <span className="text-xs font-semibold opacity-70">/{p.capacity}</span> : null}</>}</span>
+                                                        </span>
+                                                        <span className="mt-0.5 block truncate text-xs text-[#3d5446]">{p.purpose}</span>
+                                                        <span className="kk-herd" aria-hidden>
+                                                            {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={(i * 0.37) % 2.4} info={{ id: g.id, number: g.number, name: g.name, breed: g.breed, female: g.sex === 'female', stage: g.stage, health: g.health, pen: p.name }} />)}
+                                                                                                                    </span>
+                                                        {!area ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
+                                                    </button>
+                                                    {more ? <div className="px-2 pb-2">{more}</div> : null}
+                                                    {onEdit ? <button type="button" onClick={onEdit} aria-label={`Edit ${p.name}`} className="absolute right-1 top-1 rounded-md p-1.5 text-[#12663f] hover:bg-white/70"><Pencil className="size-4" aria-hidden /></button> : null}
+                                                </div>
     );
 }

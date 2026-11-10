@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { useFive } from '../lib/useFive';
 import { AgeBadge, BreedBadge } from './GoatBadges';
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import { CountUp, HealthChip, SexIcon } from './ui';
 import type { Health } from '../types';
 
@@ -57,33 +57,45 @@ function Barn({ shed, index }: { shed: SceneShed; index: number }) {
 
 function PenYard({ pen }: { pen: ScenePen }) {
     const full = pen.capacity !== null && pen.goats > pen.capacity;
-    const figures = pen.goats; // D-157: every goat in the pen is shown
-    // Females first, then males.
-    const females = pen.goats ? Math.round((pen.female / pen.goats) * figures) : 0;
-    const flagged = Math.min(pen.attention, figures);
+    // Females first, then males; figures come from the server, or are made up from the counts.
+    const all: SceneFigure[] = pen.figures?.length ? pen.figures
+        : Array.from({ length: pen.goats }, (_, i) => ({ female: i < pen.female, flag: i < pen.attention, stage: null, breed: null }));
+    const [shown, more] = useTen(all);
     return (
-        <Link href={`/goats?pen=${encodeURIComponent(pen.name)}`} className="kk-pen kk-lift group" title={`${pen.name}: ${pen.goats} goats`}>
-            <div className="flex items-center justify-between gap-1">
-                <span className="kk-pen-sign">{pen.code}</span>
-                <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#022a1c]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
-            </div>
-            <div className="kk-herd" aria-hidden>
-                {pen.figures?.length
-                    ? pen.figures.map((f, i) => <GoatFigure key={i} female={f.female} flag={f.flag} stage={f.stage} breed={f.breed} delay={(i * 0.37) % 2.4} info={{ ...f, pen: pen.name }} />)
-                    : Array.from({ length: figures }, (_, i) => <GoatFigure key={i} female={i < females} flag={i < flagged} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
-                {pen.goats > figures ? <span className="self-center text-xs font-bold text-[#3d5446]">+{pen.goats - figures}</span> : null}
-            </div>
+        <div className="kk-pen kk-lift group">
+            <Link href={`/goats?pen=${encodeURIComponent(pen.name)}`} className="block" title={`${pen.name}: ${pen.goats} goats`}>
+                <div className="flex items-center justify-between gap-1">
+                    <span className="kk-pen-sign">{pen.code}</span>
+                    <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#022a1c]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
+                </div>
+                <div className="kk-herd" aria-hidden>
+                    {shown.map((f, i) => <GoatFigure key={i} female={f.female} flag={f.flag} stage={f.stage} breed={f.breed} delay={(i * 0.37) % 2.4} info={f.number ? { ...f, pen: pen.name } : undefined} />)}
+                </div>
+            </Link>
+            {more}
             <div className="mt-1 flex items-center gap-1.5" aria-hidden>
                 <span className="kk-trough" />
                 <svg viewBox="0 0 12 12" className="size-3.5 shrink-0"><path d="M2 3h8l-1 8H3z" fill="#5f87a8" /><rect x="1.5" y="2" width="9" height="1.6" rx=".8" fill="#46667f" /></svg>
             </div>
             <span className="sr-only">{pen.female} female, {pen.male} male{pen.attention ? `, ${pen.attention} need attention` : ''}</span>
             {pen.attention ? <span className="mt-1 block text-[11px] font-semibold text-crit-700">{pen.attention} need attention</span> : null}
-        </Link>
+        </div>
     );
 }
 
 export type Stage = 'kid' | 'grower' | 'adult';
+
+/** D-158: a pen shows 10 goats, then Load More adds 10 at a time. */
+export function useTen<T>(items: T[]): [T[], ReactNode] {
+    const [n, setN] = useState(10);
+    const left = items.length - n;
+    const button = left > 0 ? (
+        <button type="button" className="kk-load-more" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setN(n + 10); }}>
+            Load {Math.min(10, left)} More <span className="font-normal opacity-70">· {left} left</span>
+        </button>
+    ) : null;
+    return [items.slice(0, n), button];
+}
 
 /**
  * D-147: what each breed looks like: coat, head, patches and ear length. Names match the breed register,

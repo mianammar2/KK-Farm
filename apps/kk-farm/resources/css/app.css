@@ -277,13 +277,12 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .lite .kk-goat { animation: none; }
 @media (max-width: 639px) { .kk-goat { width: 22px; height: 18px; } .kk-barn-body { padding: 8px 10px 10px; } }
 
-/* Digital readouts: dark display, glowing green digits (like the scale's 46.8 kg). */
-.kk-kg-sign, .kk-lcd {
-    display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-variant-numeric: tabular-nums;
-    color: var(--kk-lcd); background: var(--kk-display); padding: 3px 10px; border-radius: 8px; text-shadow: 0 0 8px rgb(125 255 173 / 0.55);
-    box-shadow: inset 0 0 0 1px rgb(125 255 173 / 0.18);
-}
-.kk-kg-sign { font-size: 13px; }
+/* D-158: feed numbers look like the dashboard's top numbers: bold dark green on white, no dark display. */
+.kk-kg-sign, .kk-lcd { display: inline-block; font-weight: 800; font-variant-numeric: tabular-nums; color: #022a1c; line-height: 1.15; }
+.kk-lcd { font-size: 1.5rem; }
+.kk-kg-sign { font-size: 1.125rem; }
+.kk-load-more { display: flex; width: 100%; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; padding: 5px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #0b4f35; background: #eef5ef; box-shadow: inset 0 0 0 1px rgb(1 54 36 / 0.12); }
+.kk-load-more:hover { background: #e2efe5; }
 
 /* Feed totals as modern tiles: an icon, a label, a digital readout. */
 .kk-store { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
