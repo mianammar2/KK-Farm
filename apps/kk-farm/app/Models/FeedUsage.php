@@ -16,7 +16,7 @@ class FeedUsage extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['fed_on' => 'date', 'fed_at' => 'datetime', 'planned_kg' => 'float', 'planned_min_kg' => 'float', 'planned_max_kg' => 'float', 'offered_kg' => 'float', 'refused_kg' => 'float', 'unit_cost_minor' => 'integer', 'headcount' => 'integer'];
+    protected $casts = ['fed_on' => 'date', 'fed_at' => 'datetime', 'planned_kg' => 'float', 'planned_min_kg' => 'float', 'planned_max_kg' => 'float', 'offered_kg' => 'float', 'refused_kg' => 'float', 'wasted_kg' => 'float', 'unit_cost_minor' => 'integer', 'headcount' => 'integer'];
 
     /** Rows that no later correction has replaced. */
     public function scopeCurrent(Builder $q): Builder
@@ -26,7 +26,7 @@ class FeedUsage extends Model
 
     public function consumedKg(): ?float
     {
-        return max(0, $this->offered_kg - ($this->refused_kg ?? 0));
+        return max(0, $this->offered_kg - ($this->refused_kg ?? 0) - ($this->wasted_kg ?? 0)); // D-177: wasted feed was not eaten
     }
 
     public function item()

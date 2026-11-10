@@ -133,6 +133,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/feeding/plans', [FeedingController::class, 'storePlan']);
         Route::post('/feeding/plans/{plan}/approve', [FeedingController::class, 'approve']);
         Route::post('/feeding/settings', [FeedingController::class, 'settings']);
+        Route::post('/feeding/tmr', [\App\Http\Controllers\TmrController::class, 'store']); // D-177
+        Route::post('/feeding/tmr/{formula}', [\App\Http\Controllers\TmrController::class, 'update'])->whereNumber('formula');
+        Route::post('/feeding/tmr/{formula}/mix', [\App\Http\Controllers\TmrController::class, 'mix'])->whereNumber('formula');
     });
 
     Route::middleware('module:sheds')->group(function (): void {

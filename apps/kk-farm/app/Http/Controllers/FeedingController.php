@@ -47,7 +47,7 @@ class FeedingController extends Controller
         $pens = Pen::with('shed')->get()->keyBy('id');
         $line = fn (int $itemId, float $planned, ?FeedUsage $u) => [
             'feedItemId' => $itemId, 'code' => $itemsById[$itemId]->code ?? '?', 'name' => $itemsById[$itemId]->name ?? 'Unknown feed', 'planned' => $planned,
-            'usage' => $u ? ['id' => $u->id, 'offered' => $u->offered_kg, 'refused' => $u->refused_kg, 'by' => $u->fed_by, 'at' => $u->fed_at->setTimezone($org->timezone)->format('g:i A')] : null,
+            'usage' => $u ? ['id' => $u->id, 'offered' => $u->offered_kg, 'refused' => $u->refused_kg, 'wasted' => $u->wasted_kg, 'by' => $u->fed_by, 'at' => $u->fed_at->setTimezone($org->timezone)->format('g:i A')] : null,
         ];
 
         return Inertia::render('Feeding', [
@@ -91,7 +91,7 @@ class FeedingController extends Controller
             'history' => FeedUsage::current()->with(['item', 'pen.shed'])->where('fed_on', '>=', Carbon::parse($today)->subDays(13)->toDateString())
                 ->orderByDesc('fed_at')->limit(300)->get()->map(fn (FeedUsage $u) => [
                     'id' => $u->id, 'on' => $u->fed_on->format('j M'), 'meal' => $u->meal, 'pen' => $u->pen->fullName(), 'feed' => $u->item->name, 'headcount' => $u->headcount,
-                    'planned' => $u->planned_kg, 'offered' => $u->offered_kg, 'refused' => $u->refused_kg, 'consumed' => round($u->consumedKg(), 2),
+                    'planned' => $u->planned_kg, 'offered' => $u->offered_kg, 'refused' => $u->refused_kg, 'wasted' => $u->wasted_kg, 'consumed' => round($u->consumedKg(), 2),
                     'perHead' => $u->headcount ? round($u->consumedKg() / $u->headcount, 3) : null, 'cost' => round($u->offered_kg * $u->unit_cost_minor / 100),
                     'by' => $u->fed_by, 'corrected' => $u->supersedes_id !== null,
                     // D-069: outside the planned range (body-weight rations), otherwise more than the tolerance away from plan.
@@ -105,7 +105,9 @@ class FeedingController extends Controller
             'nutritionCategories' => collect(Feed::NUTRITION_CATEGORIES)->map(fn ($c) => $c[0])->all(),
             'methods' => \App\Models\NutritionStandard::METHODS,
             'breeds' => \App\Models\Breed::orderBy('name')->get(['id', 'name']),
-            'movementTypes' => collect(FeedStockMovement::TYPES)->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
+            'tmr' => \App\Support\Tmr::board(), // D-177
+            'waste' => \App\Support\Tmr::wasteReport(in_array((int) $request->query('days'), [7, 30], true) ? (int) $request->query('days') : 7),
+            'movementTypes' => collect(FeedStockMovement::manualTypes())->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
             'can' => [
                 'store' => $user->passes('manage_feed_store'), 'plan' => $user->passes('plan_rations'),
                 'approve' => $user->passes('approve_feeding_plan'), 'settings' => $user->canModule('settings'),
@@ -220,22 +222,24 @@ class FeedingController extends Controller
             'lines.*.id' => ['required', 'uuid'],
             'lines.*.usage_id' => ['required', 'uuid', 'distinct', 'exists:feed_usages,id'],
             'lines.*.refused_kg' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'lines.*.wasted_kg' => ['nullable', 'numeric', 'min:0', 'max:100000'], // D-177
         ], [], self::ATTRIBUTES);
 
         DB::transaction(function () use ($data, $request) {
             foreach ($data['lines'] as $i => $l) {
-                if (FeedUsage::whereKey($l['id'])->exists() || $l['refused_kg'] === null) {
+                $l['wasted_kg'] ??= null;
+                if (FeedUsage::whereKey($l['id'])->exists() || ($l['refused_kg'] === null && $l['wasted_kg'] === null)) {
                     continue;
                 }
                 $usage = FeedUsage::current()->whereKey($l['usage_id'])->lockForUpdate()->first();
                 if (! $usage) {
                     throw ValidationException::withMessages(["lines.$i.refused_kg" => 'This entry was changed by someone else. Reload and try again.']);
                 }
-                if ($l['refused_kg'] > $usage->offered_kg) {
-                    throw ValidationException::withMessages(["lines.$i.refused_kg" => 'Leftover cannot be more than the feed given.']);
+                if (($l['refused_kg'] ?? 0) + ($l['wasted_kg'] ?? 0) > $usage->offered_kg) {
+                    throw ValidationException::withMessages(["lines.$i.refused_kg" => 'Leftover and waste together cannot be more than the feed given.']);
                 }
-                FeedUsage::create(collect($usage->getAttributes())->except(['id', 'created_at', 'updated_at', 'supersedes_id', 'refused_kg'])->all() + [
-                    'id' => $l['id'], 'refused_kg' => $l['refused_kg'], 'supersedes_id' => $usage->id,
+                FeedUsage::create(collect($usage->getAttributes())->except(['id', 'created_at', 'updated_at', 'supersedes_id', 'refused_kg', 'wasted_kg'])->all() + [
+                    'id' => $l['id'], 'refused_kg' => $l['refused_kg'] ?? $usage->refused_kg, 'wasted_kg' => $l['wasted_kg'] ?? $usage->wasted_kg, 'supersedes_id' => $usage->id,
                 ]);
             }
         });
@@ -409,7 +413,7 @@ class FeedingController extends Controller
         abort_unless($request->user()->passes('manage_feed_store'), 403);
         $data = $request->validate([
             'feed_item_id' => ['required', 'integer', 'exists:feed_items,id'],
-            'type' => ['required', Rule::in(array_keys(FeedStockMovement::TYPES))],
+            'type' => ['required', Rule::in(array_keys(FeedStockMovement::manualTypes()))],
             'direction' => ['nullable', Rule::in(['in', 'out'])],
             'qty_kg' => ['required', 'numeric', 'gt:0', 'max:10000000'],
             'rate' => ['nullable', 'required_if:type,purchase', 'numeric', 'min:0', 'max:1000000'],

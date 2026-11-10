@@ -8,10 +8,11 @@ import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 import { BreedBadge } from '../components/GoatBadges';
 import { useTabParam } from '../lib/useTabParam';
+import { TmrPanel, WasteReport, type TmrBoard, type WasteReportData } from '../components/Tmr';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
-type Usage = { id: string; offered: number; refused: number | null; by: string; at: string };
+type Usage = { id: string; offered: number; refused: number | null; wasted?: number | null; by: string; at: string };
 type Line = { feedItemId: number; code: string; name: string; planned: number; min: number; max: number; usage: Usage | null; stock: number };
 type PenRow = { id: number; name: string; shed: string | null; headcount: number; unplanned: number; noWeight: number; onMilk: number; auto: number; balance: 'over' | 'short' | 'ok' | null; diff: number; minKg: number; maxKg: number; day: { planned: number; given: number; balance: 'over' | 'short' | 'ok' | null; diff: number }; plannedKg: number; offeredKg: number; status: Status; meals: Record<Meal, Status>; lines: Line[] };
 type Plan = { id: number; from: string; fromIso: string; status: string; basis: 'per_head' | 'body_weight'; split: Record<Meal, number>; lines: Array<{ feedItemId: number; name: string; code: string; kg: number | null; share: number | null; cp: number | null }>; cpMix: number | null; cpBasis: 'dry_matter' | 'as_fed' | null; kgPerHead: number; costPerHead: number; costPerKg: number; notes: string | null; createdBy: string; approvedBy: string | null; approvedOn: string | null };
@@ -26,6 +27,7 @@ type Props = {
     categories: Record<string, string>; movementTypes: Record<string, { label: string; direction: number }>;
     requirement: Requirement; standards: Standard[]; nutritionCategories: Record<string, string>; methods: Record<string, string>; breeds: Array<{ id: number; name: string }>;
     can: { store: boolean; plan: boolean; approve: boolean; settings: boolean };
+    tmr: TmrBoard; waste: WasteReportData; // D-177
 };
 type Standard = {
     id: number; name: string; category: string | null; breedId: number | null; breed: string | null; minKg: number | null; maxKg: number | null; cpMin: number; cpMax: number; range: string; target: number;
@@ -70,6 +72,8 @@ export default function Feeding(props: Props) {
         { id: 'requirement', label: 'Requirement' },
         { id: 'rations', label: 'Rations', count: groups.filter((g) => g.draft).length || undefined },
         { id: 'store', label: 'Feed store', count: lowStock || undefined },
+        { id: 'tmr', label: 'TMR Formulas & Mixing' },
+        { id: 'waste', label: 'Offered / Refused / Wasted' },
         { id: 'nutrition', label: 'Nutrition Standards' },
         { id: 'history', label: 'History' },
         ...(can.settings ? [{ id: 'times', label: 'Settings' }] : []),
@@ -90,6 +94,8 @@ export default function Feeding(props: Props) {
             {tab === 'requirement' ? <FeedRequirement req={props.requirement} focusPen={focusPen} /> : null}
             {tab === 'rations' ? <Rations {...props} /> : null}
             {tab === 'store' ? <Store {...props} /> : null}
+            {tab === 'tmr' ? <TmrPanel tmr={props.tmr} items={items} canPlan={can.plan} canMix={can.store} /> : null}
+            {tab === 'waste' ? <WasteReport data={props.waste} /> : null}
             {tab === 'nutrition' ? <Nutrition {...props} /> : null}
             {tab === 'history' ? <HistoryTab {...props} /> : null}
             {tab === 'times' ? <MealTimes {...props} /> : null}
@@ -138,7 +144,7 @@ function FeedNow(props: Props & { onTab: (t: string) => void }) {
 
 function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items: Item[]; onDone: () => void }) {
     const recorded = pen.lines.some((l) => l.usage);
-    const [lines, setLines] = useState(() => pen.lines.map((l) => ({ ...l, offered: String(l.usage?.offered ?? l.planned), refused: l.usage?.refused != null ? String(l.usage.refused) : '' })));
+    const [lines, setLines] = useState(() => pen.lines.map((l) => ({ ...l, offered: String(l.usage?.offered ?? l.planned), refused: l.usage?.refused != null ? String(l.usage.refused) : '', wasted: l.usage?.wasted != null ? String(l.usage.wasted) : '' })));
     const [editing, setEditing] = useState(!recorded);
     const form = useForm({});
     const errors = form.errors as Record<string, string>;
@@ -149,10 +155,10 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
         form.post('/feeding/record', { preserveScroll: true, onSuccess: () => setEditing(false) });
     };
     const saveLeftover = () => {
-        form.transform(() => ({ lines: lines.filter((l) => l.usage && l.refused !== '').map((l) => ({ id: uuid(), usage_id: l.usage!.id, refused_kg: Number(l.refused) })) }));
+        form.transform(() => ({ lines: lines.filter((l) => l.usage && (l.refused !== '' || l.wasted !== '')).map((l) => ({ id: uuid(), usage_id: l.usage!.id, refused_kg: l.refused === '' ? null : Number(l.refused), wasted_kg: l.wasted === '' ? null : Number(l.wasted) })) }));
         form.post('/feeding/leftover', { preserveScroll: true, onSuccess: onDone });
     };
-    const set = (i: number, key: 'offered' | 'refused', value: string) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, [key]: value } : l)));
+    const set = (i: number, key: 'offered' | 'refused' | 'wasted', value: string) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, [key]: value } : l)));
     const first = pen.lines.find((l) => l.usage)?.usage;
     // D-084: what can be given = what is in store + what this meal already took (a correction only needs the extra).
     const available = (l: (typeof lines)[number]) => Math.round((Math.max(0, items.find((x) => x.id === l.feedItemId)?.stock ?? l.stock ?? 0) + (l.usage?.offered ?? 0)) * 100) / 100;
@@ -164,15 +170,16 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
             {!lines.length ? <p className="mb-2 text-sm text-ink-soft">No ration planned for this pen. Add the feed you gave below.</p> : null}
             <div className="space-y-2">
                 {lines.map((l, i) => (
-                    <div key={l.feedItemId} className="grid grid-cols-[minmax(0,1fr)_6.5rem_6.5rem] items-end gap-2">
+                    <div key={l.feedItemId} className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem_6.5rem]">
                         <div className="min-w-0 pb-2"><div className="truncate font-medium text-cobalt-900">{l.name}</div><div className="text-xs text-ink-soft">Plan {kg(l.planned)}{l.max > l.min ? ` (${kg(l.min)}–${kg(l.max)})` : ''}</div><div className={cx('text-xs', overStock(l) ? 'font-semibold text-crit-700' : 'text-ink-faint')}>In store {kg(available(l))}</div></div>
                         <Field label="Given KG" error={errors[`lines.${i}.offered_kg`] ?? (overStock(l) ? `Only ${kg(available(l))} in store` : undefined)}><input className="field" type="number" inputMode="decimal" min={0} max={available(l)} step="0.1" disabled={!editing} value={l.offered} onChange={(e) => set(i, 'offered', e.target.value)} /></Field>
                         <Field label="Leftover KG" error={errors[`lines.${i}.refused_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={editing || !l.usage} placeholder={l.usage ? '0' : '—'} value={l.refused} onChange={(e) => set(i, 'refused', e.target.value)} /></Field>
+                        <Field label="Wasted KG" error={errors[`lines.${i}.wasted_kg`]}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" disabled={editing || !l.usage} placeholder={l.usage ? '0' : '—'} value={l.wasted} onChange={(e) => set(i, 'wasted', e.target.value)} title="Spilled, trampled or spoiled feed" /></Field>
                     </div>
                 ))}
             </div>
             {editing && others.length ? (
-                <select className="field mt-2" value="" aria-label="Add another feed" onChange={(e) => { const it = items.find((x) => x.id === Number(e.target.value)); if (it) setLines((ls) => [...ls, { feedItemId: it.id, code: it.code, name: it.name, planned: 0, min: 0, max: 0, usage: null, stock: it.stock, offered: '', refused: '' }]); }}>
+                <select className="field mt-2" value="" aria-label="Add another feed" onChange={(e) => { const it = items.find((x) => x.id === Number(e.target.value)); if (it) setLines((ls) => [...ls, { feedItemId: it.id, code: it.code, name: it.name, planned: 0, min: 0, max: 0, usage: null, stock: it.stock, offered: '', refused: '', wasted: '' }]); }}>
                     <option value="">+ Add another feed…</option>
                     {others.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
@@ -185,7 +192,7 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
                     </>
                 ) : (
                     <>
-                        <Button type="button" onClick={saveLeftover} disabled={form.processing || !lines.some((l) => l.usage && l.refused !== '')}>Save leftover</Button>
+                        <Button type="button" onClick={saveLeftover} disabled={form.processing || !lines.some((l) => l.usage && (l.refused !== '' || l.wasted !== ''))}>Save leftover & waste</Button>
                         <Button type="button" variant="secondary" onClick={() => setEditing(true)}>Change amounts given</Button>
                     </>
                 )}

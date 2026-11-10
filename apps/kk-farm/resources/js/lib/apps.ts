@@ -80,10 +80,13 @@ export const APPS: ErpApp[] = [
     { key: 'feeding', no: '06', label: 'Feeding', art: 'mod-feeding', modules: ['feeding'], linked: ['housing', 'growth', 'inventory', 'accounting'], sections: [
         S('Operations', '/feeding?tab=now', 'Daily Feeding'),
         S('Operations', '/feeding?tab=requirement', "Today's Requirement"),
+        S('Operations', '/feeding?tab=tmr', 'TMR Mixing Batches'),
         S('Records', '/feeding?tab=history', 'Feeding History'),
         S('Records', '/feeding?tab=rations', 'Feeding Plans & Rations'),
         S('Reporting', '/reports#spending', 'Feed Cost'),
+        S('Reporting', '/feeding?tab=waste', 'Feed Offered, Refused & Wasted'),
         S('Configuration', '/feeding?tab=nutrition', 'Nutrition Standards'),
+        S('Configuration', '/feeding?tab=tmr', 'TMR Formulas'),
         S('Configuration', '/feeding?tab=store', 'Feed Master'),
         S('Configuration', '/feeding?tab=times', 'Feeding Times'),
     ] },
