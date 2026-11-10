@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { titleCase } from '../lib/titleCase';
 import { CountUp } from './ui';
 
-export type FarmIcon = 'herd' | 'attention' | 'pregnant' | 'meals' | 'tasks';
+export type FarmIcon = 'herd' | 'healthy' | 'attention' | 'pregnant' | 'meals' | 'tasks';
 
 /** D-136/D-146: the dashboard's top numbers as modern KPI tiles: a line icon in a rounded tile and the number. */
 export function FarmStatRow({ children }: { children: ReactNode }) {
@@ -11,7 +11,7 @@ export function FarmStatRow({ children }: { children: ReactNode }) {
 }
 
 // D-153: pictures from the KK Farms icon library
-const ART: Record<FarmIcon, string> = { herd: 'mod-livestock', attention: 'mod-health', pregnant: 'ic-pregnant', meals: 'mod-feeding', tasks: 'ic-active' };
+const ART: Record<FarmIcon, string> = { herd: 'mod-livestock', healthy: 'ic-healthy', attention: 'mod-health', pregnant: 'ic-pregnant', meals: 'mod-feeding', tasks: 'ic-active' };
 const ICON = Object.fromEntries(Object.entries(ART).map(([k, n]) => [k, <img key={k} src={`/icons/${n}.png`} alt="" className="size-[86%] object-contain" />])) as Record<FarmIcon, ReactNode>;
 
 export function FarmStat({ href, icon, label, value, note, tone }: { href: string; icon: FarmIcon; label: string; value: number | string; note?: string; tone?: 'alert' | 'good' }) {

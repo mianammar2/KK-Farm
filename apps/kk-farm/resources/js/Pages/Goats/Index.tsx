@@ -57,7 +57,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
         return LITE || window.matchMedia('(max-width: 640px)').matches ? 'cards' : 'table';
     });
     const setView = (v: 'table' | 'cards') => { setViewState(v); try { localStorage.setItem('kk.goats.view', v); } catch { /* storage off */ } };
-    const [tone, setTone] = useState<Tone | ''>('');
+    const [tone, setTone] = useState<Tone | ''>(() => (params.get('tone') as Tone | null) ?? ''); // D-165: ?tone=healthy from the dashboard
     const [limit, setLimit] = useState(PAGE);
     const [sort, setSort] = useState<{ key: SortKey; up: boolean }>({ key: 'number', up: true });
     const [adding, setAdding] = useState(false);

@@ -99,17 +99,17 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
     return (
         <>
             <Head title="Dashboard" />
-            <div className="max-sm:hidden"><PageHeader title="Herd today" description={`Signed in as ${auth?.roleLabel}. Updates by itself every ${LIVE_MS / 1000} seconds.`} /></div>
+            <div className="max-sm:hidden"><PageHeader title="Dashboard" description={`Signed in as ${auth?.roleLabel}. Updates by itself every ${LIVE_MS / 1000} seconds.`} /></div>
 
             {/* D-121: actions are in the notification bell; health + buttons on Veterinary & Health. */}
 
             <FarmStatRow>
                 {/* D-119: a number that is zero is not shown. */}
-                <FarmStat icon="herd" href="/goats" label="Goats on farm" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
+                {/* D-165: Total, Healthy, Need Attention, Pregnant */}
+                <FarmStat icon="herd" href="/goats" label="Total goats" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
+                {stats.healthy ? <FarmStat icon="healthy" href="/goats?tone=healthy" label="Healthy" value={stats.healthy} note={stats.goats ? `${Math.round((stats.healthy / stats.goats) * 100)}% of the herd` : undefined} tone="good" /> : null}
                 {stats.unwell || stats.overdueCare ? <FarmStat icon="attention" href="/goats?show=attention" label="Need attention" value={stats.unwell} note={stats.overdueCare ? `${plural(stats.overdueCare, 'goat', 'goats')} overdue for care` : 'Sick or on watch'} tone="alert" /> : null}
                 {stats.pregnant ? <FarmStat icon="pregnant" href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note="Does" /> : null}
-                {feeding ? <FarmStat icon="meals" href="/feeding" label="Meals fed today" value={`${stats.feedingDone}/${stats.feedingTotal}`} note={stats.feedingTotal ? 'Pen meals due so far' : 'None due yet'} tone={stats.feedingTotal && stats.feedingDone < stats.feedingTotal ? 'alert' : undefined} /> : null}
-                {stats.tasksTotal ? <FarmStat icon="tasks" href="/tasks" label="Tasks today" value={`${stats.tasksDone}/${stats.tasksTotal}`} note="Done" /> : null}
             </FarmStatRow> {/* D-136: wooden signs */}
 
             {/* D-118: the herd by age and gender (and by breed); health is in Needs Attention. */}

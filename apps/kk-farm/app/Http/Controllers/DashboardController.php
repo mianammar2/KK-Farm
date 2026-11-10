@@ -66,6 +66,7 @@ class DashboardController extends Controller
                 'bucks' => $goats->where('sex', 'male')->count(),
                 'pregnant' => $counts['pregnant'],
                 'unwell' => $counts['attention'],
+                'healthy' => $goats->count() - $counts['attention'], // D-165
                 'noPen' => $counts['no_pen'],
                 'missing' => $counts['missing'],
                 'toReview' => $toReview,
