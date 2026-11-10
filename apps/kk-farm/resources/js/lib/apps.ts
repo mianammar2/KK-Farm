@@ -207,9 +207,12 @@ export const visibleApps = (modules: string[]) => APPS.filter((a) => a.modules.s
 
 /** Does this menu link point at the page being shown? Same path, and the same ?tab / ?show when the link has one. */
 export function isHere(href: string, url: string): boolean {
-    const [hp, hq = ''] = href.split('#')[0].split('?');
-    const [up, uq = ''] = url.split('?');
+    const [hrefMain, hrefHash = ''] = href.split('#');
+    const [urlMain, urlHash = ''] = url.split('#');
+    const [hp, hq = ''] = hrefMain.split('?');
+    const [up, uq = ''] = urlMain.split('?');
     if (hp !== up) return false;
+    if (hrefHash && urlHash && hrefHash !== urlHash) return false; // D-183: /settings#users is not /settings#breeds
     const h = new URLSearchParams(hq);
     const u = new URLSearchParams(uq);
     if (![...h.keys()].length) return !u.get('show') && !u.get('tab');
@@ -226,7 +229,7 @@ export function rememberApp(key: string) {
 /** The app whose menu the sidebar shows for this address: the last opened app when the page is one of its own,
  *  otherwise the first app with a section for this exact address, then for this path. */
 export function currentApp(url: string, modules: string[]): ErpApp | null {
-    const path = url.split('?')[0];
+    const path = url.split('#')[0].split('?')[0];
     if (path === '/apps') return null;
     const apps = visibleApps(modules);
     let last: string | null = null;

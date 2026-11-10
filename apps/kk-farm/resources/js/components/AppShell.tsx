@@ -208,8 +208,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const [drawer, setDrawer] = useState(false);
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState<string | null>(null);
-    const path = page.url.split('?')[0];
+    const path = page.url.split('#')[0].split('?')[0]; // D-183: ignore the #anchor (e.g. /settings#users)
     const home = path === '/apps'; // D-168: the app launcher has no sidebar, like Odoo's home
+    // D-183: the #section (e.g. /settings#ages) lives in the browser's address, not in Inertia's page URL; follow it.
+    const [hash, setHash] = useState(() => (typeof window !== 'undefined' ? window.location.hash : ''));
+    useEffect(() => {
+        const sync = () => setHash(window.location.hash);
+        sync();
+        window.addEventListener('hashchange', sync);
+        return () => window.removeEventListener('hashchange', sync);
+    }, [page.url]);
+    const fullUrl = page.url.includes('#') ? page.url : `${page.url}${hash}`;
     const reduced = useReducedMotion();
 
     useEffect(() => {
@@ -237,7 +246,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {home ? null : (
                 <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-cobalt-900 pt-4 lg:flex">
                     <Brand />
-                    <NavList path={path} url={page.url} modules={auth.modules} />
+                    <NavList path={path} url={fullUrl} modules={auth.modules} />
                 </aside>
             )}
 
@@ -252,7 +261,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                                     <X size={20} />
                                 </button>
                             </div>
-                            <NavList path={path} url={page.url} modules={auth.modules} onNavigate={() => setDrawer(false)} />
+                            <NavList path={path} url={fullUrl} modules={auth.modules} onNavigate={() => setDrawer(false)} />
                         </motion.aside>
                     </motion.div>
                 ) : null}
