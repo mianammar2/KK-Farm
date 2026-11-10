@@ -106,6 +106,7 @@ final class Checkups
             'recent' => [], 'interval' => self::interval(), 'normal' => HealthCheckup::NORMAL, 'gestation' => (int) (Tenant::org()?->gestation_days ?: 150),
             'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->all(),
             'conditions' => HealthCase::CONDITIONS, 'severities' => HealthCase::SEVERITIES,
+            'ultrasound' => PregnancyCheck::STATUSES, 'viability' => PregnancyCheck::VIABILITY, // D-167
             'canCheck' => $user->passes('health_checkup'), 'canOpenCase' => $user->passes('open_cases'),
         ];
     }
@@ -163,6 +164,13 @@ final class Checkups
     /** @param array<string, mixed> $data validated input */
     public static function record(Animal $goat, array $data, User $by): HealthCheckup
     {
+        // D-167: the KK Farms ultrasound status decides the simple result (pregnant / not pregnant / not clear).
+        if (! empty($data['ultrasound_status'])) {
+            $data['ultrasound'] = ['pregnant' => 'pregnant', 'not_pregnant' => 'not_pregnant', 'pregnancy_loss' => 'not_pregnant'][PregnancyCheck::RESULT_OF[$data['ultrasound_status']]] ?? 'inconclusive';
+        } elseif (! empty($data['ultrasound'])) {
+            $data['ultrasound_status'] = PregnancyCheck::STATUS_OF[$data['ultrasound']];
+        }
+
         return DB::transaction(function () use ($goat, $data, $by) {
             $on = Carbon::parse($data['checked_on'])->toDateString();
             // D-104: readings outside normal and a weight drop are warnings: the result cannot stay Healthy, and the vet is alerted.
@@ -178,6 +186,7 @@ final class Checkups
             $checkup = HealthCheckup::create([
                 'animal_id' => $goat->id, 'checked_on' => $on, 'temperature_f' => $data['temperature_f'] ?? null, 'body_score' => $data['body_score'] ?? null, 'weight_kg' => $data['weight_kg'] ?? null,
                 'ultrasound' => $goat->sex === 'female' ? ($data['ultrasound'] ?? null) : null, 'fetuses' => $data['fetuses'] ?? null,
+                'ultrasound_status' => $goat->sex === 'female' ? ($data['ultrasound_status'] ?? null) : null, 'viability' => $data['viability'] ?? null,
                 'days_pregnant' => $data['days_pregnant'] ?? null, 'findings' => $data['findings'] ?? null, 'outcome' => $data['outcome'], 'examiner' => $by->name,
             ]);
             $parts = [];
@@ -189,7 +198,7 @@ final class Checkups
             if ($checkup->ultrasound) {
                 $mating = self::pregnancy($goat, $checkup, $data, $by);
                 $checkup->update(['mating_id' => $mating?->id]);
-                $parts[] = 'ultrasound: '.strtolower(HealthCheckup::ULTRASOUND[$checkup->ultrasound]).($checkup->fetuses ? " ({$checkup->fetuses} fetus".($checkup->fetuses > 1 ? 'es' : '').')' : '');
+                $parts[] = 'ultrasound: '.strtolower(PregnancyCheck::STATUSES[$checkup->ultrasound_status] ?? HealthCheckup::ULTRASOUND[$checkup->ultrasound]).($checkup->fetuses ? " ({$checkup->fetuses} fetus".($checkup->fetuses > 1 ? 'es' : '').')' : '');
             }
 
             $flags = array_values(array_unique([...$checkup->flags(), ...array_filter([$drop])]));
@@ -361,8 +370,18 @@ final class Checkups
         $org = Tenant::org();
         $gestation = (int) ($org->gestation_days ?? 150);
         $on = $c->checked_on->copy();
-        $mating = Mating::where('dam_id', $doe->id)->whereIn('status', ['open', 'pregnant'])->orderByDesc('mated_on')->first();
+        $mating = Mating::where('dam_id', $doe->id)->whereIn('status', ['open', 'pregnant', 'inconclusive'])->orderByDesc('mated_on')->first();
 
+        $status = $c->ultrasound_status ?? PregnancyCheck::STATUS_OF[$c->ultrasound] ?? 'INC';
+        if ($status === 'CPL') {
+            // D-167: a loss the vet confirmed: recorded like any pregnancy loss (isolation, monitoring, vet and biosecurity tasks).
+            if ($mating) {
+                self::scanRecord($mating, $doe, $c, $status, $by);
+                PregnancyLoss::record($mating, $on, $mating->mated_on->diffInDays($on) < 45 ? 'EEL' : 'ABT', $by, $c->findings);
+            }
+
+            return $mating;
+        }
         if ($c->ultrasound === 'pregnant') {
             $days = $c->days_pregnant;
             if (! $mating) {
@@ -387,13 +406,23 @@ final class Checkups
             }
         }
         if ($mating) {
-            PregnancyCheck::create([
-                'mating_id' => $mating->id, 'dam_id' => $doe->id, 'checked_on' => $on, 'method' => 'ultrasound', 'result' => $c->ultrasound,
-                'fetuses' => $c->fetuses, 'examiner' => $by->name, 'notes' => 'At the health checkup.',
-            ]);
+            self::scanRecord($mating, $doe, $c, $status, $by);
+            // D-167: the same follow-up tasks as an ultrasound recorded in Breeding.
+            UltrasoundTasks::raise($mating->fresh(), $doe, $status, $c->fetuses, in_array($status, PregnancyCheck::REPEAT, true) ? $on->copy()->addDays(14)->toDateString() : null);
         }
 
         return $mating;
+    }
+
+    /** D-167: the checkup's ultrasound as a Breeding ultrasound record. */
+    private static function scanRecord(Mating $mating, Animal $doe, HealthCheckup $c, string $status, User $by): PregnancyCheck
+    {
+        return PregnancyCheck::create([
+            'mating_id' => $mating->id, 'dam_id' => $doe->id, 'checked_on' => $c->checked_on, 'method' => 'ultrasound', 'result' => PregnancyCheck::RESULT_OF[$status],
+            'ultrasound_status' => $status, 'viability' => $c->viability, 'pregnancy_day' => (int) $mating->mated_on->diffInDays($c->checked_on),
+            'action' => PregnancyCheck::action($status, $c->fetuses), 'fetuses' => $c->fetuses, 'examiner' => $by->name, 'notes' => 'At the health checkup.',
+            'next_check_on' => in_array($status, PregnancyCheck::REPEAT, true) ? $c->checked_on->copy()->addDays(14) : null,
+        ]);
     }
 
     /** Same rule as the Health page: the goat's health follows its open cases and reports. */

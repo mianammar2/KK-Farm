@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { readingWarnings } from '../lib/readings';
 import { CalendarClock } from 'lucide-react';
 import { Button, cx, Field, Panel } from './ui';
-import type { CheckupData } from './Checkups';
+import { coarseUltrasound, UltrasoundPick, type CheckupData } from './Checkups';
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const KINDS = [
@@ -30,7 +30,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
     const form = useForm({
         date: TODAY, animal_id: goatId ?? '', kind: kind ?? '',
         temperature_f: '', body_score: '', weight_kg: '', findings: '', outcome: 'healthy', follow_up_on: '', follow_up_note: '',
-        ultrasound: kind === 'pregnancy' && start?.matedOn ? 'pregnant' : '', days_pregnant: kind === 'pregnancy' && startDay && startDay > 0 ? String(startDay) : '', fetuses: '', sire_id: '',
+        ultrasound: kind === 'pregnancy' && start?.matedOn ? 'pregnant' : '', ultrasound_status: kind === 'pregnancy' && start?.matedOn ? 'PCF' : '', viability: 'HBD', days_pregnant: kind === 'pregnancy' && startDay && startDay > 0 ? String(startDay) : '', fetuses: '', sire_id: '',
         condition: '', other_condition: '', symptoms: '', severity: 'moderate', isolated: false, diagnosis: '',
     });
     const e = form.errors as Record<string, string>;
@@ -44,7 +44,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
     const chooseKind = (k: string) => form.setData((d) => ({
         ...d, kind: k,
         condition: k === 'injury' ? 'Wound / injury' : k === 'disease' ? '' : d.condition,
-        ultrasound: k === 'pregnancy' ? (goat?.matedOn ? 'pregnant' : '') : '',
+        ultrasound: k === 'pregnancy' ? (goat?.matedOn ? 'pregnant' : '') : '', ultrasound_status: k === 'pregnancy' ? (goat?.matedOn ? 'PCF' : '') : '',
         days_pregnant: k === 'pregnancy' && counted !== null && counted > 0 ? String(counted) : '',
     }));
     const recheckIn = (days: number) => { const d = new Date(`${form.data.date}T12:00:00`); d.setDate(d.getDate() + days); set('follow_up_on', d.toISOString().slice(0, 10)); };
@@ -62,7 +62,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
         form.transform((d) => ({
             animal_id: d.animal_id, checked_on: d.date, temperature_f: d.temperature_f, body_score: d.body_score, weight_kg: d.weight_kg, findings: d.findings,
             outcome: d.kind === 'pregnancy' ? 'healthy' : d.outcome, follow_up_on: d.follow_up_on, follow_up_note: d.follow_up_note,
-            ...(d.kind === 'pregnancy' ? { ultrasound: d.ultrasound, days_pregnant: d.days_pregnant, fetuses: d.fetuses, sire_id: d.sire_id } : {}),
+            ...(d.kind === 'pregnancy' ? { ultrasound: d.ultrasound, ultrasound_status: d.ultrasound_status, viability: d.viability, days_pregnant: d.days_pregnant, fetuses: d.fetuses, sire_id: d.sire_id } : {}),
         }));
         form.post('/health/checkups', { preserveScroll: true, onSuccess: onDone });
     };
@@ -109,7 +109,8 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
 
                 {form.data.kind === 'pregnancy' ? (
                     <div className="space-y-3 rounded-tile bg-manganese-100/60 p-3">
-                        <Field label="Ultrasound result"><select className="field" value={form.data.ultrasound} onChange={(x) => set('ultrasound', x.target.value)}><option value="">Choose…</option><option value="pregnant">Pregnant</option><option value="not_pregnant">Not pregnant</option><option value="inconclusive">Not clear</option></select></Field>
+                        <UltrasoundPick data={data} code={form.data.ultrasound_status} viability={form.data.viability} emptyLabel="Choose…" onViability={(v) => set('viability', v)}
+                            onCode={(code) => form.setData((d) => ({ ...d, ultrasound_status: code, ultrasound: coarseUltrasound(code), days_pregnant: coarseUltrasound(code) === 'pregnant' && !d.days_pregnant && counted !== null && counted > 0 ? String(counted) : d.days_pregnant }))} />
                         {form.data.ultrasound === 'pregnant' ? (
                             <>
                                 <Field label="Days pregnant" error={e.days_pregnant} hint={counted !== null ? `Counted: day ${counted} on ${fmt(form.data.date)}, from her earlier check. Change it only if the vet measured differently.` : 'Days since mating, as the vet estimates. Later checks count on from this.'}>

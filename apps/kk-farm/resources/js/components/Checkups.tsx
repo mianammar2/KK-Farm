@@ -10,7 +10,25 @@ type Recent = { id: number; on: string; goat: string; goatId: string; outcome: s
 export type CheckupData = {
     goats: Goat[]; recent: Recent[]; interval: number; normal: Record<'temperature_f', [number, number]>;
     sires: Array<{ id: string; number: string }>; canCheck: boolean; canOpenCase: boolean; gestation: number; conditions?: string[];
+    ultrasound?: Record<string, string>; viability?: Record<string, string>; // D-167
 };
+
+/** D-167: the KK Farms ultrasound code → the simple result the checkup keeps (pregnant / not pregnant / not clear). */
+export const coarseUltrasound = (code: string) => (['PCF', 'VPG', 'MPG', 'SFL'].includes(code) ? 'pregnant' : ['NPG', 'HYD', 'CPL'].includes(code) ? 'not_pregnant' : code ? 'inconclusive' : '');
+const CODE_OF: Record<string, string> = { pregnant: 'PCF', not_pregnant: 'NPG', inconclusive: 'INC' };
+
+/** D-167: ultrasound result (12 KK Farms statuses) and fetal viability, used by both checkup forms. */
+export function UltrasoundPick({ data, code, viability, onCode, onViability, emptyLabel }: { data: CheckupData; code: string; viability: string; onCode: (v: string) => void; onViability: (v: string) => void; emptyLabel: string }) {
+    const statuses = data.ultrasound ?? { PCF: 'Pregnancy Confirmed', NPG: 'Not Pregnant (Open)', INC: 'Inconclusive Scan' };
+    return (
+        <>
+            <Field label="Ultrasound result"><select className="field" value={code} onChange={(x) => onCode(x.target.value)}><option value="">{emptyLabel}</option>{Object.entries(statuses).map(([k, v]) => <option key={k} value={k}>{v} ({k})</option>)}</select></Field>
+            {code && data.viability && !['NPG', 'HYD'].includes(code) ? (
+                <Field label="Fetal viability"><select className="field" value={viability} onChange={(x) => onViability(x.target.value)}>{Object.entries(data.viability).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            ) : null}
+        </>
+    );
+}
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const OUTCOME: Record<string, { label: string; chip: string }> = {
@@ -105,7 +123,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
     const str = (v: number | string | null | undefined) => (v === null || v === undefined ? '' : String(v));
     const form = useForm({
         animal_id: goat.id, checked_on: date, temperature_f: str(existing?.temp), body_score: str(existing?.score), weight_kg: str(existing?.weight),
-        ultrasound: existing?.ultrasound ?? '', days_pregnant: str(existing?.days), fetuses: str(existing?.fetuses), sire_id: '', findings: existing?.findings ?? '', outcome: existing?.outcome ?? 'healthy',
+        ultrasound: existing?.ultrasound ?? '', ultrasound_status: existing?.ultrasound ? CODE_OF[existing.ultrasound] ?? '' : '', viability: 'HBD', days_pregnant: str(existing?.days), fetuses: str(existing?.fetuses), sire_id: '', findings: existing?.findings ?? '', outcome: existing?.outcome ?? 'healthy',
         open_case: false, condition: '', severity: 'moderate', isolated: false,
         follow_up_on: existing?.followUp ?? '', follow_up_note: existing?.followUpNote ?? '', reason: '',
     });
@@ -114,7 +132,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
     const checkDate = existing ? own : date;
     // D-100: a doe already pregnant: her day of pregnancy on this date is counted from the mating.
     const counted = goat.matedOn ? Math.round((new Date(`${checkDate}T12:00:00`).getTime() - new Date(`${goat.matedOn}T12:00:00`).getTime()) / 86400000) : null;
-    const setUltrasound = (v: string) => form.setData((d) => ({ ...d, ultrasound: v, days_pregnant: v === 'pregnant' && !d.days_pregnant && counted !== null && counted > 0 ? String(counted) : d.days_pregnant }));
+    const setUltrasound = (code: string) => form.setData((d) => { const v = coarseUltrasound(code); return { ...d, ultrasound_status: code, ultrasound: v, days_pregnant: v === 'pregnant' && !d.days_pregnant && counted !== null && counted > 0 ? String(counted) : d.days_pregnant }; });
     // D-104: live warnings (not when correcting an old checkup)
     const { warnings, weightNote } = readingWarnings({ weights: existing ? [] : goat.weights, date: checkDate, weight: form.data.weight_kg, temp: form.data.temperature_f, normal: data.normal.temperature_f, pregnant: Boolean(goat.matedOn) || form.data.ultrasound === 'pregnant' });
     const [picked, setPicked] = useState(Boolean(existing));
@@ -150,7 +168,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
                 <Field label="Body condition (1–5, optional)"><select className="field" value={form.data.body_score} onChange={(x) => form.setData('body_score', x.target.value)}><option value="">Not set</option>{['1 · Very thin', '2 · Thin', '3 · Good', '4 · Fat', '5 · Very fat'].map((l, i) => <option key={l} value={i + 1}>{l}</option>)}</select></Field>
                 {num('weight_kg', 'Weight', 'KG')}
                 {goat.sex === 'female' ? (
-                    <Field label="Ultrasound"><select className="field" value={form.data.ultrasound} onChange={(x) => setUltrasound(x.target.value)}><option value="">Not done</option>{Object.entries(SOUND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <UltrasoundPick data={data} code={form.data.ultrasound_status} viability={form.data.viability} onCode={setUltrasound} onViability={(v) => form.setData('viability', v)} emptyLabel="Not done" />
                 ) : null}
             </div>
             {form.data.ultrasound === 'pregnant' ? (

@@ -108,4 +108,24 @@ class UltrasoundTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn (AssertableInertia $p) => $p->where('stats.pregnant', 1)->where('stats.pregnantNear', 1));
         $this->actingAs($this->user('vet'))->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('scanMating.id', $this->mating->id)->has('ultrasoundOptions.ultrasound', 11));
     }
+
+    public function test_a_health_entry_ultrasound_uses_the_kk_farms_status_and_its_automations(): void
+    {
+        $this->mating->delete(); // a doe with no mating on record, scanned at a checkup
+        $this->actingAs($this->user())->post('/health/checkups', [
+            'animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'healthy',
+            'ultrasound' => 'pregnant', 'ultrasound_status' => 'MPG', 'viability' => 'HBD', 'days_pregnant' => 60, 'fetuses' => 2,
+        ])->assertSessionHasNoErrors();
+        $m = Mating::where('dam_id', $this->doe->id)->sole();
+        $c = PregnancyCheck::where('mating_id', $m->id)->sole();
+        $this->assertSame(['pregnant', 'MPG', 'HBD', 2, 60], [$m->status, $c->ultrasound_status, $c->viability, $c->fetuses, $c->pregnancy_day]);
+        $this->assertSame('MPG', \App\Models\HealthCheckup::sole()->ultrasound_status);
+        $this->assertTrue(Task::where('type', 'feeding')->exists());
+
+        $this->actingAs($this->user())->post('/health/checkups', [
+            'animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'healthy', 'ultrasound_status' => 'CPL',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(['aborted', 'ABT'], [$m->fresh()->status, Kidding::sole()->outcome]);
+        $this->assertSame('not_pregnant', \App\Models\HealthCheckup::latest('id')->first()->ultrasound);
+    }
 }

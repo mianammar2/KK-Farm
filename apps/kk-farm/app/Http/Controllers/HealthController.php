@@ -155,7 +155,8 @@ class HealthController extends Controller
             'animal_id' => ['required', 'exists:animals,id'], 'checked_on' => ['required', 'date', 'before_or_equal:today'],
             'temperature_f' => ['nullable', 'numeric', 'between:93,110'], // D-098: heart and breathing rate are not taken
             'body_score' => ['nullable', 'integer', 'between:1,5'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
-            'ultrasound' => ['nullable', Rule::in(array_keys(\App\Models\HealthCheckup::ULTRASOUND))], 'fetuses' => ['nullable', 'integer', 'between:1,6'],
+            'ultrasound' => ['nullable', Rule::in(array_keys(\App\Models\HealthCheckup::ULTRASOUND))], 'fetuses' => ['nullable', 'integer', 'between:0,8'],
+            'ultrasound_status' => ['nullable', Rule::in(array_keys(\App\Models\PregnancyCheck::STATUSES))], 'viability' => ['nullable', Rule::in(array_keys(\App\Models\PregnancyCheck::VIABILITY))], // D-167
             'days_pregnant' => ['nullable', 'required_if:ultrasound,pregnant', 'integer', 'between:1,160'], 'sire_id' => ['nullable', 'exists:animals,id'], // D-098: days
             'findings' => ['nullable', 'string', 'max:2000'], 'outcome' => ['required', Rule::in(array_keys(\App\Models\HealthCheckup::OUTCOMES))],
             'open_case' => ['boolean'], 'condition' => ['nullable', 'required_if:open_case,true', 'string', 'max:120'],
@@ -178,7 +179,8 @@ class HealthController extends Controller
         $data = $request->validate([
             'checked_on' => ['required', 'date', 'before_or_equal:today'], 'temperature_f' => ['nullable', 'numeric', 'between:93,110'],
             'body_score' => ['nullable', 'integer', 'between:1,5'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
-            'ultrasound' => ['nullable', Rule::in(array_keys(\App\Models\HealthCheckup::ULTRASOUND))], 'fetuses' => ['nullable', 'integer', 'between:1,6'],
+            'ultrasound' => ['nullable', Rule::in(array_keys(\App\Models\HealthCheckup::ULTRASOUND))], 'fetuses' => ['nullable', 'integer', 'between:0,8'],
+            'ultrasound_status' => ['nullable', Rule::in(array_keys(\App\Models\PregnancyCheck::STATUSES))], 'viability' => ['nullable', Rule::in(array_keys(\App\Models\PregnancyCheck::VIABILITY))], // D-167
             'days_pregnant' => ['nullable', 'required_if:ultrasound,pregnant', 'integer', 'between:1,160'], 'sire_id' => ['nullable', 'exists:animals,id'],
             'findings' => ['nullable', 'string', 'max:2000'], 'outcome' => ['required', Rule::in(array_keys(\App\Models\HealthCheckup::OUTCOMES))],
             'follow_up_on' => ['nullable', 'date', 'after_or_equal:checked_on'], 'follow_up_note' => ['nullable', 'string', 'max:200'],
