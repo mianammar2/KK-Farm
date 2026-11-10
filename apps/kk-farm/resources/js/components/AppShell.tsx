@@ -56,13 +56,10 @@ const NAV: Array<{ heading: string; items: Array<{ href: string; label: string; 
 ];
 
 function Brand() {
+    // D-155: only the KK Farms logo; its badge already carries the name and the tagline.
     return (
-        <Link href="/" className="flex items-center gap-2.5 px-2 text-white">
-            <BrandMark size={52} />
-            <span className="leading-tight">
-                <span className="block text-base font-bold tracking-wide">KK <span className="text-turq-400">FARMS</span></span>
-                <span className="block whitespace-nowrap text-[10px] tracking-tight text-cobalt-200">Modern Farming. Better Breeding.</span>
-            </span>
+        <Link href="/" className="flex justify-center px-2 py-1" aria-label="KK Farms home">
+            <BrandMark size={112} />
         </Link>
     );
 }

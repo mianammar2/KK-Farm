@@ -1,8 +1,6 @@
 import { Link } from '@inertiajs/react';
-import { Warehouse } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { useFive } from '../lib/useFive';
-import { AgeBadge, BreedBadge } from './GoatBadges';
+import { BreedBadge } from './GoatBadges';
 import { CountUp } from './ui';
 
 export type SceneFigure = { female: boolean; stage: string | null; breed: string | null; flag: boolean };
@@ -95,69 +93,43 @@ export const BREED_LOOK: Record<string, { coat: string; head?: string; spots?: s
 export const breedLook = (breed?: string | null) => (breed ? BREED_LOOK[breed.trim().toLowerCase()] : undefined);
 
 /**
- * D-147: a goat in the KK digital style. Male (buck): big swept-back horns, a beard and a thick neck. Female (doe):
- * small horns and an udder. Kid: small, no horns, short legs. Coat, head colour, patches and ears follow the breed.
- * Every goat stands on a glowing pad: pink for female, blue for male. A red cross tag marks one that needs attention.
+ * D-155: a goat in a pen is the KK Farms icon-library picture for what it is: Breeding Male (BKM) for a buck,
+ * Breeding Female (BDF) for a doe, Grower (GRW), Kid (KID). The red Sick sign marks one that needs attention.
  */
-export function GoatFigure({ female, flag, delay, flip, stage = 'adult', breed = null }: { female: boolean; flag: boolean; delay: number; flip: boolean; stage?: Stage | string | null; breed?: string | null }) {
-    const look = breedLook(breed);
-    const kid = stage === 'kid';
-    const coat = look?.coat ?? (female ? '#f3efe6' : '#8b5a33');
-    const head = look?.head ?? coat;
-    const dark = ['#1c1a19', '#262626', '#3a2d26', '#4a3426'].includes(coat);
-    const line = dark ? '#000000' : '#2b3b30';
-    const pad = female ? '#ec6c97' : '#3b82c4';
-    // A kid is the same goat drawn smaller, standing on the same ground line.
-    const body = kid ? 'translate(6.4 9.6) scale(0.62)' : stage === 'grower' ? 'translate(2.2 3.3) scale(0.87)' : undefined;
+export function goatArt(female: boolean, stage?: string | null) {
+    return stage === 'kid' ? 'cls-kid' : stage === 'grower' ? 'cls-grw' : female ? 'cls-bdf' : 'cls-bkm';
+}
+
+export function GoatFigure({ female, flag, delay, stage = 'adult' }: { female: boolean; flag: boolean; delay: number; flip?: boolean; stage?: Stage | string | null; breed?: string | null }) {
     return (
-        <svg viewBox="0 -2 34 30" className="kk-goat" style={{ animationDelay: `${delay}s`, transform: flip ? 'scaleX(-1)' : undefined }}>
-            <ellipse cx="16" cy="26.6" rx={kid ? 7 : 11} ry="1.7" fill={pad} opacity="0.75" />
-            <ellipse cx="16" cy="26.6" rx={kid ? 4 : 6.5} ry="0.8" fill="#ffffff" opacity="0.55" />
-            <g transform={body}>
-                <g stroke={line} strokeWidth="1.3" strokeLinecap="round">
-                    <line x1="9" y1="17" x2="9" y2={kid ? 22.5 : 25} /><line x1="12" y1="17" x2="12" y2={kid ? 22.5 : 25} />
-                    <line x1="19" y1="17" x2="19" y2={kid ? 22.5 : 25} /><line x1="22" y1="17" x2="22" y2={kid ? 22.5 : 25} />
-                    <path d="M6 12 L3.2 9" fill="none" />
-                </g>
-                <ellipse cx="15.5" cy="13.5" rx="10" ry={female ? 5.4 : 6} fill={coat} stroke={line} strokeWidth="1.1" />
-                {look?.spots ? <g fill={look.spots}><ellipse cx="11" cy="12" rx="3" ry="2" /><ellipse cx="18.5" cy="15" rx="2.6" ry="1.7" /><ellipse cx="15" cy="10.5" rx="1.6" ry="1.1" /></g> : null}
-                {female && !kid ? <ellipse cx="17.5" cy="18.6" rx="2.4" ry="1.5" fill="#f2a5bd" stroke={line} strokeWidth="0.7" /> : null}
-                {/* neck and head; a buck's neck is thicker */}
-                <path d={female || kid ? 'M21.5 11 L24.5 5 Q27.5 3.8 29.6 6.4 L30 9.2 Q28.6 10.6 26.8 10 L24.6 14 Z' : 'M20.5 10.5 L24 4.6 Q27.6 3.4 29.8 6.2 L30.2 9.4 Q28.6 10.9 26.6 10.2 L24.4 15 Z'} fill={head} stroke={line} strokeWidth="1.1" />
-                {look?.ears === 'long' ? <path d="M24.4 6.4 Q21.6 8.5 22.2 12.6 Q23.6 11.6 25.2 7.6 Z" fill={head} stroke={line} strokeWidth="0.8" /> : <path d="M24.6 6.6 L21.6 8.4" stroke={line} strokeWidth="1.6" strokeLinecap="round" />}
-                {kid ? null : female
-                    ? <path d="M25.6 5.2 Q25 2.6 23.6 1.8" stroke={line} strokeWidth="1.1" fill="none" strokeLinecap="round" />
-                    : <path d="M25.2 5.4 Q24.4 0.6 20.6 0.2 Q18.6 0.4 18.2 2.6 Q20.8 1.6 22.4 3.2 Q23.6 4.6 23.8 6" fill="#c9b79a" stroke={line} strokeWidth="0.9" strokeLinejoin="round" />}
-                {!female && !kid ? <path d="M28.8 9.8 L28.2 13.6 L29.8 10.4" fill={line} stroke={line} strokeWidth="0.6" strokeLinejoin="round" /> : null}
-                <circle cx="27.6" cy="6.8" r="0.8" fill={dark ? '#f5e6a8' : '#1b1b1b'} />
-            </g>
-            {flag ? <g><circle cx="14" cy="3.4" r="4.4" fill="#d92d20" stroke="#fff" strokeWidth="1.1" /><path d="M14 1.1v4.6M11.7 3.4h4.6" stroke="#fff" strokeWidth="1.5" /></g> : null}
-        </svg>
+        <span className={`kk-goat kk-goat-pic ${female ? 'kk-goat-f' : 'kk-goat-m'}`} style={{ animationDelay: `${delay}s` }}>
+            <img src={`/icons/${goatArt(female, stage)}.png`} alt="" decoding="async" loading="lazy" />
+            {flag ? <img src="/icons/ic-sick.png" alt="" className="kk-goat-flag" /> : null}
+        </span>
     );
 }
 
-/** D-147: what the figures mean: female, male, kid, needs attention, and the look of each breed that is on the farm. */
+/** D-155: what the pictures mean (from the icon library) and the symbol of each breed on the farm. */
 export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | undefined> }) {
-    const item = (key: string, label: string, figure: ReactNode) => (
-        <span key={key} className="inline-flex items-center gap-1.5"><span className="kk-legend-goat">{figure}</span>{label}</span>
+    const item = (art: string, label: string) => (
+        <span key={art} className="inline-flex items-center gap-1.5"><img src={`/icons/${art}.png`} alt="" className="kk-legend-pic" />{label}</span>
     );
-    const present = [...new Set(breeds.filter(Boolean).map((b) => b!.trim()))].filter((b) => breedLook(b)).sort();
+    const present = [...new Set(breeds.filter(Boolean).map((b) => b!.trim()))].sort();
     return (
-        <div className="space-y-1.5 px-1 text-xs text-[#3d5446]">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                {item('f', 'Female (Doe)', <GoatFigure female flag={false} delay={0} flip={false} />)}
-                {item('m', 'Male (Buck)', <GoatFigure female={false} flag={false} delay={0} flip={false} />)}
-                {item('k', 'Kid', <GoatFigure female flag={false} delay={0} flip={false} stage="kid" />)}
-                <span className="inline-flex items-center gap-1.5">Age: <AgeBadge stage="kid" withLabel /><AgeBadge stage="grower" withLabel /><AgeBadge stage="adult" withLabel /></span>
-                {item('a', 'Needs Attention', <GoatFigure female flag delay={0} flip={false} />)}
+        <div className="space-y-2 px-1 text-xs font-semibold text-[#3d5446]">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {item('cls-bdf', 'Female (Doe)')}
+                {item('cls-bkm', 'Male (Buck)')}
+                {item('cls-grw', 'Grower')}
+                {item('cls-kid', 'Kid')}
+                {item('ic-sick', 'Needs Attention')}
             </div>
             {present.length ? (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <span className="font-semibold">Breeds:</span>
-                    {present.map((b) => <span key={b} className="inline-flex items-center gap-1"><span className="kk-legend-goat"><GoatFigure female flag={false} delay={0} flip={false} breed={b} /></span><BreedBadge breed={b} withName /></span>)}
+                    <span>Breeds:</span>
+                    {present.map((b) => <BreedBadge key={b} breed={b} withName />)}
                 </div>
             ) : null}
-            <div>Pink pad: female · blue pad: male · tap a pen to see its goats.</div>
         </div>
     );
 }
@@ -167,7 +139,7 @@ export function BarnRoof({ id, name, typeName }: { id: number | string; name: st
     // D-146: the shed's header bar: a green band with a building icon tile, the shed name and its unit type.
     return (
         <div className="kk-roof" data-shed={id}>
-            <span className="kk-roof-icon" aria-hidden><Warehouse size={18} /></span>
+            <span className="kk-roof-icon kk-roof-pic" aria-hidden><img src="/icons/mod-housing.png" alt="" /></span>
             <span className="min-w-0">
                 <span className="block truncate font-mono text-base font-bold tracking-wide">{name}</span>
                 {typeName ? <span className="block truncate text-xs text-white/80">{typeName}</span> : null}
