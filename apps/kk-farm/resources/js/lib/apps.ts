@@ -55,6 +55,7 @@ export const APPS: ErpApp[] = [
         S('Overview', '/breeding?tab=calendar', 'Upcoming Deliveries'),
         S('Operations', '/breeding?tab=kidding', 'Kidding & Pregnancy Outcomes'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
+        S('Operations', '/breeding?tab=kidcare', 'Kid Care'),
         S('Operations', '/breeding?tab=weaning', 'Weaning'),
         S('Operations', '/milking', 'Mother Care & Lactation'),
         S('Records', '/sheds', 'Maternity Unit'),

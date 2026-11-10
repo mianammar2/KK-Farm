@@ -13,6 +13,7 @@ import { LibIcon } from '../components/ui';
 import ReproKpiTiles from '../components/ReproKpis';
 import UltrasoundForm, { type UltrasoundOptions } from '../components/UltrasoundForm';
 import { HeatDetection, PregnancyCalendar, type HeatOptions, type HeatRow } from '../components/HeatDetection';
+import { KidCare, type KidCareOptions, type KidRow } from '../components/KidCare';
 import { useTabParam } from '../lib/useTabParam';
 
 type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null; status: string | null; day: number | null; fetal: string; viability: string | null; action: string | null };
@@ -34,6 +35,7 @@ type Kpis = { events: number; deliveries: number; abortions: number; stillborn: 
 type Due = { id: string; number: string; name: string | null; coat: string; sex: string; dam: string | null; age: number; target: string; penId: number | null; state: 'due' | 'soon' | 'postponed'; postponedTo: string | null };
 type Props = {
     matings: MatingRow[]; kiddings: KiddingRow[]; weaning: Due[]; kpis: Kpis; heat: HeatRow[]; heatOptions: HeatOptions; // D-175
+    kidCare: KidRow[]; kidCareOptions: KidCareOptions; // D-176
     weaned: Array<{ id: number; kidId: string; kid: string; on: string; age: number | null; weight: number | null; method: string | null; by: string }>;
     performance: Array<{ id: string; number: string; name: string | null; kiddings: number; alive: number; stillborn: number; litter: number }>;
     focus: { id: string; number: string; tree: PedigreeNode } | null; pairCheck: { shared: number; sire: string; dam: string } | null;
@@ -88,6 +90,7 @@ export default function Breeding(props: Props) {
                 { id: 'cycle', label: 'Breeding cycle', count: active.length },
                 { id: 'calendar', label: 'Pregnancy Calendar' },
                 { id: 'kidding', label: 'Kidding', count: kiddings.length },
+                { id: 'kidcare', label: 'Kid Care', count: props.kidCare.filter((k) => k.colostrumDue || k.weak).length || undefined },
                 { id: 'weaning', label: 'Weaning', count: weaning.length || undefined },
                 { id: 'pedigree', label: 'Family tree' },
                 { id: 'performance', label: 'Performance' },
@@ -96,6 +99,7 @@ export default function Breeding(props: Props) {
 
             {tab === 'heat' ? <HeatDetection rows={props.heat} options={props.heatOptions} onMate={(id) => { setPresetDam(id); setAdding(true); }} /> : null}
             {tab === 'calendar' ? <PregnancyCalendar matings={matings} /> : null}
+            {tab === 'kidcare' ? <KidCare kids={props.kidCare} options={props.kidCareOptions} does={props.does.map((d) => ({ id: String(d.id), farm_number: d.farm_number ?? '' }))} /> : null}
             {tab === 'cycle' ? (
                 <div>
                     <div className="min-w-0 space-y-3">

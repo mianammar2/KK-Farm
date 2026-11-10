@@ -74,6 +74,8 @@ class BreedingController extends Controller
             'weaning' => $this->weaningDue($org),
             'kpis' => Kidding::kpis(), // D-161
             'heat' => \App\Support\HeatBoard::build(), // D-175
+            'kidCare' => \App\Support\KidCare::board(), // D-176
+            'kidCareOptions' => ['kinds' => \App\Models\KidCareRecord::KINDS, 'sources' => \App\Models\KidCareRecord::SOURCES, 'suckling' => \App\Models\KidCareRecord::SUCKLING],
             'heatOptions' => ['intensity' => \App\Models\HeatRecord::INTENSITY, 'signs' => \App\Models\HeatRecord::SIGNS, 'cycle' => \App\Models\HeatRecord::CYCLE_DAYS],
             'weaned' => Weaning::with('kid')->where('status', 'completed')->orderByDesc('weaned_on')->limit(20)->get()->map(fn (Weaning $w) => [
                 'id' => $w->id, 'kidId' => $w->kid_id, 'kid' => $w->kid->farm_number, 'on' => $w->weaned_on->format('j M Y'),
@@ -235,6 +237,46 @@ class BreedingController extends Controller
         Farm::event($doe, 'breeding', 'Heat observed ('.strtolower(\App\Models\HeatRecord::INTENSITY[$data['intensity']]).')'.($signs ? ": {$signs}" : ''), $request->user()->name, Carbon::parse($data['observed_on']));
 
         return back()->with('success', "Heat recorded for {$doe->farm_number}. She is ready for mating; next heat expected in about ".\App\Models\HeatRecord::CYCLE_DAYS.' days.');
+    }
+
+    /**
+     * D-176: a care action for a newborn kid: colostrum, bottle feed, nursing check, warming or fostering to another doe.
+     * A kid that is not suckling raises a critical task for the vet; fostering marks the kid as an orphan.
+     */
+    public function kidCare(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'kid_id' => ['required', 'exists:animals,id'], 'kind' => ['required', Rule::in(array_keys(\App\Models\KidCareRecord::KINDS))],
+            'given_at' => ['required', 'date', 'before_or_equal:now'], 'amount_ml' => ['nullable', 'integer', 'between:5,3000'],
+            'source' => ['nullable', Rule::in(array_keys(\App\Models\KidCareRecord::SOURCES))], 'suckling' => ['nullable', 'required_if:kind,nursing_check', Rule::in(array_keys(\App\Models\KidCareRecord::SUCKLING))],
+            'foster_dam_id' => ['nullable', 'required_if:kind,fostered', 'exists:animals,id'], 'notes' => ['nullable', 'string', 'max:500'],
+        ], [], ['kid_id' => 'kid', 'foster_dam_id' => 'foster doe', 'amount_ml' => 'amount']);
+        $kid = Animal::findOrFail($data['kid_id']);
+        $by = $request->user()->name;
+        DB::transaction(function () use ($kid, $data, $by) {
+            \App\Models\KidCareRecord::create($data + ['recorded_by' => $by]);
+            $label = \App\Models\KidCareRecord::KINDS[$data['kind']];
+            $extra = ! empty($data['amount_ml']) ? " {$data['amount_ml']} ml" : '';
+            if ($data['kind'] === 'fostered') {
+                $foster = Animal::findOrFail($data['foster_dam_id']);
+                $kid->update(['kid_stage' => 'orphan']);
+                $extra = " to {$foster->farm_number}";
+                Farm::event($foster, 'breeding', "Foster mother of {$kid->farm_number}", $by);
+            }
+            if ($data['kind'] === 'nursing_check') {
+                $extra = ': '.\App\Models\KidCareRecord::SUCKLING[$data['suckling']];
+                if ($data['suckling'] === 'none') {
+                    \App\Models\Task::create([
+                        'title' => "Kid not suckling: {$kid->farm_number}", 'type' => 'health', 'priority' => 'critical', 'status' => 'open', 'due_on' => now()->toDateString(),
+                        'animal_id' => $kid->id, 'pen_id' => $kid->pen_id, 'department_id' => \App\Models\Department::where('name', 'Veterinary')->value('id'),
+                        'notes' => 'A newborn that does not suckle needs colostrum by bottle or tube and warmth now. The vet decides the treatment.',
+                    ]);
+                }
+            }
+            Farm::event($kid, 'breeding', $label.$extra, $by, \Illuminate\Support\Carbon::parse($data['given_at']));
+        });
+
+        return back()->with('success', \App\Models\KidCareRecord::KINDS[$data['kind']]." recorded for {$kid->farm_number}.");
     }
 
     public function close(Request $request, Mating $mating): RedirectResponse
