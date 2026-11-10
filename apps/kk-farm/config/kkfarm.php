@@ -47,6 +47,7 @@ return [
         'inventory' => ['ceo', 'manager', 'vet', 'feeding', 'finance'], // D-178
         'purchase' => ['ceo', 'manager', 'finance'], // D-178
         'sales' => ['ceo', 'manager', 'finance'], // D-178
+        'welfare' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning'], // D-185: App 19 Animal Welfare
         'maintenance' => $all, // D-182: anyone reports a breakdown; owner and manager keep the asset register
     ],
 

@@ -2,7 +2,7 @@
 
 Source: owner's "KK Farms Enterprise Goat Farming ERP – Final 360° Functional Blueprint & SRS, Version 3.0, 11 Nov 2026"
 (21 core Odoo-style apps + optional Fodder & Pasture + System Settings; 41 flowcharts; BR-001…BR-032; UAT-01…UAT-34).
-The flowchart companion PDF (KK_Farms_ERP_V3_360_Flowcharts.pdf) has not been received yet; process order follows the SRS text.
+Full handbook with the 41 flowcharts: KK_Farms_ERP_V3_FINAL_360_Handbook.pdf (owner's copy in /Users/MAC/goat, not in git); flow summaries in ERP_V3_FLOWS.md. Each app is built to its flowchart page.
 
 Status: **Built** (live), **Partial** (some screens/rules), **To do**. Decision numbers refer to `DECISIONS_LOG.md`.
 
@@ -38,7 +38,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 16 | Reports & Analytics | Operational; Breeding; Fattening; Dairy; Finance; Compliance; Self-Service BI; KPI Definitions | Partial |
 | 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Partial (lactations, milk records D-117) |
 | 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | To do |
-| 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | To do |
+| 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review to do |
 | 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | To do (sensors exist) |
 | 21 | Quality, Compliance & Safety | Quality Dashboard; SOP Library; Feed & Milk Safety; Regulatory Register; Incidents & CAPA; Traceability & Recall; Emergency Readiness; Compliance Reporting | To do (incident register D-180) |
 | 22 | Fodder & Pasture (Optional) | Land & Field Registry; Crop Planning; Cultivation; Crop Monitoring; Harvest; Preservation; Feed Store Transfer; Costing | To do (off by default) |
@@ -70,7 +70,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-020 | No double-counted fattening feed cost | To do |
 | BR-021 | No drinking water = critical alert | To do |
 | BR-022 | Configurable heat-stress threshold | To do |
-| BR-023 | Major welfare concern → inspection/medical task | To do |
+| BR-023 | Major welfare concern → inspection/medical task | Built (D-185) |
 | BR-024 | Every dose consumes a traceable lot | Partial |
 | BR-025 | Held stock/milk/feed never sold | Partial |
 | BR-026 | Dispatch verifies tag/RFID + approved sale | To do |

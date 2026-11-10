@@ -210,10 +210,12 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/value', 'Value vs Cost'),
         S('Configuration', '/value', 'Market Rates'),
     ] },
-    { key: 'welfare', no: '19', label: 'Animal Welfare', art: 'ic-healthy', modules: ['health'], linked: ['veterinary', 'housing', 'operations'], sections: [
-        S('Overview', '/health?tab=reports', 'Reported Concerns'),
-        S('Operations', '/health?tab=checkups', 'Daily Checks'),
-        S('Records', '/goats?show=attention', 'Goats Needing Attention'),
+    { key: 'welfare', no: '19', label: 'Animal Welfare', art: 'ic-healthy', modules: ['welfare'], linked: ['veterinary', 'housing', 'operations', 'employees', 'quality'], sections: [
+        S('Overview', '/welfare?tab=cases', 'Welfare Cases'),
+        S('Operations', '/welfare?tab=check', 'Daily Welfare & Mobility Check'),
+        S('Operations', '/health?tab=reports', 'Vet Referrals (Reported Concerns)'),
+        S('Records', '/welfare?tab=checks', 'Check Records'),
+        S('Records', '/welfare?tab=closed', 'Closed Cases'),
         S('Reporting', '/health?tab=mortality', 'Mortality'),
         S('Configuration', '/health?tab=diseases', 'Condition List'),
     ] },
