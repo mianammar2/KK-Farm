@@ -18,6 +18,9 @@ type Goat = Props['goats'][number];
  * D-089: one colour per status, used for the filter pills, the bar on each row and the card edge.
  * The most urgent status wins: left farm, critical, in treatment, watch, then pregnant, lactating, healthy.
  */
+/** D-160: filter chips use the icon library. */
+const CHIP_ART: Record<string, string> = { critical: 'ic-sick', treatment: 'ic-under-treatment', watch: 'ic-recovery', pregnant: 'ic-pregnant', lactating: 'ic-lactating', healthy: 'ic-healthy', left: 'ic-sold' };
+
 const TONES = {
     critical: { label: 'Critical', bar: 'bg-crit-500', dot: 'bg-crit-500', pill: 'border-crit-500 bg-crit-100 text-crit-700', row: 'bg-crit-100/40' },
     treatment: { label: 'In treatment', bar: 'bg-treat-400', dot: 'bg-treat-400', pill: 'border-treat-400 bg-treat-100 text-treat-700', row: 'bg-treat-100/30' },
@@ -121,7 +124,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                 {(Object.keys(TONES) as Tone[]).filter((t) => counts[t]).map((t) => (
                     <button key={t} type="button" aria-pressed={tone === t} onClick={() => pickTone(tone === t ? '' : t)}
                         className={cx('kk-pill flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold', tone === t ? `${TONES[t].pill} ring-2 ring-offset-1 ring-current` : 'border-rule bg-tile text-cobalt-900')}>
-                        <span className={cx('size-2 rounded-full', TONES[t].dot, t === 'critical' && 'kk-beat')} aria-hidden />{TONES[t].label} <span className="tabular-nums opacity-75">{counts[t]}</span>
+                        <img src={`/icons/${CHIP_ART[t]}.png`} alt="" aria-hidden className={cx('size-5 rounded-md bg-white object-contain', t === 'critical' && 'kk-beat')} />{TONES[t].label} <span className="tabular-nums opacity-75">{counts[t]}</span>
                     </button>
                 ))}
             </div>
@@ -206,7 +209,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                 <Link key={g.id} href={`/goats/${g.id}`} style={rise(i)}
                                     className={cx('kk-rise kk-lift relative flex items-center gap-3 overflow-hidden rounded-tile border border-rule bg-tile py-2 pr-2.5 pl-3.5', TONES[t].row)}>
                                     <span aria-hidden className={cx('absolute inset-y-0 left-0 w-1.5', TONES[t].bar)} />
-                                    {g.photo ? <img src={`/media/${g.photo}`} alt="" loading="lazy" className="size-14 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={g.number} coat={g.coat} sex={g.sex} size={56} />}
+                                    {g.photo ? <img src={`/media/${g.photo}`} alt="" loading="lazy" className="size-14 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={g.number} sex={g.sex} stage={g.stage} repro={g.repro} size={56} />}
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5"><span className="shrink-0 font-mono font-semibold text-cobalt-900">{g.number}</span><GoatBadges breed={g.breed} stage={g.stage} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}

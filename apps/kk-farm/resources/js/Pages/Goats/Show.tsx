@@ -109,10 +109,10 @@ export default function GoatShow(props: Props) {
             <section className="mb-4 overflow-hidden rounded-tile border border-rule bg-tile shadow-tile">
                 <div className="flex flex-col gap-4 p-3 sm:flex-row sm:p-4">
                     {/* Phones: a small photo beside the tag; wider screens: the large portrait on the left. */}
-                    <div className="max-sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt={`Profile of ${goat.number}`} className="size-36 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}</div>
+                    <div className="max-sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt={`Profile of ${goat.number}`} className="size-36 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} sex={goat.sex} stage={goat.stage} repro={goat.repro} size={144} />}</div>
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt="" className="size-14 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={56} />}</span>
+                            <span className="sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt="" className="size-14 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} sex={goat.sex} stage={goat.stage} repro={goat.repro} size={56} />}</span>
                             <h1 className="font-mono text-xl font-bold tracking-tight text-cobalt-900 sm:text-2xl">{goat.number}</h1>
                             <SexIcon sex={goat.sex} />
                             {onFarm ? <HealthChip health={goat.health} /> : removed ? <Chip className="bg-glaze text-ink-soft">Removed (wrong entry)</Chip> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}

@@ -53,13 +53,16 @@ function GoatHead({ s, size }: { s: ReturnType<typeof symbolFor>; size: number }
     );
 }
 
+/** D-160: breeds that have their own picture in the icon library. */
+const BREED_ART: Record<string, string> = { 'makhi cheeni': 'ic-breed-makhi-cheeni', teddy: 'ic-breed-teddy', beetal: 'ic-breed-beetal' };
+
 export function BreedBadge({ breed, withName = false, size = 24 }: { breed?: string | null; withName?: boolean; size?: number }) {
     if (!breed) return null;
     const s = symbolFor(breed);
     return (
         <span className="inline-flex shrink-0 items-center gap-1 align-middle" title={`Breed: ${breed}`} aria-label={`Breed ${breed}`}>
             <span className="inline-flex items-center gap-0.5 rounded-full p-px pr-1.5 text-[10px] font-extrabold leading-none tracking-wide" style={{ background: s.bg, color: s.fg, boxShadow: `inset 0 0 0 1px ${s.ring}` }}>
-                <GoatHead s={s} size={size} />
+                {BREED_ART[breedKey(breed)] ? <img src={`/icons/${BREED_ART[breedKey(breed)]}.png`} alt="" aria-hidden className="shrink-0 rounded-full bg-white object-cover" style={{ width: size, height: size }} /> : <GoatHead s={s} size={size} />}
                 {s.code}
             </span>
             {withName ? <span className="truncate">{breed}</span> : null}

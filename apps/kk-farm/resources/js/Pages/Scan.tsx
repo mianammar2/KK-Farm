@@ -107,7 +107,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
         <Panel title="Goat found" description={`Tag ${result.code}, on this goat since ${result.since}`}>
             <div className="flex flex-col gap-4 sm:flex-row">
                 <motion.div initial={{ scale: 0.6, opacity: 0, rotate: -6 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 18 }} className="shrink-0 self-center sm:self-start">
-                    {goat.photo ? <img src={`/media/${goat.photo}`} alt="" className="size-36 rounded-3xl object-cover shadow-float" /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={144} />}
+                    {goat.photo ? <img src={`/media/${goat.photo}`} alt="" className="size-36 rounded-3xl object-cover shadow-float" /> : <GoatPortrait number={goat.number} sex={goat.sex} stage={goat.stage} repro={goat.repro} size={144} />}
                 </motion.div>
                 <div className="min-w-0">
                     <h2 className="font-mono text-xl font-bold text-cobalt-900">{goat.number}</h2>
