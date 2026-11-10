@@ -6,6 +6,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import GoatPortrait from './GoatPortrait';
 import { titleCase } from '../lib/titleCase';
 import type { GoatCard, Health } from '../types';
+import { GoatBadges } from './GoatBadges';
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
     return parts.filter(Boolean).join(' ');
@@ -135,13 +136,13 @@ export function SexIcon({ sex, label = false }: { sex: string; label?: boolean }
     );
 }
 
-export function GoatLabel({ goat, size = 38 }: { goat: Pick<GoatCard, 'id' | 'number' | 'name' | 'coat' | 'sex' | 'photo'>; size?: number }) {
+export function GoatLabel({ goat, size = 38, badges = true }: { goat: Pick<GoatCard, 'id' | 'number' | 'name' | 'coat' | 'sex' | 'photo'> & { breed?: string | null; stage?: string | null }; size?: number; badges?: boolean }) {
     return (
         <Link href={`/goats/${goat.id}`} prefetch className="group flex min-w-0 items-center gap-2.5">
             {goat.photo ? <img src={`/media/${goat.photo}`} alt="" width={size} height={size} loading="lazy" className="shrink-0 rounded-tile object-cover" style={{ width: size, height: size }} /> : <GoatPortrait number={goat.number} coat={goat.coat} sex={goat.sex} size={size} />}
             <span className="min-w-0">
                 {/* D-096: the Tag ID is the goat's name on the farm; a name, if given, is small underneath. */}
-                <span className="block truncate font-mono font-semibold text-cobalt-800 group-hover:underline">{goat.number}</span>
+                <span className="flex min-w-0 items-center gap-1.5"><span className="truncate font-mono font-semibold text-cobalt-800 group-hover:underline">{goat.number}</span>{badges ? <GoatBadges breed={goat.breed} stage={goat.stage} /> : null}</span>
                 {goat.name ? <span className="block truncate text-sm text-ink-soft">{goat.name}</span> : null}
             </span>
         </Link>

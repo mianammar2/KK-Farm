@@ -81,7 +81,7 @@ class Farm
         if (! $animal) {
             return null;
         }
-        $node = ['id' => $animal->id, 'number' => $animal->farm_number, 'name' => $animal->name, 'sex' => $animal->sex, 'coat' => $animal->coat, 'breed' => $animal->breed?->name, 'status' => $animal->status];
+        $node = ['id' => $animal->id, 'number' => $animal->farm_number, 'name' => $animal->name, 'sex' => $animal->sex, 'coat' => $animal->coat, 'breed' => $animal->breed?->name, 'stage' => $animal->effectiveAge(), 'status' => $animal->status];
         if ($depth > 0) {
             $node['sire'] = self::pedigree($animal->sire, $depth - 1);
             $node['dam'] = self::pedigree($animal->dam, $depth - 1);

@@ -8,6 +8,7 @@ import GoatPortrait from '../components/GoatPortrait';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
 import type { GoatCard, Option } from '../types';
 import { AttachPrompt } from '../components/RfidAttach';
+import { AgeBadge, BreedBadge } from '../components/GoatBadges';
 
 type Result = { code: string; state: 'assigned' | 'free' | 'lost' | 'unknown'; goat: (GoatCard & { withdrawal?: { meat: string | null; milk: string | null } | null; pregnancyDay?: number | null; can?: { health: boolean; check: boolean; weigh: boolean; move: boolean } }) | null; since: string | null; history: Array<{ id: string; number: string; to: string | null; reason: string | null }> };
 type Props = { attach?: Parameters<typeof AttachPrompt>[0]['attach'] | null; result: Result | null; samples: { assigned: string[]; free: string[]; new: string[] }; untagged: Option[]; goats: Option[] };
@@ -110,7 +111,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                 </motion.div>
                 <div className="min-w-0">
                     <h2 className="font-mono text-xl font-bold text-cobalt-900">{goat.number}</h2>
-                    <p className="text-ink-soft">{goat.name ? `${goat.name} · ` : ''}{goat.breed} · {goat.age}</p>
+                    <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">{goat.name ? <span>{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName /><span>·</span><AgeBadge stage={goat.stage} withLabel /><span>{goat.age}</span></p>
                     <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} KG` : ''}</p>
                     <div className="mt-1 flex flex-wrap gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} />{goat.pregnancyDay ? <span className="rounded-[4px] bg-manganese-100 px-1.5 py-0.5 text-xs font-semibold text-manganese-600">Day {goat.pregnancyDay} of pregnancy</span> : null}</div>
                     {goat.withdrawal ? (

@@ -3,6 +3,7 @@ import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { BarnRoof, EarTag, FigureLegend, GoatFigure } from '../components/FarmScene';
+import { GoatBadges } from '../components/GoatBadges';
 import { Button, Chip, cx, Empty, Field, HealthChip, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { useFive } from '../lib/useFive';
@@ -445,7 +446,7 @@ function PenRollCall({ pen }: { pen: Pen }) {
                                     <Link href={`/goats/${g.id}`} className="kk-lift flex items-center gap-2 rounded-md bg-[#f6faf7] p-1.5 pr-2 shadow-[0_1px_0_#dbe6de]">
                                         <EarTag number={g.number} />
                                         <span className="kk-th-goat" aria-hidden><GoatFigure female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={0} flip={false} /></span>
-                                        <span className="min-w-0 truncate text-sm font-semibold text-[#16301f]">{g.name ?? ''}</span>
+                                        <GoatBadges breed={g.breed} stage={g.stage} /><span className="min-w-0 truncate text-sm font-semibold text-[#16301f]">{g.name ?? ''}</span>
                                     </Link>
                                 </li>
                             ))}

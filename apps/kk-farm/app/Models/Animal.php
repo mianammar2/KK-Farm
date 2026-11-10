@@ -137,6 +137,7 @@ class Animal extends Model
             'coat' => $this->coat,
             'breed' => $this->breed?->name,
             'age' => $this->ageLabel(),
+            'stage' => $this->effectiveAge(), // D-148: kid | grower | adult, for the age symbol
             'teeth' => $this->teeth, // D-106
             'ageMonths' => $this->birth_date ? (int) $this->birth_date->diffInMonths($this->exit_date ?? now()) : null,
             'pen' => $this->pen?->fullName(),

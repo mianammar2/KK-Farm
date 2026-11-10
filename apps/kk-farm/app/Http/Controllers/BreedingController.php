@@ -46,7 +46,7 @@ class BreedingController extends Controller
             'matings' => $matings->map(fn (Mating $m) => [
                 'id' => $m->id, 'status' => $m->status, 'outcome' => Mating::OUTCOMES[$m->status] ?? $m->status, 'method' => Mating::METHODS[$m->method] ?? $m->method,
                 'heat' => $m->heat_observed, 'cycle' => $m->service_cycle, 'handler' => $m->handler, 'notes' => $m->notes, 'alert' => $m->alert($org->kidding_alert_days),
-                'dam' => ['id' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'coat' => $m->dam->coat],
+                'dam' => ['id' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'coat' => $m->dam->coat, 'breed' => $m->dam->breed?->name, 'stage' => $m->dam->effectiveAge()],
                 'sire' => $m->sire ? ['id' => $m->sire_id, 'number' => $m->sire->farm_number, 'name' => $m->sire->name] : null,
                 'mated' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'checkDue' => $m->check_due_on?->format('j M Y'),
                 'days' => $m->expected_kidding_on ? (int) $today->diffInDays($m->expected_kidding_on, false) : null,
@@ -97,7 +97,7 @@ class BreedingController extends Controller
             $until = $postponed[$k->id]->postponed_to ?? null;
 
             return [
-                'id' => $k->id, 'number' => $k->farm_number, 'name' => $k->name, 'coat' => $k->coat, 'sex' => $k->sex, 'dam' => $k->dam?->farm_number,
+                'id' => $k->id, 'number' => $k->farm_number, 'name' => $k->name, 'coat' => $k->coat, 'breed' => $k->breed?->name, 'stage' => $k->effectiveAge(), 'sex' => $k->sex, 'dam' => $k->dam?->farm_number,
                 'age' => (int) $k->birth_date->diffInDays($today), 'target' => $target->format('j M Y'), 'penId' => $k->pen_id,
                 'state' => $until && $until->greaterThan($today) ? 'postponed' : ($target->lessThanOrEqualTo($today) ? 'due' : 'soon'),
                 'postponedTo' => $until?->format('j M Y'),

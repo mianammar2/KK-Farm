@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import GoatPortrait from './GoatPortrait';
 import { cx } from './ui';
+import { BreedBadge } from './GoatBadges';
 
 export type PedigreeNode = { id: string; number: string; name: string | null; sex: string; coat: string; breed?: string; status?: string; sire?: PedigreeNode | null; dam?: PedigreeNode | null };
 
@@ -16,7 +17,7 @@ function Node({ node, parent, root }: { node: PedigreeNode | null | undefined; p
         <Link href={`/goats/${node.id}`} className={cx('flex w-44 items-center gap-2 rounded-tile border bg-tile px-2 py-1.5 transition-colors hover:border-turq-600', root ? 'border-cobalt-700 shadow-tile' : 'border-rule-strong')}>
             <GoatPortrait number={node.number} coat={node.coat} sex={node.sex} size={34} />
             <span className="min-w-0 leading-tight">
-                <span className="block truncate text-sm font-semibold text-cobalt-900">{node.name ?? node.number}</span>
+                <span className="flex min-w-0 items-center gap-1"><span className="truncate text-sm font-semibold text-cobalt-900">{node.name ?? node.number}</span><BreedBadge breed={node.breed} size={16} /></span>
                 <span className="block truncate text-xs text-ink-soft">{parent ?? node.breed ?? ''}{node.name ? ` · ${node.number}` : ''}</span>
             </span>
         </Link>

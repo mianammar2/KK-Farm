@@ -13,6 +13,7 @@ import { BalanceTag, type Balance, type Requirement } from '../components/FeedRe
 import FarmScene, { EarTag, GoatFigure } from '../components/FarmScene';
 import { FarmStat, FarmStatRow } from '../components/FarmStats';
 import FeedScene from '../components/FeedScene';
+import { AgeBadge } from '../components/GoatBadges';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -330,7 +331,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
-                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><span className="kk-age-goat" style={{ ['--s' as string]: AGE_SCALE[r.key] ?? 1 }} aria-hidden><GoatFigure female={r.female >= r.male} flag={false} delay={0} flip={false} stage={r.key} /></span><span><span className="font-semibold text-cobalt-900">{r.label}</span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
+                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><span className="kk-age-goat" style={{ ['--s' as string]: AGE_SCALE[r.key] ?? 1 }} aria-hidden><GoatFigure female={r.female >= r.male} flag={false} delay={0} flip={false} stage={r.key} /></span><span><span className="flex items-center gap-1.5 font-semibold text-cobalt-900">{r.label}<AgeBadge stage={r.key} /></span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
                                 {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>

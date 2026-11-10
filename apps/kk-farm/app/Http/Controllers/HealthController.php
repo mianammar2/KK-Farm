@@ -25,7 +25,7 @@ class HealthController extends Controller
     public function index(Request $request): Response
     {
         $row = fn (HealthRecord $r) => [
-            'id' => $r->id, 'goatId' => $r->animal_id, 'number' => $r->animal->farm_number, 'name' => $r->animal->name, 'coat' => $r->animal->coat, 'sex' => $r->animal->sex,
+            'id' => $r->id, 'goatId' => $r->animal_id, 'number' => $r->animal->farm_number, 'name' => $r->animal->name, 'coat' => $r->animal->coat, 'breed' => $r->animal->breed?->name, 'stage' => $r->animal->effectiveAge(), 'sex' => $r->animal->sex,
             'health' => $r->animal->health_status, 'kind' => $r->kind, 'title' => $r->title, 'notes' => $r->notes, 'severity' => $r->severity, 'by' => $r->recorded_by, 'role' => $r->recorded_role,
             'on' => $r->occurred_on->format('j M Y'), 'next' => $r->next_due_on?->format('j M Y'),
         ];
@@ -79,7 +79,7 @@ class HealthController extends Controller
                 ->orderByDesc('occurred_on')->get()->map($row),
             'care' => $care->map(fn (HealthRecord $r) => $row($r) + ['overdue' => $r->next_due_on->isPast(), 'planned' => $r->care_status === 'planned']),
             'withdrawal' => $withdrawal->map(fn ($w, $id) => [
-                'goatId' => $id, 'number' => $goatsById[$id]->farm_number ?? '?', 'name' => $goatsById[$id]->name ?? null, 'coat' => $goatsById[$id]->coat ?? 'brown', 'sex' => $goatsById[$id]->sex ?? 'female',
+                'goatId' => $id, 'number' => $goatsById[$id]->farm_number ?? '?', 'name' => $goatsById[$id]->name ?? null, 'coat' => $goatsById[$id]->coat ?? 'brown', 'breed' => ($goatsById[$id] ?? null)?->breed?->name, 'stage' => ($goatsById[$id] ?? null)?->effectiveAge(), 'sex' => $goatsById[$id]->sex ?? 'female',
                 'meat' => $w['meat'] ? \Illuminate\Support\Carbon::parse($w['meat'])->format('j M Y') : null, 'milk' => $w['milk'] ? \Illuminate\Support\Carbon::parse($w['milk'])->format('j M Y') : null,
             ])->values(),
             'counts' => [
@@ -132,7 +132,7 @@ class HealthController extends Controller
         $next = $c->treatments->whereNotNull('next_dose_on')->sortByDesc('given_on')->first()?->next_dose_on;
 
         return [
-            'id' => $c->id, 'label' => $c->label(), 'goatId' => $c->animal_id, 'number' => $c->animal->farm_number, 'name' => $c->animal->name, 'coat' => $c->animal->coat, 'sex' => $c->animal->sex,
+            'id' => $c->id, 'label' => $c->label(), 'goatId' => $c->animal_id, 'number' => $c->animal->farm_number, 'name' => $c->animal->name, 'coat' => $c->animal->coat, 'breed' => $c->animal->breed?->name, 'stage' => $c->animal->effectiveAge(), 'sex' => $c->animal->sex,
             'onset' => $c->onset_on->format('j M Y'), 'condition' => $c->condition, 'symptoms' => $c->symptoms, 'severity' => $c->severity, 'isolated' => $c->isolated,
             'status' => $c->status, 'active' => in_array($c->status, HealthCase::ACTIVE, true), 'vet' => $c->vet, 'diagnosis' => $c->diagnosis, 'notes' => $c->notes,
             'resolved' => $c->resolved_on?->format('j M Y'), 'age' => $c->ageDays(), 'by' => $c->recorded_by,

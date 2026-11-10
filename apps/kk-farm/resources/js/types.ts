@@ -7,6 +7,7 @@ export type GoatCard = {
     sex: 'male' | 'female';
     coat: string;
     breed?: string;
+    stage?: string | null; // D-148
     age?: string | null;
     teeth?: string | null;
     ageMonths?: number | null;

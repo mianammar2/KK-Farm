@@ -12,6 +12,7 @@ import GoatPortrait from '../../components/GoatPortrait';
 import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
+import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
 type Goat = GoatCard & { withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
@@ -117,7 +118,7 @@ export default function GoatShow(props: Props) {
                             {onFarm ? <HealthChip health={goat.health} /> : removed ? <Chip className="bg-glaze text-ink-soft">Removed (wrong entry)</Chip> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}
                             <ReproChip repro={goat.repro} />
                         </div>
-                        <p className="text-sm text-ink-soft sm:text-base">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} · </span> : null}{goat.breed} · {goat.age}</p>
+                        <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft sm:text-base">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName size={22} /><span>·</span><AgeBadge stage={goat.stage} withLabel /><span>{goat.age}</span></p>
                         {goat.classification ? <p className="mt-1 inline-flex rounded-full bg-cobalt-900 px-3 py-1 text-sm font-semibold text-white">{goat.classification}</p> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}

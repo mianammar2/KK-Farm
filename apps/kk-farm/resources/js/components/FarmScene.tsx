@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Warehouse } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useFive } from '../lib/useFive';
+import { AgeBadge, BreedBadge } from './GoatBadges';
 import { CountUp } from './ui';
 
 export type SceneFigure = { female: boolean; stage: string | null; breed: string | null; flag: boolean };
@@ -147,12 +148,13 @@ export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | u
                 {item('f', 'Female (Doe)', <GoatFigure female flag={false} delay={0} flip={false} />)}
                 {item('m', 'Male (Buck)', <GoatFigure female={false} flag={false} delay={0} flip={false} />)}
                 {item('k', 'Kid', <GoatFigure female flag={false} delay={0} flip={false} stage="kid" />)}
+                <span className="inline-flex items-center gap-1.5">Age: <AgeBadge stage="kid" withLabel /><AgeBadge stage="grower" withLabel /><AgeBadge stage="adult" withLabel /></span>
                 {item('a', 'Needs Attention', <GoatFigure female flag delay={0} flip={false} />)}
             </div>
             {present.length ? (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     <span className="font-semibold">Breeds:</span>
-                    {present.map((b) => item(b, breedLook(b)!.label, <GoatFigure female flag={false} delay={0} flip={false} breed={b} />))}
+                    {present.map((b) => <span key={b} className="inline-flex items-center gap-1"><span className="kk-legend-goat"><GoatFigure female flag={false} delay={0} flip={false} breed={b} /></span><BreedBadge breed={b} withName /></span>)}
                 </div>
             ) : null}
             <div>Pink pad: female · blue pad: male · tap a pen to see its goats.</div>

@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { inScannerApp } from '../../lib/native';
 import GoatPortrait from '../../components/GoatPortrait';
 import { RfidAttachSheet, RfidButton } from '../../components/RfidAttach';
+import { AgeBadge, BreedBadge, GoatBadges } from '../../components/GoatBadges';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
@@ -173,9 +174,9 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                         <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors hover:bg-glaze', TONES[t].row)}>
                                             <td className="relative">
                                                 <span aria-hidden className={cx('absolute inset-y-1.5 left-0 w-1 rounded-r-full', TONES[t].bar)} />
-                                                <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
+                                                <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
                                             </td>
-                                            <td>{g.breed}</td>
+                                            <td><BreedBadge breed={g.breed} withName /></td>
                                             <td><SexIcon sex={g.sex} label /></td>
                                             <td>
                                                 {canEdit && g.status === 'active' ? (
@@ -186,7 +187,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                                     </select>
                                                 ) : <span className="text-sm">{g.teeth ? TEETH_SHORT[g.teeth] ?? g.teeth : '—'}</span>}
                                             </td>
-                                            <td className="whitespace-nowrap">{g.age ?? <span className="text-ink-faint">Unknown</span>}</td>
+                                            <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} withLabel />{g.age ?? <span className="text-ink-faint">Unknown</span>}</span></td>
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} /></div></td>
@@ -207,9 +208,9 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                     <span aria-hidden className={cx('absolute inset-y-0 left-0 w-1.5', TONES[t].bar)} />
                                     {g.photo ? <img src={`/media/${g.photo}`} alt="" loading="lazy" className="size-14 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={g.number} coat={g.coat} sex={g.sex} size={56} />}
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-1.5"><span className="truncate font-mono font-semibold text-cobalt-900">{g.number}</span>{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
+                                        <div className="flex items-center gap-1.5"><span className="truncate font-mono font-semibold text-cobalt-900">{g.number}</span><GoatBadges breed={g.breed} stage={g.stage} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
-                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.age ?? 'age unknown'}{g.teeth ? ` · ${TEETH_SHORT[g.teeth] ?? g.teeth} teeth` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
+                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)} · ` : ''}{g.age ?? 'age unknown'}{g.teeth ? ` · ${TEETH_SHORT[g.teeth] ?? g.teeth} teeth` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>

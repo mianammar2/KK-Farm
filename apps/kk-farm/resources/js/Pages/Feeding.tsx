@@ -6,6 +6,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
+import { BreedBadge } from '../components/GoatBadges';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type Status = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -534,7 +535,7 @@ function Nutrition({ standards, nutritionCategories, methods, breeds, can }: Pro
                                 <Fragment key={s.id}>
                                     <tr className={cx(!s.active && 'opacity-60')}>
                                         <td className="px-4 py-2"><span className="font-semibold text-cobalt-900">{s.name}</span><span className="block text-xs text-ink-soft">{s.category ? s.purpose : 'Put on by hand'}{!s.active ? ' · inactive' : ''}</span></td>
-                                        <td className="px-3">{s.breed ?? <span className="text-ink-faint">Any</span>}</td>
+                                        <td className="px-3">{s.breed ? <BreedBadge breed={s.breed} withName /> : <span className="text-ink-faint">Any</span>}</td>
                                         <td className="px-3 tabular-nums">{s.minKg === null && s.maxKg === null ? <span className="text-ink-faint">Any</span> : `${s.minKg ?? 0}–${s.maxKg ?? '∞'} KG`}</td>
                                         <td className="px-3"><span className="rounded-[4px] bg-turq-100 px-1.5 py-0.5 font-mono text-xs font-bold text-turq-800">CP {s.range}</span></td>
                                         <td className="px-3 tabular-nums">{s.tdnMin !== null ? `${s.tdnMin}${s.tdnMax !== null && s.tdnMax !== s.tdnMin ? `–${s.tdnMax}` : ''}%` : <span className="text-ink-faint">—</span>}</td>

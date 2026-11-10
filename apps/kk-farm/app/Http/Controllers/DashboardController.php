@@ -27,7 +27,7 @@ class DashboardController extends Controller
         $tags = HerdStats::tagsFor($goats);
         $counts = collect(array_keys(HerdStats::LABELS))->mapWithKeys(fn ($k) => [$k => $tags->filter(fn ($t) => in_array($k, $t, true))->count()]);
         $byId = $goats->keyBy('id');
-        $card = fn (Animal $a) => ['goatId' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'sex' => $a->sex, 'health' => $a->health_status, 'flag' => $a->health_flag];
+        $card = fn (Animal $a) => ['goatId' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'breed' => $a->breed?->name, 'stage' => $a->effectiveAge(), 'sex' => $a->sex, 'health' => $a->health_status, 'flag' => $a->health_flag];
 
         $overdue = HealthRecord::whereIn('kind', ['vaccination', 'deworming'])->where('next_due_on', '<', $today)
             ->whereHas('animal', fn ($q) => $q->active())->distinct('animal_id')->count('animal_id');
