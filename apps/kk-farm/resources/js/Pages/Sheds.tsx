@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
-import { LocateFixed, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
+import { LocateFixed, MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { BarnRoof, EarTag, GoatFigure } from '../components/FarmScene';
 import { Button, Chip, cx, Empty, Field, HealthChip, Panel } from '../components/ui';
@@ -49,9 +49,12 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
             {/* D-142: the page header is the farm's wooden sign over a fence. */}
             <header className="kk-page-sign">
                 <div className="kk-page-board">
-                    <div className="min-w-0">
-                        <h1 className="text-2xl font-extrabold tracking-tight text-[#fff7e6] sm:text-3xl">Sheds</h1>
-                        <p className="text-sm text-[#f3e3c3]">{active.length} shed{active.length === 1 ? '' : 's'} in use · {planned.length} planned · {goats.length} goats housed</p>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className="kk-roof-icon size-11!" aria-hidden><Warehouse size={22} className="text-white" /></span>
+                        <div className="min-w-0">
+                        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Sheds</h1>
+                        <p className="text-sm text-[#e8f5ec]">{active.length} shed{active.length === 1 ? '' : 's'} in use · {planned.length} planned · {goats.length} goats housed</p>
+                        </div>
                     </div>
                     {canManage ? (
                         <div className="flex flex-wrap gap-2">
@@ -89,7 +92,7 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                             <BarnRoof id={`shed-${shed.id}`} name={shed.name} typeName={shed.typeName} />
                             <div className="kk-barn-body">
                                 <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
-                                    <span className="min-w-[14rem] flex-1 text-sm text-[#4a3a22]">
+                                    <span className="min-w-[14rem] flex-1 text-sm text-[#3d5446]">
                                         {farms.length > 1 ? <span className="font-semibold">{farms.find((f) => f.id === shed.farmId)?.name ?? 'No farm'} · </span> : null}
                                         {shed.typeName ? `${shed.purpose}` : 'No unit type yet: edit to choose one'}
                                         {shed.status === 'planned' ? <span className="kk-paper-note ml-2 inline-block !py-0.5 !pl-6 text-xs font-semibold">Planned</span> : null}
@@ -113,21 +116,21 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                                                     <button type="button" aria-pressed={selected === p.id} onClick={() => setSelected(p.id)} className="block w-full px-2 pt-1.5 pb-2 pr-8 text-left">
                                                         <span className="flex items-center justify-between gap-1">
                                                             <span className="kk-pen-sign">{p.code}</span>
-                                                            <span className={cx('text-sm font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#3b2e1a]')}>{area ? 'Outdoor' : <>{p.count}{p.capacity ? <span className="text-xs font-semibold opacity-70">/{p.capacity}</span> : null}</>}</span>
+                                                            <span className={cx('text-sm font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#16301f]')}>{area ? 'Outdoor' : <>{p.count}{p.capacity ? <span className="text-xs font-semibold opacity-70">/{p.capacity}</span> : null}</>}</span>
                                                         </span>
-                                                        <span className="mt-0.5 block truncate text-xs text-[#4a3a22]">{p.purpose}</span>
+                                                        <span className="mt-0.5 block truncate text-xs text-[#3d5446]">{p.purpose}</span>
                                                         <span className="kk-herd" aria-hidden>
                                                             {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
-                                                            {p.goats.length > shown.length ? <span className="self-center text-xs font-bold text-[#4a3a22]">+{p.goats.length - shown.length}</span> : null}
+                                                            {p.goats.length > shown.length ? <span className="self-center text-xs font-bold text-[#3d5446]">+{p.goats.length - shown.length}</span> : null}
                                                         </span>
                                                         {!area ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
                                                     </button>
-                                                    {canManage ? <button type="button" onClick={() => setEditing({ kind: 'pen', shed, pen: p })} aria-label={`Edit ${p.name}`} className="absolute right-1 top-1 rounded-md p-1.5 text-[#5a3b1e] hover:bg-white/70"><Pencil className="size-4" aria-hidden /></button> : null}
+                                                    {canManage ? <button type="button" onClick={() => setEditing({ kind: 'pen', shed, pen: p })} aria-label={`Edit ${p.name}`} className="absolute right-1 top-1 rounded-md p-1.5 text-[#1f7a3a] hover:bg-white/70"><Pencil className="size-4" aria-hidden /></button> : null}
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                ) : <p className="px-1 text-sm text-[#4a3a22]">No pens yet.{canManage ? ' Tap “Pen” to add one.' : ''}</p>}
+                                ) : <p className="px-1 text-sm text-[#3d5446]">No pens yet.{canManage ? ' Tap “Pen” to add one.' : ''}</p>}
                             </div>
                             <div className="kk-grass" aria-hidden />
                         </section>
@@ -362,8 +365,8 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
                         {stats.map((t) => (
                             <button key={t.id} type="button" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}
                                 className={cx('kk-stat-plank kk-lift text-left', open === t.id && 'kk-stat-plank-on')}>
-                                <span className="block text-[11px] font-semibold text-[#5a4628]">{t.label}</span>
-                                <span className={cx('block text-lg font-extrabold tabular-nums', t.id === 'attention' ? 'text-crit-700' : 'text-[#2f5a2a]')}>{t.value}</span>
+                                <span className="block text-[11px] font-semibold text-[#4d6356]">{t.label}</span>
+                                <span className={cx('block text-lg font-extrabold tabular-nums', t.id === 'attention' ? 'text-crit-700' : 'text-[#1f7a3a]')}>{t.value}</span>
                             </button>
                         ))}
                     </div>
@@ -431,23 +434,23 @@ function PenRollCall({ pen }: { pen: Pen }) {
         <section className="kk-clipboard !m-0" aria-label={`${pen.name}: ${pen.count} goats`}>
             <span className="kk-clip" aria-hidden />
             <div className="kk-lined !pl-3">
-                <h2 className="flex flex-wrap items-baseline gap-x-2 py-2 font-semibold text-[#3b2e1a]"><span className="kk-pen-sign">{pen.code}</span>{pen.name}<span className="text-sm font-normal text-[#6b5434]">{pen.purpose} · {pen.count} goats</span></h2>
+                <h2 className="flex flex-wrap items-baseline gap-x-2 py-2 font-semibold text-[#16301f]"><span className="kk-pen-sign">{pen.code}</span>{pen.name}<span className="text-sm font-normal text-[#5d7266]">{pen.purpose} · {pen.count} goats</span></h2>
                 {pen.goats.length ? (
                     <>
                         <ul className="grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3">
                             {shown.map((g) => (
                                 <li key={g.id}>
-                                    <Link href={`/goats/${g.id}`} className="kk-lift flex items-center gap-2 rounded-md bg-[#fff8e6] p-1.5 pr-2 shadow-[0_1px_0_#d8c49a]">
+                                    <Link href={`/goats/${g.id}`} className="kk-lift flex items-center gap-2 rounded-md bg-[#f6faf7] p-1.5 pr-2 shadow-[0_1px_0_#dbe6de]">
                                         <EarTag number={g.number} />
                                         <span className="kk-th-goat" aria-hidden><GoatFigure female={g.sex === 'female'} flag={g.health !== 'healthy'} delay={0} flip={false} /></span>
-                                        <span className="min-w-0 truncate text-sm font-semibold text-[#3b2e1a]">{g.name ?? ''}</span>
+                                        <span className="min-w-0 truncate text-sm font-semibold text-[#16301f]">{g.name ?? ''}</span>
                                     </Link>
                                 </li>
                             ))}
                         </ul>
                         {more ? <div className="-mx-3 pb-1">{more}</div> : null}
                     </>
-                ) : <p className="pb-3 text-sm text-[#6b5434]">This pen is empty.</p>}
+                ) : <p className="pb-3 text-sm text-[#5d7266]">This pen is empty.</p>}
             </div>
         </section>
     );

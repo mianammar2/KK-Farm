@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { Warehouse } from 'lucide-react';
 import { useFive } from '../lib/useFive';
 import { CountUp } from './ui';
 
@@ -32,8 +33,8 @@ function Barn({ shed, index }: { shed: SceneShed; index: number }) {
             {/* Inside: posts at both ends, straw floor, the pens. */}
             <div className="kk-barn-body">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 px-1 text-sm">
-                    <span className="font-semibold text-[#4a3a22]">{shed.typeName ?? ''}</span>
-                    <span className="font-semibold text-[#4a3a22]"><CountUp to={shed.goats} /> goats{capacity ? <span className="font-normal opacity-75"> of {capacity}</span> : null}</span>
+                    <span />
+                    <span className="font-semibold text-[#3d5446]"><CountUp to={shed.goats} /> goats{capacity ? <span className="font-normal opacity-75"> of {capacity}</span> : null}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {pens.map((p) => <PenYard key={p.id} pen={p} />)}
@@ -55,13 +56,13 @@ function PenYard({ pen }: { pen: ScenePen }) {
         <Link href={`/goats?pen=${encodeURIComponent(pen.name)}`} className="kk-pen kk-lift group" title={`${pen.name}: ${pen.goats} goats`}>
             <div className="flex items-center justify-between gap-1">
                 <span className="kk-pen-sign">{pen.code}</span>
-                <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#3b2e1a]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
+                <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#16301f]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
             </div>
             <div className="kk-herd" aria-hidden>
                 {Array.from({ length: figures }, (_, i) => (
                     <GoatFigure key={i} female={i < females} flag={i < flagged} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />
                 ))}
-                {pen.goats > figures ? <span className="self-center text-xs font-bold text-[#4a3a22]">+{pen.goats - figures}</span> : null}
+                {pen.goats > figures ? <span className="self-center text-xs font-bold text-[#3d5446]">+{pen.goats - figures}</span> : null}
             </div>
             <div className="mt-1 flex items-center gap-1.5" aria-hidden>
                 <span className="kk-trough" />
@@ -79,7 +80,7 @@ export function GoatFigure({ female, flag, delay, flip }: { female: boolean; fla
     const shade = female ? '#6f5a3a' : '#4a2c16';
     return (
         <svg viewBox="0 -1 32 27" className="kk-goat" style={{ animationDelay: `${delay}s`, transform: flip ? 'scaleX(-1)' : undefined }}>
-            <g stroke="#3b2e1a" strokeWidth="1.3" strokeLinecap="round">
+            <g stroke="#16301f" strokeWidth="1.3" strokeLinecap="round">
                 <line x1="9" y1="17" x2="9" y2="24" /><line x1="12" y1="17" x2="12" y2="24" />
                 <line x1="19" y1="17" x2="19" y2="24" /><line x1="22" y1="17" x2="22" y2="24" />
                 <path d="M6 12 L3 9.5" fill="none" />
@@ -89,7 +90,7 @@ export function GoatFigure({ female, flag, delay, flip }: { female: boolean; fla
             {female ? <ellipse cx="13" cy="15.6" rx="5" ry="1.6" fill="#e9dcc0" /> : <ellipse cx="13" cy="11.2" rx="5" ry="1.4" fill="#a8744a" />}
             <path d="M21.5 11 L24.5 5 Q27.5 3.8 29.6 6.4 L30 9.2 Q28.6 10.6 26.8 10 L24.6 14 Z" fill={coat} stroke={shade} strokeWidth="1.2" />
             <path d="M24.6 6.6 L21.6 8.6" stroke={shade} strokeWidth="1.6" strokeLinecap="round" />
-            <path d="M29 9.6 L28.6 12.4" stroke="#3b2e1a" strokeWidth="0.8" strokeLinecap="round" />
+            <path d="M29 9.6 L28.6 12.4" stroke="#16301f" strokeWidth="0.8" strokeLinecap="round" />
             <circle cx="27.4" cy="6.8" r="0.75" fill="#2a2116" />
             {flag ? <g><circle cx="14" cy="4.6" r="4.6" fill="#c8312a" stroke="#fff" strokeWidth="1.1" /><path d="M14 2.2v4.8M11.6 4.6h4.8" stroke="#fff" strokeWidth="1.5" /></g> : null}
         </svg>
@@ -110,30 +111,15 @@ function Legend() {
 
 /** D-133/D-134: the barn roof (corrugated tin on a pitched frame) with the shed's name board; shared by the farm scenes. */
 export function BarnRoof({ id, name, typeName }: { id: number | string; name: string; typeName: string | null }) {
-    const shed = { id, name, typeName };
+    // D-146: the shed's header bar: a green band with a building icon tile, the shed name and its unit type.
     return (
-        <>
-                        <div className="relative">
-                <svg viewBox="0 0 400 54" preserveAspectRatio="none" className="block h-12 w-full sm:h-14" aria-hidden>
-                    <defs>
-                        <pattern id={`tin-${shed.id}`} width="9" height="54" patternUnits="userSpaceOnUse">
-                            <rect width="9" height="54" fill="#8a9a8c" />
-                            <rect width="4" height="54" fill="#a3b2a4" />
-                            <rect x="4" width="1" height="54" fill="#6f7f72" />
-                        </pattern>
-                    </defs>
-                    <polygon points="0,54 30,6 370,6 400,54" fill={`url(#tin-${shed.id})`} />
-                    <polygon points="30,6 370,6 365,0 35,0" fill="#5d6b5f" />
-                    <rect x="0" y="50" width="400" height="4" fill="#4b5a4d" />
-                </svg>
-                <div className="absolute inset-x-0 top-1 flex justify-center sm:top-1.5">
-                    <div className="kk-board">
-                        <span className="font-mono text-sm font-bold tracking-wide sm:text-base">{shed.name}</span>
-                        <span className="hidden text-[11px] font-semibold opacity-85 sm:inline">{shed.typeName}</span>
-                    </div>
-                </div>
-            </div>
-        </>
+        <div className="kk-roof" data-shed={id}>
+            <span className="kk-roof-icon" aria-hidden><Warehouse size={18} /></span>
+            <span className="min-w-0">
+                <span className="block truncate font-mono text-base font-bold tracking-wide">{name}</span>
+                {typeName ? <span className="block truncate text-xs text-white/80">{typeName}</span> : null}
+            </span>
+        </div>
     );
 }
 

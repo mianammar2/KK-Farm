@@ -1,7 +1,7 @@
 import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { inScannerApp } from '../lib/native';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Sun, Sunrise, Sunset } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
 import { axis, FARM, GOAT_PATH } from '../lib/chartTheme';
@@ -69,7 +69,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
         xAxis: axis.category(growth.map((g) => monthLabel(g.month))),
         yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
         // D-139: an earth-brown line over green grass
-        series: [{ type: 'line', data: growth.map((g) => g.kg), smooth: true, symbol: 'circle', symbolSize: 8, itemStyle: { color: FARM.earth, borderColor: '#fff8e6', borderWidth: 2 }, lineStyle: { width: 3, color: FARM.earth },
+        series: [{ type: 'line', data: growth.map((g) => g.kg), smooth: true, symbol: 'circle', symbolSize: 8, itemStyle: { color: FARM.earth, borderColor: '#f6faf7', borderWidth: 2 }, lineStyle: { width: 3, color: FARM.earth },
             areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(122,166,74,0.55)' }, { offset: 1, color: 'rgba(95,143,58,0.12)' }] } } }],
     } : null), [growth]);
 
@@ -83,7 +83,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
             yAxis: { ...axis.category(rows.map((b) => b.name)), axisLine: { show: false } },
             // D-139: each breed is a row of goats; a longer row is more goats
             series: [{ type: 'pictorialBar', symbol: GOAT_PATH, symbolRepeat: true, symbolSize: [22, 18], symbolMargin: 2, symbolClip: false, barCategoryGap: '30%',
-                data: rows.map((b, i) => ({ value: b.value, itemStyle: { color: i % 2 ? FARM.earth : '#a0703f' } })),
+                data: rows.map((b, i) => ({ value: b.value, itemStyle: { color: i % 2 ? '#1f7a3a' : '#2e9e4f' } })),
                 label: { show: true, position: 'right', color: FARM.ink, fontWeight: 700 } }],
         };
     }, [breeds]);
@@ -148,8 +148,8 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                                     <Link href={`/goats/${m.goatId}`} className="flex min-w-fit flex-1 items-center gap-2.5">
                                         <EarTag number={m.number} />
                                         <span className="min-w-0">
-                                            {m.name ? <span className="block truncate font-semibold text-[#3b2e1a]">{m.name}</span> : null}
-                                            <span className="block truncate text-xs text-[#6b5434]">From: {m.source}</span>
+                                            {m.name ? <span className="block truncate font-semibold text-[#16301f]">{m.name}</span> : null}
+                                            <span className="block truncate text-xs text-[#5d7266]">From: {m.source}</span>
                                         </span>
                                     </Link>
                                     <span className="flex flex-wrap gap-1.5">{m.missing.map((x) => <span key={x} className="kk-pencil">{x}</span>)}</span>
@@ -175,7 +175,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                                         <li key={k.goatId}>
                                             <Link href={`/goats/${k.goatId}`} className="kk-kidding-row kk-lift">
                                                 <span className={`kk-cal ${k.days < 0 ? 'kk-cal-over' : soon ? 'kk-cal-soon' : ''}`}><span className="kk-cal-month">{rest.join(' ') || ' '}</span><span className="kk-cal-day">{day}</span></span>
-                                                <span className="flex min-w-fit flex-1 items-center gap-2"><EarTag number={k.number} />{k.name ? <span className="truncate font-semibold text-[#3b2e1a]">{k.name}</span> : null}</span>
+                                                <span className="flex min-w-fit flex-1 items-center gap-2"><EarTag number={k.number} />{k.name ? <span className="truncate font-semibold text-[#16301f]">{k.name}</span> : null}</span>
                                                 <span className={`kk-countdown ${k.days < 0 ? 'kk-countdown-over' : soon ? 'kk-countdown-soon' : ''}`}>
                                                     <span className="kk-kid" aria-hidden><GoatFigure female flag={false} delay={0} flip={false} /></span>
                                                     {k.days < 0 ? `${-k.days} days over` : k.days === 0 ? 'Today' : `In ${k.days} days`}
@@ -206,16 +206,10 @@ function ChalkMark({ status }: { status: FeedStatus }) {
     );
 }
 
-/** D-137: morning sunrise, midday sun, evening sunset, drawn in chalk. */
+/** D-137/D-146: morning, midday and evening as line icons on the display. */
 function MealSun({ meal }: { meal: Meal }) {
-    if (meal === 'midday') return <svg viewBox="0 0 20 20" className="size-4 shrink-0" aria-hidden><circle cx="10" cy="10" r="4" fill="#ffe08a" />{[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <line key={a} x1="10" y1="1.5" x2="10" y2="4" stroke="#ffe08a" strokeWidth="1.6" strokeLinecap="round" transform={`rotate(${a} 10 10)`} />)}</svg>;
-    return (
-        <svg viewBox="0 0 20 20" className="size-4 shrink-0" aria-hidden>
-            <path d="M4 14a6 6 0 0 1 12 0Z" fill={meal === 'morning' ? '#ffd27a' : '#ff9e6b'} />
-            {[-60, -30, 0, 30, 60].map((a) => <line key={a} x1="10" y1="3" x2="10" y2="5.5" stroke={meal === 'morning' ? '#ffd27a' : '#ff9e6b'} strokeWidth="1.5" strokeLinecap="round" transform={`rotate(${a} 10 14)`} />)}
-            <line x1="1.5" y1="14.5" x2="18.5" y2="14.5" stroke="#f3f0e6" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-    );
+    const Icon = meal === 'morning' ? Sunrise : meal === 'midday' ? Sun : Sunset;
+    return <Icon size={15} className={`shrink-0 ${meal === 'evening' ? 'text-[#ff9e6b]' : 'text-[#ffd36b]'}`} aria-hidden />;
 }
 
 const FEED_STATUS: Record<FeedStatus, { label: string; className: string }> = {
@@ -332,7 +326,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
             {/* D-135: the herd on the farm's notice board: goat figures sized by age, white for female, brown for male. */}
             <div className="kk-noticeboard overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="text-left text-xs text-[#4a3a22]"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female flag={false} delay={0} flip={false} /></span>Female</span></th> : null}{showM ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female={false} flag={false} delay={0} flip={false} /></span>Male</span></th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="hidden w-1/3 pl-3 font-semibold sm:table-cell">Share</th></tr></thead>
+                    <thead className="text-left text-xs text-[#3d5446]"><tr><th className="py-1.5 pr-3 font-semibold">{view === 'age' ? 'Age' : 'Classification'}</th>{showF ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female flag={false} delay={0} flip={false} /></span>Female</span></th> : null}{showM ? <th className="px-2 text-right font-semibold"><span className="inline-flex items-center gap-1"><span className="kk-th-goat"><GoatFigure female={false} flag={false} delay={0} flip={false} /></span>Male</span></th> : null}<th className="px-2 text-right font-semibold">Total</th><th className="hidden w-1/3 pl-3 font-semibold sm:table-cell">Share</th></tr></thead>
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
@@ -352,7 +346,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
                             </tr>
                         ))}
                     </tbody>
-                    <tfoot className="border-t-2 border-[#b8935c] text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td className="hidden sm:table-cell" /></tr></tfoot>
+                    <tfoot className="border-t-2 border-[#dbe6de] text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td className="hidden sm:table-cell" /></tr></tfoot>
                 </table>
                 {view === 'class' ? moreClasses : null}
             </div>
@@ -369,7 +363,7 @@ type PensSummary = {
 function PensAtAGlance({ data }: { data: PensSummary }) {
     return (
         <Panel title="Sheds and Pens" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a pen` : ''}`} className="mt-4" flush
-            actions={<Link href="/sheds" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
+            actions={<Link href="/movements" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
             <FarmScene sheds={data.sheds} /> {/* D-133: drawn like the real farm */}
             {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a pen →</Link> : null}
         </Panel>

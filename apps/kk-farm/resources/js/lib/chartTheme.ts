@@ -11,4 +11,5 @@ export const axis = {
 export const GOAT_PATH = 'path://M6 12L3 9.5L4 9L7 11Q9 8 15 8Q20 8 22 10L24.5 5Q27.5 3.8 29.6 6.4L30 9.2Q28.6 10.6 26.8 10L25 13.5Q25.5 16 23 18L23 24L21 24L21 19Q17 20 12 19L12 24L10 24L10 18Q6.5 16 6 12ZM24.6 5.2Q23.8 2 22.2 1L22.8 0.6Q25.4 1.8 25.8 5Z';
 
 /** D-139: farm colours for charts: grass, earth, wheat. */
-export const FARM = { grass: '#5f8f3a', grassLight: 'rgba(122,166,74,0.35)', earth: '#7a4f2a', wheat: '#c9962f', ink: '#4a3a22', rule: '#d9c39a' };
+/** D-146: KK digital palette for charts. */
+export const FARM = { grass: '#2e9e4f', grassLight: 'rgba(46,158,79,0.25)', earth: '#1f7a3a', wheat: '#e0a33a', ink: '#3d5446', rule: '#dbe6de' };

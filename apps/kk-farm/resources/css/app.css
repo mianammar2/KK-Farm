@@ -238,248 +238,154 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .lite .kk-page > * { animation-duration: 0.12s; animation-delay: 0ms !important; }
 .lite .kk-grow { animation: none; }
 
-/* D-133: the dashboard's sheds drawn like the real farm (FarmScene.tsx). Earth, timber, straw, tin and grass. */
-.kk-barn { border-radius: 14px; overflow: hidden; background: #eadfc6; box-shadow: 0 8px 22px -14px rgb(60 40 15 / 0.55); }
-.kk-board {
-    display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15;
-    padding: 3px 14px 4px; border-radius: 5px; color: #fff7e6;
-    background: repeating-linear-gradient(90deg, #7a4f2a 0 22px, #6e4624 22px 23px), #7a4f2a;
-    border: 2px solid #4f321a; box-shadow: 0 3px 0 #3a2412, 0 6px 10px -4px rgb(0 0 0 / 0.45);
-    text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+/* D-146: KK Farms digital look (replaces the rustic wood/straw/chalk styles of D-133..D-142). Clean white panels,
+   KK green accents and LED strips, an anti-slip floor pattern, dark displays with glowing digital readouts, and line
+   icons in rounded tiles. Class names are unchanged so every screen keeps its layout and behaviour. */
+:root {
+    --kk-green: #1f7a3a; --kk-green-2: #2e9e4f; --kk-green-soft: #e8f5ec; --kk-line: #dbe6de;
+    --kk-floor: #f3f6f4; --kk-display: #0d2218; --kk-lcd: #7dffad; --kk-ink: #16301f;
 }
-.kk-barn-body {
-    position: relative; padding: 10px 14px 12px;
-    /* timber posts at both ends, a plastered wall band at the back, a straw floor */
-    background:
-        linear-gradient(90deg, #7a4f2a 0 8px, transparent 8px calc(100% - 8px), #7a4f2a calc(100% - 8px)),
-        linear-gradient(180deg, #d9c9a3 0 6px, transparent 6px),
-        repeating-linear-gradient(115deg, rgb(160 120 50 / 0.13) 0 2px, transparent 2px 7px),
-        repeating-linear-gradient(65deg, rgb(140 100 40 / 0.1) 0 1px, transparent 1px 9px),
-        #e8d6a8;
+/* Panels */
+.kk-barn, .kk-farmcard, .kk-noticeboard, .kk-clipboard, .kk-graph {
+    border-radius: 16px; background: #fff; border: 1px solid var(--kk-line);
+    box-shadow: 0 1px 2px rgb(16 48 31 / 0.06), 0 10px 24px -18px rgb(16 48 31 / 0.35);
 }
-.kk-pen {
-    display: block; position: relative; padding: 7px 8px 7px; border-radius: 6px;
-    background: #dcc48c;
-    /* wooden rail fence: two rails and posts drawn as borders and an inset pattern */
-    border: 3px solid #8d6238;
-    box-shadow: inset 0 0 0 2px #c79a62, inset 0 6px 0 -2px rgb(141 98 56 / 0.35);
-}
-.kk-pen::before, .kk-pen::after { /* fence posts at the corners */
-    content: ''; position: absolute; top: -6px; width: 6px; height: 10px; border-radius: 2px; background: #6b4524;
-}
-.kk-pen::before { left: -5px; }
-.kk-pen::after { right: -5px; }
-.kk-pen:hover { border-color: #6b4524; background: #e3cd98; }
-.kk-pen-sign {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; color: #fff7e6;
-    padding: 1px 6px; border-radius: 3px; background: #6e4624; box-shadow: 0 1px 0 #3a2412;
-}
+.kk-barn { overflow: hidden; }
+.kk-barn-planned { opacity: 0.6; filter: grayscale(0.35); }
+/* The shed header (BarnRoof): a green bar with an icon tile and the shed name. */
+.kk-roof { display: flex; align-items: center; gap: 10px; padding: 10px 14px; color: #fff; background: linear-gradient(120deg, var(--kk-green), var(--kk-green-2)); }
+.kk-roof-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 10px; background: rgb(255 255 255 / 0.16); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28); }
+.kk-board { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-weight: 700; color: var(--kk-green); background: #fff; }
+/* Inside a shed: the anti-slip floor, pens as white enclosures with a green rail. */
+.kk-barn-body { position: relative; padding: 12px 14px 14px; background-color: var(--kk-floor); background-image: radial-gradient(rgb(31 122 58 / 0.09) 1.2px, transparent 1.3px); background-size: 12px 12px; }
+.kk-pen { display: block; position: relative; padding: 8px 9px; border-radius: 12px; background: #fff; border: 1px solid var(--kk-line); border-top: 3px solid var(--kk-green-2); box-shadow: 0 1px 2px rgb(16 48 31 / 0.05); transition: border-color 0.15s, box-shadow 0.15s; }
+.kk-pen:hover { box-shadow: 0 6px 16px -10px rgb(16 48 31 / 0.4); }
+.kk-pen-selected { box-shadow: 0 0 0 2px var(--kk-green-2), 0 6px 16px -10px rgb(16 48 31 / 0.4) !important; }
+.kk-yard { background: #eef8ef; border-top-color: #8bcf6b; border-style: solid dashed dashed; }
+.kk-yard:hover { background: #e5f4e6; }
+.kk-pen-sign { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; color: #fff; padding: 1px 7px; border-radius: 999px; background: var(--kk-green); }
 .kk-herd { display: flex; flex-wrap: wrap; gap: 1px 2px; min-height: 30px; margin-top: 5px; align-content: flex-start; }
 .kk-goat { width: 30px; height: 25px; flex: none; overflow: visible; transform-origin: 50% 100%; animation: kk-graze 2.6s ease-in-out infinite; }
 @keyframes kk-graze { 0%, 100% { translate: 0 0; rotate: 0deg; } 40% { translate: 0 -1px; rotate: -2deg; } 70% { translate: 0 0; rotate: 1.5deg; } }
-.kk-trough { flex: 1; height: 6px; border-radius: 1px 1px 4px 4px; background: linear-gradient(#a7c36b 0 2px, #7b5530 2px); box-shadow: 0 1px 0 #4f321a; }
-.kk-grass {
-    height: 14px;
-    background:
-        radial-gradient(circle at 6px 14px, #5f8f3a 0 5px, transparent 5.5px) 0 0 / 12px 14px repeat-x,
-        linear-gradient(#7aa64a, #5f8f3a);
-}
+.kk-trough { flex: 1; height: 4px; border-radius: 999px; background: linear-gradient(90deg, var(--kk-green-2), #8bcf6b); opacity: 0.55; }
+/* The LED strip along the bottom of a shed. */
+.kk-grass { height: 4px; background: linear-gradient(90deg, transparent, var(--kk-green-2) 15%, #6fe39a 50%, var(--kk-green-2) 85%, transparent); box-shadow: 0 0 10px rgb(46 158 79 / 0.6); }
 .lite .kk-goat { animation: none; }
 @media (max-width: 639px) { .kk-goat { width: 22px; height: 18px; } .kk-barn-body { padding: 8px 10px 10px; } }
 
-/* D-134: the feed store (FeedScene.tsx): totals as burlap sacks standing on a plank floor. */
-.kk-store {
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; padding: 10px 12px 14px; border-radius: 14px;
-    background:
-        linear-gradient(180deg, transparent calc(100% - 14px), #7a4f2a calc(100% - 14px), #6b4524),
-        repeating-linear-gradient(90deg, #efe2c2 0 46px, #e4d4ae 46px 48px);
-    box-shadow: inset 0 0 0 1px #d8c49a;
+/* Digital readouts: dark display, glowing green digits (like the scale's 46.8 kg). */
+.kk-kg-sign, .kk-lcd {
+    display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--kk-lcd); background: var(--kk-display); padding: 3px 10px; border-radius: 8px; text-shadow: 0 0 8px rgb(125 255 173 / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(125 255 173 / 0.18);
 }
-.kk-sack { position: relative; width: 150px; height: 112px; filter: drop-shadow(0 5px 4px rgb(60 40 15 / 0.3)); }
-.kk-sack-tag {
-    font-size: 11px; font-weight: 700; color: #3b2e1a; padding: 1px 7px; border-radius: 3px;
-    background: #fff8e6; border: 1px solid #b8935c; box-shadow: 0 1px 0 #8a6a3a; transform: rotate(-2deg);
-}
-.kk-kg-sign {
-    display: inline-block; font-size: 13px; font-weight: 800; color: #fff7e6; padding: 2px 9px; border-radius: 4px;
-    background: #2f5a2a; box-shadow: 0 2px 0 #1d3a1a; font-variant-numeric: tabular-nums;
-}
-@media (max-width: 639px) { .kk-sack { width: calc(50% - 9px); max-width: 150px; height: 108px; } }
+.kk-kg-sign { font-size: 13px; }
 
-/* D-135: the herd table on a farm notice board: cream paper in a timber frame, a wooden share rail. */
-.kk-noticeboard {
-    padding: 8px 12px 6px; border-radius: 10px; background: #fbf4e2;
-    border: 6px solid #8d6238; box-shadow: inset 0 0 0 1px #d8c49a, 0 4px 10px -6px rgb(60 40 15 / 0.45);
-}
+/* Feed totals as modern tiles: an icon, a label, a digital readout. */
+.kk-store { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .kk-store { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kk-sack { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #fff; border: 1px solid var(--kk-line); box-shadow: 0 1px 2px rgb(16 48 31 / 0.05); }
+.kk-sack-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #4d6356; }
+
+/* Icon tiles (like the row on the station: Weighing, RFID, Health Care, Treatment). */
+.kk-icon-tile { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; color: var(--kk-green); background: var(--kk-green-soft); box-shadow: inset 0 0 0 1.5px rgb(31 122 58 / 0.22); }
+.kk-icon-tile-alert { color: #b42318; background: #fdecea; box-shadow: inset 0 0 0 1.5px rgb(180 35 24 / 0.22); }
+
+/* Herd table and charts: clean cards; the share bar uses the gender colours of the badges. */
+.kk-noticeboard { padding: 8px 12px 6px; }
 .kk-age-goat { display: inline-flex; align-items: flex-end; justify-content: center; width: 44px; height: 36px; flex: none; }
 .kk-age-goat > svg { width: calc(42px * var(--s, 1)); height: calc(35px * var(--s, 1)); animation: none; }
 .kk-th-goat { display: inline-flex; flex: none; }
 .kk-th-goat > svg { width: 22px; height: 18px; animation: none; }
-.kk-rail { display: flex; height: 12px; overflow: hidden; border-radius: 3px; background: #c9ad7c; box-shadow: inset 0 0 0 1.5px #8d6238; }
-.kk-rail-f { background: #fffdf7; box-shadow: inset 0 -2px 0 #e9dcc0, inset 0 0 0 1px #b8935c; }
-.kk-rail-m { background: #8b5a33; box-shadow: inset 0 -2px 0 #6b4226; }
-
-/* D-136: the top numbers as wooden signs nailed to a plank wall. */
-.kk-signs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 1rem; }
-.kk-signs > :last-child:nth-child(odd) { grid-column: span 2; }
-@media (min-width: 640px) { .kk-signs { display: flex; gap: 10px; } .kk-signs > * { flex: 1 1 0; min-width: 0; } }
-.kk-sign {
-    position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 6px; border-radius: 8px;
-    background: repeating-linear-gradient(180deg, #9a6c3e 0 15px, #85592f 15px 16px), #9a6c3e;
-    border: 2px solid #5a3b1e; box-shadow: 0 3px 0 #3f2914, 0 8px 14px -10px rgb(40 25 10 / 0.6);
-}
-.kk-sign-nail { position: absolute; top: 5px; width: 5px; height: 5px; border-radius: 50%; background: #d9d4c7; box-shadow: inset -1px -1px 0 #7d776a; }
-.kk-sign-icon { flex: none; display: grid; place-items: center; width: 44px; height: 40px; border-radius: 6px; background: #f0e2bf; box-shadow: inset 0 0 0 1.5px #c79a62; padding: 3px; }
-.kk-sign-icon .kk-goat, .kk-sign-icon svg { width: 100%; height: auto; animation: none; }
-.kk-sign-icon svg.kk-heart { width: 42%; }
-.kk-sign-paper { min-width: 0; flex: 1; padding: 3px 8px 4px; border-radius: 4px; background: #fff8e6; box-shadow: inset 0 0 0 1px #d8c49a, 0 1px 0 #5a3b1e; }
-@media (max-width: 639px) { .kk-sign-icon { width: 34px; height: 32px; } }
-.kk-herd-icon { display: flex; align-items: flex-end; width: 100%; }
-.kk-herd-icon > span { flex: 0 0 62%; }
-.kk-herd-icon > span + span { margin-left: -24%; }
+.kk-rail { display: flex; height: 8px; overflow: hidden; border-radius: 999px; background: #e9efeb; }
+.kk-rail-f { background: #e5739a; }
+.kk-rail-m { background: #3b82c4; }
+.kk-graph { padding: 6px 6px 2px; background-color: #fff; background-image: linear-gradient(rgb(31 122 58 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(31 122 58 / 0.05) 1px, transparent 1px); background-size: 16px 16px; }
 @media (max-width: 639px) {
-    .kk-noticeboard { padding: 4px 6px 4px; border-width: 4px; }
+    .kk-noticeboard { padding: 4px 6px 4px; }
     .kk-noticeboard td, .kk-noticeboard th { padding-left: 4px !important; padding-right: 4px !important; }
     .kk-age-goat { width: 28px; height: 24px; }
     .kk-age-goat > svg { width: calc(28px * var(--s, 1)); height: calc(23px * var(--s, 1)); }
     .kk-th-goat { display: none; }
 }
 
-/* D-137: the feeding schedule on a farm chalkboard in a timber frame; statuses written in chalk. */
-.kk-chalkboard {
-    padding: 10px 14px 8px; border-radius: 8px; color: #f3f0e6;
-    border: 8px solid #8d6238; box-shadow: inset 0 0 0 2px #5a3b1e, inset 0 0 40px rgb(0 0 0 / 0.35), 0 4px 12px -6px rgb(40 25 10 / 0.6);
-    background:
-        radial-gradient(ellipse at 30% 20%, rgb(255 255 255 / 0.06), transparent 60%),
-        radial-gradient(ellipse at 80% 90%, rgb(255 255 255 / 0.04), transparent 50%),
-        #2c3e33;
-}
-.kk-chalkboard thead { color: #f3f0e6; border-bottom: 2px dashed rgb(243 240 230 / 0.45); }
-.kk-chalk-body > tr + tr, .kk-chalk-rows > li + li { border-top: 1px dashed rgb(243 240 230 / 0.25); }
-.kk-chalk-pen { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: #fffbe9; letter-spacing: 0.01em; }
-.kk-chalk-soft { color: rgb(243 240 230 / 0.72); }
-.kk-chalk-mark { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
-.kk-chalk-done { color: #a8e07a; }
-.kk-chalk-late { color: #ffd36b; }
-.kk-chalk-missed { color: #ff8a7a; }
-.kk-chalk-due { color: #fffbe9; padding: 0 7px; border: 1.8px solid #fffbe9; border-radius: 999px 900px 999px 850px; }
-.kk-chalk-upcoming, .kk-chalk-none { color: rgb(243 240 230 / 0.55); }
-.kk-chalk-cell { padding: 5px 6px; border-radius: 6px; background: rgb(255 255 255 / 0.04); }
-.kk-chalk-now { box-shadow: inset 0 0 0 1.5px rgb(255 251 233 / 0.55); }
-.kk-chalk-now-head { text-decoration: underline wavy rgb(255 224 138 / 0.8); text-underline-offset: 6px; }
-.kk-chalk-more { color: #fffbe9; }
+/* Top numbers as KPI tiles. */
+.kk-signs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 1rem; }
+.kk-signs > :last-child:nth-child(odd) { grid-column: span 2; }
+@media (min-width: 640px) { .kk-signs { display: flex; gap: 10px; } .kk-signs > * { flex: 1 1 0; min-width: 0; } }
+.kk-sign { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #fff; border: 1px solid var(--kk-line); box-shadow: 0 1px 2px rgb(16 48 31 / 0.05); overflow: hidden; }
+.kk-sign::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, var(--kk-green), var(--kk-green-2)); opacity: 0.85; }
+.kk-sign-paper { min-width: 0; flex: 1; }
+@media (max-width: 639px) { .kk-sign .kk-icon-tile { width: 34px; height: 34px; } }
+
+/* Feeding schedule on a dark tablet-style display with coloured status lights. */
+.kk-chalkboard { padding: 10px 14px 8px; border-radius: 16px; color: #e8f3ec; background: radial-gradient(ellipse at 20% 0%, rgb(46 158 79 / 0.18), transparent 55%), var(--kk-display); box-shadow: inset 0 0 0 1px rgb(125 255 173 / 0.12), 0 10px 24px -16px rgb(13 34 24 / 0.7); }
+.kk-chalkboard thead { color: #e8f3ec; border-bottom: 1px solid rgb(232 243 236 / 0.18); }
+.kk-chalk-body > tr + tr, .kk-chalk-rows > li + li { border-top: 1px solid rgb(232 243 236 / 0.1); }
+.kk-chalk-pen { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: #fff; }
+.kk-chalk-soft { color: rgb(232 243 236 / 0.65); }
+.kk-chalk-mark { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 1px 8px 1px 6px; border-radius: 999px; background: rgb(255 255 255 / 0.06); }
+.kk-chalk-done { color: #7dffad; background: rgb(125 255 173 / 0.12); }
+.kk-chalk-late { color: #ffd36b; background: rgb(255 211 107 / 0.12); }
+.kk-chalk-missed { color: #ff8a7a; background: rgb(255 138 122 / 0.14); }
+.kk-chalk-due { color: #fff; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.7); }
+.kk-chalk-upcoming, .kk-chalk-none { color: rgb(232 243 236 / 0.5); }
+.kk-chalk-cell { padding: 6px; border-radius: 10px; background: rgb(255 255 255 / 0.05); }
+.kk-chalk-now { box-shadow: inset 0 0 0 1.5px rgb(125 255 173 / 0.55); }
+.kk-chalk-now-head { color: var(--kk-lcd); text-shadow: 0 0 8px rgb(125 255 173 / 0.5); }
+.kk-chalk-more { color: #fff; }
 .kk-chalk-more:hover { background: rgb(255 255 255 / 0.08); }
-.kk-paper-note {
-    position: relative; padding: 8px 12px 8px 26px; border-radius: 3px; color: #5a4628; background: #fff3c4;
-    box-shadow: 0 2px 0 #d8c08a, 0 6px 10px -8px rgb(40 25 10 / 0.5); transform: rotate(-0.4deg);
-}
-.kk-paper-note::before { content: ''; position: absolute; left: 9px; top: 11px; width: 9px; height: 9px; border-radius: 50%; background: #c8312a; box-shadow: inset -2px -2px 0 rgb(0 0 0 / 0.25); }
-.kk-paper-alert { background: #ffe1d9; color: #8a2a1f; box-shadow: 0 2px 0 #e6b3a6, 0 6px 10px -8px rgb(40 25 10 / 0.5); }
 
-/* D-138: Missing Data on a farm clipboard: hardboard, a metal clip, lined paper, yellow ear tags, red pencil circles. */
-.kk-clipboard { position: relative; margin: 12px; padding: 22px 10px 10px; border-radius: 10px; background: #a8784a; box-shadow: inset 0 0 0 2px #7a5230, 0 5px 12px -8px rgb(40 25 10 / 0.6); }
-.kk-clip {
-    position: absolute; left: 50%; top: -6px; width: 86px; height: 22px; translate: -50% 0; border-radius: 6px 6px 3px 3px;
-    background: linear-gradient(#e6e8e6, #a9adaa); box-shadow: inset 0 -3px 0 #8d918e, 0 2px 3px rgb(0 0 0 / 0.3);
-}
-.kk-clip::after { content: ''; position: absolute; left: 50%; top: 4px; width: 26px; height: 7px; translate: -50% 0; border-radius: 4px; background: #7d817e; }
-.kk-lined {
-    padding: 4px 12px 2px; border-radius: 3px; background-color: #fffdf4;
-    background-image: linear-gradient(90deg, transparent 22px, rgb(214 80 70 / 0.35) 22px 23.5px, transparent 23.5px);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-}
-.kk-lined > li + li { border-top: 1px solid #c9dbe8; }
-.kk-lined > li { padding-left: 18px; }
+/* Alerts. */
+.kk-paper-note { position: relative; padding: 8px 12px 8px 30px; border-radius: 12px; color: #7a4b00; background: #fff6e0; border: 1px solid #f6dfa4; }
+.kk-paper-note::before { content: ''; position: absolute; left: 12px; top: 50%; width: 8px; height: 8px; translate: 0 -50%; border-radius: 50%; background: #e09a00; box-shadow: 0 0 0 4px rgb(224 154 0 / 0.18); }
+.kk-paper-alert { color: #8a1c13; background: #fdecea; border-color: #f5c2bd; }
+.kk-paper-alert::before { background: #d92d20; box-shadow: 0 0 0 4px rgb(217 45 32 / 0.18); }
+
+/* Lists: Missing Data, the pen roll call. */
+.kk-clipboard { position: relative; margin: 12px; padding: 4px 4px 4px; }
+.kk-clip { display: none; }
+.kk-lined { padding: 2px 10px; }
+.kk-lined > li + li { border-top: 1px solid var(--kk-line); }
 .kk-eartag {
-    position: relative; flex: none; display: inline-flex; align-items: flex-end; justify-content: center; min-width: 74px; padding: 17px 9px 5px; white-space: nowrap;
-    color: #1f2a1f; background: #f4c430; border-radius: 10px 10px 18px 18px / 10px 10px 22px 22px;
-    box-shadow: inset 0 -3px 0 #d6a516, inset 0 2px 0 rgb(255 255 255 / 0.45), 0 2px 3px rgb(0 0 0 / 0.25);
+    position: relative; flex: none; display: inline-flex; align-items: flex-end; justify-content: center; min-width: 74px; padding: 16px 9px 5px; white-space: nowrap;
+    color: #1f2a1f; background: linear-gradient(#ffd84d, #f4c430); border-radius: 10px 10px 18px 18px / 10px 10px 22px 22px; box-shadow: inset 0 -2px 0 #d6a516, 0 2px 4px rgb(0 0 0 / 0.15);
 }
-.kk-eartag-hole { position: absolute; top: 5px; left: 50%; width: 9px; height: 9px; translate: -50% 0; border-radius: 50%; background: #fffdf4; box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35); }
-.kk-pencil {
-    font-size: 12px; font-weight: 700; color: #b3261e; padding: 1px 8px;
-    border: 1.7px solid #c8312a; border-radius: 48% 52% 45% 55% / 60% 50% 55% 45%; transform: rotate(-1.5deg);
-}
-.kk-pencil:nth-child(even) { transform: rotate(1.2deg); }
-.kk-fix {
-    font-size: 13px; font-weight: 800; color: #fff7e6; padding: 4px 14px; border-radius: 5px;
-    background: repeating-linear-gradient(90deg, #7a4f2a 0 18px, #6e4624 18px 19px); box-shadow: 0 2px 0 #3f2914;
-}
+.kk-eartag-hole { position: absolute; top: 5px; left: 50%; width: 8px; height: 8px; translate: -50% 0; border-radius: 50%; background: #fff; box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3); }
+.kk-pencil { font-size: 12px; font-weight: 700; color: #b42318; padding: 2px 9px; border-radius: 999px; background: #fdecea; }
+.kk-fix { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 700; color: #fff; padding: 5px 14px; border-radius: 999px; background: var(--kk-green); box-shadow: 0 1px 2px rgb(16 48 31 / 0.2); }
+.kk-fix:hover { background: var(--kk-green-2); }
 
-/* D-139: dashboard charts on graph paper in a timber frame. */
-.kk-graph {
-    padding: 6px 6px 2px; border-radius: 8px; border: 5px solid #8d6238;
-    box-shadow: inset 0 0 0 1px #c79a62, 0 4px 10px -7px rgb(40 25 10 / 0.5);
-    background-color: #fffdf4;
-    background-image:
-        linear-gradient(rgb(95 143 58 / 0.13) 1px, transparent 1px),
-        linear-gradient(90deg, rgb(95 143 58 / 0.13) 1px, transparent 1px);
-    background-size: 14px 14px;
-}
-
-/* D-140: Next Kiddings as the barn's kidding calendar on a plank wall. */
-.kk-kidding-board { display: grid; gap: 8px; padding: 12px; background: repeating-linear-gradient(180deg, #e9d9b4 0 22px, #dfcca2 22px 23px); }
-.kk-kidding-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; background: #fffdf4; box-shadow: 0 2px 0 #c9b183, 0 4px 8px -6px rgb(40 25 10 / 0.4); }
-.kk-cal { flex: none; display: flex; flex-direction: column; width: 46px; overflow: hidden; border-radius: 6px; text-align: center; background: #fff; box-shadow: 0 0 0 1.5px #8d6238, 0 2px 0 #5a3b1e; }
-.kk-cal-month { display: block; padding: 1px 0; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #fff7e6; background: #5f8f3a; }
-.kk-cal-day { display: block; padding: 1px 0 2px; font-size: 19px; font-weight: 800; line-height: 1.1; color: #3b2e1a; }
-.kk-cal-soon .kk-cal-month { background: #c9962f; }
-.kk-cal-over .kk-cal-month { background: #c8312a; }
-.kk-countdown { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; color: #2f5a2a; padding: 2px 9px 2px 4px; border-radius: 999px; background: #e3efd2; }
-.kk-countdown-soon { color: #7a5410; background: #fbe9bf; }
-.kk-countdown-over { color: #8a2a1f; background: #ffe1d9; }
+/* Next Kiddings: date tiles and countdown pills. */
+.kk-kidding-board { display: grid; gap: 8px; padding: 12px; background: var(--kk-floor); }
+.kk-kidding-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #fff; border: 1px solid var(--kk-line); }
+.kk-cal { flex: none; display: flex; flex-direction: column; width: 46px; overflow: hidden; border-radius: 10px; text-align: center; background: #fff; box-shadow: inset 0 0 0 1px var(--kk-line); }
+.kk-cal-month { display: block; padding: 1px 0; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #fff; background: var(--kk-green-2); }
+.kk-cal-day { display: block; padding: 1px 0 3px; font-size: 19px; font-weight: 800; line-height: 1.1; color: var(--kk-ink); }
+.kk-cal-soon .kk-cal-month { background: #e09a00; }
+.kk-cal-over .kk-cal-month { background: #d92d20; }
+.kk-countdown { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; color: var(--kk-green); padding: 2px 10px 2px 4px; border-radius: 999px; background: var(--kk-green-soft); }
+.kk-countdown-soon { color: #7a4b00; background: #fff1cc; }
+.kk-countdown-over { color: #8a1c13; background: #fdecea; }
 .kk-kid > svg { width: 22px; height: 18px; animation: kk-graze 2.6s ease-in-out infinite; }
 .lite .kk-kid > svg { animation: none; }
 
-/* D-141: Sheds page barns: a selected pen, an open area as a fenced grass yard, a planned shed faded. */
-.kk-pen-selected { border-color: #2f5a2a !important; box-shadow: inset 0 0 0 2px #c79a62, 0 0 0 3px rgb(47 90 42 / 0.45); }
-.kk-yard { background: repeating-linear-gradient(100deg, rgb(255 255 255 / 0.06) 0 3px, transparent 3px 9px), #9cc06a; border-color: #7a5230; }
-.kk-yard:hover { background: repeating-linear-gradient(100deg, rgb(255 255 255 / 0.08) 0 3px, transparent 3px 9px), #a6c977; }
-.kk-barn-planned { opacity: 0.72; filter: saturate(0.7); }
-
-/* D-142: Sheds page: the wooden page sign over a fence, sign tabs, timber-framed farm card, plank stat tiles, framed map. */
+/* Sheds page: a green header banner, segmented farm tabs, KPI mini tiles, a clean map frame. */
 .kk-page-sign { margin-bottom: 14px; }
 .kk-page-board {
-    position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 14px 18px; border-radius: 10px; border: 3px solid #4f321a;
-    background: repeating-linear-gradient(180deg, #8a5c32 0 26px, #7a4f2a 26px 27px), #8a5c32;
-    box-shadow: 0 4px 0 #3a2412, 0 10px 18px -12px rgb(40 25 10 / 0.7); text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+    position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-radius: 18px; overflow: hidden;
+    background: radial-gradient(circle at 95% 10%, rgb(255 255 255 / 0.16), transparent 40%), linear-gradient(120deg, var(--kk-green), var(--kk-green-2));
+    box-shadow: 0 12px 26px -18px rgb(16 48 31 / 0.8);
 }
-.kk-page-board::before, .kk-page-board::after { content: ''; position: absolute; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: #d9d4c7; box-shadow: inset -1px -1px 0 #7d776a; }
-.kk-page-board::before { left: 8px; }
-.kk-page-board::after { right: 8px; }
-.kk-fence {
-    height: 26px; margin: 0 14px;
-    background:
-        linear-gradient(180deg, transparent 6px, #a87a48 6px 10px, transparent 10px 16px, #a87a48 16px 20px, transparent 20px),
-        repeating-linear-gradient(90deg, transparent 0 34px, #8d6238 34px 42px, transparent 42px 76px);
-}
-.kk-sign-btn {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 8px;
-    font-size: 14px; font-weight: 800; color: #3b2e1a; background: #fff3d2; border: 2px solid #4f321a; box-shadow: 0 3px 0 #3a2412; text-shadow: none;
-}
-.kk-sign-btn-green { color: #fff7e6; background: #2f5a2a; }
-.kk-tab-sign {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 7px;
-    font-size: 14px; font-weight: 700; color: #3b2e1a; background: #f3e3c3; border: 2px solid #8d6238; box-shadow: 0 2px 0 #8d6238;
-}
-.kk-tab-sign-on { color: #fff7e6; background: repeating-linear-gradient(180deg, #7a4f2a 0 15px, #6e4624 15px 16px); border-color: #4f321a; box-shadow: 0 2px 0 #3a2412; }
-.kk-farmcard { border-radius: 12px; border: 6px solid #8d6238; background: #fbf4e2; box-shadow: inset 0 0 0 1px #d8c49a, 0 6px 14px -10px rgb(40 25 10 / 0.6); }
-.kk-stat-plank { padding: 6px 10px; border-radius: 7px; background: #fff8e6; border: 2px solid #c79a62; box-shadow: 0 2px 0 #a87a48; }
-.kk-stat-plank-on { border-color: #2f5a2a; background: #eef5e3; box-shadow: 0 2px 0 #2f5a2a; }
-.kk-map-frame { border-top: 6px solid #8d6238; background: #efe4c8; }
-@media (min-width: 1024px) { .kk-map-frame { border-top: 0; border-left: 6px solid #8d6238; } }
-
-/* D-142: the move board: a plank wall, goats as yellow ear-tag chips, a pen lit up as a drop target. */
-.kk-movepanel { border-radius: 12px; overflow: hidden; border: 3px solid #8d6238; background: repeating-linear-gradient(180deg, #efdfba 0 24px, #e5d2a8 24px 25px); box-shadow: 0 6px 14px -10px rgb(40 25 10 / 0.6); }
-.kk-movepanel-body { border-top: 3px solid #8d6238; }
-.kk-move-icon { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 8px; color: #fff7e6; background: #2f5a2a; box-shadow: 0 2px 0 #1d3a1a; }
-.kk-tagchip {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; padding: 3px 8px 3px 6px; font-size: 13px; color: #1f2a1f;
-    border-radius: 6px 12px 12px 6px; background: #f4c430; box-shadow: inset 0 -2px 0 #d6a516, 0 1px 2px rgb(0 0 0 / 0.2);
-}
-.kk-tagchip-on { color: #fff7e6; background: #2f5a2a; box-shadow: inset 0 -2px 0 #1d3a1a, 0 0 0 2px #fff7e6, 0 0 0 4px #2f5a2a; }
-.kk-pen-drop { border-color: #2f5a2a !important; background: #e8f2d8 !important; box-shadow: 0 0 0 3px rgb(47 90 42 / 0.55); }
+.kk-fence { display: none; }
+.kk-sign-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 700; color: #fff; background: rgb(255 255 255 / 0.14); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.55); }
+.kk-sign-btn-green { color: var(--kk-green); background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / 0.15); }
+.kk-tab-sign { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--kk-ink); background: #fff; border: 1px solid var(--kk-line); }
+.kk-tab-sign-on { color: #fff; background: var(--kk-green); border-color: var(--kk-green); box-shadow: 0 4px 12px -6px rgb(31 122 58 / 0.8); }
+.kk-stat-plank { padding: 7px 10px; border-radius: 12px; background: var(--kk-floor); border: 1px solid var(--kk-line); }
+.kk-stat-plank-on { background: var(--kk-green-soft); border-color: var(--kk-green-2); box-shadow: 0 0 0 1px var(--kk-green-2); }
+.kk-map-frame { border-top: 1px solid var(--kk-line); background: #eef2ef; }
+@media (min-width: 1024px) { .kk-map-frame { border-top: 0; border-left: 1px solid var(--kk-line); } }
 
 /* D-143: nothing runs off a phone screen: long unbroken words (tag numbers, codes) wrap; phones and the apps keep text at the page's size. */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
