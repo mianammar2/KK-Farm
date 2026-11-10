@@ -84,7 +84,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Guns set up during the laptop spike still point at localhost: move them to the farm server.
-        if (prefs.getString(KEY_SERVER, null) == OLD_LAPTOP_SERVER) {
+        // D-150: guns saved on the old sslip.io address move to the farm's own domain.
+        if (prefs.getString(KEY_SERVER, null)?.trimEnd('/') in listOf(OLD_LAPTOP_SERVER, OLD_SSLIP_SERVER)) {
             prefs.edit().remove(KEY_SERVER).apply()
         }
         WebView.setWebContentsDebuggingEnabled(true) // lets Chrome DevTools inspect the page during the spike
@@ -400,7 +401,8 @@ class MainActivity : Activity() {
         private const val KEY_ACTION = "action"
         private const val KEY_EXTRA = "extra"
         // The farm server (D-045). For laptop testing set http://localhost:8000 in settings and use adb reverse.
-        const val DEFAULT_SERVER = "https://103-163-48-203.sslip.io"
+        const val DEFAULT_SERVER = "https://fms.kkfarms.com.pk"
+        private const val OLD_SSLIP_SERVER = "https://103-163-48-203.sslip.io"
         private const val OLD_LAPTOP_SERVER = "http://localhost:8000"
         const val DEFAULT_ACTION = "com.kkfarm.SCAN"
         const val DEFAULT_EXTRA = "data"
@@ -414,6 +416,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.6.0"
-    const val CODE = 12 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.6.2"
+    const val CODE = 14 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

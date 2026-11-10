@@ -4,7 +4,7 @@ import WebKit
 /// The KK Farms web app in a WKWebView: sign-in is kept, links to other sites open in Safari, pull down to refresh,
 /// and when the app returns to the front after 5 minutes it reloads, which also picks up a new version of the app.
 struct FarmView: UIViewRepresentable {
-    static let server = URL(string: "https://103-163-48-203.sslip.io/")!
+    static let server = URL(string: "https://fms.kkfarms.com.pk/")!
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
