@@ -148,4 +148,26 @@ class PregnancyOutcomeTest extends TestCase
         $this->assertSame('ISO-01', $doe2->fresh()->pen->name);
         $this->assertSame(1, \App\Models\Shed::where('type', 'MTU')->count());
     }
+
+    public function test_the_maternity_round_moves_does_near_kidding_to_pre_kidding_and_catches_up_after_outcomes(): void
+    {
+        $far = Animal::create(['farm_number' => 'TD-FAR', 'sex' => 'female', 'breed_id' => $this->doe->breed_id, 'birth_date' => now()->subYears(3), 'origin' => 'purchased', 'pen_id' => $this->doe->pen_id]);
+        Mating::create(['dam_id' => $far->id, 'mated_on' => now()->subDays(60), 'expected_kidding_on' => now()->addDays(90), 'status' => 'pregnant', 'recorded_by' => 'Test']);
+
+        // An abortion recorded before the Maternity Unit existed: she is still in her old pen, under monitoring.
+        $aborted = Animal::create(['farm_number' => 'TD-ABT', 'sex' => 'female', 'breed_id' => $this->doe->breed_id, 'birth_date' => now()->subYears(3), 'origin' => 'purchased', 'pen_id' => $this->doe->pen_id,
+            'monitor_until' => now()->addDays(2), 'monitor_reason' => 'ABT', 'repro_status' => 'open']);
+        Kidding::create(['dam_id' => $aborted->id, 'kidded_on' => now()->subDay(), 'born_alive' => 0, 'stillborn' => 0, 'outcome' => 'ABT', 'recorded_by' => 'Test']);
+
+        $this->artisan('kkfarm:maternity-round')->assertSuccessful();
+        $this->assertSame('PKU-01', $this->doe->fresh()->pen->name);      // expected in 2 days, inside the 10-day window
+        $this->assertNotSame('PKU-01', $far->fresh()->pen?->name);         // 90 days away: stays
+        $this->assertSame('ISO-01', $aborted->fresh()->pen->name);
+        $this->assertTrue(\App\Models\AnimalMovement::where('animal_id', $this->doe->id)->where('recorded_by', 'System (maternity round)')->exists());
+
+        // staff move her on to a Kidding Pen: the next round leaves her there
+        \App\Support\Movements::transfer($this->doe->fresh(), \App\Support\Maternity::pen('KDP-01'), $this->user());
+        $this->artisan('kkfarm:maternity-round')->assertSuccessful();
+        $this->assertSame('KDP-01', $this->doe->fresh()->pen->name);
+    }
 }

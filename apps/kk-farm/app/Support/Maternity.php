@@ -72,6 +72,51 @@ final class Maternity
         ]);
     }
 
+    /**
+     * D-164: the hourly maternity round, for the current organization:
+     * - a pregnant doe whose expected kidding is inside the alert window moves to the Pre-Kidding Unit;
+     * - a doe under monitoring after a delivery or loss, and her kids, are moved into the right maternity pen if they
+     *   are not in the unit yet (outcomes recorded before D-163, or moved out by mistake).
+     * Goats already anywhere in the Maternity Unit are left where staff put them (e.g. a Kidding Pen).
+     *
+     * @return array{preKidding: list<string>, afterOutcome: list<string>}
+     */
+    public static function sweep(): array
+    {
+        $shed = self::shed();
+        $inUnit = Pen::where('shed_id', $shed->id)->pluck('id')->all();
+        $system = new User(['name' => 'System (maternity round)']);
+        $days = (int) (\App\Models\Organization::whereKey(Tenant::current())->value('kidding_alert_days') ?: 10);
+        $moved = ['preKidding' => [], 'afterOutcome' => []];
+
+        $near = \App\Models\Mating::with('dam')->where('status', 'pregnant')->whereNotNull('expected_kidding_on')
+            ->whereDate('expected_kidding_on', '<=', now()->addDays($days)->toDateString())->get();
+        foreach ($near as $m) {
+            $dam = $m->dam;
+            if ($dam && $dam->status === 'active' && ! in_array((int) $dam->pen_id, $inUnit, true)) {
+                Movements::transfer($dam, self::pen('PKU-01'), $system, ['reason' => 'Near kidding (expected '.$m->expected_kidding_on->format('j M Y').'): Pre-Kidding Unit']);
+                $moved['preKidding'][] = $dam->farm_number;
+            }
+        }
+
+        $recent = Kidding::with(['dam', 'kids'])->whereDate('kidded_on', '>=', now()->subDays(Kidding::MONITOR_DAYS)->toDateString())->get();
+        foreach ($recent as $k) {
+            $dam = $k->dam;
+            if ($dam && $dam->status === 'active' && $dam->isMonitored() && ! in_array((int) $dam->pen_id, $inUnit, true)) {
+                self::admit($k, $dam, $system);
+                $moved['afterOutcome'][] = $dam->farm_number;
+            }
+            foreach ($k->kids as $kid) {
+                if ($kid->status === 'active' && ! in_array((int) $kid->pen_id, $inUnit, true)) {
+                    Movements::transfer($kid, self::kidPen($kid->birth_outcome === 'BAW'), $system, ['reason' => 'Newborn: with its mother in the Maternity Unit']);
+                    $moved['afterOutcome'][] = $kid->farm_number;
+                }
+            }
+        }
+
+        return $moved;
+    }
+
     /** Creates the maternity unit for every organization (used by the migration). */
     public static function seedAll(): void
     {
