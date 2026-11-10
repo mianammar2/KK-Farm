@@ -89,7 +89,7 @@ class MaintenanceController extends Controller
             }
             Task::create([
                 'title' => mb_substr(MaintenanceJob::KINDS[$data['kind']].": {$asset->name}", 0, 190), 'type' => 'maintenance', 'priority' => $data['priority'], 'status' => 'open',
-                'due_on' => now()->toDateString(), 'department_id' => Department::where('name', 'Farm Management')->value('id'), 'notes' => mb_substr($data['problem'], 0, 500),
+                'due_on' => now()->toDateString(), 'department_id' => Department::where('name', 'Management')->value('id'), 'notes' => mb_substr($data['problem'], 0, 500),
             ]);
         });
         Farm::log($request->user(), "Reported maintenance for {$asset->name}", '/maintenance?tab=jobs');

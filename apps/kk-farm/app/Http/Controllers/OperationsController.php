@@ -98,7 +98,7 @@ class OperationsController extends Controller
             Task::create([
                 'title' => mb_substr("Incident: {$label}".($incident->pen ? " – {$incident->pen->fullName()}" : ''), 0, 190), 'type' => 'other', 'priority' => $data['severity'],
                 'status' => 'open', 'due_on' => now()->toDateString(), 'animal_id' => $incident->animal_id, 'pen_id' => $incident->pen_id,
-                'department_id' => Department::where('name', 'Farm Management')->value('id'), 'notes' => mb_substr($data['description'], 0, 500),
+                'department_id' => Department::where('name', 'Management')->value('id'), 'notes' => mb_substr($data['description'], 0, 500),
             ]);
         }
         Farm::log($request->user(), "Reported an incident: {$label}", '/operations?tab=incidents');

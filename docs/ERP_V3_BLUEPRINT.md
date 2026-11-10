@@ -39,7 +39,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Partial (lactations, milk records D-117) |
 | 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | To do |
 | 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review to do |
-| 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | To do (sensors exist) |
+| 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | Built – flow 20 (D-186); water-quality lab tests, manure/compost logs to do |
 | 21 | Quality, Compliance & Safety | Quality Dashboard; SOP Library; Feed & Milk Safety; Regulatory Register; Incidents & CAPA; Traceability & Recall; Emergency Readiness; Compliance Reporting | To do (incident register D-180) |
 | 22 | Fodder & Pasture (Optional) | Land & Field Registry; Crop Planning; Cultivation; Crop Monitoring; Harvest; Preservation; Feed Store Transfer; Costing | To do (off by default) |
 | – | System Settings | Farm Configuration; Master Data; Animal Identity; Clinical Protocols; Production Settings; Equipment & Integrations; Security & Permissions; Data Governance; Automation; Finance | Partial |
@@ -68,8 +68,8 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-018 | Duplicate/impossible weight flags | To do |
 | BR-019 | Fattening eligibility | To do |
 | BR-020 | No double-counted fattening feed cost | To do |
-| BR-021 | No drinking water = critical alert | To do |
-| BR-022 | Configurable heat-stress threshold | To do |
+| BR-021 | No drinking water = critical alert | Built (D-186) |
+| BR-022 | Configurable heat-stress threshold | Built (D-186) |
 | BR-023 | Major welfare concern → inspection/medical task | Built (D-185) |
 | BR-024 | Every dose consumes a traceable lot | Partial |
 | BR-025 | Held stock/milk/feed never sold | Partial |

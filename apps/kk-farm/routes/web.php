@@ -42,6 +42,16 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
+    // D-186: App 20 Water, Climate & Environment
+    Route::middleware('module:environment')->group(function (): void {
+        Route::get('/environment', [\App\Http\Controllers\EnvironmentController::class, 'index']);
+        Route::post('/environment/rounds', [\App\Http\Controllers\EnvironmentController::class, 'round']);
+        Route::post('/environment/issues/{issue}/resolve', [\App\Http\Controllers\EnvironmentController::class, 'resolve']);
+        Route::post('/environment/issues/{issue}/verify', [\App\Http\Controllers\EnvironmentController::class, 'verify']);
+        Route::post('/environment/water-points', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
+        Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
+        Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
+    });
     // D-185: App 19 Animal Welfare & Husbandry
     Route::middleware('module:welfare')->group(function (): void {
         Route::get('/welfare', [\App\Http\Controllers\WelfareController::class, 'index']);

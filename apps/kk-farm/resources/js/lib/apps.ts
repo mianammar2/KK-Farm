@@ -219,12 +219,14 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/health?tab=mortality', 'Mortality'),
         S('Configuration', '/health?tab=diseases', 'Condition List'),
     ] },
-    { key: 'environment', no: '20', label: 'Water & Climate', art: 'mod-assets', modules: ['sensors', 'maintenance'], linked: ['housing', 'maintenance', 'veterinary'], sections: [
-        S('Overview', '/sensors?tab=readings', 'Climate & Water Readings'),
-        S('Operations', '/sensors?tab=alerts', 'Environment Alerts'),
-        S('Records', '/maintenance?tab=assets', 'Pumps, Tanks & Fans'),
-        S('Reporting', '/sensors?tab=readings', 'Readings History'),
-        S('Configuration', '/sensors?tab=connect', 'Connect a Sensor'),
+    { key: 'environment', no: '20', label: 'Water & Climate', art: 'mod-assets', modules: ['environment'], linked: ['housing', 'welfare', 'veterinary', 'maintenance', 'quality', 'accounting'], sections: [
+        S('Overview', '/environment?tab=sheds', 'Shed Rounds'),
+        S('Operations', '/environment?tab=issues', 'Water, Heat & Waste Issues'),
+        S('Operations', '/sensors?tab=alerts', 'Sensor Alarms'),
+        S('Records', '/environment?tab=records', 'Round Records'),
+        S('Records', '/sensors?tab=readings', 'Sensor Readings'),
+        S('Reporting', '/environment?tab=records', 'Water & Heat Compliance'),
+        S('Configuration', '/environment?tab=setup', 'Water Points & Heat Limit'),
     ] },
     { key: 'quality', no: '21', label: 'Quality & Compliance', art: 'mod-biosecurity', modules: ['tasks'], linked: ['operations', 'veterinary', 'inventory', 'sales'], sections: [
         S('Overview', '/operations?tab=incidents', 'Incidents'),
