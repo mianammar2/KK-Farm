@@ -253,6 +253,10 @@ class GoatController extends Controller
             'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats'), 'breeding' => $request->user()->canModule('breeding')],
             'pregnancy' => $animal->sex === 'female' ? \App\Support\Checkups::pregnancyThread($animal) : null, // D-100
             'outcomeOptions' => \App\Models\Kidding::formOptions(), // D-161
+            // D-166: the doe's open pregnancy for an ultrasound by the vet
+            'scanMating' => $animal->sex === 'female' && $request->user()->passes('clinical') && ($sm = \App\Models\Mating::where('dam_id', $animal->id)->whereIn('status', ['open', 'pregnant', 'inconclusive'])->latest('mated_on')->first())
+                ? ['id' => $sm->id, 'matedOnIso' => $sm->mated_on->toDateString(), 'day' => (int) $sm->mated_on->diffInDays(now())] : null,
+            'ultrasoundOptions' => \App\Models\PregnancyCheck::formOptions(),
             'milking' => $animal->sex === 'female' ? $this->milking($animal) : null, // D-117
             'healthEntry' => $animal->status === 'active' && $request->user()->canModule('health') ? \App\Support\Checkups::entryData($request->user(), new \Illuminate\Database\Eloquent\Collection([$animal])) : null, // D-102
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),

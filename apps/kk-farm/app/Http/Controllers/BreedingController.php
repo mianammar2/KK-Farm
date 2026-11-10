@@ -48,6 +48,7 @@ class BreedingController extends Controller
                 'id' => $m->id, 'status' => $m->status, 'outcome' => Mating::OUTCOMES[$m->status] ?? $m->status, 'method' => Mating::METHODS[$m->method] ?? $m->method,
                 'heat' => $m->heat_observed, 'cycle' => $m->service_cycle, 'handler' => $m->handler, 'notes' => $m->notes, 'alert' => $m->alert($org->kidding_alert_days),
                 'pregnancy' => $m->pregnancyStatus($org->kidding_alert_days), // D-161
+                'scan' => $m->checks->last()?->ultrasound_status ?? 'NSC', 'day' => (int) $m->mated_on->diffInDays(now()), 'scanWindow' => PregnancyCheck::window((int) $m->mated_on->diffInDays(now())), // D-166
                 'dam' => ['id' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'coat' => $m->dam->coat, 'breed' => $m->dam->breed?->name, 'stage' => $m->dam->effectiveAge()],
                 'sire' => $m->sire ? ['id' => $m->sire_id, 'number' => $m->sire->farm_number, 'name' => $m->sire->name] : null,
                 'mated' => $m->mated_on->format('j M Y'), 'matedIso' => $m->mated_on->toDateString(), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'checkDue' => $m->check_due_on?->format('j M Y'),
@@ -56,6 +57,8 @@ class BreedingController extends Controller
                 'active' => in_array($m->status, ['open', 'pregnant', 'inconclusive'], true),
                 'checks' => $m->checks->map(fn (PregnancyCheck $c) => [
                     'id' => $c->id, 'on' => $c->checked_on->format('j M Y'), 'method' => PregnancyCheck::METHODS[$c->method] ?? $c->method, 'result' => PregnancyCheck::RESULTS[$c->result] ?? $c->result,
+                    // D-166
+                    'status' => $c->ultrasound_status, 'day' => $c->pregnancy_day, 'fetal' => PregnancyCheck::fetalLabel($c->fetuses), 'viability' => PregnancyCheck::VIABILITY[$c->viability] ?? null, 'action' => $c->action,
                     'fetuses' => $c->fetuses, 'next' => $c->next_check_on?->format('j M Y'), 'by' => $c->examiner, 'notes' => $c->notes,
                 ])->values(),
             ]),
@@ -84,7 +87,7 @@ class BreedingController extends Controller
             'goats' => Animal::orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'settings' => ['gestation' => $org->gestation_days, 'check' => $org->pregnancy_check_days, 'alert' => $org->kidding_alert_days, 'weaning' => $org->weaning_age_days],
-            'options' => ['methods' => Mating::METHODS, 'checkMethods' => PregnancyCheck::METHODS, 'results' => PregnancyCheck::RESULTS, 'assisted' => Kidding::ASSISTED, 'weanMethods' => Weaning::METHODS, 'pregnancy' => Kidding::PREGNANCY] + Kidding::formOptions(),
+            'options' => ['methods' => Mating::METHODS, 'checkMethods' => PregnancyCheck::METHODS, 'results' => PregnancyCheck::RESULTS, 'assisted' => Kidding::ASSISTED, 'weanMethods' => Weaning::METHODS, 'pregnancy' => Kidding::PREGNANCY] + Kidding::formOptions() + PregnancyCheck::formOptions(),
         ]);
     }
 
@@ -146,35 +149,70 @@ class BreedingController extends Controller
     }
 
     /** A pregnancy examination by a veterinarian. Several per mating; the mating's outcome and the doe's status follow the latest. */
+    /**
+     * D-166: a pregnancy ultrasound (or other examination) by the vet, as a KK Farms ultrasound record: status, fetal
+     * count, fetal viability and the day of pregnancy, with the follow-up done for them:
+     * confirmed → pregnancy record (and the expected kidding date from the vet's estimated day, when given);
+     * not pregnant → open and a breeding reassessment task; inconclusive, suspected or no heartbeat → repeat ultrasound
+     * task; twins or more → nutrition and monitoring task; suspected fetal loss → vet alert, the pregnancy stays open;
+     * confirmed loss → recorded as a pregnancy loss (isolation, monitoring, biosecurity); hydrometra or an abnormal
+     * finding → vet investigation task. The vet's findings are recorded as given; the system only schedules the work.
+     */
     public function check(Request $request, Mating $mating): RedirectResponse
     {
         abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian records a pregnancy check.');
         abort_unless(in_array($mating->status, ['open', 'pregnant', 'inconclusive'], true), 422, 'This mating is already closed.');
         $data = $request->validate([
-            'result' => ['required', Rule::in(array_keys(PregnancyCheck::RESULTS))], 'method' => ['nullable', Rule::in(array_keys(PregnancyCheck::METHODS))],
+            'ultrasound_status' => ['nullable', 'required_without:result', Rule::in(array_keys(PregnancyCheck::STATUSES))],
+            'result' => ['nullable', Rule::in(array_keys(PregnancyCheck::RESULTS))], 'method' => ['nullable', Rule::in(array_keys(PregnancyCheck::METHODS))],
             'checked_on' => ['nullable', 'date', 'before_or_equal:today', 'after_or_equal:'.$mating->mated_on->toDateString()],
-            'fetuses' => ['nullable', 'integer', 'between:1,6'], 'next_check_on' => ['nullable', 'required_if:result,inconclusive', 'date', 'after:today'], 'notes' => ['nullable', 'string', 'max:500'],
-        ], ['next_check_on.required_if' => 'An inconclusive check needs a recheck date.'], ['next_check_on' => 'recheck date']);
+            'fetuses' => ['nullable', 'integer', 'between:0,8'], 'viability' => ['nullable', Rule::in(array_keys(PregnancyCheck::VIABILITY))],
+            'estimated_day' => ['nullable', 'integer', 'between:20,160'],
+            'next_check_on' => ['nullable', 'required_if:result,inconclusive', 'date', 'after:today'], 'notes' => ['nullable', 'string', 'max:500'],
+        ], ['next_check_on.required_if' => 'An inconclusive check needs a recheck date.'], ['next_check_on' => 'recheck date', 'ultrasound_status' => 'ultrasound result']);
+        $status = $data['ultrasound_status'] ?? PregnancyCheck::STATUS_OF[$data['result']];
+        $result = PregnancyCheck::RESULT_OF[$status];
+        $on = Carbon::parse($data['checked_on'] ?? now());
+        $day = (int) $mating->mated_on->diffInDays($on);
+        $fetuses = isset($data['fetuses']) ? (int) $data['fetuses'] : null;
+        $next = $data['next_check_on'] ?? (in_array($status, PregnancyCheck::REPEAT, true) ? now()->addDays(14)->toDateString() : null);
+        $action = PregnancyCheck::action($status, $fetuses);
+        $by = $request->user();
 
-        DB::transaction(function () use ($mating, $data, $request) {
+        DB::transaction(function () use ($mating, $data, $by, $status, $result, $on, $day, $fetuses, $next, $action) {
             PregnancyCheck::create([
-                'mating_id' => $mating->id, 'dam_id' => $mating->dam_id, 'checked_on' => $data['checked_on'] ?? now(), 'method' => $data['method'] ?? 'vet_exam',
-                'result' => $data['result'], 'fetuses' => $data['fetuses'] ?? null, 'next_check_on' => $data['next_check_on'] ?? null,
-                'examiner' => $request->user()->name, 'notes' => $data['notes'] ?? null,
+                'mating_id' => $mating->id, 'dam_id' => $mating->dam_id, 'checked_on' => $on, 'method' => $data['method'] ?? 'ultrasound',
+                'result' => $result, 'ultrasound_status' => $status, 'fetuses' => $fetuses, 'viability' => $data['viability'] ?? null,
+                'pregnancy_day' => $day, 'action' => $action, 'next_check_on' => $next, 'examiner' => $by->name, 'notes' => $data['notes'] ?? null,
             ]);
-            [$status, $repro] = match ($data['result']) {
-                'pregnant' => ['pregnant', 'pregnant'],
-                'not_pregnant' => ['not_pregnant', 'open'],
-                'inconclusive' => ['inconclusive', 'check_due'],
-                'pregnancy_loss' => ['aborted', 'open'],
-            };
-            $mating->update(['status' => $status]);
-            $mating->dam->update(['repro_status' => $repro, 'repro_state' => $repro === 'pregnant' ? 'pregnant' : null]);
-            Farm::event($mating->dam, 'breeding', 'Pregnancy check: '.strtolower(PregnancyCheck::RESULTS[$data['result']]).(! empty($data['fetuses']) ? " ({$data['fetuses']} fetuses)" : ''), $request->user()->name);
-        });
-        Farm::log($request->user(), "Pregnancy check for {$mating->dam->farm_number}", "/goats/{$mating->dam_id}");
+            $dam = $mating->dam;
+            Farm::event($dam, 'breeding', 'Ultrasound day '.$day.': '.PregnancyCheck::STATUSES[$status].' · '.PregnancyCheck::fetalLabel($fetuses)
+                .(! empty($data['viability']) ? ' · '.PregnancyCheck::VIABILITY[$data['viability']] : '')." · next: {$action}", $by->name, $on);
 
-        return back()->with('success', 'Pregnancy check saved.');
+            if ($status === 'CPL') {
+                // A loss the vet confirmed: recorded like any pregnancy loss (isolation, monitoring, vet and biosecurity tasks).
+                \App\Support\PregnancyLoss::record($mating, $on, $day < 45 ? 'EEL' : 'ABT', $by, $data['notes'] ?? null);
+
+                return;
+            }
+            if ($status === 'SFL') {
+                // Suspected only: the pregnancy stays as it was; the vet reassesses.
+                $mating->update(['status' => $mating->status === 'open' ? 'inconclusive' : $mating->status]);
+            } else {
+                $mating->update(['status' => $result]);
+                [$repro, $state] = match ($result) { 'pregnant' => ['pregnant', 'pregnant'], 'not_pregnant' => ['open', null], default => ['check_due', null] };
+                $dam->update(['repro_status' => $repro, 'repro_state' => $state]);
+            }
+            // The vet's estimate of the day of pregnancy moves the expected kidding date.
+            if ($result === 'pregnant' && ! empty($data['estimated_day'])) {
+                $gestation = (int) (Tenant::org()?->gestation_days ?? 150);
+                $mating->update(['expected_kidding_on' => $on->copy()->subDays((int) $data['estimated_day'])->addDays($gestation)->toDateString()]);
+            }
+            \App\Support\UltrasoundTasks::raise($mating->fresh(), $dam, $status, $fetuses, $next);
+        });
+        Farm::log($by, "Ultrasound for {$mating->dam->farm_number}: ".PregnancyCheck::STATUSES[$status], "/goats/{$mating->dam_id}");
+
+        return back()->with('success', 'Ultrasound saved: '.PregnancyCheck::STATUSES[$status].'. Next: '.$action.'.');
     }
 
     public function close(Request $request, Mating $mating): RedirectResponse

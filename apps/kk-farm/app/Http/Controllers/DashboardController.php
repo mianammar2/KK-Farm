@@ -65,6 +65,9 @@ class DashboardController extends Controller
                 'does' => $goats->where('sex', 'female')->count(),
                 'bucks' => $goats->where('sex', 'male')->count(),
                 'pregnant' => $counts['pregnant'],
+                // D-166: of the pregnant does, those inside the kidding alert window; matings still waiting for a scan
+                'pregnantNear' => Mating::where('status', 'pregnant')->whereDate('expected_kidding_on', '<=', now()->addDays((int) (\App\Support\Tenant::org()?->kidding_alert_days ?: 10))->toDateString())->count(),
+                'awaitingScan' => Mating::whereIn('status', ['open', 'inconclusive'])->count(),
                 'unwell' => $counts['attention'],
                 'healthy' => $goats->count() - $counts['attention'], // D-165
                 'noPen' => $counts['no_pen'],

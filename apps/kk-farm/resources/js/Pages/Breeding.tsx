@@ -11,13 +11,14 @@ import { useConfirm } from '../components/Confirm';
 import PregnancyOutcomeForm, { type OutcomeOptions } from '../components/PregnancyOutcomeForm';
 import { LibIcon } from '../components/ui';
 import ReproKpiTiles from '../components/ReproKpis';
+import UltrasoundForm, { type UltrasoundOptions } from '../components/UltrasoundForm';
 
-type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null };
+type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null; status: string | null; day: number | null; fetal: string; viability: string | null; action: string | null };
 type MatingRow = {
     id: number; status: string; outcome: string; method: string; heat: string | null; cycle: number | null; handler: string | null; notes: string | null;
     alert: 'check_overdue' | 'recheck_overdue' | 'recheck_due' | 'edd_passed' | 'kidding_soon' | null;
     dam: { id: string; number: string; name: string | null; coat: string }; sire: { id: string; number: string; name: string | null } | null;
-    mated: string; matedIso: string; pregnancy: string | null; expected: string | null; checkDue: string | null; days: number | null; progress: number; active: boolean; checks: Check[];
+    mated: string; matedIso: string; pregnancy: string | null; scan: string; day: number; scanWindow: string; expected: string | null; checkDue: string | null; days: number | null; progress: number; active: boolean; checks: Check[];
 };
 type KiddingRow = {
     id: number; goatId: string; dam: string; on: string; alive: number; stillborn: number; total: number; litter: string; assisted: string; attendant: string; notes: string | null;
@@ -36,7 +37,7 @@ type Props = {
     focus: { id: string; number: string; tree: PedigreeNode } | null; pairCheck: { shared: number; sire: string; dam: string } | null;
     does: Option[]; bucks: Option[]; goats: Option[]; pens: Array<{ id: number; name: string }>;
     settings: { gestation: number; check: number; alert: number; weaning: number };
-    options: { methods: Record<string, string>; checkMethods: Record<string, string>; results: Record<string, string>; assisted: Record<string, string>; weanMethods: Record<string, string>; pregnancy: Record<string, string> } & OutcomeOptions;
+    options: { methods: Record<string, string>; checkMethods: Record<string, string>; results: Record<string, string>; assisted: Record<string, string>; weanMethods: Record<string, string>; pregnancy: Record<string, string> } & OutcomeOptions & UltrasoundOptions;
 };
 
 const label = (o: Option) => `${o.farm_number}${o.name ? ` · ${o.name}` : ''}`;
@@ -175,6 +176,7 @@ function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; i
                 </div>
                 {m.status === 'pregnant' && m.expected ? <div className="text-right text-sm"><div className="font-semibold text-cobalt-900">{m.expected}</div><div className="text-ink-soft">{(m.days ?? 0) < 0 ? `${-(m.days ?? 0)} days over` : `in ${m.days} days`}</div></div> : null}
                 <div className="flex items-center gap-1.5">
+                    {m.active ? <Chip className={m.scan === 'NSC' ? 'bg-glaze text-ink-soft' : ['PCF', 'VPG', 'MPG'].includes(m.scan) ? 'bg-ok-100 text-ok-700' : ['CPL', 'SFL', 'HYD', 'ABN'].includes(m.scan) ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'} ><LibIcon name="mod-reports" size={14} />{m.scan === 'NSC' ? 'Not Scanned' : options.ultrasound[m.scan]}</Chip> : null}
                     {m.alert ? <Chip className={ALERT[m.alert].className}><AlertTriangle size={12} aria-hidden />{ALERT[m.alert].label}</Chip> : null}
                     {m.pregnancy ? <Chip className={PREG_CLASS[m.pregnancy] ?? 'bg-glaze text-ink-soft'}><LibIcon name={m.pregnancy === 'PLS' ? 'ic-sick' : m.pregnancy === 'PCM' ? 'ic-kidding' : 'ic-pregnant'} size={14} />{options.pregnancy[m.pregnancy]} <span className="opacity-60">{m.pregnancy}</span></Chip>
                         : <Chip className={OUTCOME_CLASS[m.status] ?? 'bg-glaze text-ink-soft'}>{m.outcome}</Chip>}
@@ -186,37 +188,27 @@ function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; i
                     <p className="text-ink-soft">Heat observed: {m.heat ?? 'not recorded'} · handler {m.handler ?? '—'}{m.notes ? ` · ${m.notes}` : ''}</p>
                     <div>
                         <p className="mb-1 font-semibold text-cobalt-900">Pregnancy checks</p>
-                        {m.checks.length ? <ul className="space-y-0.5">{m.checks.map((c) => <li key={c.id}>{c.on} · <strong>{c.result}</strong> · {c.method}{c.fetuses ? ` · ${c.fetuses} fetuses` : ''}{c.next ? ` · recheck ${c.next}` : ''} <span className="text-ink-soft">· {c.by}</span></li>)}</ul> : <p className="text-ink-soft">None yet{isVet ? '' : ' (recorded by a veterinarian)'}.</p>}
+                        {m.checks.length ? <ul className="space-y-1.5">{m.checks.map((c) => (
+                            <li key={c.id} className="rounded-lg bg-glaze px-2.5 py-1.5">
+                                <span className="font-semibold text-cobalt-900">{c.on}{c.day !== null ? ` · day ${c.day}` : ''}</span> · <strong className={c.status && ['CPL', 'SFL', 'HYD', 'ABN'].includes(c.status) ? 'text-crit-700' : c.status && ['PCF', 'VPG', 'MPG'].includes(c.status) ? 'text-ok-700' : ''}>{c.status ? `${options.ultrasound[c.status] ?? c.result} (${c.status})` : c.result}</strong>
+                                <span className="text-ink-soft"> · {c.fetal}{c.viability ? ` · ${c.viability}` : ''} · {c.method}{c.next ? ` · repeat ${c.next}` : ''} · {c.by}</span>
+                                {c.action ? <div className="text-xs"><span className="font-semibold">Next Action:</span> {c.action}</div> : null}
+                            </li>
+                        ))}</ul> : <p className="text-ink-soft">Not scanned yet (NSC){isVet ? '' : ' (recorded by a veterinarian)'}. Day {m.day}: {m.scanWindow}.</p>}
                     </div>
                     {m.active ? (
                         <div className="flex flex-wrap gap-2">
-                            {isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'check' ? 'none' : 'check')}>Pregnancy check</Button> : null}
+                            {isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'check' ? 'none' : 'check')}><LibIcon name="ic-pregnant" size={18} /> Ultrasound</Button> : null}
                             <Button onClick={() => setMode(mode === 'kidding' ? 'none' : 'kidding')}><LibIcon name="ic-kidding" size={18} /> Pregnancy Outcome</Button>
                             {canClose ? <Button variant="quiet" onClick={async () => { if (await ask({ title: 'Close this mating?', message: 'It will be closed without a kidding.', confirm: 'Yes, close mating', danger: false })) router.post(`/breeding/matings/${m.id}/close`, {}, { preserveScroll: true }); }}>Close mating</Button> : null}
                         </div>
                     ) : null}
-                    {mode === 'check' ? <CheckForm m={m} options={options} onDone={() => setMode('none')} /> : null}
+                    {mode === 'check' ? <UltrasoundForm matingId={m.id} damNumber={m.dam.number} matedOn={m.matedIso} options={options} onDone={() => setMode('none')} /> : null}
                     {mode === 'kidding' ? <PregnancyOutcomeForm matingId={m.id} damNumber={m.dam.number} matedOn={m.matedIso} options={options} onDone={() => setMode('none')} /> : null}
                     {m.status === 'open' && !isVet ? <p className="text-xs text-ink-faint">Pregnancy checks are due {settings.check} days after mating.</p> : null}
                 </div>
             ) : null}
         </section>
-    );
-}
-
-function CheckForm({ m, options, onDone }: { m: MatingRow; options: Props['options']; onDone: () => void }) {
-    const form = useForm({ result: 'pregnant', method: 'ultrasound', checked_on: today(), fetuses: '', next_check_on: '', notes: '' });
-    const e = form.errors as Record<string, string>;
-    return (
-        <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/breeding/matings/${m.id}/check`, { preserveScroll: true, onSuccess: onDone }); }} className="grid gap-3 rounded-tile bg-glaze p-3 sm:grid-cols-3">
-            <Field label="Result" error={e.result}><select className="field" value={form.data.result} onChange={(x) => form.setData('result', x.target.value)}>{Object.entries(options.results).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="Method" error={e.method}><select className="field" value={form.data.method} onChange={(x) => form.setData('method', x.target.value)}>{Object.entries(options.checkMethods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="Date" error={e.checked_on}><input type="date" max={today()} className="field" value={form.data.checked_on} onChange={(x) => form.setData('checked_on', x.target.value)} /></Field>
-            {form.data.result === 'pregnant' ? <Field label="Fetuses (estimate)" error={e.fetuses}><input type="number" min={1} max={6} className="field" value={form.data.fetuses} onChange={(x) => form.setData('fetuses', x.target.value)} /></Field> : null}
-            {form.data.result === 'inconclusive' ? <Field label="Recheck on" error={e.next_check_on}><input type="date" className="field" value={form.data.next_check_on} onChange={(x) => form.setData('next_check_on', x.target.value)} /></Field> : null}
-            <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
-            <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save check</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
-        </form>
     );
 }
 

@@ -33,6 +33,15 @@ final class HerdStats
 
     public const CATEGORIES = ['breeding_males', 'breeding_females', 'pregnant', 'ready', 'male_kids', 'female_kids', 'growing', 'lactating', 'sick', 'treatment', 'for_sale'];
 
+    /** D-166: does with a confirmed pregnancy (a mating marked pregnant) and does with any mating record, by goat id. */
+    public static function pregnantDams(): array
+    {
+        return Tenant::memo('pregnant_dams', fn () => [
+            'pregnant' => array_flip(\App\Models\Mating::where('status', 'pregnant')->pluck('dam_id')->all()),
+            'recorded' => array_flip(\App\Models\Mating::distinct()->pluck('dam_id')->all()),
+        ]);
+    }
+
     /** @return list<string> every key this goat belongs to */
     public static function tags(Animal $a, bool $hasWeight): array
     {
@@ -43,7 +52,9 @@ final class HerdStats
             'total' => true,
             'breeding_males' => $cat === 'breeding_male',
             'breeding_females' => $cat === 'breeding_female',
-            'pregnant' => $female && (in_array($a->repro_status, ['pregnant', 'expected_kidding'], true) || $a->repro_state === 'pregnant'),
+            // D-166: from the pregnancy records when she has any (confirmed pregnant); the typed Female Status only when she has none
+            'pregnant' => $female && (isset(self::pregnantDams()['pregnant'][$a->id])
+                || (! isset(self::pregnantDams()['recorded'][$a->id]) && (in_array($a->repro_status, ['pregnant', 'expected_kidding'], true) || $a->repro_state === 'pregnant'))),
             'ready' => $female && $a->repro_status === 'ready',
             'male_kids' => $cat === 'male_kid',
             'female_kids' => $cat === 'female_kid',

@@ -109,7 +109,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                 <FarmStat icon="herd" href="/goats" label="Total goats" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
                 {stats.healthy ? <FarmStat icon="healthy" href="/goats?tone=healthy" label="Healthy" value={stats.healthy} note={stats.goats ? `${Math.round((stats.healthy / stats.goats) * 100)}% of the herd` : undefined} tone="good" /> : null}
                 {stats.unwell || stats.overdueCare ? <FarmStat icon="attention" href="/goats?show=attention" label="Need attention" value={stats.unwell} note={stats.overdueCare ? `${plural(stats.overdueCare, 'goat', 'goats')} overdue for care` : 'Sick or on watch'} tone="alert" /> : null}
-                {stats.pregnant ? <FarmStat icon="pregnant" href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note="Does" /> : null}
+                {stats.pregnant ? <FarmStat icon="pregnant" href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note={[stats.pregnantNear ? `${stats.pregnantNear} near kidding` : null, stats.awaitingScan ? `${stats.awaitingScan} awaiting scan` : null].filter(Boolean).join(' · ') || 'Confirmed pregnancies'} /> : null}
             </FarmStatRow> {/* D-136: wooden signs */}
 
             {/* D-118: the herd by age and gender (and by breed); health is in Needs Attention. */}

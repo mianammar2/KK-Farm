@@ -10,6 +10,7 @@ import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
 import GoatPortrait from '../../components/GoatPortrait';
 import PregnancyOutcomeForm, { type OutcomeOptions } from '../../components/PregnancyOutcomeForm';
+import UltrasoundForm, { type UltrasoundOptions } from '../../components/UltrasoundForm';
 import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, LibIcon, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
@@ -32,6 +33,8 @@ type Props = {
     pens: Array<{ id: number; name: string; purpose: string }>;
     can: { edit: boolean; remove: boolean; breeding: boolean };
     outcomeOptions: OutcomeOptions;
+    scanMating: { id: number; matedOnIso: string; day: number } | null; // D-166
+    ultrasoundOptions: UltrasoundOptions;
     pregnancy: Pregnancy | null;
     milking: Milking | null;
     healthEntry: (CheckupData & { conditions: string[]; severities: Record<string, string> }) | null;
@@ -45,8 +48,9 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions } = props;
     const [outcome, setOutcome] = useState(false); // D-161
+    const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
     const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
@@ -132,6 +136,7 @@ export default function GoatShow(props: Props) {
                         {/* Phones: the everyday actions as one tidy grid of icons; rarer ones as links below it. */}
                         {onFarm || (!removed && can.edit) ? (
                             <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
+                                {onFarm && scanMating ? <ActionTile icon={<LibIcon name="mod-reports" size={26} />} label="Ultrasound" onClick={() => setScan(true)} /> : null}
                                 {onFarm && pregnancy && can.breeding ? <ActionTile icon={<LibIcon name="ic-pregnant" size={26} />} label="Pregnancy" primary onClick={() => setOutcome(true)} /> : null}
                                 {onFarm && healthEntry?.canCheck ? <ActionTile icon={<LibIcon name="mod-health" size={26} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
                                 {onFarm && healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
@@ -155,6 +160,7 @@ export default function GoatShow(props: Props) {
                         ) : null}
                         {onFarm ? (
                             <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
+                                {scanMating ? <Button variant="secondary" onClick={() => setScan(true)}><LibIcon name="mod-reports" size={18} /> Ultrasound</Button> : null}
                                 {pregnancy && can.breeding ? <Button onClick={() => setOutcome(true)}><LibIcon name="ic-pregnant" size={18} /> Pregnancy Outcome</Button> : null}
                                 {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="mod-health" size={18} /> Health checkup</Button> : null}
                                 {healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
@@ -171,6 +177,11 @@ export default function GoatShow(props: Props) {
                 {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} /></div> : null}
             </section>
 
+            {scan && scanMating ? (
+                <Sheet onClose={() => setScan(false)}>
+                    <UltrasoundForm matingId={scanMating.id} damNumber={goat.number} matedOn={scanMating.matedOnIso} options={ultrasoundOptions} onDone={() => setScan(false)} />
+                </Sheet>
+            ) : null}
             {outcome && pregnancy ? (
                 <Sheet onClose={() => setOutcome(false)}>
                     <PregnancyOutcomeForm matingId={pregnancy.matingId} damNumber={goat.number} matedOn={pregnancy.matedOnIso} options={outcomeOptions} onDone={() => setOutcome(false)} />
