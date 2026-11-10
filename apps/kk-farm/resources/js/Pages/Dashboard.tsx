@@ -4,7 +4,7 @@ import { inScannerApp } from '../lib/native';
 import { ChevronDown, Sun, Sunrise, Sunset } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
-import { axis, FARM, GOAT_PATH } from '../lib/chartTheme';
+import { axis, FARM } from '../lib/chartTheme';
 import { CountUp, Empty, GoatLabel, monthLabel, PageHeader, Panel, pkrShort } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { titleCase } from '../lib/titleCase';
@@ -13,7 +13,7 @@ import { BalanceTag, type Balance, type Requirement } from '../components/FeedRe
 import FarmScene, { EarTag, GoatFigure } from '../components/FarmScene';
 import { FarmStat, FarmStatRow } from '../components/FarmStats';
 import FeedScene from '../components/FeedScene';
-import { AgeBadge } from '../components/GoatBadges';
+import { AgeBadge, BreedBadge, symbolFor } from '../components/GoatBadges';
 
 type Meal = 'morning' | 'midday' | 'evening';
 type FeedStatus = 'done' | 'late' | 'missed' | 'due' | 'upcoming' | 'none';
@@ -74,20 +74,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
             areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(122,166,74,0.55)' }, { offset: 1, color: 'rgba(95,143,58,0.12)' }] } } }],
     } : null), [growth]);
 
-    const breedChart = useMemo(() => {
-        if (breeds.length < 2) return null;
-        const rows = [...breeds].reverse();
-        return {
-            tooltip: { trigger: 'axis', axisPointer: { type: 'none' } },
-            grid: { left: 4, right: 30, top: 4, bottom: 4, containLabel: true },
-            xAxis: { type: 'value', show: false },
-            yAxis: { ...axis.category(rows.map((b) => b.name)), axisLine: { show: false } },
-            // D-139: each breed is a row of goats; a longer row is more goats
-            series: [{ type: 'pictorialBar', symbol: GOAT_PATH, symbolRepeat: true, symbolSize: [22, 18], symbolMargin: 2, symbolClip: false, barCategoryGap: '30%',
-                data: rows.map((b, i) => ({ value: b.value, itemStyle: { color: i % 2 ? '#1f7a3a' : '#2e9e4f' } })),
-                label: { show: true, position: 'right', color: FARM.ink, fontWeight: 700 } }],
-        };
-    }, [breeds]);
+    const breedChart = breeds.length >= 2 ? breeds : null;
 
     const financeChart = useMemo(() => (finance && finance.length ? {
         tooltip: { trigger: 'axis', valueFormatter: (v: number) => pkrShort(v) },
@@ -163,7 +150,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                     ) : null}
                     {charts && !showCharts ? <Panel title="Charts" description="Average weight, herd by breed, income and spending"><button type="button" onClick={() => setShowCharts(true)} className="kk-fix kk-lift w-full py-2.5">Show Charts</button></Panel> : null}
                     {growthChart && showCharts ? <Panel title="Average weight" description="All weighings, by month"><div className="kk-graph"><Chart option={growthChart} label="Average herd weight by month" height={220} onSelect={() => router.visit('/weights')} /></div></Panel> : null}
-                    {breedChart && showCharts ? <Panel title="Herd by breed" description="Goats on the farm · tap a bar to see them"><div className="kk-graph"><Chart option={breedChart} label="Goats by breed" height={Math.max(110, breeds.length * 36 + 24)} onSelect={(name) => router.visit(`/goats?breed=${encodeURIComponent(name)}`)} /></div></Panel> : null}
+                    {breedChart ? <Panel title="Herd by Breed" description="Goats on the farm · tap a breed to see them"><HerdByBreed breeds={breedChart} /></Panel> : null}
                     {financeChart && showCharts ? <Panel title="Income and spending" description="Last 6 months"><div className="kk-graph"><Chart option={financeChart} label="Monthly income and spending" height={220} onSelect={() => router.visit('/finance')} /></div></Panel> : null}
                     {kiddings.length ? (
                         <Panel title="Next kiddings" flush description="Mating date + gestation days">
@@ -395,3 +382,32 @@ function FeedAtAGlance({ req }: { req: FeedSummary }) {
     );
 }
 
+
+/** D-151: each breed with its goat-head symbol and a bar in the breed's colour; first 5, then Show More. */
+function HerdByBreed({ breeds }: { breeds: Array<{ name: string; value: number }> }) {
+    const rows = breeds.filter((b) => b.value > 0);
+    const max = Math.max(...rows.map((b) => b.value), 1);
+    const [shown, more] = useFive(rows);
+    return (
+        <div>
+            <ul className="divide-y divide-rule">
+                {shown.map((b) => {
+                    const s = symbolFor(b.name);
+                    return (
+                        <li key={b.name}>
+                            <Link href={`/goats?breed=${encodeURIComponent(b.name)}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-glaze">
+                                <span className="flex w-14 shrink-0"><BreedBadge breed={b.name} size={26} /></span>
+                                <span className="w-28 shrink-0 truncate text-sm font-semibold text-ink sm:w-44" title={b.name}>{b.name}</span>
+                                <span className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-rule/60">
+                                    <span className="kk-grow block h-full rounded-full" style={{ width: `${Math.max(4, (b.value / max) * 100)}%`, background: s.bg, boxShadow: `inset 0 0 0 1px ${s.ring}` }} />
+                                </span>
+                                <span className="w-9 shrink-0 text-right text-sm font-extrabold tabular-nums text-ink"><CountUp to={b.value} /></span>
+                            </Link>
+                        </li>
+                    );
+                })}
+            </ul>
+            {more}
+        </div>
+    );
+}

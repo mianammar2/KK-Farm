@@ -17,10 +17,17 @@ export const BREED_SYMBOL: Record<string, { code: string; ears: Ears; bg: string
     teddy: { code: 'TD', ears: 'short', bg: '#262626', fg: '#ffffff', ring: '#bdb8ae', blaze: '#f4f1ea' },
     nachi: { code: 'NC', ears: 'long', bg: '#3a2d26', fg: '#f5d98a', ring: '#a4876c' },
     crossbred: { code: 'X', ears: 'long', bg: '#b9844f', fg: '#ffffff', ring: '#8a6038', blaze: '#f4ead8' },
+    'makhi cheeni': { code: 'MC', ears: 'long', bg: '#c8913f', fg: '#ffffff', ring: '#8a5a1e', blaze: '#f6e3b8' },
+    gulabi: { code: 'GB', ears: 'long', bg: '#e3a99a', fg: '#4a2219', ring: '#a86d5f' },
+    barbari: { code: 'BB', ears: 'short', bg: '#efe6d6', fg: '#4a3020', ring: '#9c7d5c', blaze: '#b07a4a' },
 };
 
-const symbolFor = (breed: string) => BREED_SYMBOL[breed.trim().toLowerCase()] ?? {
-    code: breed.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?', ears: 'long' as Ears, bg: '#4d6356', fg: '#ffffff', ring: '#9fb3a6', blaze: undefined,
+/** "Makhi Cheeni (Beetal Variety)" → "makhi cheeni", "Dera Din Panah (DDP)" → "dera din panah", "Crossbreed" → "crossbred". */
+const ALIAS: Record<string, string> = { crossbreed: 'crossbred', cross: 'crossbred', ddp: 'dera din panah', 'makhi chini': 'makhi cheeni' };
+const breedKey = (breed: string) => { const k = breed.toLowerCase().replace(/\(.*?\)/g, '').replace(/\s+/g, ' ').trim(); return ALIAS[k] ?? k; };
+
+export const symbolFor = (breed: string) => BREED_SYMBOL[breedKey(breed)] ?? {
+    code: breed.replace(/\(.*?\)/g, '').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?', ears: 'long' as Ears, bg: '#4d6356', fg: '#ffffff', ring: '#9fb3a6', blaze: undefined,
 };
 
 /** A front-facing goat head: horns, ears (long and drooping or short), face, blaze, eyes and beard. */
@@ -34,7 +41,7 @@ function GoatHead({ s, size }: { s: ReturnType<typeof symbolFor>; size: number }
             <g fill="none" stroke="#8c7a63" strokeWidth="1.7" strokeLinecap="round">
                 <path d="M9.6 6.6C8.6 4.4 7 2.6 5 1.8" /><path d="M14.4 6.6c1-2.2 2.6-4 4.6-4.8" />
             </g>
-            <g fill={s.bg} stroke={s.bg} strokeWidth="0.6" strokeLinejoin="round">
+            <g fill={s.bg} stroke={s.ring} strokeWidth="0.6" strokeLinejoin="round">
                 {ears}
                 <path d="M12 5.6c3.2 0 4.6 2.2 4.4 5.4-.2 3.8-1.8 7.6-4.4 8.6-2.6-1-4.2-4.8-4.4-8.6C7.4 7.8 8.8 5.6 12 5.6Z" />
             </g>
