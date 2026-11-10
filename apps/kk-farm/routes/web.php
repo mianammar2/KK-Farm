@@ -42,6 +42,17 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
+    // D-187: App 18 Fattening & Meat Production
+    Route::middleware('module:fattening')->group(function (): void {
+        Route::get('/fattening', [\App\Http\Controllers\FatteningController::class, 'index']);
+        Route::post('/fattening/batches', [\App\Http\Controllers\FatteningController::class, 'store']);
+        Route::post('/fattening/batches/{batch}/add', [\App\Http\Controllers\FatteningController::class, 'add']);
+        Route::post('/fattening/batches/{batch}/plan', [\App\Http\Controllers\FatteningController::class, 'plan']);
+        Route::post('/fattening/batches/{batch}/weigh', [\App\Http\Controllers\FatteningController::class, 'weigh']);
+        Route::post('/fattening/members/{member}/clear', [\App\Http\Controllers\FatteningController::class, 'clear']);
+        Route::post('/fattening/members/{member}/reserve', [\App\Http\Controllers\FatteningController::class, 'reserve']);
+        Route::post('/fattening/members/{member}/sell', [\App\Http\Controllers\FatteningController::class, 'sell']);
+    });
     // D-186: App 20 Water, Climate & Environment
     Route::middleware('module:environment')->group(function (): void {
         Route::get('/environment', [\App\Http\Controllers\EnvironmentController::class, 'index']);

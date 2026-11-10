@@ -203,11 +203,12 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/milking', 'Yield per Doe'),
         S('Configuration', '/milking', 'Milking Settings'),
     ] },
-    { key: 'fattening', no: '18', label: 'Fattening & Meat', art: 'cls-ftn', modules: ['value'], linked: ['growth', 'feeding', 'sales', 'veterinary'], sections: [
-        S('Overview', '/value', 'Herd Value & Market Rates'),
-        S('Operations', '/weights', 'Weights & Daily Gain'),
-        S('Records', '/goats?show=for_sale', 'Sale & Fattening Goats'),
-        S('Reporting', '/value', 'Value vs Cost'),
+    { key: 'fattening', no: '18', label: 'Fattening & Meat', art: 'cls-ftn', modules: ['fattening'], linked: ['livestock', 'veterinary', 'feeding', 'growth', 'housing', 'sales', 'accounting'], sections: [
+        S('Overview', '/fattening?tab=batches', 'Finishing Batches'),
+        S('Operations', '/fattening?tab=new', 'New Batch (Select Feeders)'),
+        S('Operations', '/feeding?tab=now', 'Daily Feed & Water'),
+        S('Records', '/value', 'Herd Value & Market Rates'),
+        S('Reporting', '/fattening?tab=profit', 'Batch Profitability'),
         S('Configuration', '/value', 'Market Rates'),
     ] },
     { key: 'welfare', no: '19', label: 'Animal Welfare', art: 'ic-healthy', modules: ['welfare'], linked: ['veterinary', 'housing', 'operations', 'employees', 'quality'], sections: [

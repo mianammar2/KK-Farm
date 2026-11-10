@@ -13,7 +13,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | Stream | Lifecycle | Status |
 |---|---|---|
 | Breeding & Genetics | selection → heat → mating → ultrasound → pregnancy → kidding → kid care → replacement/sale | Partial (heat, mating, ultrasound, outcomes, kid care built; relatedness check, replacement selection to do) |
-| Fattening & Meat | feeder selection → quarantine → finishing lot → TMR → weight/ADG → welfare & vet clearance → live sale | To do (batches); herd value, ADG, sales exist |
+| Fattening & Meat | feeder selection → quarantine → finishing lot → TMR → weight/ADG → welfare & vet clearance → live sale | Built (D-187) |
 | Dairy & Milk | kidding/lactation → udder screening → AM/PM milking → kid/colostrum allocation → QA → chilling → batch dispatch | Partial (lactations, milk records); allocation, QA, lots, dispatch to do |
 
 ## Apps (§3–4)
@@ -37,7 +37,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 15 | Assets & Maintenance | Assets; Preventive Plan; Breakdowns; Dairy Equipment; Water Equipment; Parts & Cost; Reporting | Built (D-182) |
 | 16 | Reports & Analytics | Operational; Breeding; Fattening; Dairy; Finance; Compliance; Self-Service BI; KPI Definitions | Partial |
 | 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Partial (lactations, milk records D-117) |
-| 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | To do |
+| 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | Built – flow 18 (D-187); feeder purchase lots and quotations to do |
 | 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review to do |
 | 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | Built – flow 20 (D-186); water-quality lab tests, manure/compost logs to do |
 | 21 | Quality, Compliance & Safety | Quality Dashboard; SOP Library; Feed & Milk Safety; Regulatory Register; Incidents & CAPA; Traceability & Recall; Emergency Readiness; Compliance Reporting | To do (incident register D-180) |
@@ -65,15 +65,15 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-015 | Daily feed trace 3 shifts + stock | Built |
 | BR-016 | Rejected feed lots not mixed into TMR | To do |
 | BR-017 | DM vs as-fed, kg vs litres | Partial |
-| BR-018 | Duplicate/impossible weight flags | To do |
-| BR-019 | Fattening eligibility | To do |
-| BR-020 | No double-counted fattening feed cost | To do |
+| BR-018 | Duplicate/impossible weight flags | Built (D-187) – fattening weighings |
+| BR-019 | Fattening eligibility | Built (D-187) |
+| BR-020 | No double-counted fattening feed cost | Built (D-187) |
 | BR-021 | No drinking water = critical alert | Built (D-186) |
 | BR-022 | Configurable heat-stress threshold | Built (D-186) |
 | BR-023 | Major welfare concern → inspection/medical task | Built (D-185) |
 | BR-024 | Every dose consumes a traceable lot | Partial |
 | BR-025 | Held stock/milk/feed never sold | Partial |
-| BR-026 | Dispatch verifies tag/RFID + approved sale | To do |
+| BR-026 | Dispatch verifies tag/RFID + approved sale | Built for fattening dispatch (D-187) |
 | BR-027 | Creator cannot self-approve restricted changes | Partial |
 | BR-028 | Offline sync without silent overwrite | Partial |
 | BR-029 | Audit of key changes (old/new) | Partial |

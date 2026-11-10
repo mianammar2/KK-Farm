@@ -48,6 +48,7 @@ return [
         'purchase' => ['ceo', 'manager', 'finance'], // D-178
         'sales' => ['ceo', 'manager', 'finance'], // D-178
         'welfare' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning'], // D-185: App 19 Animal Welfare
+        'fattening' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'finance'], // D-187: App 18 Fattening & Meat
         'environment' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning', 'feeding'], // D-186: App 20 Water, Climate & Environment
         'maintenance' => $all, // D-182: anyone reports a breakdown; owner and manager keep the asset register
     ],
