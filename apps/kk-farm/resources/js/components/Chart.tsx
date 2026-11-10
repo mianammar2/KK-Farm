@@ -10,7 +10,7 @@ echarts.use([BarChart, LineChart, PictorialBarChart, PieChart, GridComponent, Le
 const BASE = {
     color: SERIES,
     textStyle: { fontFamily: 'Hanken Grotesk Variable, sans-serif', color: '#4d5a4f' },
-    tooltip: { backgroundColor: '#163d22', borderWidth: 0, textStyle: { color: '#fff', fontSize: 13 }, confine: true },
+    tooltip: { backgroundColor: '#013624', borderWidth: 0, textStyle: { color: '#fff', fontSize: 13 }, confine: true },
     grid: { left: 8, right: 12, top: 18, bottom: 6, containLabel: true },
 };
 

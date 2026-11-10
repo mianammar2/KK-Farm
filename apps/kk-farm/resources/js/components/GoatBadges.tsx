@@ -70,7 +70,7 @@ export function BreedBadge({ breed, withName = false, size = 24 }: { breed?: str
 const STAGE: Record<string, { bars: number; color: string; label: string }> = {
     kid: { bars: 1, color: '#7cc04f', label: 'Kid' },
     grower: { bars: 2, color: '#1f9e95', label: 'Grower' },
-    adult: { bars: 3, color: '#1f7a3a', label: 'Adult' },
+    adult: { bars: 3, color: '#12663f', label: 'Adult' },
 };
 
 export function AgeBadge({ stage, withLabel = false }: { stage?: string | null; withLabel?: boolean }) {

@@ -21,7 +21,7 @@ export function FarmStat({ href, icon, label, value, note, tone }: { href: strin
             <span className={`kk-icon-tile ${tone === 'alert' ? 'kk-icon-tile-alert' : ''}`} aria-hidden>{ICON[icon]}</span>
             <span className="kk-sign-paper">
                 <span className="block truncate text-[11px] font-semibold text-[#4d6356] sm:text-xs">{titleCase(label)}</span>
-                <span className={`block text-xl font-extrabold leading-tight tabular-nums sm:text-2xl ${tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-[#16301f]'}`}>{typeof value === 'number' ? <CountUp to={value} /> : value}</span>
+                <span className={`block text-xl font-extrabold leading-tight tabular-nums sm:text-2xl ${tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-[#022a1c]'}`}>{typeof value === 'number' ? <CountUp to={value} /> : value}</span>
                 {note ? <span className="block truncate text-[11px] text-[#4d6356]/85 sm:text-xs">{note}</span> : null}
             </span>
         </Link>

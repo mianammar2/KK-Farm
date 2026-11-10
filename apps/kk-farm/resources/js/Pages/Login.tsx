@@ -33,7 +33,7 @@ export default function Login({ demoLogin }: { demoLogin: boolean }) {
                     <BrandMark size={56} className="lg:hidden" />
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-cobalt-900">KK <span className="text-turq-700">Farms</span></h1>
-                        <p className="mt-1 text-ink-soft">Every goat, one permanent record.</p>
+                        <p className="mt-1 text-ink-soft">Modern Farming. Better Breeding.</p>
                     </div>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); form.post('/login', { onFinish: () => form.reset('password') }); }} className="space-y-3">

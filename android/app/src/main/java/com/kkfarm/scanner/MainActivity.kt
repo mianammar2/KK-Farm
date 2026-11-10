@@ -416,6 +416,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.6.2"
-    const val CODE = 14 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.6.3"
+    const val CODE = 15 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

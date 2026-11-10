@@ -8,30 +8,34 @@
 @theme {
     --font-sans: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
 
-    /* D-068: KK Farms brand — deep forest green (the "K", leaf and waves) and harvest gold, on warm neutrals.
+    /* D-152: colours follow the new KK Farms logo: deep green #013624, gold #f3b526, lime #8cbf2a, cream.
+       D-068: KK Farms brand — deep forest green (the "K", leaf and waves) and harvest gold, on warm neutrals.
        Token names are kept (cobalt = brand green, turq = gold accent) so every screen picks the palette up. */
-    --color-glaze: oklch(0.975 0.008 100);
+    --color-glaze: oklch(0.976 0.016 99);
     --color-tile: oklch(0.996 0.004 100);
     --color-rule: oklch(0.905 0.016 115);
     --color-rule-strong: oklch(0.82 0.028 120);
 
-    --color-ink: oklch(0.26 0.04 150);
+    --color-leaf-500: oklch(0.72 0.17 125);
+    --color-leaf-100: oklch(0.95 0.05 120);
+
+    --color-ink: oklch(0.26 0.04 160);
     --color-ink-soft: oklch(0.44 0.035 145);
     --color-ink-faint: oklch(0.54 0.03 140);
 
-    --color-cobalt-950: oklch(0.21 0.055 152);
-    --color-cobalt-900: oklch(0.29 0.08 152);
-    --color-cobalt-800: oklch(0.36 0.095 150);
-    --color-cobalt-700: oklch(0.43 0.11 148);
-    --color-cobalt-600: oklch(0.51 0.12 145);
-    --color-cobalt-200: oklch(0.88 0.05 140);
+    --color-cobalt-950: oklch(0.23 0.055 164);
+    --color-cobalt-900: oklch(0.295 0.062 164);
+    --color-cobalt-800: oklch(0.36 0.08 162);
+    --color-cobalt-700: oklch(0.43 0.095 160);
+    --color-cobalt-600: oklch(0.51 0.11 156);
+    --color-cobalt-200: oklch(0.88 0.05 150);
     --color-cobalt-100: oklch(0.945 0.025 135);
 
-    --color-turq-800: oklch(0.44 0.09 75);
-    --color-turq-700: oklch(0.52 0.1 78);
-    --color-turq-600: oklch(0.63 0.115 82);
-    --color-turq-400: oklch(0.79 0.12 88);
-    --color-turq-100: oklch(0.955 0.04 92);
+    --color-turq-800: oklch(0.5 0.11 75);
+    --color-turq-700: oklch(0.6 0.13 78);
+    --color-turq-600: oklch(0.7 0.145 80);
+    --color-turq-400: oklch(0.81 0.158 82);
+    --color-turq-100: oklch(0.96 0.045 92);
 
     --color-manganese-600: oklch(0.48 0.13 305);
     --color-manganese-100: oklch(0.94 0.03 305);
@@ -242,8 +246,8 @@ button:active:not(:disabled) { transition: transform 0.08s; }
    KK green accents and LED strips, an anti-slip floor pattern, dark displays with glowing digital readouts, and line
    icons in rounded tiles. Class names are unchanged so every screen keeps its layout and behaviour. */
 :root {
-    --kk-green: #1f7a3a; --kk-green-2: #2e9e4f; --kk-green-soft: #e8f5ec; --kk-line: #dbe6de;
-    --kk-floor: #f3f6f4; --kk-display: #0d2218; --kk-lcd: #7dffad; --kk-ink: #16301f;
+    --kk-green: #013624; --kk-green-2: #0b4f35; --kk-green-soft: #e8f5ec; --kk-line: #dbe6de;
+    --kk-floor: #f3f6f4; --kk-display: #0d2218; --kk-lcd: #7dffad; --kk-ink: #022a1c;
 }
 /* Panels */
 .kk-barn, .kk-farmcard, .kk-noticeboard, .kk-clipboard, .kk-graph {
@@ -267,9 +271,9 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .kk-herd { display: flex; flex-wrap: wrap; gap: 1px 2px; min-height: 30px; margin-top: 5px; align-content: flex-start; }
 .kk-goat { width: 30px; height: 25px; flex: none; overflow: visible; transform-origin: 50% 100%; animation: kk-graze 2.6s ease-in-out infinite; }
 @keyframes kk-graze { 0%, 100% { translate: 0 0; rotate: 0deg; } 40% { translate: 0 -1px; rotate: -2deg; } 70% { translate: 0 0; rotate: 1.5deg; } }
-.kk-trough { flex: 1; height: 4px; border-radius: 999px; background: linear-gradient(90deg, var(--kk-green-2), #8bcf6b); opacity: 0.55; }
+.kk-trough { flex: 1; height: 4px; border-radius: 999px; background: linear-gradient(90deg, var(--kk-green-2), #8cbf2a); opacity: 0.55; }
 /* The LED strip along the bottom of a shed. */
-.kk-grass { height: 4px; background: linear-gradient(90deg, transparent, var(--kk-green-2) 15%, #6fe39a 50%, var(--kk-green-2) 85%, transparent); box-shadow: 0 0 10px rgb(46 158 79 / 0.6); }
+.kk-grass { height: 4px; background: linear-gradient(90deg, transparent, var(--kk-green-2) 15%, #b9d83f 50%, var(--kk-green-2) 85%, transparent); box-shadow: 0 0 10px rgb(140 191 42 / 0.6); }
 .lite .kk-goat { animation: none; }
 @media (max-width: 639px) { .kk-goat { width: 22px; height: 18px; } .kk-barn-body { padding: 8px 10px 10px; } }
 

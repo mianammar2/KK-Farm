@@ -62,7 +62,7 @@ export default function GoatShow(props: Props) {
         xAxis: { type: 'time', axisLabel: { color: '#5e6a5f', formatter: (v: number) => new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }, splitLine: { show: false }, minInterval: 86400000 },
         yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
         series: [{ type: 'line', data: weights.map((w) => [new Date(`${w.on}T12:00:00`).getTime(), w.kg]), symbolSize: 8, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 },
-            label: { show: weights.length <= 12, position: 'top', formatter: (p: { data: [number, number] }) => `${p.data[1]}`, color: '#163d22', fontWeight: 600 } }],
+            label: { show: weights.length <= 12, position: 'top', formatter: (p: { data: [number, number] }) => `${p.data[1]}`, color: '#013624', fontWeight: 600 } }],
     }), [weights]);
     const gain = weights.length > 1 ? (() => {
         const a = weights[0];
@@ -419,7 +419,7 @@ function PregnancyPanel({ p }: { p: Pregnancy }) {
         xAxis: { type: 'value', name: 'Day', min: 0, max: p.gestation, splitLine: { show: false }, axisLabel: { color: '#5e6a5f' } },
         yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
         series: [{ type: 'line', data: p.weights.map((w) => [w.day, w.kg]), symbolSize: 8, lineStyle: { width: 2.5, color: '#7a3e8f' }, itemStyle: { color: '#7a3e8f' },
-            markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#c9a23f' }, data: [{ xAxis: p.day }], label: { formatter: 'today' } } }],
+            markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#e0a526' }, data: [{ xAxis: p.day }], label: { formatter: 'today' } } }],
     } : null), [p]);
     return (
         <Panel title={`Pregnant · day ${p.day} of ${p.gestation}`} description={`Mated ${p.matedOn}${p.sire ? ` with ${p.sire}` : ''} · kidding about ${p.expected ?? '—'}${p.daysLeft !== null ? ` (${p.daysLeft} days)` : ''}`}>

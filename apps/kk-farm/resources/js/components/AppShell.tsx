@@ -60,7 +60,7 @@ function Brand() {
             <BrandMark size={40} />
             <span className="leading-tight">
                 <span className="block text-base font-bold tracking-wide">KK <span className="text-turq-400">FARMS</span></span>
-                <span className="block whitespace-nowrap text-[10px] tracking-tight text-cobalt-200">Innovative today, sustainable tomorrow</span>
+                <span className="block whitespace-nowrap text-[10px] tracking-tight text-cobalt-200">Modern Farming. Better Breeding.</span>
             </span>
         </Link>
     );

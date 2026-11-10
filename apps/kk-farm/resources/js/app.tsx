@@ -39,5 +39,5 @@ createInertiaApp({
             </MotionConfig>,
         );
     },
-    progress: { color: '#c9a23f', delay: 120 },
+    progress: { color: '#e0a526', delay: 120 },
 });

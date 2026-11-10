@@ -59,7 +59,7 @@ function PenYard({ pen }: { pen: ScenePen }) {
         <Link href={`/goats?pen=${encodeURIComponent(pen.name)}`} className="kk-pen kk-lift group" title={`${pen.name}: ${pen.goats} goats`}>
             <div className="flex items-center justify-between gap-1">
                 <span className="kk-pen-sign">{pen.code}</span>
-                <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#16301f]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
+                <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#022a1c]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
             </div>
             <div className="kk-herd" aria-hidden>
                 {pen.figures?.length

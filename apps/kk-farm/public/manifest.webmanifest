@@ -1,17 +1,17 @@
 {
   "name": "KK Farms",
   "short_name": "KK Farms",
-  "description": "Every goat, one permanent record.",
+  "description": "Modern Farming. Better Breeding.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#163d22",
-  "theme_color": "#163d22",
+  "background_color": "#013624",
+  "theme_color": "#013624",
   "icons": [
     { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

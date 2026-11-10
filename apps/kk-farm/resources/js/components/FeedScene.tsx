@@ -80,7 +80,7 @@ function Trough({ pen, share, tracking }: { pen: FeedPen; share: number; trackin
                 <span className="kk-kg-sign"><CountUp to={pen.kgDay} /> KG/day</span>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e9efeb]" role="img" aria-label={`${fill}% of the shed's biggest pen`}>
-                <div className="kk-grow h-full rounded-full bg-gradient-to-r from-[#1f7a3a] to-[#6fe39a]" style={{ width: `${fill}%` }} />
+                <div className="kk-grow h-full rounded-full bg-gradient-to-r from-[#12663f] to-[#6fe39a]" style={{ width: `${fill}%` }} />
             </div>
             <span className="mt-1 block text-[11px] text-[#3d5446]">
                 {[pen.cpDay ? `CP ${Math.round(pen.cpDay * 1000).toLocaleString('en-PK')} g` : null, pen.unplanned ? `${pen.unplanned} not planned` : null].filter(Boolean).join(' · ')}

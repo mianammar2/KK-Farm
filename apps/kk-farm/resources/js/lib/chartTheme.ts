@@ -1,6 +1,6 @@
 // D-068: brand green and gold first, then distinct colours. Kept apart from the chart component so a page can build
 // its chart options without loading ECharts (D-088).
-export const SERIES = ['#1d5c2e', '#b8892b', '#5b8c3a', '#7a4a2b', '#2f7d74', '#c9a23f', '#8aa36b'];
+export const SERIES = ['#0b4f35', '#c18a14', '#7cac1a', '#7a4a2b', '#2f7d74', '#e0a526', '#8aa36b'];
 
 export const axis = {
     category: (data: string[]) => ({ type: 'category', data, axisLine: { lineStyle: { color: '#cfd3c2' } }, axisTick: { show: false }, axisLabel: { color: '#5e6a5f' } }),
@@ -12,4 +12,4 @@ export const GOAT_PATH = 'path://M6 12L3 9.5L4 9L7 11Q9 8 15 8Q20 8 22 10L24.5 5
 
 /** D-139: farm colours for charts: grass, earth, wheat. */
 /** D-146: KK digital palette for charts. */
-export const FARM = { grass: '#2e9e4f', grassLight: 'rgba(46,158,79,0.25)', earth: '#1f7a3a', wheat: '#e0a33a', ink: '#3d5446', rule: '#dbe6de' };
+export const FARM = { grass: '#1e8a52', grassLight: 'rgba(30,138,82,0.25)', earth: '#12663f', wheat: '#e6a823', ink: '#3d5446', rule: '#dbe6de' };

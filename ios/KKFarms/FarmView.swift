@@ -83,7 +83,7 @@ struct FarmView: UIViewRepresentable {
             if (webView.url?.absoluteString ?? "").isEmpty == false, offline { return }
             offline = true
             webView.loadHTMLString("""
-            <html><body style="font-family:-apple-system;background:#f7f6ef;color:#163d22;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">
+            <html><body style="font-family:-apple-system;background:#f7f6ef;color:#013624;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">
             <div><h2>No connection</h2><p>KK Farms needs the internet. Pull down to try again.</p></div></body></html>
             """, baseURL: FarmView.server)
         }

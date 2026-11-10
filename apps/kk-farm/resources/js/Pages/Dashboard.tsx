@@ -136,7 +136,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                                     <Link href={`/goats/${m.goatId}`} className="flex min-w-fit flex-1 items-center gap-2.5">
                                         <EarTag number={m.number} />
                                         <span className="min-w-0">
-                                            {m.name ? <span className="block truncate font-semibold text-[#16301f]">{m.name}</span> : null}
+                                            {m.name ? <span className="block truncate font-semibold text-[#022a1c]">{m.name}</span> : null}
                                             <span className="block truncate text-xs text-[#5d7266]">From: {m.source}</span>
                                         </span>
                                     </Link>
@@ -163,7 +163,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                                         <li key={k.goatId}>
                                             <Link href={`/goats/${k.goatId}`} className="kk-kidding-row kk-lift">
                                                 <span className={`kk-cal ${k.days < 0 ? 'kk-cal-over' : soon ? 'kk-cal-soon' : ''}`}><span className="kk-cal-month">{rest.join(' ') || ' '}</span><span className="kk-cal-day">{day}</span></span>
-                                                <span className="flex min-w-fit flex-1 items-center gap-2"><EarTag number={k.number} />{k.name ? <span className="truncate font-semibold text-[#16301f]">{k.name}</span> : null}</span>
+                                                <span className="flex min-w-fit flex-1 items-center gap-2"><EarTag number={k.number} />{k.name ? <span className="truncate font-semibold text-[#022a1c]">{k.name}</span> : null}</span>
                                                 <span className={`kk-countdown ${k.days < 0 ? 'kk-countdown-over' : soon ? 'kk-countdown-soon' : ''}`}>
                                                     <span className="kk-kid" aria-hidden><GoatFigure female flag={false} delay={0} flip={false} stage="kid" /></span>
                                                     {k.days < 0 ? `${-k.days} days over` : k.days === 0 ? 'Today' : `In ${k.days} days`}
