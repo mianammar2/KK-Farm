@@ -73,6 +73,8 @@ class BreedingController extends Controller
             ]),
             'weaning' => $this->weaningDue($org),
             'kpis' => Kidding::kpis(), // D-161
+            'heat' => \App\Support\HeatBoard::build(), // D-175
+            'heatOptions' => ['intensity' => \App\Models\HeatRecord::INTENSITY, 'signs' => \App\Models\HeatRecord::SIGNS, 'cycle' => \App\Models\HeatRecord::CYCLE_DAYS],
             'weaned' => Weaning::with('kid')->where('status', 'completed')->orderByDesc('weaned_on')->limit(20)->get()->map(fn (Weaning $w) => [
                 'id' => $w->id, 'kidId' => $w->kid_id, 'kid' => $w->kid->farm_number, 'on' => $w->weaned_on->format('j M Y'),
                 'age' => $w->kid->birth_date ? (int) $w->kid->birth_date->diffInDays($w->weaned_on) : null, 'weight' => $w->weight_kg, 'method' => Weaning::METHODS[$w->method] ?? $w->method, 'by' => $w->handler,
@@ -213,6 +215,26 @@ class BreedingController extends Controller
         Farm::log($by, "Ultrasound for {$mating->dam->farm_number}: ".PregnancyCheck::STATUSES[$status], "/goats/{$mating->dam_id}");
 
         return back()->with('success', 'Ultrasound saved: '.PregnancyCheck::STATUSES[$status].'. Next: '.$action.'.');
+    }
+
+    /** D-175: a heat (oestrus) observation. Anyone working in Breeding records it; the doe shows as ready for mating. */
+    public function heat(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'dam_id' => ['required', 'exists:animals,id'], 'observed_on' => ['required', 'date', 'before_or_equal:today'],
+            'intensity' => ['required', Rule::in(array_keys(\App\Models\HeatRecord::INTENSITY))], 'signs' => ['nullable', 'array'], 'signs.*' => ['string', 'max:40'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [], ['dam_id' => 'doe']);
+        $doe = Animal::findOrFail($data['dam_id']);
+        abort_unless($doe->sex === 'female' && $doe->status === 'active', 422, 'Heat is recorded for a doe on the farm.');
+        $signs = implode(', ', $data['signs'] ?? []);
+        \App\Models\HeatRecord::create([
+            'dam_id' => $doe->id, 'observed_on' => $data['observed_on'], 'intensity' => $data['intensity'], 'signs' => $signs ?: null,
+            'observed_by' => $request->user()->name, 'notes' => $data['notes'] ?? null,
+        ]);
+        Farm::event($doe, 'breeding', 'Heat observed ('.strtolower(\App\Models\HeatRecord::INTENSITY[$data['intensity']]).')'.($signs ? ": {$signs}" : ''), $request->user()->name, Carbon::parse($data['observed_on']));
+
+        return back()->with('success', "Heat recorded for {$doe->farm_number}. She is ready for mating; next heat expected in about ".\App\Models\HeatRecord::CYCLE_DAYS.' days.');
     }
 
     public function close(Request $request, Mating $mating): RedirectResponse

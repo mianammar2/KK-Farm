@@ -42,7 +42,9 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings#fields', 'Register Fields'),
     ] },
     { key: 'breeding', no: '03', label: 'Breeding', art: 'mod-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
+        S('Operations', '/breeding?tab=heat', 'Heat Detection'),
         S('Operations', '/breeding?tab=cycle', 'Mating, Pregnancy & Ultrasound'),
+        S('Records', '/breeding?tab=calendar', 'Pregnancy Calendar'),
         S('Records', '/breeding?tab=pedigree', 'Genetics & Family Tree'),
         S('Records', '/goats?show=pregnant', 'Pregnant Does'),
         S('Reporting', '/breeding?tab=performance', 'Doe Performance'),
@@ -50,6 +52,7 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/breeding?tab=settings', 'Gestation & Check Days'),
     ] },
     { key: 'maternity', no: '04', label: 'Maternity', art: 'ic-kidding', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
+        S('Overview', '/breeding?tab=calendar', 'Upcoming Deliveries'),
         S('Operations', '/breeding?tab=kidding', 'Kidding & Pregnancy Outcomes'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
         S('Operations', '/breeding?tab=weaning', 'Weaning'),

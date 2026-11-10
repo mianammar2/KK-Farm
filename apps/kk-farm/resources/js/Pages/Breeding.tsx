@@ -12,6 +12,7 @@ import PregnancyOutcomeForm, { type OutcomeOptions } from '../components/Pregnan
 import { LibIcon } from '../components/ui';
 import ReproKpiTiles from '../components/ReproKpis';
 import UltrasoundForm, { type UltrasoundOptions } from '../components/UltrasoundForm';
+import { HeatDetection, PregnancyCalendar, type HeatOptions, type HeatRow } from '../components/HeatDetection';
 import { useTabParam } from '../lib/useTabParam';
 
 type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null; status: string | null; day: number | null; fetal: string; viability: string | null; action: string | null };
@@ -32,7 +33,7 @@ type KiddingRow = {
 type Kpis = { events: number; deliveries: number; abortions: number; stillborn: number; live: number; kiddingRate: number | null; lossRate: number | null; recovery: number | null };
 type Due = { id: string; number: string; name: string | null; coat: string; sex: string; dam: string | null; age: number; target: string; penId: number | null; state: 'due' | 'soon' | 'postponed'; postponedTo: string | null };
 type Props = {
-    matings: MatingRow[]; kiddings: KiddingRow[]; weaning: Due[]; kpis: Kpis;
+    matings: MatingRow[]; kiddings: KiddingRow[]; weaning: Due[]; kpis: Kpis; heat: HeatRow[]; heatOptions: HeatOptions; // D-175
     weaned: Array<{ id: number; kidId: string; kid: string; on: string; age: number | null; weight: number | null; method: string | null; by: string }>;
     performance: Array<{ id: string; number: string; name: string | null; kiddings: number; alive: number; stillborn: number; litter: number }>;
     focus: { id: string; number: string; tree: PedigreeNode } | null; pairCheck: { shared: number; sire: string; dam: string } | null;
@@ -64,6 +65,7 @@ export default function Breeding(props: Props) {
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useTabParam('cycle'); // D-170
     const [adding, setAdding] = useState(false); // D-127
+    const [presetDam, setPresetDam] = useState<string | null>(null); // D-175: mate a doe straight from Heat Detection
     const isVet = !!auth?.gates.includes('clinical');
     const canSettings = !!auth?.modules.includes('settings');
     const active = matings.filter((m) => m.active);
@@ -73,7 +75,7 @@ export default function Breeding(props: Props) {
         <>
             <Head title="Breeding & Pedigree" />
             <PageHeader title="Breeding & pedigree" description={`Gestation ${settings.gestation} days · pregnancy check ${settings.check} days after mating · weaning at ${settings.weaning} days. Your vet confirms these.`} actions={<AddButton label="Record a mating" onClick={() => setAdding(true)} />} />
-            {adding ? <Sheet onClose={() => setAdding(false)}><MatingForm {...props} onDone={() => setAdding(false)} /></Sheet> : null}
+            {adding ? <Sheet onClose={() => { setAdding(false); setPresetDam(null); }}><MatingForm {...props} presetDam={presetDam} onDone={() => { setAdding(false); setPresetDam(null); }} /></Sheet> : null}
             <StatRow>
                 <Stat label="Confirmed pregnant" value={active.filter((m) => m.status === 'pregnant').length} />
                 <Stat label="Waiting for a check" value={active.filter((m) => m.status === 'open' || m.status === 'inconclusive').length} note={`${active.filter((m) => m.alert === 'check_overdue' || m.alert === 'recheck_overdue').length} overdue`} tone={active.some((m) => m.alert === 'check_overdue' || m.alert === 'recheck_overdue') ? 'alert' : undefined} />
@@ -82,7 +84,9 @@ export default function Breeding(props: Props) {
             </StatRow>
             {kpis.events ? <div className="mb-4"><ReproKpiTiles k={kpis} /></div> : null}
             <Tabs value={tab} onChange={setTab} tabs={[
+                { id: 'heat', label: 'Heat Detection', count: props.heat.filter((h) => h.status === 'in_heat').length || undefined },
                 { id: 'cycle', label: 'Breeding cycle', count: active.length },
+                { id: 'calendar', label: 'Pregnancy Calendar' },
                 { id: 'kidding', label: 'Kidding', count: kiddings.length },
                 { id: 'weaning', label: 'Weaning', count: weaning.length || undefined },
                 { id: 'pedigree', label: 'Family tree' },
@@ -90,6 +94,8 @@ export default function Breeding(props: Props) {
                 ...(canSettings ? [{ id: 'settings', label: 'Settings' }] : []),
             ]} />
 
+            {tab === 'heat' ? <HeatDetection rows={props.heat} options={props.heatOptions} onMate={(id) => { setPresetDam(id); setAdding(true); }} /> : null}
+            {tab === 'calendar' ? <PregnancyCalendar matings={matings} /> : null}
             {tab === 'cycle' ? (
                 <div>
                     <div className="min-w-0 space-y-3">
@@ -251,8 +257,8 @@ function WeaningRow({ w, pens, options }: { w: Due } & Props) {
     );
 }
 
-function MatingForm({ does, bucks, pairCheck, options, settings, onDone }: Props & { onDone?: () => void }) {
-    const mating = useForm({ dam_id: String(does[0]?.id ?? ''), sire_id: String(bucks[0]?.id ?? ''), mated_on: today(), method: 'natural', heat_observed: 'yes', handler: '', notes: '' });
+function MatingForm({ does, bucks, pairCheck, options, settings, onDone, presetDam }: Props & { onDone?: () => void; presetDam?: string | null }) {
+    const mating = useForm({ dam_id: String(presetDam ?? does[0]?.id ?? ''), sire_id: String(bucks[0]?.id ?? ''), mated_on: today(), method: 'natural', heat_observed: 'yes', handler: '', notes: '' });
     const checkPair = () => router.get('/breeding', { sire: mating.data.sire_id, dam: mating.data.dam_id }, { preserveState: true, preserveScroll: true, only: ['pairCheck'] });
     const e = mating.errors as Record<string, string>;
     const mated = new Date(`${mating.data.mated_on}T12:00:00`);

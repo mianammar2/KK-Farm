@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:breeding')->group(function (): void {
         Route::get('/breeding', [BreedingController::class, 'index']);
         Route::post('/breeding/matings', [BreedingController::class, 'store']);
+        Route::post('/breeding/heat', [BreedingController::class, 'heat']); // D-175
         Route::post('/breeding/matings/{mating}/check', [BreedingController::class, 'check']);
         Route::post('/breeding/matings/{mating}/kidding', [BreedingController::class, 'kidding']);
         Route::post('/breeding/matings/{mating}/close', [BreedingController::class, 'close']);
