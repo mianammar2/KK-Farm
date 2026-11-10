@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import { CalendarDays, Sprout, Wheat } from 'lucide-react';
 import { useFive } from '../lib/useFive';
 import { BarnRoof } from './FarmScene';
 import { BalanceTag, type Balance } from './FeedRequirement';
@@ -35,7 +34,7 @@ function FeedSack({ sack, index }: { sack: Sack; index: number }) {
     return (
         <div className="kk-sack kk-rise" style={{ animationDelay: `${index * 60}ms` }}>
             <div className="flex items-center gap-2">
-                <span className="kk-icon-tile size-8!" aria-hidden>{green ? <Sprout size={16} /> : index === 0 ? <Wheat size={16} /> : <CalendarDays size={16} />}</span>
+                <span className="kk-icon-tile size-10!" aria-hidden><img src={`/icons/${green ? 'mod-growth' : ['mod-feeding', 'mod-inventory', 'mod-reports'][index] ?? 'mod-reports'}.png`} alt="" className="size-[86%] object-contain" /></span>
                 <span className="kk-sack-tag truncate">{sack.label}</span>
             </div>
             <span className="kk-lcd self-start text-lg">{sack.value}</span>
@@ -76,7 +75,7 @@ function Trough({ pen, share, tracking }: { pen: FeedPen; share: number; trackin
                 <span className="text-xs font-semibold text-[#3d5446]">{plural(pen.count, 'goat', 'goats')}</span>
             </div>
             <div className="mt-2 flex items-center gap-2">
-                <span className="kk-icon-tile size-8!" aria-hidden><Wheat size={16} /></span>
+                <span className="kk-icon-tile size-10!" aria-hidden><img src="/icons/mod-feeding.png" alt="" className="size-[86%] object-contain" /></span>
                 <span className="kk-kg-sign"><CountUp to={pen.kgDay} /> KG/day</span>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e9efeb]" role="img" aria-label={`${fill}% of the shed's biggest pen`}>

@@ -413,3 +413,6 @@ main { min-width: 0; }
 @media (max-width: 639px) { .kk-goat-pic { width: 24px; height: 24px; } .kk-goat-flag { width: 12px; height: 12px; } }
 .kk-hover-card { min-height: 62px; padding: 6px 8px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 4px 14px -8px rgb(1 54 36 / 0.35); animation: kk-pop 0.18s ease-out; }
 .kk-goat-pic { cursor: pointer; }
+/* D-157: a full pen shows every goat; tiles get smaller as the pen fills */
+.kk-herd:has(> .kk-goat-pic:nth-child(25)) .kk-goat-pic { width: 24px; height: 24px; }
+.kk-herd:has(> .kk-goat-pic:nth-child(25)) { gap: 3px; }

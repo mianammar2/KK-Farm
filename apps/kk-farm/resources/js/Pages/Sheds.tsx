@@ -110,7 +110,7 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                                         {shed.pens.map((p) => {
                                             const area = p.kind === 'open_area';
-                                            const shown = p.goats.slice(0, 18);
+                                            const shown = p.goats; // D-157: every goat
                                             const full = p.capacity !== null && p.count > p.capacity;
                                             return (
                                                 <div key={p.id} className={cx('kk-pen relative !p-0', area && 'kk-yard', selected === p.id && 'kk-pen-selected')}>

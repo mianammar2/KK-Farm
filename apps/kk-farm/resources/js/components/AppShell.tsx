@@ -59,7 +59,7 @@ function Brand() {
     // D-155: only the KK Farms logo; its badge already carries the name and the tagline.
     return (
         <Link href="/" className="flex justify-center px-2 py-1" aria-label="KK Farms home">
-            <BrandMark size={112} />
+            <BrandMark size={72} />
         </Link>
     );
 }

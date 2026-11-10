@@ -16,7 +16,6 @@ function useHovered() { return useSyncExternalStore((l) => { listeners.add(l); r
 export type ScenePen = { id: number; name: string; code: string; capacity: number | null; goats: number; female: number; male: number; attention: number; figures?: SceneFigure[] };
 export type SceneShed = { id: number; name: string; typeName: string | null; goats: number; pens: ScenePen[] };
 
-const MAX_FIGURES = 18; // more than this shows "+N" so a big pen stays readable
 
 /**
  * D-133: the dashboard's sheds drawn like the real farm: a goat barn with a tin roof and its name board, a straw floor
@@ -58,8 +57,8 @@ function Barn({ shed, index }: { shed: SceneShed; index: number }) {
 
 function PenYard({ pen }: { pen: ScenePen }) {
     const full = pen.capacity !== null && pen.goats > pen.capacity;
-    const figures = Math.min(pen.goats, MAX_FIGURES);
-    // Females first, then males, in the same proportion as the pen when it is cut at MAX_FIGURES.
+    const figures = pen.goats; // D-157: every goat in the pen is shown
+    // Females first, then males.
     const females = pen.goats ? Math.round((pen.female / pen.goats) * figures) : 0;
     const flagged = Math.min(pen.attention, figures);
     return (
