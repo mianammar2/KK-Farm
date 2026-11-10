@@ -71,7 +71,7 @@ class HealthController extends Controller
                 ]),
                 'normal' => \App\Models\HealthCheckup::NORMAL,
                 'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number]),
-                'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'), 'gestation' => (int) (\App\Support\Tenant::org()?->gestation_days ?: 150), 'conditions' => HealthCase::CONDITIONS,
+                'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'), 'gestation' => (int) (\App\Support\Tenant::org()?->gestation_days ?: 150), 'conditions' => \App\Models\Disease::names(),
             ],
             'cases' => $cases->map(fn (HealthCase $c) => $this->caseRow($c, $withdrawal[$c->animal_id] ?? null)),
             // Concerns reported by staff (and older records) that no case covers yet.
@@ -99,6 +99,10 @@ class HealthController extends Controller
                 'appliesTo' => $p->applies_to, 'firstAge' => $p->first_age_days, 'interval' => $p->interval_days, 'notes' => $p->notes, 'active' => $p->active,
             ]),
             'applies' => \App\Models\CareProtocol::APPLIES,
+            // D-174: disease master and mortality register
+            'diseases' => \App\Models\Disease::orderByDesc('active')->orderBy('name')->get(['id', 'name', 'category', 'zoonotic', 'notifiable', 'notes', 'active']),
+            'diseaseCategories' => \App\Models\Disease::CATEGORIES,
+            'mortality' => $this->mortality(),
             'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
         ] + $this->medicineStore());
     }
@@ -215,6 +219,56 @@ class HealthController extends Controller
      * D-078: preventive care for one goat or a whole batch in one go: one record per goat, with product, batch/lot,
      * next due date, cost and status. A product from the medicine store is issued for each goat (earliest expiry first).
      */
+    /** D-174: deaths of the last 12 months with the reason recorded at exit and the vet's postmortem, newest first. */
+    private function mortality(): array
+    {
+        $deaths = \App\Models\AnimalMovement::with(['animal.breed', 'fromPen.shed'])->where('type', 'death')->where('moved_on', '>=', now()->subYear())->orderByDesc('moved_on')->get();
+        $pm = HealthRecord::where('kind', 'postmortem')->whereIn('animal_id', $deaths->pluck('animal_id'))->orderByDesc('occurred_on')->get()->unique('animal_id')->keyBy('animal_id');
+        $rows = $deaths->map(fn ($m) => [
+            'id' => $m->id, 'goatId' => $m->animal_id, 'number' => $m->animal?->farm_number, 'sex' => $m->animal?->sex, 'breed' => $m->animal?->breed?->name,
+            'age' => $m->animal?->birth_date ? (int) $m->animal->birth_date->diffInMonths($m->moved_on) : null, 'on' => $m->moved_on->format('j M Y'),
+            'pen' => $m->fromPen?->fullName(), 'reason' => $m->reason, 'notes' => $m->notes,
+            'postmortem' => isset($pm[$m->animal_id]) ? ['cause' => $pm[$m->animal_id]->title, 'findings' => $pm[$m->animal_id]->notes, 'by' => $pm[$m->animal_id]->recorded_by, 'on' => $pm[$m->animal_id]->occurred_on->format('j M Y')] : null,
+        ])->values();
+
+        return [
+            'rows' => $rows,
+            'byCause' => $rows->groupBy(fn ($r) => $r['postmortem']['cause'] ?? ($r['reason'] ?: 'Cause not recorded'))->map->count()->sortDesc()->all(),
+        ];
+    }
+
+    /** D-174: add or change a disease in the master (the vet, or the owner). */
+    public function disease(Request $request, ?\App\Models\Disease $disease = null): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical') || $request->user()->role === 'ceo', 403, 'The disease master is kept by the veterinarian.');
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120', Rule::unique('diseases', 'name')->ignore($disease?->id)], 'category' => ['required', Rule::in(array_keys(\App\Models\Disease::CATEGORIES))],
+            'zoonotic' => ['boolean'], 'notifiable' => ['boolean'], 'notes' => ['nullable', 'string', 'max:500'], 'active' => ['boolean'],
+        ]);
+        $disease ? $disease->update($data) : \App\Models\Disease::create($data);
+
+        return back()->with('success', "{$data['name']} saved.");
+    }
+
+    /** D-174: the vet's postmortem for a goat that died: suspected cause (from the disease master) and findings. */
+    public function postmortem(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403, 'A postmortem is recorded by a veterinarian.');
+        $data = $request->validate([
+            'animal_id' => ['required', 'exists:animals,id'], 'cause' => ['required', 'string', 'max:120'], 'findings' => ['nullable', 'string', 'max:2000'],
+            'examined_on' => ['required', 'date', 'before_or_equal:today'],
+        ], [], ['cause' => 'cause of death']);
+        $goat = Animal::findOrFail($data['animal_id']);
+        abort_unless($goat->status === 'deceased', 422, "{$goat->farm_number} is not recorded as dead.");
+        HealthRecord::create([
+            'animal_id' => $goat->id, 'kind' => 'postmortem', 'occurred_on' => $data['examined_on'], 'title' => $data['cause'], 'notes' => $data['findings'] ?? null,
+            'recorded_by' => $request->user()->name, 'recorded_role' => 'Veterinarian', 'status' => 'closed',
+        ]);
+        Farm::event($goat, 'health', "Postmortem: {$data['cause']}", $request->user()->name, Carbon::parse($data['examined_on']));
+
+        return back()->with('success', "Postmortem for {$goat->farm_number} saved.");
+    }
+
     /** D-173: add or change a vaccine / deworming protocol (the vet, or the owner). */
     public function protocol(Request $request, ?\App\Models\CareProtocol $protocol = null): RedirectResponse
     {

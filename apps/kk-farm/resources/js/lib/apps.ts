@@ -67,8 +67,10 @@ export const APPS: ErpApp[] = [
         S('Operations', '/intake', 'Quarantine & Clearance'),
         S('Records', '/health?tab=withdrawal', 'Withdrawal & Biosecurity'),
         S('Records', '/goats?show=attention', 'Sick & Under Watch'),
-        S('Reporting', '/reports#exits', 'Mortality'),
+        S('Records', '/health?tab=mortality', 'Mortality & Postmortem'),
+        S('Reporting', '/health?tab=mortality', 'Mortality by Cause'),
         S('Configuration', '/health?tab=protocols', 'Vaccine & Deworming Protocols'),
+        S('Configuration', '/health?tab=diseases', 'Disease Master'),
         S('Configuration', '/health?tab=store', 'Medicines & Vaccines'),
     ] },
     { key: 'feeding', no: '06', label: 'Feeding', art: 'mod-feeding', modules: ['feeding'], linked: ['housing', 'growth', 'inventory', 'accounting'], sections: [

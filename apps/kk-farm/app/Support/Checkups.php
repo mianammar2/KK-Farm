@@ -105,7 +105,7 @@ final class Checkups
             ])->values()->all(),
             'recent' => [], 'interval' => self::interval(), 'normal' => HealthCheckup::NORMAL, 'gestation' => (int) (Tenant::org()?->gestation_days ?: 150),
             'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->all(),
-            'conditions' => HealthCase::CONDITIONS, 'severities' => HealthCase::SEVERITIES,
+            'conditions' => \App\Models\Disease::names(), 'severities' => HealthCase::SEVERITIES,
             'ultrasound' => PregnancyCheck::STATUSES, 'viability' => PregnancyCheck::VIABILITY, // D-167
             'canCheck' => $user->passes('health_checkup'), 'canOpenCase' => $user->passes('open_cases'),
         ];
