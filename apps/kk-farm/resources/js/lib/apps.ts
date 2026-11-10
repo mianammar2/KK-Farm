@@ -176,11 +176,15 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/tasks?tab=closed', 'Task Completion'),
         S('Configuration', '/settings#users', 'Users & Permissions'),
     ] },
-    { key: 'maintenance', no: '15', label: 'Maintenance', art: 'mod-assets', modules: ['sensors'], linked: ['housing', 'operations'], sections: [
-        S('Operations', '/sensors?tab=alerts', 'Alerts & Breakdowns'),
-        S('Records', '/sensors?tab=devices', 'Equipment & Devices'),
-        S('Records', '/sensors?tab=out', 'Open Areas'),
-        S('Reporting', '/sensors?tab=readings', 'Readings'),
+    { key: 'maintenance', no: '15', label: 'Maintenance', art: 'mod-assets', modules: ['maintenance', 'sensors'], linked: ['housing', 'operations', 'accounting', 'inventory'], sections: [
+        S('Overview', '/maintenance?tab=jobs', 'Open Jobs & Breakdowns'),
+        S('Operations', '/maintenance?tab=due', 'Preventive Services Due'),
+        S('Operations', '/sensors?tab=alerts', 'Sensor Alerts'),
+        S('Records', '/maintenance?tab=assets', 'Asset Register'),
+        S('Records', '/sensors?tab=devices', 'Sensors & Devices'),
+        S('Reporting', '/maintenance?tab=history', 'Repair History & Cost'),
+        S('Reporting', '/sensors?tab=readings', 'Sensor Readings'),
+        S('Configuration', '/maintenance?tab=assets', 'Asset Categories & Intervals'),
         S('Configuration', '/sensors?tab=connect', 'Connect a Device'),
     ] },
     { key: 'reports', no: '16', label: 'Reports', art: 'mod-reports', modules: ['reports'], linked: ['dashboard', 'accounting', 'breeding', 'veterinary'], sections: [

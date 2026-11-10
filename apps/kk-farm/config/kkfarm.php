@@ -47,6 +47,7 @@ return [
         'inventory' => ['ceo', 'manager', 'vet', 'feeding', 'finance'], // D-178
         'purchase' => ['ceo', 'manager', 'finance'], // D-178
         'sales' => ['ceo', 'manager', 'finance'], // D-178
+        'maintenance' => $all, // D-182: anyone reports a breakdown; owner and manager keep the asset register
     ],
 
     // Hard gates from SECURITY_AND_RBAC.md: these never come from a configurable override.
