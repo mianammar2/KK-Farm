@@ -187,7 +187,12 @@ class DashboardController extends Controller
                 'goats' => $ps->sum(fn ($p) => $byPen[$p->id]->count()),
                 'pens' => $ps->sortBy('name')->map(fn ($p) => ['id' => $p->id, 'name' => $p->fullName(), 'code' => $p->name, 'capacity' => $p->capacity,
                     'goats' => $byPen[$p->id]->count(), 'female' => $byPen[$p->id]->where('sex', 'female')->count(), 'male' => $byPen[$p->id]->where('sex', '!=', 'female')->count(),
-                    'attention' => $byPen[$p->id]->where('health_flag', '!=', 'healthy')->whereNotNull('health_flag')->count()])->values()->all(),
+                    'attention' => $byPen[$p->id]->where('health_flag', '!=', 'healthy')->whereNotNull('health_flag')->count(),
+                    // D-147: up to 18 goats to draw (females first): gender, kid/grower/adult, breed, needs attention
+                    'figures' => $byPen[$p->id]->sortBy(fn ($g) => $g->sex === 'female' ? 0 : 1)->take(18)->map(fn ($g) => [
+                        'female' => $g->sex === 'female', 'stage' => $g->effectiveAge(), 'breed' => $g->breed?->name,
+                        'flag' => $g->health_flag !== null && $g->health_flag !== 'healthy',
+                    ])->values()->all()])->values()->all(),
             ])->sortBy('name')->values()->all(),
             'noPen' => $goats->whereNull('pen_id')->count(),
         ];

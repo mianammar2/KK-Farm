@@ -391,3 +391,6 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { overflow-wrap: break-word; }
 main { min-width: 0; }
+/* D-147: legend figures */
+.kk-legend-goat { display: inline-flex; width: 26px; height: 22px; }
+.kk-legend-goat > svg { width: 100%; height: 100%; animation: none; }

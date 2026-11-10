@@ -1,9 +1,11 @@
 import { Link } from '@inertiajs/react';
 import { Warehouse } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useFive } from '../lib/useFive';
 import { CountUp } from './ui';
 
-export type ScenePen = { id: number; name: string; code: string; capacity: number | null; goats: number; female: number; male: number; attention: number };
+export type SceneFigure = { female: boolean; stage: string | null; breed: string | null; flag: boolean };
+export type ScenePen = { id: number; name: string; code: string; capacity: number | null; goats: number; female: number; male: number; attention: number; figures?: SceneFigure[] };
 export type SceneShed = { id: number; name: string; typeName: string | null; goats: number; pens: ScenePen[] };
 
 const MAX_FIGURES = 18; // more than this shows "+N" so a big pen stays readable
@@ -19,7 +21,7 @@ export default function FarmScene({ sheds }: { sheds: SceneShed[] }) {
         <div className="space-y-5 p-3 sm:p-4">
             {shown.map((s, i) => <Barn key={s.id} shed={s} index={i} />)}
             {more ? <div className="-mx-3 sm:-mx-4">{more}</div> : null}
-            <Legend />
+            <FigureLegend breeds={sheds.flatMap((s) => s.pens.flatMap((p) => (p.figures ?? []).map((f) => f.breed)))} />
         </div>
     );
 }
@@ -59,9 +61,9 @@ function PenYard({ pen }: { pen: ScenePen }) {
                 <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#16301f]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
             </div>
             <div className="kk-herd" aria-hidden>
-                {Array.from({ length: figures }, (_, i) => (
-                    <GoatFigure key={i} female={i < females} flag={i < flagged} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />
-                ))}
+                {pen.figures?.length
+                    ? pen.figures.map((f, i) => <GoatFigure key={i} female={f.female} flag={f.flag} stage={f.stage} breed={f.breed} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)
+                    : Array.from({ length: figures }, (_, i) => <GoatFigure key={i} female={i < females} flag={i < flagged} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
                 {pen.goats > figures ? <span className="self-center text-xs font-bold text-[#3d5446]">+{pen.goats - figures}</span> : null}
             </div>
             <div className="mt-1 flex items-center gap-1.5" aria-hidden>
@@ -74,37 +76,86 @@ function PenYard({ pen }: { pen: ScenePen }) {
     );
 }
 
-/** A small side-on goat: body, neck and head, horns, ear, beard, four legs and a tail. */
-export function GoatFigure({ female, flag, delay, flip }: { female: boolean; flag: boolean; delay: number; flip: boolean }) {
-    const coat = female ? '#fffdf7' : '#8b5a33';
-    const shade = female ? '#6f5a3a' : '#4a2c16';
+export type Stage = 'kid' | 'grower' | 'adult';
+
+/**
+ * D-147: what each breed looks like: coat, head, patches and ear length. Names match the breed register,
+ * case-insensitively; an unknown breed gets a neutral coat (lighter for a female, darker for a male).
+ */
+export const BREED_LOOK: Record<string, { coat: string; head?: string; spots?: string; ears: 'long' | 'short'; label: string }> = {
+    beetal: { coat: '#4a3426', spots: '#efe2cc', ears: 'long', label: 'Beetal' },
+    kamori: { coat: '#7a4527', spots: '#d9b38c', ears: 'long', label: 'Kamori' },
+    'dera din panah': { coat: '#1c1a19', ears: 'long', label: 'Dera Din Panah' },
+    boer: { coat: '#f6f2ea', head: '#9b4a2a', ears: 'long', label: 'Boer' },
+    teddy: { coat: '#262626', spots: '#f4f1ea', ears: 'short', label: 'Teddy' },
+    nachi: { coat: '#3a2d26', head: '#1c1a19', ears: 'short', label: 'Nachi' },
+    crossbred: { coat: '#b9844f', spots: '#f4ead8', ears: 'short', label: 'Crossbred' },
+};
+export const breedLook = (breed?: string | null) => (breed ? BREED_LOOK[breed.trim().toLowerCase()] : undefined);
+
+/**
+ * D-147: a goat in the KK digital style. Male (buck): big swept-back horns, a beard and a thick neck. Female (doe):
+ * small horns and an udder. Kid: small, no horns, short legs. Coat, head colour, patches and ears follow the breed.
+ * Every goat stands on a glowing pad: pink for female, blue for male. A red cross tag marks one that needs attention.
+ */
+export function GoatFigure({ female, flag, delay, flip, stage = 'adult', breed = null }: { female: boolean; flag: boolean; delay: number; flip: boolean; stage?: Stage | string | null; breed?: string | null }) {
+    const look = breedLook(breed);
+    const kid = stage === 'kid';
+    const coat = look?.coat ?? (female ? '#f3efe6' : '#8b5a33');
+    const head = look?.head ?? coat;
+    const dark = ['#1c1a19', '#262626', '#3a2d26', '#4a3426'].includes(coat);
+    const line = dark ? '#000000' : '#2b3b30';
+    const pad = female ? '#ec6c97' : '#3b82c4';
+    // A kid is the same goat drawn smaller, standing on the same ground line.
+    const body = kid ? 'translate(6.4 9.6) scale(0.62)' : stage === 'grower' ? 'translate(2.2 3.3) scale(0.87)' : undefined;
     return (
-        <svg viewBox="0 -1 32 27" className="kk-goat" style={{ animationDelay: `${delay}s`, transform: flip ? 'scaleX(-1)' : undefined }}>
-            <g stroke="#16301f" strokeWidth="1.3" strokeLinecap="round">
-                <line x1="9" y1="17" x2="9" y2="24" /><line x1="12" y1="17" x2="12" y2="24" />
-                <line x1="19" y1="17" x2="19" y2="24" /><line x1="22" y1="17" x2="22" y2="24" />
-                <path d="M6 12 L3 9.5" fill="none" />
-                <path d="M25.5 5.5 Q24.5 2 22.5 1.2 M27.5 5.6 Q27.6 2.2 26 1" fill="none" />
+        <svg viewBox="0 -2 34 30" className="kk-goat" style={{ animationDelay: `${delay}s`, transform: flip ? 'scaleX(-1)' : undefined }}>
+            <ellipse cx="16" cy="26.6" rx={kid ? 7 : 11} ry="1.7" fill={pad} opacity="0.75" />
+            <ellipse cx="16" cy="26.6" rx={kid ? 4 : 6.5} ry="0.8" fill="#ffffff" opacity="0.55" />
+            <g transform={body}>
+                <g stroke={line} strokeWidth="1.3" strokeLinecap="round">
+                    <line x1="9" y1="17" x2="9" y2={kid ? 22.5 : 25} /><line x1="12" y1="17" x2="12" y2={kid ? 22.5 : 25} />
+                    <line x1="19" y1="17" x2="19" y2={kid ? 22.5 : 25} /><line x1="22" y1="17" x2="22" y2={kid ? 22.5 : 25} />
+                    <path d="M6 12 L3.2 9" fill="none" />
+                </g>
+                <ellipse cx="15.5" cy="13.5" rx="10" ry={female ? 5.4 : 6} fill={coat} stroke={line} strokeWidth="1.1" />
+                {look?.spots ? <g fill={look.spots}><ellipse cx="11" cy="12" rx="3" ry="2" /><ellipse cx="18.5" cy="15" rx="2.6" ry="1.7" /><ellipse cx="15" cy="10.5" rx="1.6" ry="1.1" /></g> : null}
+                {female && !kid ? <ellipse cx="17.5" cy="18.6" rx="2.4" ry="1.5" fill="#f2a5bd" stroke={line} strokeWidth="0.7" /> : null}
+                {/* neck and head; a buck's neck is thicker */}
+                <path d={female || kid ? 'M21.5 11 L24.5 5 Q27.5 3.8 29.6 6.4 L30 9.2 Q28.6 10.6 26.8 10 L24.6 14 Z' : 'M20.5 10.5 L24 4.6 Q27.6 3.4 29.8 6.2 L30.2 9.4 Q28.6 10.9 26.6 10.2 L24.4 15 Z'} fill={head} stroke={line} strokeWidth="1.1" />
+                {look?.ears === 'long' ? <path d="M24.4 6.4 Q21.6 8.5 22.2 12.6 Q23.6 11.6 25.2 7.6 Z" fill={head} stroke={line} strokeWidth="0.8" /> : <path d="M24.6 6.6 L21.6 8.4" stroke={line} strokeWidth="1.6" strokeLinecap="round" />}
+                {kid ? null : female
+                    ? <path d="M25.6 5.2 Q25 2.6 23.6 1.8" stroke={line} strokeWidth="1.1" fill="none" strokeLinecap="round" />
+                    : <path d="M25.2 5.4 Q24.4 0.6 20.6 0.2 Q18.6 0.4 18.2 2.6 Q20.8 1.6 22.4 3.2 Q23.6 4.6 23.8 6" fill="#c9b79a" stroke={line} strokeWidth="0.9" strokeLinejoin="round" />}
+                {!female && !kid ? <path d="M28.8 9.8 L28.2 13.6 L29.8 10.4" fill={line} stroke={line} strokeWidth="0.6" strokeLinejoin="round" /> : null}
+                <circle cx="27.6" cy="6.8" r="0.8" fill={dark ? '#f5e6a8' : '#1b1b1b'} />
             </g>
-            <ellipse cx="15.5" cy="13.5" rx="10" ry="5.6" fill={coat} stroke={shade} strokeWidth="1.2" />
-            {female ? <ellipse cx="13" cy="15.6" rx="5" ry="1.6" fill="#e9dcc0" /> : <ellipse cx="13" cy="11.2" rx="5" ry="1.4" fill="#a8744a" />}
-            <path d="M21.5 11 L24.5 5 Q27.5 3.8 29.6 6.4 L30 9.2 Q28.6 10.6 26.8 10 L24.6 14 Z" fill={coat} stroke={shade} strokeWidth="1.2" />
-            <path d="M24.6 6.6 L21.6 8.6" stroke={shade} strokeWidth="1.6" strokeLinecap="round" />
-            <path d="M29 9.6 L28.6 12.4" stroke="#16301f" strokeWidth="0.8" strokeLinecap="round" />
-            <circle cx="27.4" cy="6.8" r="0.75" fill="#2a2116" />
-            {flag ? <g><circle cx="14" cy="4.6" r="4.6" fill="#c8312a" stroke="#fff" strokeWidth="1.1" /><path d="M14 2.2v4.8M11.6 4.6h4.8" stroke="#fff" strokeWidth="1.5" /></g> : null}
+            {flag ? <g><circle cx="14" cy="3.4" r="4.4" fill="#d92d20" stroke="#fff" strokeWidth="1.1" /><path d="M14 1.1v4.6M11.7 3.4h4.6" stroke="#fff" strokeWidth="1.5" /></g> : null}
         </svg>
     );
 }
 
-function Legend() {
-    const item = (label: string, female: boolean, flag = false) => (
-        <span className="inline-flex items-center gap-1.5"><span className="inline-block size-6"><GoatFigure female={female} flag={flag} delay={0} flip={false} /></span>{label}</span>
+/** D-147: what the figures mean: female, male, kid, needs attention, and the look of each breed that is on the farm. */
+export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | undefined> }) {
+    const item = (key: string, label: string, figure: ReactNode) => (
+        <span key={key} className="inline-flex items-center gap-1.5"><span className="kk-legend-goat">{figure}</span>{label}</span>
     );
+    const present = [...new Set(breeds.filter(Boolean).map((b) => b!.trim()))].filter((b) => breedLook(b)).sort();
     return (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-xs text-ink-soft">
-            {item('Female', true)}{item('Male', false)}{item('Needs Attention', true, true)}
-            <span>Tap a pen to see its goats.</span>
+        <div className="space-y-1.5 px-1 text-xs text-[#3d5446]">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {item('f', 'Female (Doe)', <GoatFigure female flag={false} delay={0} flip={false} />)}
+                {item('m', 'Male (Buck)', <GoatFigure female={false} flag={false} delay={0} flip={false} />)}
+                {item('k', 'Kid', <GoatFigure female flag={false} delay={0} flip={false} stage="kid" />)}
+                {item('a', 'Needs Attention', <GoatFigure female flag delay={0} flip={false} />)}
+            </div>
+            {present.length ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="font-semibold">Breeds:</span>
+                    {present.map((b) => item(b, breedLook(b)!.label, <GoatFigure female flag={false} delay={0} flip={false} breed={b} />))}
+                </div>
+            ) : null}
+            <div>Pink pad: female · blue pad: male · tap a pen to see its goats.</div>
         </div>
     );
 }

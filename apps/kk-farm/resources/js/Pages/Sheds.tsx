@@ -2,14 +2,14 @@ import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react'
 import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { BarnRoof, EarTag, GoatFigure } from '../components/FarmScene';
+import { BarnRoof, EarTag, FigureLegend, GoatFigure } from '../components/FarmScene';
 import { Button, Chip, cx, Empty, Field, HealthChip, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { useFive } from '../lib/useFive';
 import Sheet from '../components/Sheet';
 import { useConfirm } from '../components/Confirm';
 
-type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null };
+type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null; breed: string | null; stage: string | null };
 type Pen = { id: number; name: string; code: string; kind: 'pen' | 'open_area'; purpose: string; capacity: number | null; count: number; goats: Goat[] };
 type Shed = { id: number; farmId: number | null; code: string; name: string; status: string; type: string | null; typeName: string | null; purpose: string | null; pens: Pen[] };
 type UnitType = { code: string; name: string; purpose: string };
@@ -120,7 +120,7 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                                                         </span>
                                                         <span className="mt-0.5 block truncate text-xs text-[#3d5446]">{p.purpose}</span>
                                                         <span className="kk-herd" aria-hidden>
-                                                            {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
+                                                            {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={(i * 0.37) % 2.4} flip={i % 3 === 1} />)}
                                                             {p.goats.length > shown.length ? <span className="self-center text-xs font-bold text-[#3d5446]">+{p.goats.length - shown.length}</span> : null}
                                                         </span>
                                                         {!area ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
@@ -135,6 +135,8 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                             <div className="kk-grass" aria-hidden />
                         </section>
                     ))}
+
+                    {shown.some((x) => x.pens.some((p) => p.goats.length)) ? <FigureLegend breeds={shown.flatMap((x) => x.pens.flatMap((p) => p.goats.map((g) => g.breed)))} /> : null}
 
                     {pen ? (
                         <PenRollCall pen={pen} />
@@ -442,7 +444,7 @@ function PenRollCall({ pen }: { pen: Pen }) {
                                 <li key={g.id}>
                                     <Link href={`/goats/${g.id}`} className="kk-lift flex items-center gap-2 rounded-md bg-[#f6faf7] p-1.5 pr-2 shadow-[0_1px_0_#dbe6de]">
                                         <EarTag number={g.number} />
-                                        <span className="kk-th-goat" aria-hidden><GoatFigure female={g.sex === 'female'} flag={g.health !== 'healthy'} delay={0} flip={false} /></span>
+                                        <span className="kk-th-goat" aria-hidden><GoatFigure female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={0} flip={false} /></span>
                                         <span className="min-w-0 truncate text-sm font-semibold text-[#16301f]">{g.name ?? ''}</span>
                                     </Link>
                                 </li>

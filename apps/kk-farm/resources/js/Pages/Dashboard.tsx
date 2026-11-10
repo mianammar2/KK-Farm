@@ -177,7 +177,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
                                                 <span className={`kk-cal ${k.days < 0 ? 'kk-cal-over' : soon ? 'kk-cal-soon' : ''}`}><span className="kk-cal-month">{rest.join(' ') || ' '}</span><span className="kk-cal-day">{day}</span></span>
                                                 <span className="flex min-w-fit flex-1 items-center gap-2"><EarTag number={k.number} />{k.name ? <span className="truncate font-semibold text-[#16301f]">{k.name}</span> : null}</span>
                                                 <span className={`kk-countdown ${k.days < 0 ? 'kk-countdown-over' : soon ? 'kk-countdown-soon' : ''}`}>
-                                                    <span className="kk-kid" aria-hidden><GoatFigure female flag={false} delay={0} flip={false} /></span>
+                                                    <span className="kk-kid" aria-hidden><GoatFigure female flag={false} delay={0} flip={false} stage="kid" /></span>
                                                     {k.days < 0 ? `${-k.days} days over` : k.days === 0 ? 'Today' : `In ${k.days} days`}
                                                 </span>
                                             </Link>
@@ -306,7 +306,7 @@ type HerdAge = {
 };
 
 /** D-135: how big the goat beside each age row is drawn. */
-const AGE_SCALE: Record<string, number> = { kid: 0.62, grower: 0.82, adult: 1, age_unknown: 0.82 };
+const AGE_SCALE: Record<string, number> = { kid: 1, grower: 1, adult: 1, age_unknown: 1 }; // D-147: the figure itself is drawn by age
 
 /** D-118: Kids, Growers and Adults by gender, from each goat's age today; every number opens those goats. */
 function HerdByAge({ h }: { h: HerdAge }) {
@@ -330,7 +330,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
-                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><span className="kk-age-goat" style={{ ['--s' as string]: AGE_SCALE[r.key] ?? 1 }} aria-hidden><GoatFigure female={r.female >= r.male} flag={false} delay={0} flip={false} /></span><span><span className="font-semibold text-cobalt-900">{r.label}</span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
+                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><span className="kk-age-goat" style={{ ['--s' as string]: AGE_SCALE[r.key] ?? 1 }} aria-hidden><GoatFigure female={r.female >= r.male} flag={false} delay={0} flip={false} stage={r.key} /></span><span><span className="font-semibold text-cobalt-900">{r.label}</span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
                                 {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>
