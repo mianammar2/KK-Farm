@@ -100,6 +100,8 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/health/checkups', [HealthController::class, 'checkup']); // D-095
         Route::post('/health/checkups/{checkup}', [HealthController::class, 'updateCheckup']); // D-099
         Route::post('/health/preventive', [HealthController::class, 'preventive']);
+        Route::post('/health/protocols', [HealthController::class, 'protocol']); // D-173
+        Route::post('/health/protocols/{protocol}', [HealthController::class, 'protocol']);
         Route::post('/health/cases/{case}', [HealthController::class, 'updateCase']);
         Route::post('/health/cases/{case}/treatments', [HealthController::class, 'addTreatment']);
         Route::post('/health/medicines', [\App\Http\Controllers\MedicineController::class, 'store']);

@@ -9,6 +9,7 @@ import Sheet from '../components/Sheet';
 import { titleCase } from '../lib/titleCase';
 import AddButton from '../components/AddButton';
 import { useTabParam } from '../lib/useTabParam';
+import { CareCalendar, Protocols, type CalendarRow, type Protocol } from '../components/CareCalendar';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -26,6 +27,7 @@ type Props = {
     severities: Record<string, string>; statuses: Record<string, string>; routes: Record<string, string>;
     medicines: Medicine[]; medicineMoves: MedMove[]; medicineCategories: Record<string, string>; medicineUnits: Record<string, string>;
     medicineTypes: Record<string, { label: string; direction: number }>; medicineAlerts: number; canMedicine: boolean;
+    calendar: CalendarRow[]; protocols: Protocol[]; applies: Record<string, string>; careTypes: Record<string, string>; // D-173
 };
 
 const MED_STATUS: Record<Medicine['status'], { label: string; className: string }> = {
@@ -86,10 +88,14 @@ export default function Health(props: Props) {
                         { id: 'cases', label: 'Cases', count: counts.active },
                         { id: 'reports', label: 'Reported concerns', count: reports.length },
                         { id: 'withdrawal', label: 'Withdrawal', count: withdrawal.length },
+                        { id: 'calendar', label: 'Vaccination Calendar', count: props.calendar.reduce((n, p) => n + p.goats.length, 0) || undefined },
                         { id: 'care', label: 'Preventive care', count: care.length },
+                        { id: 'protocols', label: 'Protocols', count: props.protocols.length || undefined },
                         { id: 'store', label: 'Medicine store', count: props.medicineAlerts || undefined },
                     ]} />
                     {tab === 'store' ? <MedicineStore {...props} /> : null}
+                    {tab === 'calendar' ? <CareCalendar calendar={props.calendar} isVet={isVet} /> : null}
+                    {tab === 'protocols' ? <Protocols protocols={props.protocols} careTypes={props.careTypes} applies={props.applies} medicines={props.medicines} canEdit={isVet || auth?.role === 'ceo'} /> : null}
                     {tab === 'checkups' ? <Checkups data={props.checkups} /> : null}
                     {tab === 'cases' ? (
                         <div className="space-y-3">

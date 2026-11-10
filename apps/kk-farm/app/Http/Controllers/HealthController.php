@@ -92,6 +92,13 @@ class HealthController extends Controller
             ],
             'goats' => Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => ['id' => $a->id, 'farm_number' => $a->farm_number, 'name' => $a->name, 'pen' => $a->pen?->fullName()]),
             'careTypes' => self::CARE_TYPES,
+            // D-173: vaccination calendar and the vet's protocols
+            'calendar' => \App\Support\CareCalendar::due(),
+            'protocols' => \App\Models\CareProtocol::with('medicine')->orderByDesc('active')->orderBy('kind')->orderBy('name')->get()->map(fn ($p) => [
+                'id' => $p->id, 'name' => $p->name, 'kind' => $p->kind, 'medicineId' => $p->medicine_id, 'medicine' => $p->medicine?->name, 'dose' => $p->dose_per_goat,
+                'appliesTo' => $p->applies_to, 'firstAge' => $p->first_age_days, 'interval' => $p->interval_days, 'notes' => $p->notes, 'active' => $p->active,
+            ]),
+            'applies' => \App\Models\CareProtocol::APPLIES,
             'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
         ] + $this->medicineStore());
     }
@@ -208,6 +215,27 @@ class HealthController extends Controller
      * D-078: preventive care for one goat or a whole batch in one go: one record per goat, with product, batch/lot,
      * next due date, cost and status. A product from the medicine store is issued for each goat (earliest expiry first).
      */
+    /** D-173: add or change a vaccine / deworming protocol (the vet, or the owner). */
+    public function protocol(Request $request, ?\App\Models\CareProtocol $protocol = null): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical') || $request->user()->role === 'ceo', 403, 'Protocols are set by the veterinarian.');
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'], 'kind' => ['required', Rule::in(array_keys(self::CARE_TYPES))],
+            'medicine_id' => ['nullable', 'exists:medicines,id'], 'dose_per_goat' => ['nullable', 'numeric', 'gt:0', 'max:1000'],
+            'applies_to' => ['required', Rule::in(array_keys(\App\Models\CareProtocol::APPLIES))],
+            'first_age_days' => ['nullable', 'integer', 'between:0,3650'], 'interval_days' => ['nullable', 'integer', 'between:1,3650'],
+            'notes' => ['nullable', 'string', 'max:500'], 'active' => ['boolean'],
+        ], [], ['first_age_days' => 'first age', 'interval_days' => 'repeat every']);
+        if ($protocol) {
+            $protocol->update($data);
+        } else {
+            $protocol = \App\Models\CareProtocol::create($data + ['created_by' => $request->user()->name]);
+        }
+        Farm::log($request->user(), "Saved care protocol {$protocol->name}", '/health?tab=protocols');
+
+        return back()->with('success', "Protocol {$protocol->name} saved.");
+    }
+
     public function preventive(Request $request): RedirectResponse
     {
         abort_unless($request->user()->passes('clinical'), 403, 'Preventive care is recorded by a veterinarian.');
@@ -218,6 +246,7 @@ class HealthController extends Controller
             'given_on' => ['required', 'date'], 'next_due_on' => ['nullable', 'date', 'after:given_on'],
             'batch_lot' => ['nullable', 'string', 'max:40'], 'cost_per_goat' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'care_status' => ['required', Rule::in(['administered', 'planned', 'cancelled'])], 'notes' => ['nullable', 'string', 'max:500'],
+            'protocol_id' => ['nullable', 'exists:care_protocols,id'], // D-173
         ], [], ['animal_ids' => 'goats', 'title' => 'product / vaccine', 'qty_per_goat' => 'quantity per goat']);
         if ($data['care_status'] === 'administered' && Carbon::parse($data['given_on'])->isFuture()) {
             throw ValidationException::withMessages(['given_on' => 'Care given cannot be in the future. Use "Planned" for a future date.']);
@@ -234,6 +263,7 @@ class HealthController extends Controller
                     'animal_id' => $goat->id, 'kind' => $data['kind'], 'occurred_on' => $data['given_on'], 'title' => $title, 'notes' => $data['notes'] ?? null,
                     'recorded_by' => $request->user()->name, 'recorded_role' => 'Veterinarian', 'next_due_on' => $data['care_status'] === 'planned' ? $data['given_on'] : ($data['next_due_on'] ?? null),
                     'status' => 'closed', 'batch_lot' => $data['batch_lot'] ?? null, 'cost_minor' => $cost, 'care_status' => $data['care_status'],
+                    'protocol_id' => $data['protocol_id'] ?? null,
                 ]);
                 if ($data['care_status'] === 'administered') {
                     Farm::event($goat, 'health', self::CARE_TYPES[$data['kind']].": {$title}".(! empty($data['batch_lot']) ? " (lot {$data['batch_lot']})" : ''), $request->user()->name, Carbon::parse($data['given_on']));

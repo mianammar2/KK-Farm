@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+/** D-173: a vaccine or deworming protocol set by the vet (Veterinary → Configuration). */
+class CareProtocol extends Model
+{
+    protected $guarded = [];
+
+    protected $casts = ['active' => 'boolean', 'dose_per_goat' => 'float'];
+
+    public const APPLIES = ['all' => 'All goats', 'kids' => 'Kids', 'growers' => 'Growers', 'adults' => 'Adults', 'does' => 'Does (females)', 'bucks' => 'Bucks (males)', 'pregnant' => 'Pregnant does'];
+
+    public function medicine()
+    {
+        return $this->belongsTo(Medicine::class);
+    }
+}
