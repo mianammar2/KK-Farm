@@ -262,7 +262,9 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             case 'select': {
                 // Animal Class only offers classes that fit the chosen sex (a male cannot be a Breeding Doe).
                 const sex = form.data.sex;
-                const options = f.key === 'animal_class' && sex ? f.options?.filter((o) => !classSex[String(o.value)] || classSex[String(o.value)] === sex) : f.options;
+                // D-171: a kid born on the farm is created by the Pregnancy Outcome (Maternity), never registered by hand.
+                const options = f.key === 'animal_class' && sex ? f.options?.filter((o) => !classSex[String(o.value)] || classSex[String(o.value)] === sex)
+                    : f.key === 'origin' && !editing ? f.options?.filter((o) => o.value !== 'born_on_farm') : f.options;
                 return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
             }
             case 'lookup':
@@ -345,7 +347,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                                     <Field
                                         label={`${labelFor(f)}${isRequired(f) ? ' *' : ''}`}
                                         error={error(f)}
-                                        hint={f.key === 'estimated_age' ? 'The birth date is worked out from it and saved as an estimate.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date ? 'Estimated from the age. Change it if you know a better date.' : 'Optional. Enter the estimated age, or a date.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
+                                        hint={f.key === 'origin' && !editing ? 'Purchased or transferred goats. Kids born on the farm are added automatically when the kidding is recorded in Maternity; the vet completes them under Newborns to Complete.' : f.key === 'estimated_age' ? 'The birth date is worked out from it and saved as an estimate.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date ? 'Estimated from the age. Change it if you know a better date.' : 'Optional. Enter the estimated age, or a date.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
                                     >{control(f)}</Field>
                                 </div>
                             ))}

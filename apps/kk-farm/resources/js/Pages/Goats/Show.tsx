@@ -174,6 +174,14 @@ export default function GoatShow(props: Props) {
                         ) : null}
                     </div>
                 </div>
+                {/* D-171: a kid born on the farm was created by the kidding record; the vet only completes its details. */}
+                {onFarm && goat.origin === 'born_on_farm' && !goat.weight && panel !== 'weight' ? (
+                    <div className="flex flex-wrap items-center gap-3 border-t border-rule bg-turq-100/60 px-4 py-3 text-sm">
+                        <LibIcon name="cls-kid" size={34} />
+                        <span className="min-w-0 flex-1"><strong className="text-cobalt-900">Newborn: complete its details.</strong> It was added from the kidding record (mother, father, breed, birth date and pen are already filled). Enter the birth weight; add teeth or a photo when ready.</span>
+                        <Button onClick={() => setPanel('weight')}><LibIcon name="mod-growth" size={18} /> Enter birth weight</Button>
+                    </div>
+                ) : null}
                 {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} /></div> : null}
             </section>
 

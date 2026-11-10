@@ -72,9 +72,9 @@ export function Button({ variant = 'primary', className, ...props }: ButtonProps
     );
 }
 
-export function Panel({ title, description, actions, children, className, flush }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode; className?: string; flush?: boolean }) {
+export function Panel({ title, description, actions, children, className, flush, id }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode; className?: string; flush?: boolean; id?: string }) {
     return (
-        <section className={cx('rounded-tile border border-rule bg-tile shadow-tile', className)}>
+        <section id={id} className={cx('scroll-mt-20 rounded-tile border border-rule bg-tile shadow-tile', className)}>
             {title ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2.5 sm:px-4 sm:py-3">
                     <div className="min-w-0">

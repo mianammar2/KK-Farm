@@ -1,7 +1,7 @@
 import BrandMark from './BrandMark';
 import NotificationBell from './NotificationBell';
 import { ArtIcon, NavIcon } from './ArtIcon';
-import { APPS, currentApp, isHere, rememberApp, type ErpApp } from '../lib/apps';
+import { APPS, currentApp, GROUPS, isHere, rememberApp, type ErpApp } from '../lib/apps';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
@@ -70,7 +70,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
     const app = currentApp(url, modules);
     if (app) {
         const here = app.sections.findIndex((x) => isHere(x.href, url));
-        const samePath = app.sections.findIndex((x) => x.href.split('?')[0] === path);
+        const samePath = app.sections.findIndex((x) => x.href.split('#')[0].split('?')[0] === path);
         const active = here >= 0 ? here : samePath;
         const linked = app.linked.map((k) => APPS.find((x) => x.key === k)).filter((x): x is ErpApp => !!x && x.modules.some((m) => modules.includes(m)));
         return (
@@ -82,17 +82,26 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                     <ArtIcon name={app.art} size={38} />
                     <span className="min-w-0"><span className="block text-base leading-tight font-bold text-white">{app.label}</span>{app.no ? <span className="text-[11px] text-cobalt-200">App {app.no}</span> : null}</span>
                 </div>
-                <ul className="space-y-0.5">
-                    {app.sections.map((x, i) => (
-                        <li key={x.href}>
-                            <Link href={x.href} onClick={() => { rememberApp(app.key); onNavigate?.(); }} aria-current={i === active ? 'page' : undefined}
-                                className={cx('flex min-h-10 items-center gap-2.5 rounded-tile px-3 py-1.5 text-sm font-medium transition-colors duration-150', i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
-                                <span className={cx('size-1.5 shrink-0 rounded-full', i === active ? 'bg-turq-600' : 'bg-cobalt-200/50')} aria-hidden />
-                                {x.label}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
+                {GROUPS.map((g) => {
+                    const items = app.sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
+                    if (!items.length) return null;
+                    return (
+                        <div key={g} className="mt-3 first:mt-1">
+                            <div className="px-2.5 pb-1 text-[11px] font-semibold tracking-wide text-cobalt-200/80 uppercase">{g}</div>
+                            <ul className="space-y-0.5">
+                                {items.map((x) => (
+                                    <li key={`${x.group}${x.href}`}>
+                                        <Link href={x.href} onClick={() => { rememberApp(app.key); onNavigate?.(); }} aria-current={x.i === active ? 'page' : undefined}
+                                            className={cx('flex min-h-9 items-center gap-2.5 rounded-tile px-3 py-1.5 text-sm font-medium transition-colors duration-150', x.i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
+                                            <span className={cx('size-1.5 shrink-0 rounded-full', x.i === active ? 'bg-turq-600' : 'bg-cobalt-200/50')} aria-hidden />
+                                            {x.label}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    );
+                })}
                 {linked.length ? (
                     <div className="mt-5 border-t border-white/10 pt-3">
                         <div className="px-2.5 pb-1.5 text-[11px] font-semibold tracking-wide text-cobalt-200/80 uppercase">Linked Apps</div>

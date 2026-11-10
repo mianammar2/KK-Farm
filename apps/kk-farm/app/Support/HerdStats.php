@@ -22,7 +22,7 @@ final class HerdStats
         'kid_female' => 'Female Kids', 'kid_male' => 'Male Kids', 'grower_female' => 'Female Growers', 'grower_male' => 'Male Growers',
         'adult_female' => 'Adult Females', 'adult_male' => 'Adult Males', 'age_unknown_female' => 'Females, Age Not Known', 'age_unknown_male' => 'Males, Age Not Known',
         // Not CEO categories, but filters the dashboard links to.
-        'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data',
+        'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'newborn' => 'Newborns to complete', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data',
     ];
 
     /** D-123: labels for the class_* filters (/goats?show=class_breeding_female). */
@@ -67,6 +67,8 @@ final class HerdStats
             'attention' => $flag !== 'healthy',
             'no_pen' => $a->pen_id === null,
             'no_weight' => ! $hasWeight,
+            // D-171: a kid born on the farm in the last 60 days whose birth details the vet has not entered yet (birth weight)
+            'newborn' => $a->origin === 'born_on_farm' && $a->birth_date && $a->birth_date->greaterThanOrEqualTo(now()->subDays(60)->startOfDay()) && ! $hasWeight,
             // D-080: e.g. a Breeding Male whose birth date makes it a few days old: the date is probably the purchase date.
             'age_conflict' => $a->effectiveAge() === 'kid' && in_array($a->animal_class, \App\Support\Feed::ADULT_CATEGORIES, true),
         ];

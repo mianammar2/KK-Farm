@@ -170,4 +170,13 @@ class PregnancyOutcomeTest extends TestCase
         $this->artisan('kkfarm:maternity-round')->assertSuccessful();
         $this->assertSame('KDP-01', $this->doe->fresh()->pen->name);
     }
+
+    /** D-171: a kid from a kidding record is listed under Newborns to Complete until its birth weight is entered. */
+    public function test_newborns_without_a_birth_weight_are_listed_to_complete(): void
+    {
+        $this->actingAs($this->user())->post("/breeding/matings/{$this->mating->id}/kidding", ['outcome' => 'NKD', 'kids' => [['sex' => 'female'], ['sex' => 'male', 'weight_kg' => '3.1']]])->assertSessionHasNoErrors();
+        $this->actingAs($this->user())->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p
+            ->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('newborn', $g['tags'], true))->pluck('sex')->values()->all() === ['female'])
+            ->where('showLabels.newborn', 'Newborns to complete'));
+    }
 }

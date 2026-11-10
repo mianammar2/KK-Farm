@@ -21,7 +21,7 @@ export default function Settings({ ages, breeds, matrix, gates, environment }: P
             <PageHeader title="Settings" description="Breeds and the permission model for this preview." />
             <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
                 <div className="space-y-4">
-                    <Panel title="Breeds" flush>
+                    <Panel id="breeds" title="Breeds" flush>
                         <ul className="divide-y divide-rule text-sm">{breeds.map((b) => <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2"><span className="font-medium">{b.name} <span className="ml-1 rounded-[4px] bg-cobalt-100 px-1.5 py-0.5 font-mono text-xs text-cobalt-800">{b.code}</span></span><span className="text-right text-sm text-ink-soft">{b.goats} goats · next {b.next}</span><LightLine id={b.id} value={b.lightBelow} /></li>)}</ul>
                         <p className="border-t border-rule px-4 py-2 text-xs text-ink-soft">Light Below: a goat with no teeth recorded is aged from its first weighing, about 7 months under this weight and about 10 months at or over it. Leave empty for no estimate.</p>
                         <form onSubmit={(e) => { e.preventDefault(); form.post('/settings/breeds', { preserveScroll: true, onSuccess: () => form.reset() }); }} className="flex items-end gap-2 border-t border-rule p-4">
@@ -30,7 +30,7 @@ export default function Settings({ ages, breeds, matrix, gates, environment }: P
                             <Button type="submit" disabled={form.processing}>Add</Button>
                         </form>
                     </Panel>
-                    <Panel title="Age categories" description="Worked out from each goat's birth date">
+                    <Panel id="ages" title="Age categories" description="Worked out from each goat's birth date">
                         <form onSubmit={(e) => { e.preventDefault(); ageForm.post('/settings/ages', { preserveScroll: true }); }} className="space-y-3">
                             <div className="grid grid-cols-2 gap-2">
                                 <Field label="Grower from (months)" error={ageForm.errors.grower_from_months}><input className="field" type="number" min={1} max={24} inputMode="numeric" value={ageForm.data.grower_from_months} onChange={(e) => ageForm.setData('grower_from_months', Number(e.target.value))} /></Field>
@@ -40,11 +40,11 @@ export default function Settings({ ages, breeds, matrix, gates, environment }: P
                             <Button type="submit" variant="secondary" disabled={ageForm.processing || !ageForm.isDirty}>Save age categories</Button>
                         </form>
                     </Panel>
-                    <Panel title="Users and sign-in" description="Who can sign in, and with which role">
+                    <Panel id="users" title="Users and sign-in" description="Who can sign in, and with which role">
                         <p className="mb-3 text-sm text-ink-soft">Add staff and vets, reset passwords, or disable an account.</p>
                         <Link href="/settings/users"><Button variant="secondary">Manage users</Button></Link>
                     </Panel>
-                    <Panel title="Goat register fields" description="The registration form, from the KK Farms workbook">
+                    <Panel id="fields" title="Goat register fields" description="The registration form, from the KK Farms workbook">
                         <p className="mb-3 text-sm text-ink-soft">Rename fields, edit dropdown options, or add your own fields.</p>
                         <Link href="/settings/fields"><Button variant="secondary">Edit register fields</Button></Link>
                     </Panel>
@@ -56,7 +56,7 @@ export default function Settings({ ages, breeds, matrix, gates, environment }: P
                     </Panel>
                 </div>
                 <div className="space-y-4">
-                    <Panel title="Who can open what" flush description="Checked on the server for every request">
+                    <Panel id="access" title="Who can open what" flush description="Checked on the server for every request">
                         <div className="overflow-x-auto">
                             <table className="data-table min-w-[720px]">
                                 <thead><tr><th>Area</th>{roleKeys.map((r) => <th key={r} className="text-center">{roles[r].split(' ')[0]}</th>)}</tr></thead>
