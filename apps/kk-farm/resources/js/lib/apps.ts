@@ -26,6 +26,7 @@ export const APPS: ErpApp[] = [
     { key: 'livestock', no: '02', label: 'Livestock', art: 'mod-livestock', modules: ['goats'], linked: ['housing', 'breeding', 'maternity', 'veterinary', 'growth', 'sales'], sections: [
         S('Overview', '/goats', 'All Goats'),
         S('Operations', '/goats/register', 'Register Purchased Goat'),
+        S('Operations', '/intake', 'Intake & Quarantine'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
         S('Operations', '/scan', 'RFID Scan'),
         S('Operations', '/movements', 'Animal Exit'),
@@ -62,6 +63,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/health?tab=cases', 'Medical Cases'),
         S('Operations', '/health?tab=reports', 'Reported Concerns'),
         S('Operations', '/health?tab=care', 'Vaccination & Deworming'),
+        S('Operations', '/intake', 'Quarantine & Clearance'),
         S('Records', '/health?tab=withdrawal', 'Withdrawal & Biosecurity'),
         S('Records', '/goats?show=attention', 'Sick & Under Watch'),
         S('Reporting', '/reports#exits', 'Mortality'),
@@ -106,7 +108,8 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/feeding?tab=nutrition', 'Feed Ingredients'),
     ] },
     { key: 'purchase', no: '11', label: 'Purchase', art: 'mod-procurement', modules: ['finance', 'goats'], linked: ['livestock', 'inventory', 'accounting'], sections: [
-        S('Operations', '/goats/register', 'Goat Purchase & Intake'),
+        S('Operations', '/goats/register', 'Goat Purchase'),
+        S('Operations', '/intake', 'Animal Intake & Quarantine'),
         S('Operations', '/finance', 'Purchase Expenses'),
         S('Reporting', '/reports#spending', 'Purchase Analysis'),
         S('Configuration', '/finance/books?tab=accounts', 'Purchase Accounts'),

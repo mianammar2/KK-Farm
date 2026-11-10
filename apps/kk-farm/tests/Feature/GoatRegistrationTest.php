@@ -135,7 +135,7 @@ class GoatRegistrationTest extends TestCase
 
         $goat = Animal::where('farm_number', 'KK-501')->firstOrFail();
         $this->assertSame('Noor', $goat->name);
-        $this->assertSame(['replacement_female', 'pregnant', 'monitor', null, 'Cholistan Farm'], [$goat->animal_class, $goat->repro_status, $goat->health_flag, $goat->ownership, $goat->source_farm], 'Ownership is switched off (D-066), so it is not saved');
+        $this->assertSame(['replacement_female', 'pregnant', 'monitor', null, 'Cholistan Farm'], [$goat->animal_class, $goat->repro_status, $goat->health_flag, $goat->ownership, $goat->source_farm], 'Ownership is switched off (D-066), so it is not saved; a new arrival in intake quarantine is under watch (D-172)');
         $this->assertSame('watch', $goat->health_status, 'Monitor maps to the existing watch state');
         $this->assertSame('pregnant', $goat->repro_state);
         $this->assertSame(1850000, $goat->purchase_cost_minor, 'Money is stored in paisa');

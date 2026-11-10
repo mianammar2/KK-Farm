@@ -232,6 +232,11 @@ final class GoatRegistration
                 Farm::assignTag($animal, RfidTag::firstOrCreate(['tag_code' => $epc], ['status' => 'in_stock']), 'initial', $user);
             }
 
+            // D-172: a purchased or transferred goat starts in intake quarantine until the vet clears her.
+            if ($status === 'active' && in_array($animal->origin, ['purchased', 'transferred_in'], true)) {
+                Intake::open($animal->fresh(), $user);
+            }
+
             Farm::log($user, "Registered goat {$animal->farm_number}", "/goats/{$animal->id}");
 
             return $animal;

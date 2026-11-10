@@ -430,7 +430,9 @@ final class Checkups
     {
         $active = HealthCase::where('animal_id', $animal->id)->whereIn('status', HealthCase::ACTIVE)->get();
         $flag = match (true) {
-            $active->contains('isolated', true) => 'quarantine',
+            // D-172: an intake quarantine alone is a healthy new arrival under watch, not a sick goat in isolation.
+            $active->contains(fn ($c) => $c->isolated && $c->condition !== Intake::CONDITION) => 'quarantine',
+            $active->isNotEmpty() && $active->every(fn ($c) => $c->condition === Intake::CONDITION) => 'monitor',
             $active->whereIn('status', ['open', 'under_treatment'])->isNotEmpty() => 'sick',
             $active->isNotEmpty() => 'recovering',
             HealthRecord::where('animal_id', $animal->id)->where('status', 'open')->exists() => 'monitor',

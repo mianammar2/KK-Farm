@@ -42,6 +42,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
+    // D-172: Intake & Quarantine (purchased and transferred goats until veterinary clearance)
+    Route::get('/intake', [\App\Http\Controllers\IntakeController::class, 'index'])->middleware('module:goats');
+    Route::post('/intake/settings', [\App\Http\Controllers\IntakeController::class, 'settings'])->middleware('module:goats');
+    Route::post('/intake/{case}/clear', [\App\Http\Controllers\IntakeController::class, 'clear'])->middleware('module:health');
 
     Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
     Route::get('/activity', \App\Http\Controllers\ActivityController::class)->middleware('module:dashboard'); // D-122
