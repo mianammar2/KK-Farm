@@ -138,10 +138,11 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports#spending', 'Consumption & Spending'),
         S('Configuration', '/inventory?tab=general', 'Store Items'),
     ] },
-    { key: 'purchase', no: '11', label: 'Purchase & Procurement', art: 'mod-procurement', modules: ['purchase', 'finance', 'goats'], linked: ['inventory', 'livestock', 'accounting'], sections: [
+    { key: 'purchase', no: '11', label: 'Purchase & Procurement', art: 'mod-procurement', modules: ['purchase', 'finance', 'goats', 'animal_purchase'], linked: ['inventory', 'livestock', 'veterinary', 'housing', 'accounting'], sections: [
         S('Overview', '/purchase', 'Purchase Orders'),
         S('Operations', '/purchase', 'New Purchase Order'),
-        S('Operations', '/goats/register', 'Goat Purchase'),
+        S('Operations', '/purchase/animals', 'Goat Purchase Lots'),
+        S('Operations', '/purchase/animals?tab=new', 'Goat Purchase Request'),
         S('Operations', '/intake', 'Animal Intake & Quarantine'),
         S('Records', '/purchase?tab=suppliers', 'Suppliers'),
         S('Reporting', '/reports#spending', 'Purchase Analysis'),

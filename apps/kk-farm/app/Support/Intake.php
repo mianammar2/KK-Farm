@@ -51,6 +51,42 @@ final class Intake
         return $case;
     }
 
+    /** @return array<int, string> ids of goats in intake quarantine right now */
+    public static function quarantinedIds(): array
+    {
+        return HealthCase::where('condition', self::CONDITION)->whereIn('status', HealthCase::ACTIVE)->pluck('animal_id')->all();
+    }
+
+    /**
+     * D-190 (journey A key control): no direct mixing before clearance. A goat in intake quarantine shares a pen only
+     * with other goats in intake quarantine, and a cleared goat never joins a pen that holds quarantined goats.
+     */
+    public static function assertNoMixing(Animal $animal, \App\Models\Pen $to): void
+    {
+        $quarantined = self::quarantinedIds();
+        $others = Animal::active()->where('pen_id', $to->id)->where('id', '!=', $animal->id)->pluck('id')->all();
+        $inQ = in_array($animal->id, $quarantined, true);
+        $mixed = $inQ ? array_diff($others, $quarantined) : array_intersect($others, $quarantined);
+        if ($mixed) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['to_pen_id' => $inQ
+                ? "{$animal->farm_number} is in intake quarantine. It cannot join {$to->fullName()} with herd goats before the vet clears it."
+                : "{$to->fullName()} holds goats in intake quarantine. Herd goats cannot be mixed with them before clearance."]);
+        }
+    }
+
+    /** Extend quarantine (clearance not granted yet): the clearance falls due later and the reason is kept. */
+    public static function extend(HealthCase $case, int $days, string $reason, User $by): void
+    {
+        DB::transaction(function () use ($case, $days, $reason, $by) {
+            $animal = $case->animal;
+            $task = Task::where('animal_id', $animal->id)->where('title', "Intake clearance: {$animal->farm_number}")->whereIn('status', Task::OPEN)->first();
+            $due = now()->addDays($days)->toDateString();
+            $task ? $task->update(['due_on' => $due]) : null;
+            $case->update(['notes' => trim(($case->notes ? "{$case->notes}\n" : '')."Quarantine extended {$days} days (".now()->format('j M')."): {$reason}")]);
+            Farm::event($animal, 'health', "Intake quarantine extended by {$days} days: {$reason}", $by->name);
+        });
+    }
+
     /** The vet's clearance: the quarantine case closes, she is healthy and joins the herd. */
     public static function clear(HealthCase $case, User $by, ?string $notes = null): void
     {

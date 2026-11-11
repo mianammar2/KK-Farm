@@ -66,10 +66,25 @@ final class Maternity
     public static function admit(Kidding $k, Animal $dam, User $by): void
     {
         $to = self::damPen($k);
-        Movements::transfer($dam, $to, $by, [
-            'moved_on' => $k->kidded_on->toDateString(),
-            'reason' => in_array($k->outcome, Kidding::LOSSES, true) ? 'Maternity isolation after pregnancy loss' : 'Post-kidding care with her kids',
-        ]);
+        try {
+            Movements::transfer($dam, $to, $by, [
+                'moved_on' => $k->kidded_on->toDateString(),
+                'reason' => in_array($k->outcome, Kidding::LOSSES, true) ? 'Maternity isolation after pregnancy loss' : 'Post-kidding care with her kids',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // D-190: a doe still in intake quarantine is not mixed into the Maternity Unit; she stays apart and the vet decides.
+            Farm::event($dam, 'move', "Not moved to {$to->fullName()}: ".collect($e->errors())->flatten()->first(), $by->name);
+        }
+    }
+
+    /** Moves for the hourly round: a goat that cannot be moved (e.g. still in intake quarantine, D-190) is skipped. */
+    private static function tryMove(Animal $goat, Pen $to, User $by, string $reason): bool
+    {
+        try {
+            return Movements::transfer($goat, $to, $by, ['reason' => $reason]) !== null;
+        } catch (\Illuminate\Validation\ValidationException) {
+            return false;
+        }
     }
 
     /**
@@ -88,28 +103,31 @@ final class Maternity
         $system = new User(['name' => 'System (maternity round)']);
         $days = (int) (\App\Models\Organization::whereKey(Tenant::current())->value('kidding_alert_days') ?: 10);
         $moved = ['preKidding' => [], 'afterOutcome' => []];
+        $quarantined = Intake::quarantinedIds(); // D-190: goats in intake quarantine stay apart until the vet clears them
 
         $near = \App\Models\Mating::with('dam')->where('status', 'pregnant')->whereNotNull('expected_kidding_on')
             ->whereDate('expected_kidding_on', '<=', now()->addDays($days)->toDateString())->get();
         foreach ($near as $m) {
             $dam = $m->dam;
-            if ($dam && $dam->status === 'active' && ! in_array((int) $dam->pen_id, $inUnit, true)) {
-                Movements::transfer($dam, self::pen('PKU-01'), $system, ['reason' => 'Near kidding (expected '.$m->expected_kidding_on->format('j M Y').'): Pre-Kidding Unit']);
-                $moved['preKidding'][] = $dam->farm_number;
+            if ($dam && $dam->status === 'active' && ! in_array((int) $dam->pen_id, $inUnit, true) && ! in_array($dam->id, $quarantined, true)) {
+                if (self::tryMove($dam, self::pen('PKU-01'), $system, 'Near kidding (expected '.$m->expected_kidding_on->format('j M Y').'): Pre-Kidding Unit')) {
+                    $moved['preKidding'][] = $dam->farm_number;
+                }
             }
         }
 
         $recent = Kidding::with(['dam', 'kids'])->whereDate('kidded_on', '>=', now()->subDays(Kidding::MONITOR_DAYS)->toDateString())->get();
         foreach ($recent as $k) {
             $dam = $k->dam;
-            if ($dam && $dam->status === 'active' && $dam->isMonitored() && ! in_array((int) $dam->pen_id, $inUnit, true)) {
+            if ($dam && $dam->status === 'active' && $dam->isMonitored() && ! in_array((int) $dam->pen_id, $inUnit, true) && ! in_array($dam->id, $quarantined, true)) {
                 self::admit($k, $dam, $system);
                 $moved['afterOutcome'][] = $dam->farm_number;
             }
             foreach ($k->kids as $kid) {
                 if ($kid->status === 'active' && ! in_array((int) $kid->pen_id, $inUnit, true)) {
-                    Movements::transfer($kid, self::kidPen($kid->birth_outcome === 'BAW'), $system, ['reason' => 'Newborn: with its mother in the Maternity Unit']);
-                    $moved['afterOutcome'][] = $kid->farm_number;
+                    if (self::tryMove($kid, self::kidPen($kid->birth_outcome === 'BAW'), $system, 'Newborn: with its mother in the Maternity Unit')) {
+                        $moved['afterOutcome'][] = $kid->farm_number;
+                    }
                 }
             }
         }

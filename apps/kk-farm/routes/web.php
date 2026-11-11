@@ -121,6 +121,17 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/intake', [\App\Http\Controllers\IntakeController::class, 'index'])->middleware('module:goats');
     Route::post('/intake/settings', [\App\Http\Controllers\IntakeController::class, 'settings'])->middleware('module:goats');
     Route::post('/intake/{case}/clear', [\App\Http\Controllers\IntakeController::class, 'clear'])->middleware('module:health');
+    Route::post('/intake/{case}/extend', [\App\Http\Controllers\IntakeController::class, 'extend'])->middleware('module:health'); // D-190
+    // D-190: journey A Purchase-to-Quarantine: goat purchase lots
+    Route::middleware('module:animal_purchase')->group(function (): void {
+        $ap = \App\Http\Controllers\AnimalPurchaseController::class;
+        Route::get('/purchase/animals', [$ap, 'index']);
+        Route::post('/purchase/animals', [$ap, 'request']);
+        Route::post('/purchase/animals/{lot}/decide', [$ap, 'decide']);
+        Route::post('/purchase/animals/{lot}/cancel', [$ap, 'cancel']);
+        Route::post('/purchase/animals/{lot}/receive', [$ap, 'receive']);
+        Route::post('/purchase/animals/{lot}/reconcile', [$ap, 'reconcile']);
+    });
 
     Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
     Route::get('/activity', \App\Http\Controllers\ActivityController::class)->middleware('module:dashboard'); // D-122

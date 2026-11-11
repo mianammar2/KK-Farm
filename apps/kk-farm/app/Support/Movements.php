@@ -34,6 +34,7 @@ final class Movements
         if ((int) $animal->pen_id === (int) $to->id) {
             return null;
         }
+        Intake::assertNoMixing($animal, $to); // D-190: no direct mixing before clearance
         $on = Carbon::parse($extra['moved_on'] ?? now());
 
         return DB::transaction(function () use ($animal, $to, $by, $extra, $on) {

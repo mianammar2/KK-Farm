@@ -1,10 +1,9 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Check, Circle } from 'lucide-react';
 import { useState } from 'react';
 import { BreedBadge } from '../components/GoatBadges';
 import GoatPortrait from '../components/GoatPortrait';
 import { Button, Empty, Field, LibIcon, PageHeader, Panel } from '../components/ui';
-import { useConfirm } from '../components/Confirm';
 
 type Row = {
     caseId: number; goatId: string; number: string; name: string | null; sex: string; coat: string; breed: string | null; stage: string | null; origin: string;
@@ -20,22 +19,16 @@ const Step = ({ done, label, href }: { done: boolean; label: string; href?: stri
  * D-172: Intake & Quarantine. Purchased and transferred goats: Intake → Registration → RFID → Quarantine → Veterinary
  * Clearance before they join the herd. Each new arrival shows its checklist and the quarantine day; the vet clears it.
  */
-export default function Intake({ goats, days, canClear, canConfigure }: { goats: Row[]; days: number; canClear: boolean; canConfigure: boolean }) {
-    const [ask, confirmBox] = useConfirm();
-    const [editing, setEditing] = useState(false);
-    const settings = useForm({ quarantine_days: String(days) });
+type PenOpt = { id: number; name: string };
 
-    const clear = async (g: Row) => {
-        const early = !g.ready;
-        if (await ask({ title: `Clear ${g.number} for the herd?`, message: early ? `She is on day ${g.day} of ${g.days} of quarantine. Clear her early only if you have examined her.` : 'Her quarantine is complete. She becomes healthy and can be allocated to the herd.', confirm: 'Yes, clear her', danger: false })) {
-            router.post(`/intake/${g.caseId}/clear`, {}, { preserveScroll: true });
-        }
-    };
+export default function Intake({ goats, days, canClear, canConfigure, pens }: { goats: Row[]; days: number; canClear: boolean; canConfigure: boolean; pens: PenOpt[] }) {
+    const [editing, setEditing] = useState(false);
+    const [deciding, setDeciding] = useState<number | null>(null);
+    const settings = useForm({ quarantine_days: String(days) });
 
     return (
         <>
             <Head title="Intake & Quarantine" />
-            {confirmBox}
             <PageHeader title="Intake & Quarantine" description={`Purchased and transferred goats stay in quarantine for ${days} days until the vet clears them: Registration → RFID → Quarantine → Veterinary Clearance.`}
                 actions={canConfigure ? <Button variant="secondary" onClick={() => setEditing(!editing)}><LibIcon name="mod-settings" size={18} /> Quarantine Days</Button> : undefined} />
             {editing ? (
@@ -66,14 +59,44 @@ export default function Intake({ goats, days, canClear, canConfigure }: { goats:
                                 </div>
                                 <div className="flex w-full items-center gap-3 sm:w-auto">
                                     <div className="h-2 w-32 overflow-hidden rounded-full bg-rule/60"><div className={`h-full rounded-full ${g.ready ? 'bg-ok-700' : 'bg-watch-400'}`} style={{ width: `${Math.min(100, (g.day / g.days) * 100)}%` }} /></div>
-                                    {canClear ? <Button variant={g.ready ? 'primary' : 'secondary'} onClick={() => clear(g)}><LibIcon name="ic-healthy" size={18} /> Vet Clearance</Button>
+                                    {canClear ? <Button variant={g.ready ? 'primary' : 'secondary'} onClick={() => setDeciding(deciding === g.caseId ? null : g.caseId)}><LibIcon name="ic-healthy" size={18} /> Vet Clearance</Button>
                                         : <span className="text-xs text-ink-soft">{g.ready ? 'Waiting for the vet' : 'In quarantine'}</span>}
                                 </div>
+                                {deciding === g.caseId ? <Clearance g={g} pens={pens} close={() => setDeciding(null)} /> : null}
                             </li>
                         ))}
                     </ul>
                 ) : <Empty title="No goats in quarantine">New purchased or transferred goats appear here when they are registered.</Empty>}
             </Panel>
         </>
+    );
+}
+
+/** D-190 (journey A): veterinary clearance granted? Yes → transfer into an approved operating pen. No → extend quarantine and recheck. */
+function Clearance({ g, pens, close }: { g: Row; pens: PenOpt[]; close: () => void }) {
+    const [granted, setGranted] = useState(true);
+    const form = useForm({ pen_id: '', notes: '', days: '7', reason: '' });
+    const e = form.errors as Record<string, string>;
+    const submit = () => {
+        if (granted) {
+            form.transform((d) => ({ pen_id: d.pen_id || null, notes: d.notes || null }));
+            form.post(`/intake/${g.caseId}/clear`, { preserveScroll: true, onSuccess: close });
+        } else {
+            form.transform((d) => ({ days: d.days, reason: d.reason }));
+            form.post(`/intake/${g.caseId}/extend`, { preserveScroll: true, onSuccess: close });
+        }
+    };
+    return (
+        <div className="grid w-full gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4">
+            <Field label="Veterinary clearance granted?"><select className="field" value={granted ? 'yes' : 'no'} onChange={(x) => setGranted(x.target.value === 'yes')}><option value="yes">Yes: clear for the herd</option><option value="no">No: extend / treat / investigate</option></select></Field>
+            {granted ? <>
+                <Field label="Move to operating pen" error={e.pen_id ?? e.to_pen_id} hint={g.ready ? undefined : `Early: day ${g.day} of ${g.days}`}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Keep in {g.pen ?? 'current pen'}</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                <Field label="Clearance notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
+            </> : <>
+                <Field label="Extend by (days)" error={e.days}><input type="number" min={1} max={60} className="field" value={form.data.days} onChange={(x) => form.setData('days', x.target.value)} /></Field>
+                <Field label="Reason / treatment" error={e.reason}><input className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} placeholder="e.g. Nasal discharge, treating, recheck" /></Field>
+            </>}
+            <div className="flex items-end gap-2"><Button disabled={form.processing} onClick={submit}>{granted ? 'Clear' : 'Extend Quarantine'}</Button><Button variant="secondary" onClick={close}>Cancel</Button></div>
+        </div>
     );
 }
