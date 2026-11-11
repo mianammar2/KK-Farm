@@ -340,6 +340,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/dairy/lots/{lot}/hold', [\App\Http\Controllers\DairyController::class, 'hold']);
         Route::post('/dairy/lots/{lot}/recall', [\App\Http\Controllers\DairyController::class, 'recall']);
         Route::post('/dairy/lots/{lot}/dispatch', [\App\Http\Controllers\DairyController::class, 'dispatch']);
+        Route::post('/dairy/orders', [\App\Http\Controllers\DairyController::class, 'order']); // D-195
+        Route::post('/dairy/orders/{order}/cancel', [\App\Http\Controllers\DairyController::class, 'cancelOrder']);
+        Route::post('/dairy/dispatches/{dispatch}/collect', [\App\Http\Controllers\DairyController::class, 'collect']);
     });
     Route::middleware('module:value')->group(function (): void { // D-113
         Route::get('/value', [\App\Http\Controllers\HerdValueController::class, 'index']);

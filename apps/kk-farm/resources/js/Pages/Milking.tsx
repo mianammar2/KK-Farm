@@ -6,6 +6,7 @@ import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow 
 
 type Session = 'morning' | 'midday' | 'evening';
 type Doe = {
+    epc?: string | null;
     lactationId: number; id: string; number: string; name: string | null; breed: string | null; pen: string | null; lactation: number; started: string; startedIso: string; source: string;
     dim: number; avg7: number | null; total: number; last: string | null; todayBySession: Partial<Record<Session, number>>; high: boolean; pregnant: boolean;
     withdrawal: string | null; standard: string | null; cp: string | null; dryDue: boolean;
@@ -78,6 +79,8 @@ function RecordMilk({ today, sessions, does }: Props) {
     const [on, setOn] = useState(today);
     const [session, setSession] = useState<Session>(defaultSession());
     const [values, setValues] = useState<Record<string, string>>({});
+    const [scan, setScan] = useState('');
+    const [scanMsg, setScanMsg] = useState<string | null>(null);
     const form = useForm<{ milked_on: string; session: Session; rows: Array<{ id: string; animal_id: string; litres: string }> }>({ milked_on: today, session, rows: [] });
     const eligible = does.filter((d) => d.startedIso <= on);
     const filled = eligible.filter((d) => values[d.id] !== undefined && values[d.id] !== '');
@@ -99,6 +102,15 @@ function RecordMilk({ today, sessions, does }: Props) {
                     <div className="flex gap-1.5" role="group" aria-label="Session">{(Object.keys(sessions) as Session[]).map((s) => (
                         <button key={s} type="button" onClick={() => setSession(s)} className={cx('min-h-11 rounded-tile border px-3 text-sm font-semibold', session === s ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900')}>{sessions[s]}</button>
                     ))}</div>
+                    <Field label="Scan doe" hint={scanMsg ?? 'RFID or Tag ID, then Enter'}><input className="field w-44 font-mono" value={scan} onChange={(e) => setScan(e.target.value)} onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        const code = scan.trim().toUpperCase();
+                        const d = eligible.find((x) => x.number.toUpperCase() === code || (x.epc ?? '').toUpperCase() === code);
+                        setScanMsg(d ? `${d.number}${d.withdrawal ? ': withdrawal, milk is held' : ''}` : `${code}: not a doe in milk today`);
+                        setScan('');
+                        if (d) document.getElementById(`milk-${d.id}`)?.focus();
+                    }} /></Field>
                     <span className="ml-auto text-sm text-ink-soft">{filled.length} of {eligible.length} does · <strong className="text-cobalt-900">{litres(sum)}</strong></span>
                 </div>
                 <div className="overflow-x-auto">
@@ -116,7 +128,7 @@ function RecordMilk({ today, sessions, does }: Props) {
                                         <td className="px-3 tabular-nums max-sm:hidden">{d.dim}</td>
                                         <td className="px-3 tabular-nums max-sm:hidden">{litres(d.avg7)}</td>
                                         <td className="px-3 py-1 text-right sm:text-left">
-                                            <input className="field w-28 text-right tabular-nums" type="number" inputMode="decimal" min={0} max={20} step="0.05" aria-label={`Litres for ${d.number}`}
+                                            <input id={`milk-${d.id}`} className="field w-28 text-right tabular-nums" type="number" inputMode="decimal" min={0} max={20} step="0.05" aria-label={`Litres for ${d.number}`}
                                                 placeholder={done !== undefined ? `${done} saved` : '0.0'} value={values[d.id] ?? ''} onChange={(e) => setValues({ ...values, [d.id]: e.target.value })} />
                                             {errors[`rows.${i}.litres`] ? <span className="block text-xs text-crit-700">{errors[`rows.${i}.litres`]}</span> : null}
                                         </td>

@@ -74,6 +74,10 @@ class DairyController extends Controller
         $prices = \App\Models\FeedItem::pluck('cost_per_kg_minor', 'id');
         $feedDay = (int) $req->sum(fn ($r) => collect($r['lines'] ?? [])->sum(fn ($kg, $id) => $kg * ($prices[$id] ?? 0)));
         $milkDays = max(1, $s30->pluck('milked_on')->map->toDateString()->unique()->count());
+        // D-195: the feed actually given to the does in milk (Feed True Cost allocation), when meals were recorded.
+        $actualFeed = $this->milkFeedCost(Carbon::parse($since), Carbon::parse(now()->toDateString()));
+        $sold = MilkDispatch::where('dispatched_on', '>=', $since)->whereNotNull('sale_id')->sum('litres');
+        $feedTotal = $actualFeed ?? ($feedDay * $milkDays / 100);
 
         return Inertia::render('Dairy', [
             'day' => $day, 'sessions' => $sessions,
@@ -88,12 +92,56 @@ class DairyController extends Controller
                 'saleablePct' => $produced > 0 ? round($s30->sum('saleable_l') / $produced * 100) : null,
                 'lossPct' => $produced > 0 ? round(($s30->sum('held_l') + $s30->sum('discard_l')) / $produced * 100, 1) : null,
                 'produced' => round($produced, 1), 'revenue' => (int) round($revenue / 100),
-                'costPerLitre' => $produced > 0 ? (int) round($feedDay * $milkDays / 100 / $produced) : null, 'feedDay' => (int) round($feedDay / 100),
+                'costPerLitre' => $produced > 0 ? (int) round($feedTotal / $produced) : null, 'feedDay' => (int) round($feedDay / 100), 'costActual' => $actualFeed !== null,
+                'revenuePerLitre' => $sold > 0 ? round($revenue / 100 / $sold, 1) : null,
+                'contributionPerLitre' => $sold > 0 && $produced > 0 ? round($revenue / 100 / $sold - $feedTotal / $produced, 1) : null,
+                'owed' => (int) round(MilkDispatch::whereNotNull('invoice_no')->whereNull('collected_at')->get()->sum(fn ($d) => $d->litres * $d->price_per_litre_minor) / 100),
             ],
+            // D-195: customer milk orders, invoices and the monthly milk profit view (CEO).
+            'orders' => \App\Models\MilkOrder::with('customer')->where(fn ($q) => $q->where('status', 'open')->orWhere('updated_at', '>=', now()->subDays(30)))->orderByRaw("status = 'open' desc")->orderBy('wanted_on')->get()
+                ->map(fn ($o) => ['id' => $o->id, 'no' => $o->order_no, 'customer' => $o->customer?->name ?? $o->buyer, 'litres' => $o->litres, 'remaining' => $o->remaining(), 'price' => $o->price_per_litre_minor / 100,
+                    'wanted' => $o->wanted_on->format('j M Y'), 'terms' => $o->terms, 'creditDays' => $o->credit_days, 'status' => $o->status, 'by' => $o->created_by]),
+            'invoices' => MilkDispatch::with(['customer', 'lot', 'order'])->whereNotNull('invoice_no')->where(fn ($q) => $q->whereNull('collected_at')->orWhere('dispatched_on', '>=', now()->subDays(60)->toDateString()))
+                ->orderByRaw('collected_at is null desc')->orderByDesc('id')->limit(100)->get()->map(fn ($d) => [
+                    'id' => $d->id, 'invoice' => $d->invoice_no, 'on' => $d->dispatched_on->format('j M Y'), 'to' => $d->customer?->name ?? $d->buyer, 'litres' => $d->litres, 'amount' => round($d->litres * $d->price_per_litre_minor / 100),
+                    'lot' => $d->lot?->code, 'order' => $d->order?->order_no, 'temp' => $d->dispatch_temp_c, 'due' => $d->due_on?->format('j M Y'), 'overdue' => $d->due_on && ! $d->collected_at && $d->due_on->lt(today()),
+                    'collected' => $d->collected_at?->format('j M Y')]),
+            'monthly' => $this->monthly(),
+            'maxTemp' => (float) (\App\Support\Tenant::org()?->milk_dispatch_max_c ?? 7),
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'options' => ['status' => MilkLot::STATUS],
             'canQuality' => $this->quality($request),
         ]);
+    }
+
+    /** D-195: feed cost (PKR) of the does in milk between two dates from recorded meals, or null when none were recorded. */
+    private function milkFeedCost(Carbon $from, Carbon $to): ?float
+    {
+        if (! \App\Models\FeedUsage::current()->whereBetween('fed_on', [$from->toDateString(), $to->toDateString()])->exists()) {
+            return null;
+        }
+        $inMilk = Lactation::where('started_on', '<=', $to->toDateString())->where(fn ($q) => $q->whereNull('dried_on')->orWhere('dried_on', '>=', $from->toDateString()))->pluck('animal_id')->unique()->all();
+
+        return (float) \App\Support\FeedCost::build($from, $to)['goats']->whereIn('id', $inMilk)->sum('cost');
+    }
+
+    /** D-195: the last three months of milk: produced, lost, sold, revenue, feed cost, contribution. */
+    private function monthly(): array
+    {
+        return collect(range(2, 0))->map(function ($m) {
+            $from = now()->startOfMonth()->subMonths($m);
+            $to = $m === 0 ? now()->startOfDay() : $from->copy()->endOfMonth()->startOfDay();
+            $s = MilkSession::whereBetween('milked_on', [$from->toDateString(), $to->toDateString()])->get();
+            $d = MilkDispatch::whereBetween('dispatched_on', [$from->toDateString(), $to->toDateString()])->whereNotNull('sale_id')->get();
+            $produced = (float) $s->sum('produced_l');
+            $revenue = $d->sum(fn ($x) => $x->litres * $x->price_per_litre_minor) / 100;
+            $feed = $produced > 0 ? $this->milkFeedCost(Carbon::parse($from), Carbon::parse($to)) : null;
+
+            return ['month' => $from->format('M Y'), 'produced' => round($produced, 1), 'saleable' => round((float) $s->sum('saleable_l'), 1), 'lost' => round((float) $s->sum('held_l') + (float) $s->sum('discard_l'), 1),
+                'kid' => round((float) $s->sum('kid_l'), 1), 'colostrum' => round((float) $s->sum('colostrum_l'), 1), 'sold' => round((float) $d->sum('litres'), 1), 'revenue' => round($revenue),
+                'feed' => $feed !== null ? round($feed) : null, 'contribution' => $feed !== null ? round($revenue - $feed) : null,
+                'revenuePerLitre' => $d->sum('litres') > 0 ? round($revenue / $d->sum('litres'), 1) : null];
+        })->all();
     }
 
     public function close(Request $request): RedirectResponse
@@ -205,34 +253,121 @@ class DairyController extends Controller
         return back()->with('success', "{$lot->code} recalled.".($buyers ? " Notify: {$buyers}." : ''));
     }
 
-    /** Dispatch or issue to processing, from a Released lot only (BR-012); a sale posts revenue once. */
+    /**
+     * Dispatch or issue to processing, from a Released lot only (BR-012); a sale posts revenue once.
+     * D-195 (journey F): a sale passes the storage / transport checks (milk at or below the farm's maximum °C, clean
+     * container, vehicle fit), may fill a customer's milk order (its price and terms), gets an invoice and is paid now or
+     * owed on credit (Accounts receivable) until collected.
+     */
     public function dispatch(Request $request, MilkLot $lot): RedirectResponse
     {
         abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
         $data = $request->validate([
             'kind' => ['required', Rule::in(['sale', 'processing'])], 'litres' => ['required', 'numeric', 'gt:0'], 'dispatched_on' => ['required', 'date', 'before_or_equal:today'],
-            'customer_id' => ['nullable', 'exists:customers,id'], 'buyer' => ['nullable', 'string', 'max:120'], 'price_per_litre' => ['nullable', 'required_if:kind,sale', 'numeric', 'gt:0'],
-        ], ['price_per_litre.required_if' => 'A sale needs the price per litre.']);
+            'order_id' => ['nullable', 'exists:milk_orders,id'], 'customer_id' => ['nullable', 'exists:customers,id'], 'buyer' => ['nullable', 'string', 'max:120'],
+            'price_per_litre' => ['nullable', 'numeric', 'gt:0'], 'terms' => ['nullable', Rule::in(['cash', 'credit'])], 'credit_days' => ['nullable', 'integer', 'between:1,120'],
+            'dispatch_temp_c' => ['nullable', 'required_if:kind,sale', 'numeric', 'between:-5,40'], 'container_ok' => ['nullable', 'required_if:kind,sale', 'boolean'], 'vehicle_ok' => ['nullable', 'required_if:kind,sale', 'boolean'],
+        ], ['dispatch_temp_c.required_if' => 'Take the milk temperature at loading.'], ['dispatch_temp_c' => 'milk temperature']);
         if ($lot->status !== 'released') {
             throw ValidationException::withMessages(['litres' => "{$lot->code} is ".MilkLot::STATUS[$lot->status].': only Released milk can be dispatched.']);
         }
         if ($data['litres'] > $lot->remaining() + 0.001) {
             throw ValidationException::withMessages(['litres' => "Only {$lot->remaining()} L left in {$lot->code}."]);
         }
-        DB::transaction(function () use ($lot, $data, $request) {
-            $customer = ! empty($data['customer_id']) ? Customer::find($data['customer_id']) : null;
-            $price = $data['kind'] === 'sale' ? (int) round($data['price_per_litre'] * 100) : null;
+        $order = ! empty($data['order_id']) ? \App\Models\MilkOrder::findOrFail($data['order_id']) : null;
+        if ($data['kind'] === 'sale') {
+            $max = (float) (\App\Support\Tenant::org()?->milk_dispatch_max_c ?? 7);
+            $fail = array_filter([
+                (float) $data['dispatch_temp_c'] > $max ? "milk at {$data['dispatch_temp_c']} °C (must be {$max} °C or colder)" : null,
+                ! $data['container_ok'] ? 'container not clean' : null, ! $data['vehicle_ok'] ? 'vehicle not fit' : null,
+            ]);
+            if ($fail) {
+                throw ValidationException::withMessages(['dispatch_temp_c' => 'Storage / transport check failed: '.implode(', ', $fail).'. Fix it before loading.']);
+            }
+            if ($order) {
+                abort_unless($order->status === 'open', 422, 'This milk order is not open.');
+                if ($data['litres'] > $order->remaining() + 0.001) {
+                    throw ValidationException::withMessages(['litres' => "The order needs only {$order->remaining()} L more."]);
+                }
+            } elseif (empty($data['price_per_litre'])) {
+                throw ValidationException::withMessages(['price_per_litre' => 'A sale needs the price per litre (or choose a milk order).']);
+            }
+        }
+        DB::transaction(function () use ($lot, $data, $request, $order) {
+            $customer = $order?->customer ?? (! empty($data['customer_id']) ? Customer::find($data['customer_id']) : null);
+            $buyer = $customer?->name ?? ($order?->buyer ?? ($data['buyer'] ?? null));
+            $price = $data['kind'] === 'sale' ? ($order ? $order->price_per_litre_minor : (int) round($data['price_per_litre'] * 100)) : null;
+            $terms = $order?->terms ?? ($data['terms'] ?? 'cash');
+            $days = $order?->credit_days ?? ($data['credit_days'] ?? 30);
+            $invoice = null;
+            if ($price) {
+                DB::statement('LOCK TABLE milk_dispatches IN SHARE ROW EXCLUSIVE MODE');
+                $invoice = 'MINV-'.now()->format('ym').'-'.str_pad((string) (MilkDispatch::where('invoice_no', 'like', 'MINV-'.now()->format('ym').'-%')->count() + 1), 3, '0', STR_PAD_LEFT);
+            }
             $sale = $price ? Movements::sale([
-                'sold_on' => $data['dispatched_on'], 'category' => 'product', 'item' => "Goat milk {$data['litres']} L · lot {$lot->code}", 'buyer' => $customer?->name ?? ($data['buyer'] ?? null),
-                'gross' => $data['litres'] * $price / 100, 'customer_id' => $customer?->id, 'receipt_ref' => $lot->code,
-            ], $request->user(), "Goat milk {$data['litres']} L · lot {$lot->code}") : null;
-            MilkDispatch::create(['lot_id' => $lot->id, 'dispatched_on' => $data['dispatched_on'], 'kind' => $data['kind'], 'customer_id' => $customer?->id, 'buyer' => $data['buyer'] ?? null,
-                'litres' => $data['litres'], 'price_per_litre_minor' => $price, 'sale_id' => $sale?->id, 'recorded_by' => $request->user()->name]);
+                'sold_on' => $data['dispatched_on'], 'category' => 'product', 'item' => "Goat milk {$data['litres']} L · lot {$lot->code}", 'buyer' => $buyer,
+                'gross' => $data['litres'] * $price / 100, 'customer_id' => $customer?->id, 'receipt_ref' => $invoice, 'payment_status' => $terms === 'credit' ? 'pending' : 'paid',
+            ], $request->user(), "Goat milk {$data['litres']} L · lot {$lot->code} · {$invoice}") : null;
+            MilkDispatch::create(['lot_id' => $lot->id, 'dispatched_on' => $data['dispatched_on'], 'kind' => $data['kind'], 'customer_id' => $customer?->id, 'buyer' => $order ? $order->buyer : ($data['buyer'] ?? null),
+                'litres' => $data['litres'], 'price_per_litre_minor' => $price, 'sale_id' => $sale?->id, 'recorded_by' => $request->user()->name, 'order_id' => $order?->id,
+                'dispatch_temp_c' => $data['dispatch_temp_c'] ?? null, 'container_ok' => $data['container_ok'] ?? null, 'vehicle_ok' => $data['vehicle_ok'] ?? null, 'invoice_no' => $invoice,
+                'due_on' => $price && $terms === 'credit' ? \Illuminate\Support\Carbon::parse($data['dispatched_on'])->addDays($days)->toDateString() : null, 'collected_at' => $price && $terms !== 'credit' ? now() : null]);
             if ($lot->remaining() <= 0.001) {
                 $lot->update(['status' => 'dispatched']);
+            }
+            if ($order && $order->remaining() <= 0.001) {
+                $order->update(['status' => 'fulfilled']);
             }
         });
 
         return back()->with('success', "{$data['litres']} L of {$lot->code} dispatched.");
+    }
+
+    /** D-195: a customer milk order (traced to the lots it is filled from). */
+    public function order(Request $request): RedirectResponse
+    {
+        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        $data = $request->validate([
+            'customer_id' => ['nullable', 'required_without:buyer', 'exists:customers,id'], 'buyer' => ['nullable', 'string', 'max:120'], 'litres' => ['required', 'numeric', 'gt:0', 'max:100000'],
+            'price_per_litre' => ['required', 'numeric', 'gt:0', 'max:100000'], 'wanted_on' => ['required', 'date'], 'terms' => ['required', Rule::in(['cash', 'credit'])],
+            'credit_days' => ['nullable', 'required_if:terms,credit', 'integer', 'between:1,120'], 'notes' => ['nullable', 'string', 'max:300'],
+        ], ['customer_id.required_without' => 'Choose the customer (or type the buyer).']);
+        $order = DB::transaction(function () use ($data, $request) {
+            DB::statement('LOCK TABLE milk_orders IN SHARE ROW EXCLUSIVE MODE');
+            $prefix = 'MO-'.now()->format('ym').'-';
+
+            return \App\Models\MilkOrder::create(['order_no' => $prefix.str_pad((string) (\App\Models\MilkOrder::where('order_no', 'like', "$prefix%")->count() + 1), 3, '0', STR_PAD_LEFT),
+                'customer_id' => $data['customer_id'] ?? null, 'buyer' => $data['buyer'] ?? null, 'litres' => $data['litres'], 'price_per_litre_minor' => (int) round($data['price_per_litre'] * 100),
+                'wanted_on' => $data['wanted_on'], 'terms' => $data['terms'], 'credit_days' => $data['terms'] === 'credit' ? $data['credit_days'] : null, 'notes' => $data['notes'] ?? null, 'created_by' => $request->user()->name]);
+        });
+
+        return back()->with('success', "Milk order {$order->order_no} saved. Fill it from a Released lot.");
+    }
+
+    public function cancelOrder(Request $request, \App\Models\MilkOrder $order): RedirectResponse
+    {
+        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($order->status === 'open', 422);
+        $order->update(['status' => 'cancelled']);
+
+        return back()->with('success', "{$order->order_no} cancelled.");
+    }
+
+    /** D-195: the customer pays a milk invoice: Accounts receivable is cleared. */
+    public function collect(Request $request, MilkDispatch $dispatch): RedirectResponse
+    {
+        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($dispatch->sale_id && ! $dispatch->collected_at, 422, 'Nothing to collect.');
+        $data = $request->validate(['collected_on' => ['required', 'date', 'before_or_equal:today']]);
+        DB::transaction(function () use ($dispatch, $data, $request) {
+            $entry = \App\Models\LedgerEntry::find($dispatch->sale?->ledger_entry_id);
+            if ($entry) {
+                \App\Support\Accounting::collect($entry, null, $request->user()->name, $data['collected_on']);
+                $entry->update(['payment_status' => 'paid']);
+            }
+            $dispatch->update(['collected_at' => $data['collected_on']]);
+        });
+
+        return back()->with('success', "Payment for {$dispatch->invoice_no} received.");
     }
 }

@@ -36,7 +36,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 14 | Employees & Workforce | People; Shifts; Training; Skills; Leave & Payroll; Safety; Reports | Partial (D-181; training/skills to do) |
 | 15 | Assets & Maintenance | Assets; Preventive Plan; Breakdowns; Dairy Equipment; Water Equipment; Parts & Cost; Reporting | Built (D-182) |
 | 16 | Reports & Analytics | Operational; Breeding; Fattening; Dairy; Finance; Compliance; Self-Service BI; KPI Definitions | Partial |
-| 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Built – flow 17 (D-117, D-188); processing products to do |
+| 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Built – flow 17 (D-117, D-188, D-195 orders, invoices, milk profit); processing products to do |
 | 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | Built – flow 18 (D-187); feeder purchase lots and quotations to do |
 | 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review to do |
 | 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | Built – flow 20 (D-186); water-quality lab tests, manure/compost logs to do |
@@ -53,7 +53,8 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | C – Feed-to-True-Cost | 26 | Built (D-054–D-177, D-192): forecast vs stock → draft PO for the shortfall, TMR batch with weighed output (mixing loss), 3 meals offered / refused, stock counts with shrinkage, pen cost split to the goats present, gain, cost per KG gained, FCR proxy, margin, poor-response review; assumptions shown |
 | D – Disease-to-Recovery | 27 | Built (D-073–D-174, D-193): worker report → vet triage (severity, contagion) → isolate + emergency alert, notifiable task → case with lab (fee posted once) → treatment from the medicine lot with vet-set withdrawal → pen movement/sale restriction until cleared → extend or clear into suitable housing → case cost (medicine + lab + labour) → outbreak report |
 | E – Sale-to-Cash & Exit | 28 | Built (D-073, D-178, D-187, D-194): sale orders for any goat: clear-to-sell check (withdrawal, RFID, hold, restriction, health, other order) → quote per goat or per KG with market value → approval by someone else → reserved + dispatch checklist → RFID scan at loading (stop on substitute / duplicate / unknown) → invoice, exit, sale posted once (paid or receivable) → collection → cost basis and margin |
-| F–Q | 29–40 | To do |
+| F – Lactation-to-Milk-to-Cash | 29 | Built (D-117, D-188, D-195): colostrum and withdrawal held, doe scan in the milking round, AM/PM yield, allocation (kids, colostrum, discard), QA and release, customer milk orders, storage / transport checks at loading, milk invoices (cash or credit, receivable, collection), feed cost and contribution per litre, monthly milk profit |
+| G–Q | 30–40 | To do |
 
 ## Business rules (§9)
 

@@ -63,7 +63,7 @@ class DairyTest extends TestCase
         $lot = MilkLot::sole();
         $this->assertSame(['MLK-'.now()->format('ymd').'-001', 'pending_qc', 1.5], [$lot->code, $lot->status, $lot->litres]);
 
-        $sell = fn () => $this->actingAs($this->user('manager'))->post("/dairy/lots/{$lot->id}/dispatch", ['kind' => 'sale', 'litres' => 1.5, 'dispatched_on' => now()->toDateString(), 'buyer' => 'Dairy shop', 'price_per_litre' => 200]);
+        $sell = fn () => $this->actingAs($this->user('manager'))->post("/dairy/lots/{$lot->id}/dispatch", ['kind' => 'sale', 'litres' => 1.5, 'dispatched_on' => now()->toDateString(), 'buyer' => 'Dairy shop', 'price_per_litre' => 200, 'dispatch_temp_c' => 4, 'container_ok' => true, 'vehicle_ok' => true]);
         $sell()->assertSessionHasErrors('litres'); // BR-012: not released
         $this->actingAs($this->user('caretaker'))->post("/dairy/lots/{$lot->id}/test", ['appearance_ok' => true, 'smell_ok' => true, 'residue' => 'negative', 'tank' => 'T1', 'storage_temp_c' => 4])->assertSessionHasNoErrors();
         $this->assertSame('stored', $lot->fresh()->status);

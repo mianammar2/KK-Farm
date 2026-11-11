@@ -58,6 +58,7 @@ class MilkingController extends Controller
                     'dim' => $l->daysInMilk(), 'avg7' => $week[$doe->id] ?? null, 'total' => round((float) ($totals[$l->id]->l ?? 0), 1),
                     'last' => isset($totals[$l->id]) ? Carbon::parse($totals[$l->id]->last)->format('j M') : null,
                     'todayBySession' => $todayRows->where('animal_id', $doe->id)->mapWithKeys(fn ($r) => [$r->session => $r->litres])->all(),
+                    'epc' => \App\Models\RfidAssignment::where('animal_id', $doe->id)->whereNull('valid_to')->with('tag')->first()?->tag?->tag_code, // D-195: scan the doe in the milking round
                     'high' => Milking::isHighYield($doe), 'pregnant' => in_array($doe->repro_status, ['pregnant', 'expected_kidding'], true),
                     'withdrawal' => $withdrawal?->format('j M Y'), 'standard' => $std?->name, 'cp' => $std?->range(),
                     'dryDue' => $org->dry_off_days && $l->daysInMilk() >= $org->dry_off_days,

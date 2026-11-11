@@ -13,9 +13,13 @@ type Lot = {
     id: number; code: string; litres: number; remaining: number; status: string; session: string; tank: string | null; temp: number | null; residue: string | null;
     testedBy: string | null; releasedBy: string | null; hold: string | null; buyers: Array<{ on: string; to: string; litres: number; kind: string }>;
 };
+type Order = { id: number; no: string; customer: string | null; litres: number; remaining: number; price: number; wanted: string; terms: string; creditDays: number | null; status: string; by: string };
+type Invoice = { id: number; invoice: string; on: string; to: string | null; litres: number; amount: number; lot: string | null; order: string | null; temp: number | null; due: string | null; overdue: boolean; collected: string | null };
+type Month = { month: string; produced: number; saleable: number; lost: number; kid: number; colostrum: number; sold: number; revenue: number; feed: number | null; contribution: number | null; revenuePerLitre: number | null };
 type Props = {
     day: string; sessions: Session[]; lots: Lot[]; customers: Array<{ id: number; name: string }>; options: { status: Record<string, string> }; canQuality: boolean;
-    kpi: { perDoeDay: number | null; saleablePct: number | null; lossPct: number | null; produced: number; revenue: number; costPerLitre: number | null; feedDay: number };
+    kpi: { perDoeDay: number | null; saleablePct: number | null; lossPct: number | null; produced: number; revenue: number; costPerLitre: number | null; feedDay: number; costActual: boolean; revenuePerLitre: number | null; contributionPerLitre: number | null; owed: number };
+    orders: Order[]; invoices: Invoice[]; monthly: Month[]; maxTemp: number;
 };
 
 const LOT_CLS: Record<string, string> = { pending_qc: 'bg-watch-100 text-watch-700', stored: 'bg-cobalt-100 text-cobalt-800', released: 'bg-ok-100 text-ok-700', hold: 'bg-treat-100 text-treat-700', rejected: 'bg-crit-100 text-crit-700', dispatched: 'bg-glaze text-ink-soft', recalled: 'bg-crit-100 text-crit-700' };
@@ -33,9 +37,10 @@ export default function Dairy(p: Props) {
                 <Stat label="Litres / doe / day (30 days)" value={p.kpi.perDoeDay ?? '—'} note={`${p.kpi.produced} L produced`} />
                 <Stat label="Saleable share" value={p.kpi.saleablePct !== null ? `${p.kpi.saleablePct}%` : '—'} note={p.kpi.lossPct !== null ? `${p.kpi.lossPct}% held or discarded` : undefined} />
                 <Stat label="Milk revenue (30 days)" value={pkr(p.kpi.revenue)} />
-                <Stat label="Feed cost / litre (estimate)" value={p.kpi.costPerLitre !== null ? pkr(p.kpi.costPerLitre) : '—'} note={`does in milk eat about ${pkr(p.kpi.feedDay)}/day`} />
+                <Stat label={p.kpi.costActual ? 'Feed cost / litre' : 'Feed cost / litre (estimate)'} value={p.kpi.costPerLitre !== null ? pkr(p.kpi.costPerLitre) : '—'} note={p.kpi.costActual ? 'from meals fed to does in milk' : `does in milk eat about ${pkr(p.kpi.feedDay)}/day`} />
+                <Stat label="Revenue / litre sold" value={p.kpi.revenuePerLitre !== null ? pkr(p.kpi.revenuePerLitre) : '—'} note={p.kpi.contributionPerLitre !== null ? `contribution ${pkr(p.kpi.contributionPerLitre)}/L` : undefined} tone={p.kpi.contributionPerLitre !== null && p.kpi.contributionPerLitre < 0 ? 'alert' : undefined} />
             </StatRow>
-            <Tabs value={tab} onChange={setTab} tabs={[{ id: 'sessions', label: 'Close Sessions' }, { id: 'lots', label: 'Milk Lots & QA', count: waiting || undefined }, { id: 'trace', label: 'Dispatch & Trace' }]} />
+            <Tabs value={tab} onChange={setTab} tabs={[{ id: 'sessions', label: 'Close Sessions' }, { id: 'lots', label: 'Milk Lots & QA', count: waiting || undefined }, { id: 'orders', label: 'Milk Orders', count: p.orders.filter((o) => o.status === 'open').length || undefined }, { id: 'trace', label: 'Dispatch & Trace' }, { id: 'money', label: 'Invoices & Milk Profit', count: p.invoices.filter((i) => !i.collected).length || undefined }]} />
             {tab === 'sessions' ? (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm"><span className="font-semibold">Day</span><input type="date" max={today()} className="field !w-44 !py-1.5" value={p.day} onChange={(e) => router.get('/dairy', { tab: 'sessions', day: e.target.value }, { preserveScroll: true })} /></div>
@@ -44,6 +49,8 @@ export default function Dairy(p: Props) {
             ) : null}
             {tab === 'lots' ? <Lots {...p} lots={p.lots.filter((l) => !['dispatched', 'recalled', 'rejected'].includes(l.status))} empty="No lots waiting. Close a session to create one." /> : null}
             {tab === 'trace' ? <Lots {...p} lots={p.lots} empty="No milk lots in the last 30 days." /> : null}
+            {tab === 'orders' ? <Orders {...p} /> : null}
+            {tab === 'money' ? <Money {...p} /> : null}
         </>
     );
 }
@@ -112,20 +119,21 @@ function Balance({ produced, held, colostrum, kid, discard, saleable }: { produc
     );
 }
 
-function Lots({ lots, customers, options, canQuality, empty }: Props & { empty: string }) {
+function Lots({ lots, customers, options, canQuality, empty, orders, maxTemp }: Props & { empty: string }) {
     const [shown, more] = useFive(lots);
     return (
         <Panel flush>
-            {lots.length ? <ul className="divide-y divide-rule">{shown.map((l) => <LotItem key={l.id} l={l} customers={customers} options={options} canQuality={canQuality} />)}</ul> : <Empty title={empty} />}
+            {lots.length ? <ul className="divide-y divide-rule">{shown.map((l) => <LotItem key={l.id} l={l} customers={customers} options={options} canQuality={canQuality} orders={orders} maxTemp={maxTemp} />)}</ul> : <Empty title={empty} />}
             {more}
         </Panel>
     );
 }
 
-function LotItem({ l, customers, options, canQuality }: { l: Lot; customers: Props['customers']; options: Props['options']; canQuality: boolean }) {
+function LotItem({ l, customers, options, canQuality, orders, maxTemp }: { l: Lot; customers: Props['customers']; options: Props['options']; canQuality: boolean; orders: Order[]; maxTemp: number }) {
     const [mode, setMode] = useState<'test' | 'dispatch' | 'hold' | 'recall' | null>(null);
     const test = useForm({ appearance_ok: true, smell_ok: true, residue: 'negative', tank: '', storage_temp_c: '', notes: '' });
-    const send = useForm({ kind: 'sale', litres: String(l.remaining), dispatched_on: today(), customer_id: '', buyer: '', price_per_litre: '' });
+    const send = useForm({ kind: 'sale', litres: String(l.remaining), dispatched_on: today(), customer_id: '', buyer: '', price_per_litre: '', order_id: '', terms: 'cash', credit_days: '30', dispatch_temp_c: '', container_ok: false as boolean, vehicle_ok: false as boolean });
+    const openOrders = orders.filter((o) => o.status === 'open');
     const reason = useForm({ reason: '' });
     const e = { ...(test.errors as Record<string, string>), ...(send.errors as Record<string, string>) };
     return (
@@ -156,12 +164,21 @@ function LotItem({ l, customers, options, canQuality }: { l: Lot; customers: Pro
                 </form>
             ) : null}
             {mode === 'dispatch' ? (
-                <form className="mt-2 grid gap-2 rounded-tile bg-turq-100/50 p-3 sm:grid-cols-6" onSubmit={(ev) => { ev.preventDefault(); send.transform((x) => ({ ...x, customer_id: x.customer_id || null, price_per_litre: x.kind === 'sale' ? x.price_per_litre : null })); send.post(`/dairy/lots/${l.id}/dispatch`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
+                <form className="mt-2 grid gap-2 rounded-tile bg-turq-100/50 p-3 sm:grid-cols-6" onSubmit={(ev) => { ev.preventDefault(); send.transform((x) => ({ ...x, customer_id: x.customer_id || null, order_id: x.order_id || null, price_per_litre: x.kind === 'sale' && !x.order_id ? x.price_per_litre : null, dispatch_temp_c: x.dispatch_temp_c || null, credit_days: x.terms === 'credit' ? x.credit_days : null })); send.post(`/dairy/lots/${l.id}/dispatch`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="To"><select className="field" value={send.data.kind} onChange={(x) => send.setData('kind', x.target.value)}><option value="sale">Buyer (sale)</option><option value="processing">Processing</option></select></Field>
                     <Field label="Litres" error={e.litres}><input type="number" step="0.1" className="field" value={send.data.litres} onChange={(x) => send.setData('litres', x.target.value)} /></Field>
-                    {send.data.kind === 'sale' ? <Field label="Customer"><select className="field" value={send.data.customer_id} onChange={(x) => send.setData('customer_id', x.target.value)}><option value="">—</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field> : null}
-                    {send.data.kind === 'sale' ? <Field label="Or buyer"><input className="field" value={send.data.buyer} onChange={(x) => send.setData('buyer', x.target.value)} /></Field> : null}
-                    {send.data.kind === 'sale' ? <Field label="PKR / litre" error={e.price_per_litre}><input type="number" className="field" value={send.data.price_per_litre} onChange={(x) => send.setData('price_per_litre', x.target.value)} /></Field> : null}
+                    {send.data.kind === 'sale' && openOrders.length ? <Field label="Milk order"><select className="field" value={send.data.order_id} onChange={(x) => { const o = openOrders.find((q) => String(q.id) === x.target.value); send.setData((d) => ({ ...d, order_id: x.target.value, litres: o ? String(Math.min(o.remaining, l.remaining)) : d.litres })); }}><option value="">No order</option>{openOrders.map((o) => <option key={o.id} value={o.id}>{o.no} · {o.customer} · {o.remaining} L</option>)}</select></Field> : null}
+                    {send.data.kind === 'sale' && !send.data.order_id ? <>
+                        <Field label="Customer"><select className="field" value={send.data.customer_id} onChange={(x) => send.setData('customer_id', x.target.value)}><option value="">—</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
+                        <Field label="Or buyer"><input className="field" value={send.data.buyer} onChange={(x) => send.setData('buyer', x.target.value)} /></Field>
+                        <Field label="PKR / litre" error={e.price_per_litre}><input type="number" className="field" value={send.data.price_per_litre} onChange={(x) => send.setData('price_per_litre', x.target.value)} /></Field>
+                        <Field label="Payment"><select className="field" value={send.data.terms} onChange={(x) => send.setData('terms', x.target.value)}><option value="cash">Paid now</option><option value="credit">Credit</option></select></Field>
+                    </> : null}
+                    {send.data.kind === 'sale' ? <>
+                        <Field label="Milk °C at loading" error={e.dispatch_temp_c} hint={`${maxTemp} °C or colder`}><input type="number" step="0.1" className="field" value={send.data.dispatch_temp_c} onChange={(x) => send.setData('dispatch_temp_c', x.target.value)} /></Field>
+                        <label className="flex items-center gap-1.5 pt-5"><input type="checkbox" checked={send.data.container_ok} onChange={(x) => send.setData('container_ok', x.target.checked)} /> Container clean</label>
+                        <label className="flex items-center gap-1.5 pt-5"><input type="checkbox" checked={send.data.vehicle_ok} onChange={(x) => send.setData('vehicle_ok', x.target.checked)} /> Vehicle fit</label>
+                    </> : null}
                     <div className="flex items-end"><Button type="submit" disabled={send.processing}>Dispatch</Button></div>
                 </form>
             ) : null}
@@ -171,6 +188,71 @@ function LotItem({ l, customers, options, canQuality }: { l: Lot; customers: Pro
                     <Button type="submit" variant={mode === 'recall' ? 'danger' : 'primary'} disabled={reason.processing}>{mode === 'hold' ? 'Hold Lot' : 'Recall Lot'}</Button>
                 </form>
             ) : null}
+        </li>
+    );
+}
+
+/** D-195: customer milk orders, filled from Released lots (Dispatch on a lot). */
+function Orders({ orders, customers, canQuality }: Props) {
+    const [adding, setAdding] = useState(false);
+    const form = useForm({ customer_id: '', buyer: '', litres: '', price_per_litre: '', wanted_on: today(), terms: 'cash', credit_days: '30', notes: '' });
+    const e = form.errors as Record<string, string>;
+    return (
+        <div className="space-y-3">
+            {adding ? <Panel title="New Milk Order">
+                <form className="grid gap-2 p-4 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, customer_id: d.customer_id || null, buyer: d.buyer || null, credit_days: d.terms === 'credit' ? d.credit_days : null })); form.post('/dairy/orders', { preserveScroll: true, onSuccess: () => { setAdding(false); form.reset(); } }); }}>
+                    <Field label="Customer" error={e.customer_id}><select className="field" value={form.data.customer_id} onChange={(x) => form.setData('customer_id', x.target.value)}><option value="">—</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
+                    <Field label="Or buyer"><input className="field" value={form.data.buyer} onChange={(x) => form.setData('buyer', x.target.value)} /></Field>
+                    <Field label="Litres" error={e.litres}><input type="number" step="0.5" className="field" value={form.data.litres} onChange={(x) => form.setData('litres', x.target.value)} /></Field>
+                    <Field label="PKR / litre" error={e.price_per_litre}><input type="number" className="field" value={form.data.price_per_litre} onChange={(x) => form.setData('price_per_litre', x.target.value)} /></Field>
+                    <Field label="Wanted on" error={e.wanted_on}><input type="date" className="field" value={form.data.wanted_on} onChange={(x) => form.setData('wanted_on', x.target.value)} /></Field>
+                    <Field label="Payment"><select className="field" value={form.data.terms} onChange={(x) => form.setData('terms', x.target.value)}><option value="cash">Paid on delivery</option><option value="credit">Credit</option></select></Field>
+                    {form.data.terms === 'credit' ? <Field label="Credit days" error={e.credit_days}><input type="number" className="field" value={form.data.credit_days} onChange={(x) => form.setData('credit_days', x.target.value)} /></Field> : null}
+                    <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save Order</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
+                </form>
+            </Panel> : null}
+            <Panel flush title="Milk Orders" description="Fill an order from a Released lot (Milk Lots → Dispatch → choose the order). The lot it came from stays traceable." actions={canQuality ? <Button onClick={() => setAdding(true)}>+ Milk Order</Button> : undefined}>
+                {orders.length ? <ul className="divide-y divide-rule">{orders.map((o) => <li key={o.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+                    <strong className="font-mono text-cobalt-900">{o.no}</strong><span className="font-semibold">{o.customer}</span>
+                    <span>{o.litres} L at {pkr(o.price)}/L · wanted {o.wanted} · {o.terms === 'credit' ? `credit ${o.creditDays} days` : 'cash'}</span>
+                    <Chip className={o.status === 'open' ? 'bg-watch-100 text-watch-700' : o.status === 'fulfilled' ? 'bg-ok-100 text-ok-700' : 'bg-glaze text-ink-soft'}>{o.status === 'open' ? `${o.remaining} L to send` : o.status === 'fulfilled' ? 'Fulfilled' : 'Cancelled'}</Chip>
+                    {o.status === 'open' && canQuality ? <Button variant="quiet" className="ml-auto" onClick={() => router.post(`/dairy/orders/${o.id}/cancel`, {}, { preserveScroll: true })}>Cancel</Button> : null}
+                </li>)}</ul> : <Empty title="No milk orders" />}
+            </Panel>
+        </div>
+    );
+}
+
+/** D-195: milk invoices (paid or owed) and the monthly milk profit view. */
+function Money({ invoices, monthly, kpi }: Props) {
+    const [shown, more] = useFive(invoices, 10);
+    return (
+        <div className="space-y-3">
+            <Panel flush title="Milk Profit by Month" description="Produced, lost (held or discarded), kept for kids and colostrum, sold; revenue less the feed of the does in milk.">
+                <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Month</th><th>Produced L</th><th>Saleable</th><th>Held / discarded</th><th>Kids</th><th>Colostrum</th><th>Sold L</th><th>Revenue</th><th>Revenue / L</th><th>Feed cost</th><th>Contribution</th></tr></thead><tbody>
+                    {monthly.map((m) => <tr key={m.month}><td className="font-semibold">{m.month}</td><td>{m.produced}</td><td>{m.saleable}</td><td>{m.lost}</td><td>{m.kid}</td><td>{m.colostrum}</td><td>{m.sold}</td><td>{pkr(m.revenue)}</td><td>{m.revenuePerLitre !== null ? pkr(m.revenuePerLitre) : '—'}</td><td>{m.feed !== null ? pkr(m.feed) : '—'}</td><td className={m.contribution !== null && m.contribution < 0 ? 'text-crit-700' : ''}>{m.contribution !== null ? pkr(m.contribution) : '—'}</td></tr>)}
+                </tbody></table></div>
+            </Panel>
+            <Panel flush title="Milk Invoices" description={kpi.owed ? `Customers owe ${pkr(kpi.owed)} for milk.` : 'Nothing owed for milk.'}>
+                {invoices.length ? <ul className="divide-y divide-rule">{shown.map((i) => <InvoiceRow key={i.id} i={i} />)}</ul> : <Empty title="No milk invoices yet" />}
+                {more}
+            </Panel>
+        </div>
+    );
+}
+
+function InvoiceRow({ i }: { i: Invoice }) {
+    const form = useForm({ collected_on: today() });
+    return (
+        <li className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+            <strong className="font-mono text-cobalt-900">{i.invoice}</strong><span className="font-semibold">{i.to}</span>
+            <span className="text-ink-soft">{i.on} · {i.litres} L · lot {i.lot}{i.order ? ` · ${i.order}` : ''}{i.temp !== null ? ` · ${i.temp} °C` : ''}</span>
+            <span className="font-semibold">{pkr(i.amount)}</span>
+            {i.collected ? <Chip className="bg-ok-100 text-ok-700">Paid {i.collected}</Chip> : <>
+                <Chip className={i.overdue ? 'bg-crit-100 text-crit-700' : 'bg-treat-100 text-treat-700'}>{i.overdue ? `Overdue since ${i.due}` : `Owed, due ${i.due}`}</Chip>
+                <input type="date" max={today()} className="field ml-auto !w-40" value={form.data.collected_on} onChange={(x) => form.setData('collected_on', x.target.value)} />
+                <Button variant="secondary" disabled={form.processing} onClick={() => form.post(`/dairy/dispatches/${i.id}/collect`, { preserveScroll: true })}>Record Payment</Button>
+            </>}
         </li>
     );
 }
