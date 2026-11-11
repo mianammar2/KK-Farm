@@ -8,11 +8,6 @@ import type { SharedProps } from '../types';
 /** Notes from the Action Center feed (same as the bell). */
 type Note = { key: string; count: number; severity: 'critical' | 'warning' | 'info' };
 
-const greeting = () => {
-    const h = new Date().getHours();
-    return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
-};
-
 /**
  * D-168: the app launcher, KK Farms' home after login (Odoo style): every part of the system the user may open, as a
  * large icon tile from the KK Farms icon library (the owner's 16 ERP apps, D-170), with a search box. Action Center shows how many things need action.
@@ -42,9 +37,8 @@ export default function Apps() {
             <div className="kk-apps relative -mx-3 -mt-4 min-h-[calc(100dvh-4rem)] px-4 pt-8 pb-16 sm:-mx-5 sm:px-8 lg:-my-5">
                 <div className="mx-auto max-w-5xl">
                     <div className="mb-8 flex flex-col items-center gap-3 text-center">
-                        <h1 className="text-2xl font-extrabold tracking-tight text-cobalt-900 sm:text-3xl">{greeting()}{auth?.name ? `, ${auth.name}` : ''}</h1>
-                        <p className="text-sm text-ink-soft">{auth?.roleLabel} · choose an app</p>
-                        <label className="relative mt-1 w-full max-w-md">
+                        <h1 className="sr-only">Apps</h1>
+                        <label className="relative w-full max-w-md">
                             <Search size={17} aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-faint" />
                             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search apps" aria-label="Search apps" className="field rounded-full! pl-10 shadow-sm" />
                         </label>

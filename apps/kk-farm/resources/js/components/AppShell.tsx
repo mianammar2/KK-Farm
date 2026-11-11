@@ -277,10 +277,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     <LayoutGrid size={20} />
                 </Link>
                 {home ? <Link href="/apps" className="shrink-0"><BrandMark size={40} /></Link> : null}
-                <form onSubmit={submitSearch} className="relative min-w-0 flex-1 sm:max-w-sm" role="search">
-                    <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint" />
-                    <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search goats" aria-label="Search goats by number, name or tag" className="field pl-9" />
-                </form>
+                {home ? null : ( // the home screen keeps only its app search
+                    <form onSubmit={submitSearch} className="relative min-w-0 flex-1 sm:max-w-sm" role="search">
+                        <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint" />
+                        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search goats" aria-label="Search goats by number, name or tag" className="field pl-9" />
+                    </form>
+                )}
                 {page.props.demo ? (
                     <span className="ml-auto hidden items-center gap-1.5 rounded-[4px] bg-watch-100 px-2 py-1 text-xs font-semibold text-watch-700 md:inline-flex">
                         Synthetic demo data
