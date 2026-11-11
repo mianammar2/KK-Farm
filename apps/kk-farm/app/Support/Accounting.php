@@ -149,8 +149,15 @@ final class Accounting
 
         if ($e->direction === 'in') {
             $fee = (int) round(($e->fee ?? 0) * 100);
+            // D-194: a sale on credit is owed by the customer: the part not received now goes to Accounts receivable.
+            $received = match ($e->payment_status ?? 'paid') {
+                'pending' => 0,
+                'partial' => max(0, min($amount, (int) round(($e->paid_now ?? 0) * 100))),
+                default => $amount,
+            };
             $lines = [
-                ['account_id' => $money, 'debit' => $amount] + $tag,
+                ['account_id' => $money, 'debit' => $received] + $tag,
+                ['account_id' => self::account('receivable')->id, 'debit' => $amount - $received] + $tag,
                 ['account_id' => self::account('fees')->id, 'debit' => $fee] + $tag,
                 ['account_id' => $account->id, 'credit' => $amount + $fee] + $tag,
             ];
@@ -176,6 +183,28 @@ final class Accounting
     {
         return (int) JournalLine::whereHas('entry', fn ($q) => $q->where('ledger_entry_id', $e->id))
             ->where('account_id', self::account('payable')->id)->sum(DB::raw('credit_minor::bigint - debit_minor::bigint'));
+    }
+
+    /** D-194: what a customer still owes on an income entry (Accounts receivable balance of its journals). */
+    public static function receivableMinor(LedgerEntry $e): int
+    {
+        return (int) JournalLine::whereHas('entry', fn ($q) => $q->where('ledger_entry_id', $e->id))
+            ->where('account_id', self::account('receivable')->id)->sum(DB::raw('debit_minor::bigint - credit_minor::bigint'));
+    }
+
+    /** D-194: the customer pays: debit cash or bank, credit Accounts receivable. */
+    public static function collect(LedgerEntry $e, ?int $moneyAccountId, string $by, ?string $date = null): ?JournalEntry
+    {
+        $owed = self::receivableMinor($e);
+        if ($owed <= 0) {
+            return null;
+        }
+        $tag = ['animal_id' => $e->animal_id, 'counterparty' => $e->counterparty];
+
+        return self::post($date ?? now()->toDateString(), "Receipt: {$e->category}".($e->counterparty ? " · {$e->counterparty}" : ''), 'receipt', [
+            ['account_id' => $moneyAccountId ?: self::account('cash')->id, 'debit' => $owed] + $tag,
+            ['account_id' => self::account('receivable')->id, 'credit' => $owed] + $tag,
+        ], $by, ['ledger_entry_id' => $e->id, 'reference' => $e->reference]);
     }
 
     /** Settle what is still owed on an expense: debit payable, credit cash or bank. */

@@ -92,6 +92,7 @@ final class Movements
                 self::sale([
                     'sold_on' => $on->toDateString(), 'animal_id' => $animal->id, 'category' => $data['sale_category'] ?? 'live_goat', 'buyer' => $data['destination'] ?? null,
                     'gross' => $amount / 100, 'fee' => $data['fee'] ?? 0, 'receipt_ref' => $data['evidence_ref'] ?? null, 'movement_id' => $movement->id,
+                    'payment_status' => $data['payment_status'] ?? 'paid', 'customer_id' => $data['customer_id'] ?? null,
                 ], $by, "Sale of {$animal->farm_number}");
             }
 
@@ -112,7 +113,7 @@ final class Movements
             $ledger = LedgerEntry::create([
                 'direction' => 'in', 'category' => ($data['category'] ?? 'other') === 'product' ? 'Product sale' : 'Animal sale', 'amount' => ($gross - $fee) / 100, 'fee' => $fee ? $fee / 100 : null, 'money_account_id' => $data['money_account_id'] ?? null,
                 'occurred_on' => $data['sold_on'], 'counterparty' => $data['buyer'] ?? null, 'description' => $description ?? ($data['item'] ?? 'Sale'),
-                'animal_id' => $data['animal_id'] ?? null, 'recorded_by' => $by->name,
+                'animal_id' => $data['animal_id'] ?? null, 'recorded_by' => $by->name, 'payment_status' => $data['payment_status'] ?? 'paid', // D-194: credit sale → receivable
             ]);
 
             return Sale::create([

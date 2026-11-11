@@ -163,7 +163,10 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'sales', no: '12', label: 'Sales & Livestock Trading', art: 'mod-sales', modules: ['sales', 'value', 'finance'], linked: ['livestock', 'growth', 'accounting'], sections: [
         S('Overview', '/sales', 'All Sales'),
-        S('Operations', '/movements', 'Sell a Goat (Dispatch)'),
+        S('Operations', '/sales/orders', 'Sale Orders & Dispatch'),
+        S('Operations', '/sales/orders?tab=new', 'New Price Quote'),
+        S('Records', '/sales/orders?tab=done', 'Invoices & Collections'),
+        S('Operations', '/movements', 'Other Exits'),
         S('Operations', '/sales', 'Sell Products'),
         S('Records', '/sales?tab=customers', 'Customers'),
         S('Records', '/value', 'Herd Value & Pricing'),

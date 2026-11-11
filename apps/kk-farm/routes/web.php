@@ -63,6 +63,20 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
     });
+    // D-194: journey E Sale-to-Cash & Exit
+    Route::middleware('module:sales')->group(function (): void {
+        $so = \App\Http\Controllers\SaleOrderController::class;
+        Route::get('/sales/orders', [$so, 'index']);
+        Route::post('/sales/orders', [$so, 'quote']);
+        Route::post('/sales/orders/{order}/approve', [$so, 'approve']);
+        Route::post('/sales/orders/{order}/checklist', [$so, 'checklist']);
+        Route::post('/sales/orders/{order}/scan', [$so, 'scan']);
+        Route::post('/sales/orders/{order}/dispatch', [$so, 'dispatch']);
+        Route::post('/sales/orders/{order}/collect', [$so, 'collect']);
+        Route::post('/sales/orders/{order}/cancel', [$so, 'cancel']);
+        Route::post('/sales/order-lines/{line}/remove', [$so, 'remove']);
+    });
+
     // D-193: journey D Disease-to-Recovery
     Route::middleware('module:health')->group(function (): void {
         $dc = \App\Http\Controllers\DiseaseController::class;

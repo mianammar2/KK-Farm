@@ -9,7 +9,7 @@ class JournalEntry extends Model
 {
     public const UPDATED_AT = null;
 
-    public const SOURCES = ['expense' => 'Expense', 'income' => 'Income', 'sale' => 'Sale', 'payment' => 'Payment', 'reversal' => 'Reversal', 'manual' => 'Manual journal', 'opening' => 'Opening balance'];
+    public const SOURCES = ['expense' => 'Expense', 'income' => 'Income', 'sale' => 'Sale', 'payment' => 'Payment', 'receipt' => 'Customer Receipt', 'reversal' => 'Reversal', 'manual' => 'Manual journal', 'opening' => 'Opening balance'];
 
     protected $guarded = [];
 

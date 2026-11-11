@@ -31,7 +31,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 09 | Farm Operations & Tasks | Daily Routines; Task Planner; Work Orders; Checklists; Incidents; Approvals; Reports | Built (D-180) |
 | 10 | Inventory & Stores | Products; Stock Locations; Operations; Batch & Expiry; Reordering; Consumption; Valuation; Reporting | Partial (D-178) |
 | 11 | Purchase & Procurement | Suppliers; Purchase Requests; Purchase Orders; Animal Purchase; Materials Purchase; Receiving; Vendor Bills; Reporting | Partial (D-178; animal purchase lots D-190) |
-| 12 | Sales & Livestock Trading | Animal Catalogue; Customers; Sales Pipeline; Sales Orders; Health Clearance; Dispatch; Billing; Reporting | Partial (D-178) |
+| 12 | Sales & Livestock Trading | Animal Catalogue; Customers; Sales Pipeline; Sales Orders; Health Clearance; Dispatch; Billing; Reporting | Built (D-178, D-194 sale orders, RFID dispatch, invoices, receivables) |
 | 13 | Accounting & Finance | Accounting; Cash & Bank; Payables; Receivables; Farm Costing; Production Economics; Budgets; Reports | Partial |
 | 14 | Employees & Workforce | People; Shifts; Training; Skills; Leave & Payroll; Safety; Reports | Partial (D-181; training/skills to do) |
 | 15 | Assets & Maintenance | Assets; Preventive Plan; Breakdowns; Dairy Equipment; Water Equipment; Parts & Cost; Reporting | Built (D-182) |
@@ -52,7 +52,8 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | B – Birth-to-Breeder | 25 | Built (D-161–D-176, D-191): kidding with live / stillborn per kid (no IDs for stillborns), colostrum and kid care, viable and stable? → neonatal care unit and vet, kid ID + RFID, weaning, growth vs plan → nutrition / vet intervention with follow-up, BR-005 replacement breeder or sale selection |
 | C – Feed-to-True-Cost | 26 | Built (D-054–D-177, D-192): forecast vs stock → draft PO for the shortfall, TMR batch with weighed output (mixing loss), 3 meals offered / refused, stock counts with shrinkage, pen cost split to the goats present, gain, cost per KG gained, FCR proxy, margin, poor-response review; assumptions shown |
 | D – Disease-to-Recovery | 27 | Built (D-073–D-174, D-193): worker report → vet triage (severity, contagion) → isolate + emergency alert, notifiable task → case with lab (fee posted once) → treatment from the medicine lot with vet-set withdrawal → pen movement/sale restriction until cleared → extend or clear into suitable housing → case cost (medicine + lab + labour) → outbreak report |
-| E–Q | 28–40 | To do |
+| E – Sale-to-Cash & Exit | 28 | Built (D-073, D-178, D-187, D-194): sale orders for any goat: clear-to-sell check (withdrawal, RFID, hold, restriction, health, other order) → quote per goat or per KG with market value → approval by someone else → reserved + dispatch checklist → RFID scan at loading (stop on substitute / duplicate / unknown) → invoice, exit, sale posted once (paid or receivable) → collection → cost basis and margin |
+| F–Q | 29–40 | To do |
 
 ## Business rules (§9)
 
@@ -83,7 +84,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-023 | Major welfare concern → inspection/medical task | Built (D-185) |
 | BR-024 | Every dose consumes a traceable lot | Partial |
 | BR-025 | Held stock/milk/feed never sold | Built (D-188, D-189): quality holds block goat sale/meat exit, milk release/dispatch, feed use and medicine batch issue |
-| BR-026 | Dispatch verifies tag/RFID + approved sale | Built for fattening dispatch (D-187) |
+| BR-026 | Dispatch verifies tag/RFID + approved sale | Built (fattening D-187, every sale order D-194) |
 | BR-027 | Creator cannot self-approve restricted changes | Partial (milk release, CAPA approval and verification, SOP approval: D-188, D-189) |
 | BR-028 | Offline sync without silent overwrite | Partial |
 | BR-029 | Audit of key changes (old/new) | Partial |
