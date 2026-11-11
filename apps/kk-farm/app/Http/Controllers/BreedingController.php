@@ -132,6 +132,7 @@ class BreedingController extends Controller
         $dam = Animal::findOrFail($data['dam_id']);
         abort_unless($dam->sex === 'female', 422, 'The dam must be a female goat.');
         \App\Support\WelfareCare::assertRoutineAllowed($dam, 'dam_id'); // D-199
+        \App\Support\ReproLoss::assertMayBreed($dam); // D-206
         if (! empty($data['sire_id'])) {
             \App\Support\WelfareCare::assertRoutineAllowed(Animal::findOrFail($data['sire_id']), 'sire_id');
         }
@@ -433,6 +434,7 @@ class BreedingController extends Controller
                 Maternity::admit($kidding, $dam->fresh(), $user);
             }
             \App\Support\PregnancyAlerts::raise($kidding, $dam, $tags);
+            \App\Support\ReproLoss::open($kidding, $dam, $mating->sire_id, $by); // D-206
 
             return $tags;
         });

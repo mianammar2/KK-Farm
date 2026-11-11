@@ -252,6 +252,13 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:breeding')->group(function (): void {
         Route::get('/breeding', [BreedingController::class, 'index']);
         Route::post('/breeding/matings', [BreedingController::class, 'store']);
+        Route::get('/repro-loss', [\App\Http\Controllers\ReproLossController::class, 'index']); // D-206
+        Route::post('/repro-loss/{case}/contain', [\App\Http\Controllers\ReproLossController::class, 'contain']);
+        Route::post('/repro-loss/{case}/material', [\App\Http\Controllers\ReproLossController::class, 'material']);
+        Route::post('/repro-loss/{case}/sample', [\App\Http\Controllers\ReproLossController::class, 'sample']);
+        Route::post('/repro-loss/{case}/diagnose', [\App\Http\Controllers\ReproLossController::class, 'diagnose']);
+        Route::post('/repro-loss/{case}/close', [\App\Http\Controllers\ReproLossController::class, 'close']);
+        Route::post('/repro-loss/staff/{user}/train', [\App\Http\Controllers\ReproLossController::class, 'train']);
         Route::get('/genetics', [\App\Http\Controllers\GeneticsController::class, 'index']); // D-201
         Route::post('/genetics/decide/{animal}', [\App\Http\Controllers\GeneticsController::class, 'decide']);
         Route::post('/genetics/settings', [\App\Http\Controllers\GeneticsController::class, 'settings']);

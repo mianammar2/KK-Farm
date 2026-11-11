@@ -68,6 +68,7 @@ export const APPS: ErpApp[] = [
     { key: 'maternity', no: '04', label: 'Maternity & Kid Care', art: 'ic-kidding', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
         S('Overview', '/breeding?tab=calendar', 'Upcoming Deliveries'),
         S('Operations', '/breeding?tab=kidding', 'Kidding & Pregnancy Outcomes'),
+        S('Operations', '/repro-loss', 'Pregnancy Loss Investigation'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
         S('Operations', '/breeding?tab=kidcare', 'Kid Care'),
         S('Operations', '/breeding?tab=weaning', 'Weaning'),
