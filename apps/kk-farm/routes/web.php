@@ -239,6 +239,10 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/health/clinical', [HealthController::class, 'clinical']);
         Route::post('/health/records/{record}/close', [HealthController::class, 'close']);
         Route::post('/health/cases', [HealthController::class, 'openCase']);
+        Route::get('/parasites', [\App\Http\Controllers\ParasiteController::class, 'index']); // D-200
+        Route::post('/parasites/samples', [\App\Http\Controllers\ParasiteController::class, 'sample']);
+        Route::post('/parasites/samples/{sample}/decide', [\App\Http\Controllers\ParasiteController::class, 'decide']);
+        Route::post('/parasites/guide', [\App\Http\Controllers\ParasiteController::class, 'guide']);
         Route::post('/health/checkups', [HealthController::class, 'checkup']); // D-095
         Route::post('/health/checkups/{checkup}', [HealthController::class, 'updateCheckup']); // D-099
         Route::post('/health/preventive', [HealthController::class, 'preventive']);

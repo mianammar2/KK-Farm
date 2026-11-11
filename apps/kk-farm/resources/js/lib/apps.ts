@@ -82,6 +82,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/health?tab=reports', 'Reported Concerns'),
         S('Records', '/disease?tab=restricted', 'Restricted Pens'),
         S('Reporting', '/disease?tab=outbreaks', 'Outbreak Reports'),
+        S('Operations', '/parasites', 'Parasite Testing & Control'),
         S('Operations', '/health?tab=calendar', 'Vaccination & Deworming Due'),
         S('Records', '/health?tab=care', 'Preventive Care Given'),
         S('Operations', '/intake', 'Quarantine & Clearance'),
