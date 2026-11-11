@@ -77,6 +77,11 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
         Route::post('/environment/water/report', [\App\Http\Controllers\EnvironmentController::class, 'report']);
+        Route::get('/waste', [\App\Http\Controllers\WasteController::class, 'index']); // D-204
+        Route::post('/waste/streams', [\App\Http\Controllers\WasteController::class, 'stream']);
+        Route::post('/waste/streams/{stream}', [\App\Http\Controllers\WasteController::class, 'stream']);
+        Route::post('/waste/disposals', [\App\Http\Controllers\WasteController::class, 'dispose']);
+        Route::post('/waste/disposals/{disposal}/audit', [\App\Http\Controllers\WasteController::class, 'audit']);
         Route::post('/environment/water/tests', [\App\Http\Controllers\EnvironmentController::class, 'test']);
         Route::post('/environment/issues/{issue}/supply', [\App\Http\Controllers\EnvironmentController::class, 'supply']);
         Route::post('/environment/issues/{issue}/approve-supply', [\App\Http\Controllers\EnvironmentController::class, 'approveSupply']);

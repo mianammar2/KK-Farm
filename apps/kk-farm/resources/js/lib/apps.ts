@@ -254,6 +254,8 @@ export const APPS: ErpApp[] = [
         S('Operations', '/environment?tab=issues', 'Water, Heat & Waste Issues'),
         S('Operations', '/environment?tab=tests', 'Water Lab Tests'),
         S('Operations', '/sensors?tab=alerts', 'Sensor Alarms'),
+        S('Operations', '/waste', 'Waste & Safe Disposal'),
+        S('Configuration', '/waste?tab=routes', 'Waste Routes (Adviser-Set)'),
         S('Records', '/environment?tab=records', 'Round Records'),
         S('Records', '/sensors?tab=readings', 'Sensor Readings'),
         S('Reporting', '/environment?tab=records', 'Water & Heat Compliance'),

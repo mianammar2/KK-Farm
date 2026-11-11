@@ -104,6 +104,9 @@ final class Movements
             if ($finishing) {
                 Fattening::closeMember($finishing, $type, $on, $sale?->id, $cost, $label);
             }
+            if ($type === 'death') {
+                Waste::carcassTask($animal); // D-204
+            }
 
             return $movement;
         });
