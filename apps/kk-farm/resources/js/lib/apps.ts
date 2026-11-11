@@ -77,7 +77,11 @@ export const APPS: ErpApp[] = [
     { key: 'veterinary', no: '05', label: 'Veterinary & Biosecurity', art: 'mod-health', modules: ['health'], linked: ['livestock', 'maternity', 'inventory', 'operations'], sections: [
         S('Operations', '/health?tab=checkups', 'Daily Health & Checkups'),
         S('Operations', '/health?tab=cases', 'Medical Cases'),
+        S('Overview', '/disease?tab=cases', 'Disease Control & Recovery'),
+        S('Operations', '/disease?tab=triage', 'Triage Reported Symptoms'),
         S('Operations', '/health?tab=reports', 'Reported Concerns'),
+        S('Records', '/disease?tab=restricted', 'Restricted Pens'),
+        S('Reporting', '/disease?tab=outbreaks', 'Outbreak Reports'),
         S('Operations', '/health?tab=calendar', 'Vaccination & Deworming Due'),
         S('Records', '/health?tab=care', 'Preventive Care Given'),
         S('Operations', '/intake', 'Quarantine & Clearance'),

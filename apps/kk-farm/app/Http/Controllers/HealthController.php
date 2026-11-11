@@ -100,7 +100,7 @@ class HealthController extends Controller
             ]),
             'applies' => \App\Models\CareProtocol::APPLIES,
             // D-174: disease master and mortality register
-            'diseases' => \App\Models\Disease::orderByDesc('active')->orderBy('name')->get(['id', 'name', 'category', 'zoonotic', 'notifiable', 'notes', 'active']),
+            'diseases' => \App\Models\Disease::orderByDesc('active')->orderBy('name')->get(['id', 'name', 'category', 'zoonotic', 'notifiable', 'contagious', 'notes', 'active']),
             'diseaseCategories' => \App\Models\Disease::CATEGORIES,
             'mortality' => $this->mortality(),
             'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
@@ -243,7 +243,7 @@ class HealthController extends Controller
         abort_unless($request->user()->passes('clinical') || $request->user()->role === 'ceo', 403, 'The disease master is kept by the veterinarian.');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120', Rule::unique('diseases', 'name')->ignore($disease?->id)], 'category' => ['required', Rule::in(array_keys(\App\Models\Disease::CATEGORIES))],
-            'zoonotic' => ['boolean'], 'notifiable' => ['boolean'], 'notes' => ['nullable', 'string', 'max:500'], 'active' => ['boolean'],
+            'zoonotic' => ['boolean'], 'notifiable' => ['boolean'], 'contagious' => ['boolean'], 'notes' => ['nullable', 'string', 'max:500'], 'active' => ['boolean'], // D-193: contagious
         ]);
         $disease ? $disease->update($data) : \App\Models\Disease::create($data);
 

@@ -24,7 +24,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 02 | Livestock Registry & Traceability | Animals; Intake; Identification; Classification; Pedigree; Movements; Exit; Reporting | Partial (permanent Animal ID series separate from descriptive tag: to do) |
 | 03 | Breeding & Genetics | Breeding Stock; Heat Detection; Mating; Pregnancy; Genetics; Reproduction Issues; Performance; Configuration | Partial (D-161, D-166, D-175) |
 | 04 | Maternity & Kid Care | Pre-Kidding; Kidding; Pregnancy Outcomes; Newborn Registry; Mother Care; Kid Nutrition; Weaning; Reporting | Built (D-161–D-164, D-171, D-176) |
-| 05 | Veterinary & Biosecurity | Health Monitoring; Medical Cases; Treatment; Preventive Care; Quarantine; Reproduction Health; Withdrawal & Disposal; Reporting | Partial (D-172–D-174; antimicrobial use report to do) |
+| 05 | Veterinary & Biosecurity | Health Monitoring; Medical Cases; Treatment; Preventive Care; Quarantine; Reproduction Health; Withdrawal & Disposal; Reporting | Partial (D-172–D-174, D-193 disease control, restrictions, outbreaks; antimicrobial use report to do) |
 | 06 | Feeding & Nutrition | Feed Master; Nutrition Standards; Ration Formulas; Daily Feed Plans; Feed Production; Consumption; Feed Safety; Cost & Reports | Partial (D-177; feed safety lot holds to do) |
 | 07 | Housing & Pen Management | Farm Structure; Unit Categories; Pen Operations; Biosecure Areas; Housing Conditions; Cleaning; Traceability; Reports | Partial (pen status, capacity block, cleaning to do) |
 | 08 | Growth & Performance | Weighing; Growth Plans; Body Condition; Performance; Breeder Selection; Fattening Integration; Reports | Partial (growth plans, interventions, breeder selection D-191; outlier/duplicate weight flags outside fattening to do) |
@@ -51,7 +51,8 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | A – Purchase-to-Quarantine | 24 | Built (D-172, D-190): purchase request → approval by another person → receive, count, inspect → IDs/EPC → dedicated quarantine pen → vet clearance or extension → transfer to operating pen; no mixing before clearance; lot cost and supplier bill posted once |
 | B – Birth-to-Breeder | 25 | Built (D-161–D-176, D-191): kidding with live / stillborn per kid (no IDs for stillborns), colostrum and kid care, viable and stable? → neonatal care unit and vet, kid ID + RFID, weaning, growth vs plan → nutrition / vet intervention with follow-up, BR-005 replacement breeder or sale selection |
 | C – Feed-to-True-Cost | 26 | Built (D-054–D-177, D-192): forecast vs stock → draft PO for the shortfall, TMR batch with weighed output (mixing loss), 3 meals offered / refused, stock counts with shrinkage, pen cost split to the goats present, gain, cost per KG gained, FCR proxy, margin, poor-response review; assumptions shown |
-| D–Q | 27–40 | To do |
+| D – Disease-to-Recovery | 27 | Built (D-073–D-174, D-193): worker report → vet triage (severity, contagion) → isolate + emergency alert, notifiable task → case with lab (fee posted once) → treatment from the medicine lot with vet-set withdrawal → pen movement/sale restriction until cleared → extend or clear into suitable housing → case cost (medicine + lab + labour) → outbreak report |
+| E–Q | 28–40 | To do |
 
 ## Business rules (§9)
 
@@ -86,7 +87,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-027 | Creator cannot self-approve restricted changes | Partial (milk release, CAPA approval and verification, SOP approval: D-188, D-189) |
 | BR-028 | Offline sync without silent overwrite | Partial |
 | BR-029 | Audit of key changes (old/new) | Partial |
-| BR-030 | Emergencies create assigned incident | Partial (D-180) |
+| BR-030 | Emergencies create assigned incident | Partial (D-180; disease emergencies raise critical tasks D-193) |
 | BR-031 | Access control, retention, backups, restore test | Partial |
 | BR-032 | Cost allocation with basis/period, post once | Partial (feed cost to goats by head per meal, basis shown, not re-posted: D-192) |
 

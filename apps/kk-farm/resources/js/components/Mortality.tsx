@@ -9,7 +9,7 @@ export type MortalityData = {
         postmortem: { cause: string; findings: string | null; by: string; on: string } | null }>;
     byCause: Record<string, number>;
 };
-export type DiseaseRow = { id: number; name: string; category: string; zoonotic: boolean; notifiable: boolean; notes: string | null; active: boolean };
+export type DiseaseRow = { id: number; name: string; category: string; zoonotic: boolean; notifiable: boolean; contagious?: boolean; notes: string | null; active: boolean };
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
@@ -80,7 +80,7 @@ export function DiseaseMaster({ diseases, categories, canEdit }: { diseases: Dis
                     {diseases.map((d) => (
                         <tr key={d.id} className={d.active ? '' : 'opacity-60'}>
                             <td className="font-semibold">{d.name}</td><td>{categories[d.category] ?? d.category}</td>
-                            <td className="space-x-1">{d.zoonotic ? <Chip className="bg-crit-100 text-crit-700">Zoonotic</Chip> : null}{d.notifiable ? <Chip className="bg-watch-100 text-watch-700">Notifiable</Chip> : null}{!d.active ? <Chip className="bg-glaze text-ink-soft">Not used</Chip> : null}</td>
+                            <td className="space-x-1">{d.zoonotic ? <Chip className="bg-crit-100 text-crit-700">Zoonotic</Chip> : null}{d.notifiable ? <Chip className="bg-watch-100 text-watch-700">Notifiable</Chip> : null}{d.contagious ? <Chip className="bg-treat-100 text-treat-700">Contagious</Chip> : null}{!d.active ? <Chip className="bg-glaze text-ink-soft">Not used</Chip> : null}</td>
                             <td className="text-ink-soft">{d.notes ?? ''}</td>
                             <td>{canEdit ? <Button variant="quiet" onClick={() => setEditing(d)}>Edit</Button> : null}</td>
                         </tr>
@@ -93,7 +93,7 @@ export function DiseaseMaster({ diseases, categories, canEdit }: { diseases: Dis
 }
 
 function DiseaseForm({ d, categories, onDone }: { d: DiseaseRow | null; categories: Record<string, string>; onDone: () => void }) {
-    const form = useForm({ name: d?.name ?? '', category: d?.category ?? 'infectious', zoonotic: d?.zoonotic ?? false, notifiable: d?.notifiable ?? false, notes: d?.notes ?? '', active: d?.active ?? true });
+    const form = useForm({ name: d?.name ?? '', category: d?.category ?? 'infectious', zoonotic: d?.zoonotic ?? false, notifiable: d?.notifiable ?? false, contagious: d?.contagious ?? false, notes: d?.notes ?? '', active: d?.active ?? true });
     const e = form.errors as Record<string, string>;
     return (
         <Panel title={d ? `Edit ${d.name}` : 'New Disease'}>
@@ -103,6 +103,7 @@ function DiseaseForm({ d, categories, onDone }: { d: DiseaseRow | null; categori
                 <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.zoonotic} onChange={(x) => form.setData('zoonotic', x.target.checked)} /> Zoonotic (spreads to people)</label>
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.notifiable} onChange={(x) => form.setData('notifiable', x.target.checked)} /> Notifiable</label>
+                <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.contagious} onChange={(x) => form.setData('contagious', x.target.checked)} /> Contagious (restrict the pen)</label>
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> In use</label>
                 <div className="flex gap-2 sm:col-span-3"><Button type="submit" disabled={form.processing}>Save</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
             </form>

@@ -63,6 +63,18 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
     });
+    // D-193: journey D Disease-to-Recovery
+    Route::middleware('module:health')->group(function (): void {
+        $dc = \App\Http\Controllers\DiseaseController::class;
+        Route::get('/disease', [$dc, 'index']);
+        Route::post('/disease/triage', [$dc, 'triage']);
+        Route::post('/disease/cases/{case}/lab', [$dc, 'lab']);
+        Route::post('/disease/cases/{case}/extend', [$dc, 'extend']);
+        Route::post('/disease/cases/{case}/clear', [$dc, 'clear']);
+        Route::post('/disease/outbreaks/{outbreak}/close', [$dc, 'closeOutbreak']);
+        Route::post('/disease/settings', [$dc, 'settings']);
+    });
+
     // D-192: journey C Feed-to-True-Cost
     Route::middleware('module:feed_cost')->group(function (): void {
         $fc = \App\Http\Controllers\FeedCostController::class;

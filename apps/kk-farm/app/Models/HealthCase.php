@@ -9,7 +9,9 @@ class HealthCase extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['onset_on' => 'date', 'resolved_on' => 'date', 'isolated' => 'boolean'];
+    protected $casts = ['onset_on' => 'date', 'resolved_on' => 'date', 'isolated' => 'boolean', 'emergency' => 'boolean', 'review_on' => 'date', 'lab_sampled_on' => 'date', 'labour_hours' => 'float'];
+
+    public const CONTAGION = ['none' => 'Not contagious', 'suspected' => 'Contagion suspected', 'confirmed' => 'Contagious (confirmed)'];
 
     public const SEVERITIES = ['low' => 'Low', 'moderate' => 'Moderate', 'high' => 'High', 'emergency' => 'Emergency'];
 
@@ -31,6 +33,26 @@ class HealthCase extends Model
     public function treatments()
     {
         return $this->hasMany(Treatment::class)->orderBy('given_on')->orderBy('id');
+    }
+
+    public function outbreak()
+    {
+        return $this->belongsTo(Outbreak::class);
+    }
+
+    public function restrictedPen()
+    {
+        return $this->belongsTo(Pen::class, 'restricted_pen_id');
+    }
+
+    /** D-193: true case cost in minor units: medicine given + lab + labour hours at the farm's rate. */
+    public function costMinor(int $labourRateMinor): array
+    {
+        $med = (int) $this->treatments->sum('cost_minor');
+        $lab = (int) ($this->lab_cost_minor ?? 0);
+        $labour = (int) round(($this->labour_hours ?? 0) * $labourRateMinor);
+
+        return ['medicine' => $med, 'lab' => $lab, 'labour' => $labour, 'total' => $med + $lab + $labour];
     }
 
     public function label(): string

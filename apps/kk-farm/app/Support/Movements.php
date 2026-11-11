@@ -35,6 +35,7 @@ final class Movements
             return null;
         }
         Intake::assertNoMixing($animal, $to); // D-190: no direct mixing before clearance
+        Biosecurity::assertMoveAllowed($animal, $to, $by); // D-193: affected pens stay put until the vet clears them
         $on = Carbon::parse($extra['moved_on'] ?? now());
 
         return DB::transaction(function () use ($animal, $to, $by, $extra, $on) {
@@ -65,6 +66,7 @@ final class Movements
         }
         if (in_array($type, AnimalMovement::MEAT_EXITS, true)) {
             Quality::assertAnimalNotHeld($animal, 'type'); // D-189: held animals cannot sell
+            Biosecurity::assertExitAllowed($animal); // D-193
             $meat = Withdrawal::forAnimal($animal->id)['meat'];
             if ($meat) {
                 throw ValidationException::withMessages(['type' => "{$animal->farm_number} is under meat withdrawal until {$meat->format('j M Y')} (veterinary treatment). It cannot leave for meat before then."]);
