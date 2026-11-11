@@ -100,6 +100,7 @@ class WorkerController extends Controller
     {
         abort_unless($request->user()->canModule('weights'), 403);
         $animal = $this->goat($request);
+        \App\Support\WelfareCare::assertRoutineAllowed($animal); // D-199
         $data = $request->validate(['weight_kg' => ['required', 'numeric', 'min:0.5', 'max:200'], 'body_score' => ['nullable', 'integer', 'between:1,5']], [], ['weight_kg' => 'weight']);
         WeightRecord::create(['animal_id' => $animal->id, 'weight_kg' => $data['weight_kg'], 'measured_on' => now()->toDateString(), 'measured_by' => $request->user()->name, 'body_score' => $data['body_score'] ?? null]);
         Farm::event($animal, 'weight', "Weighed {$data['weight_kg']} KG".(! empty($data['body_score']) ? ", body score {$data['body_score']}" : '').' (RFID gun)', $request->user()->name);
@@ -139,6 +140,7 @@ class WorkerController extends Controller
     {
         abort_unless($request->user()->canModule('sheds'), 403);
         $animal = Animal::with('pen.shed')->findOrFail($this->goat($request)->id);
+        \App\Support\WelfareCare::assertRoutineAllowed($animal); // D-199
         $job = self::job($request);
         $pen = Pen::with('shed')->findOrFail($request->validate(['pen_id' => ['nullable', 'integer', 'exists:pens,id']])['pen_id'] ?? $job['pen'] ?? 0);
         $moved = \App\Support\Movements::transfer($animal, $pen, $request->user());

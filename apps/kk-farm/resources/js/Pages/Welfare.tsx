@@ -7,11 +7,13 @@ import { useFive } from '../lib/useFive';
 type Case = {
     id: number; no: string; goat: { id: string; number: string } | null; pen: string | null; opened: string; issue: string; severity: string; triage: string | null; status: string; by: string;
     referred: boolean; closedBy: string | null; closedAt: string | null; evidence: string | null; canClose: boolean;
-    steps: Array<{ kind: string; notes: string | null; improved: boolean | null; by: string; on: string }>;
+    steps: Array<{ kind: string; notes: string | null; improved: boolean | null; by: string; on: string; assignee: string | null; due: string | null }>;
+    healthCase: { label: string; condition: string; status: string; active: boolean } | null; repeatOf: string | null; restricted: boolean; handlingClearedBy: string | null; held: number;
 };
 type Check = { id: number; on: string; goat: string | null; pen: string | null; bcs: number | null; behaviour: string; injury: string; lameness: number; pain: boolean; caseId: number | null; by: string };
 type Props = {
-    cases: Case[]; checks: Check[]; due: number; kpi: { checks: number; lamenessRate: number | null; unresolved: number; closeDays: number | null };
+    cases: Case[]; checks: Check[]; due: number; kpi: { checks: number; lamenessRate: number | null; unresolved: number; closeDays: number | null; recurrence: number | null; lameness: number; awaitingVet: number; held: number };
+    users: Array<{ id: number; name: string }>;
     goats: Array<{ id: string; farm_number: string }>; pens: Array<{ id: number; name: string }>;
     options: { issues: Record<string, string>; severity: Record<string, string>; status: Record<string, string>; behaviour: Record<string, string>; injury: Record<string, string>; lameness: Record<string, string>; actions: Record<string, string> };
     isVet: boolean;
@@ -21,7 +23,7 @@ const SEV: Record<string, string> = { low: 'bg-glaze text-ink-soft', medium: 'bg
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 /** The V3 flow 19 path, so every case shows where it is: check → triage → referral? → action → improvement? → close. */
-const FLOW = [['open', 'Triage'], ['vet_referral', 'Vet Plan'], ['action', 'Care Action'], ['follow_up', 'Improved'], ['closed', 'Closed']] as const;
+const FLOW = [['open', 'Triage'], ['vet_referral', 'Vet Diagnosis'], ['action', 'Care Action'], ['follow_up', 'Improved'], ['closed', 'Closed']] as const;
 
 /** D-185: App 19 Animal Welfare & Husbandry (V3 flow 19). */
 export default function Welfare(p: Props) {
@@ -36,6 +38,9 @@ export default function Welfare(p: Props) {
                 <Stat label="Lameness rate (30 days)" value={p.kpi.lamenessRate !== null ? `${p.kpi.lamenessRate}%` : '—'} note={`${p.kpi.checks} checks`} />
                 <Stat label="Average days to close" value={p.kpi.closeDays ?? '—'} />
                 <Stat label="Inspections due" value={p.due} tone={p.due ? 'alert' : undefined} />
+                <Stat label="Lameness incidents (30 days)" value={p.kpi.lameness} />
+                <Stat label="Recurrence (90 days)" value={p.kpi.recurrence !== null ? `${p.kpi.recurrence}%` : '—'} note="Same problem again on the same goat" />
+                <Stat label="Waiting for vet diagnosis" value={p.kpi.awaitingVet} tone={p.kpi.awaitingVet ? 'alert' : undefined} note={p.kpi.held ? `${p.kpi.held} routine tasks on hold` : undefined} />
             </StatRow>
             <Tabs value={tab} onChange={setTab} tabs={[
                 { id: 'check', label: 'Daily Welfare Check' }, { id: 'cases', label: 'Welfare Cases', count: open.length || undefined },
@@ -76,7 +81,7 @@ function CheckForm({ goats, pens, options }: Props) {
     );
 }
 
-function Cases({ cases, options, isVet, goats, pens, empty }: Props & { empty: string }) {
+function Cases({ cases, options, isVet, goats, pens, users, empty }: Props & { empty: string }) {
     const [shown, more] = useFive(cases);
     const [adding, setAdding] = useState(false);
     const form = useForm({ animal_id: '', pen_id: '', issue: 'lameness', severity: 'medium', triage: '' });
@@ -96,17 +101,18 @@ function Cases({ cases, options, isVet, goats, pens, empty }: Props & { empty: s
                 </Panel>
             ) : null}
             <Panel flush title="Welfare Cases" actions={<Button onClick={() => setAdding(true)}>+ Open Case</Button>}>
-                {cases.length ? <ul className="divide-y divide-rule">{shown.map((c) => <CaseItem key={c.id} c={c} options={options} isVet={isVet} />)}</ul> : <Empty title={empty} />}
+                {cases.length ? <ul className="divide-y divide-rule">{shown.map((c) => <CaseItem key={c.id} c={c} options={options} isVet={isVet} pens={pens} users={users} />)}</ul> : <Empty title={empty} />}
                 {more}
             </Panel>
         </div>
     );
 }
 
-function CaseItem({ c, options, isVet }: { c: Case; options: Props['options']; isVet: boolean }) {
+function CaseItem({ c, options, isVet, pens, users }: { c: Case; options: Props['options']; isVet: boolean; pens: Props['pens']; users: Props['users'] }) {
     const [mode, setMode] = useState<string | null>(null);
-    const form = useForm({ kind: '', notes: '', improved: true as boolean, evidence: '' });
-    const go = (kind: string, extra: Partial<typeof form.data> = {}) => { form.transform((d) => ({ ...d, ...extra, kind })); form.post(`/welfare/cases/${c.id}/step`, { preserveScroll: true, onSuccess: () => { setMode(null); form.reset(); } }); };
+    const form = useForm({ kind: '', notes: '', improved: true as boolean, evidence: '', pen_id: '', assigned_user_id: '', due_on: '' });
+    const err = form.errors as Record<string, string>;
+    const go = (kind: string, extra: Partial<typeof form.data> = {}) => { form.transform((d) => ({ ...d, ...extra, kind, pen_id: d.pen_id || null, assigned_user_id: d.assigned_user_id || null, due_on: d.due_on || null })); form.post(`/welfare/cases/${c.id}/step`, { preserveScroll: true, onSuccess: () => { setMode(null); form.reset(); } }); };
     const reached = (key: string) => c.status === key || c.steps.some((s) => (key === 'vet_referral' && s.kind === 'vet_referral') || (key === 'action' && ['hoof', 'handling', 'habitat'].includes(s.kind)) || (key === 'follow_up' && s.kind === 'follow_up' && s.improved));
     return (
         <li className="px-4 py-3 text-sm">
@@ -123,25 +129,39 @@ function CaseItem({ c, options, isVet }: { c: Case; options: Props['options']; i
                 {FLOW.map(([key, label], i) => <li key={key} className="flex items-center gap-1"><span className={`rounded-full px-2 py-0.5 ${reached(key) || c.status === 'closed' ? 'bg-cobalt-900 text-white' : 'bg-glaze text-ink-soft ring-1 ring-rule'}`}>{label}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}
                 {c.status === 'escalated' ? <li><span className="rounded-full bg-crit-100 px-2 py-0.5 text-crit-700">Escalated: reassess</span></li> : null}
             </ol>
+            {c.repeatOf || c.healthCase || c.restricted || c.handlingClearedBy ? (
+                <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
+                    {c.repeatOf ? <Chip className="bg-treat-100 text-treat-700">Repeat of {c.repeatOf}</Chip> : null}
+                    {c.healthCase ? <Chip className={c.healthCase.active ? 'bg-cobalt-100 text-cobalt-800' : 'bg-ok-100 text-ok-700'}>Vet {c.healthCase.label}: {c.healthCase.condition} · {c.healthCase.status.replace('_', ' ')}</Chip> : c.status === 'vet_referral' ? <Chip className="bg-watch-100 text-watch-700">Waiting for vet diagnosis</Chip> : null}
+                    {c.restricted ? <Chip className="bg-crit-100 text-crit-700">Humane handling: no routine work{c.held ? ` · ${c.held} task(s) on hold` : ''}</Chip> : null}
+                    {c.handlingClearedBy ? <Chip className="bg-ok-100 text-ok-700">Routine handling cleared by {c.handlingClearedBy}</Chip> : null}
+                </div>
+            ) : null}
             {c.triage ? <p className="mt-1 text-ink-soft">Triage: {c.triage}</p> : null}
-            {c.steps.length ? <ul className="mt-1 space-y-0.5 text-xs text-ink-soft">{c.steps.map((s, i) => <li key={i}>{s.on} · {options.actions[s.kind]}{s.improved !== null ? (s.improved ? ' · improved' : ' · not improved') : ''}{s.notes ? ` · ${s.notes}` : ''} · {s.by}</li>)}</ul> : null}
+            {c.steps.length ? <ul className="mt-1 space-y-0.5 text-xs text-ink-soft">{c.steps.map((s, i) => <li key={i}>{s.on} · {options.actions[s.kind]}{s.assignee ? ` · assigned to ${s.assignee}${s.due ? ` by ${s.due}` : ''}` : ''}{s.improved !== null ? (s.improved ? ' · improved' : ' · not improved') : ''}{s.notes ? ` · ${s.notes}` : ''} · {s.by}</li>)}</ul> : null}
             {c.evidence ? <p className="mt-1 text-ok-700">Closed {c.closedAt} by {c.closedBy}: {c.evidence}</p> : null}
             {c.status !== 'closed' ? (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                     {['open', 'escalated'].includes(c.status) ? <Button onClick={() => setMode('vet_referral')}><LibIcon name="mod-health" size={16} /> Urgent Vet Referral</Button> : null}
                     {c.status !== 'vet_referral' || isVet ? <Button variant="secondary" onClick={() => setMode('action')}>Hoof / Handling / Habitat Action</Button> : null}
                     {['action', 'vet_referral', 'escalated'].includes(c.status) ? <Button variant="secondary" onClick={() => setMode('follow_up')}>Follow-up: Improved?</Button> : null}
+                    {c.goat ? <Button variant="secondary" onClick={() => setMode('housing')}>Move to Care Housing</Button> : null}
+                    {c.restricted && isVet ? <Button variant="secondary" onClick={() => setMode('handling_ok')}>Clear Routine Handling</Button> : null}
                     {c.canClose ? <Button onClick={() => setMode('close')}><LibIcon name="ic-healthy" size={16} /> Close with Evidence</Button> : null}
                 </div>
             ) : null}
             {mode ? (
                 <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                     {mode === 'action' ? <Field label="Action"><select className="field" value={form.data.kind} onChange={(x) => form.setData('kind', x.target.value)}><option value="">Choose…</option>{['hoof', 'handling', 'habitat'].map((k) => <option key={k} value={k}>{options.actions[k]}</option>)}</select></Field> : null}
+                    {mode === 'action' ? <Field label="Assign to (optional)" hint="Creates a task for them"><select className="field" value={form.data.assigned_user_id} onChange={(x) => form.setData('assigned_user_id', x.target.value)}><option value="">Done now</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field> : null}
+                    {mode === 'action' && form.data.assigned_user_id ? <Field label="Due"><input type="date" min={today()} className="field" value={form.data.due_on} onChange={(x) => form.setData('due_on', x.target.value)} /></Field> : null}
+                    {mode === 'housing' ? <Field label="Move to pen" error={err.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Choose…</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field> : null}
                     {mode === 'follow_up' ? <Field label="Welfare improved?"><select className="field" value={form.data.improved ? 'yes' : 'no'} onChange={(x) => form.setData('improved', x.target.value === 'yes')}><option value="yes">Yes: improving</option><option value="no">No: escalate</option></select></Field> : null}
-                    {mode === 'close' ? <Field label="Evidence of recovery" error={(form.errors as Record<string, string>).evidence}><input className="field" placeholder="e.g. walking sound, eating, BCS 3" value={form.data.evidence} onChange={(x) => form.setData('evidence', x.target.value)} /></Field>
+                    {err.kind ? <p className="text-sm text-crit-700 sm:col-span-3">{err.kind}</p> : null}
+                    {mode === 'close' ? <Field label="Evidence of recovery" error={err.evidence}><input className="field" placeholder="e.g. walking sound, eating, BCS 3" value={form.data.evidence} onChange={(x) => form.setData('evidence', x.target.value)} /></Field>
                         : <Field label="Notes"><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>}
                     <div className="flex items-end gap-2">
-                        <Button disabled={form.processing || (mode === 'action' && !form.data.kind)} onClick={() => go(mode === 'action' ? form.data.kind : mode)}>Save</Button>
+                        <Button disabled={form.processing || (mode === 'action' && !form.data.kind) || (mode === 'housing' && !form.data.pen_id)} onClick={() => go(mode === 'action' ? form.data.kind : mode)}>Save</Button>
                         <Button variant="secondary" onClick={() => setMode(null)}>Cancel</Button>
                     </div>
                 </div>

@@ -41,6 +41,9 @@ final class SaleCheck
         if ($case) {
             $out[] = $case->condition === Intake::CONDITION ? 'In intake quarantine' : "Open health case {$case->label()}";
         }
+        if ($w = WelfareCare::restriction($a->id)) {
+            $out[] = "Welfare case {$w->label()} open"; // D-199
+        }
         if (($m = Fattening::openMember($a->id)) && $m->batch?->status === 'sale_hold') {
             $out[] = "Finishing batch {$m->batch->code} on Sale Hold"; // D-197
         }

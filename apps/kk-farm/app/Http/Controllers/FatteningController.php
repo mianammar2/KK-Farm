@@ -107,6 +107,9 @@ class FatteningController extends Controller
         if (FatteningBatchAnimal::where('animal_id', $a->id)->whereIn('status', ['finishing', 'ready', 'reserved'])->exists()) {
             return 'already in a batch';
         }
+        if ($w = \App\Support\WelfareCare::restriction($a->id)) {
+            return "welfare case {$w->label()}"; // D-199
+        }
         $cases = HealthCase::where('animal_id', $a->id)->whereIn('status', HealthCase::ACTIVE)->get();
         if ($cases->contains('condition', Intake::CONDITION)) {
             return 'intake quarantine';

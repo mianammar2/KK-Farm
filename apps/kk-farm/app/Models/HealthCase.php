@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 /** D-073: one illness or injury episode (workbook "Health Cases"). */
 class HealthCase extends Model
 {
+    /** D-199: the vet's case is the diagnosis of an open welfare case; resolving it moves the welfare case to follow-up. */
+    protected static function booted(): void
+    {
+        static::created(fn (HealthCase $h) => \App\Support\WelfareCare::linkHealthCase($h));
+        static::updated(function (HealthCase $h) {
+            if ($h->wasChanged('status') && ! in_array($h->status, self::ACTIVE, true)) {
+                \App\Support\WelfareCare::healthResolved($h);
+            }
+        });
+    }
+
     protected $guarded = [];
 
     protected $casts = ['onset_on' => 'date', 'resolved_on' => 'date', 'isolated' => 'boolean', 'emergency' => 'boolean', 'review_on' => 'date', 'lab_sampled_on' => 'date', 'labour_hours' => 'float'];

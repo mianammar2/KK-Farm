@@ -128,6 +128,10 @@ class BreedingController extends Controller
         ]);
         $dam = Animal::findOrFail($data['dam_id']);
         abort_unless($dam->sex === 'female', 422, 'The dam must be a female goat.');
+        \App\Support\WelfareCare::assertRoutineAllowed($dam, 'dam_id'); // D-199
+        if (! empty($data['sire_id'])) {
+            \App\Support\WelfareCare::assertRoutineAllowed(Animal::findOrFail($data['sire_id']), 'sire_id');
+        }
         if (! empty($data['sire_id']) && Animal::whereKey($data['sire_id'])->value('sex') !== 'male') {
             throw ValidationException::withMessages(['sire_id' => 'The buck must be a male goat.']);
         }

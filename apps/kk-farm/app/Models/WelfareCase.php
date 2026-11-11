@@ -9,7 +9,7 @@ class WelfareCase extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['opened_on' => 'date', 'closed_at' => 'datetime'];
+    protected $casts = ['opened_on' => 'date', 'closed_at' => 'datetime', 'handling_cleared_at' => 'datetime'];
 
     public const ISSUES = [
         'lameness' => 'Lameness / Mobility', 'injury' => 'Injury', 'body_condition' => 'Poor Body Condition', 'behaviour' => 'Abnormal Behaviour', 'aggression' => 'Aggression / Bullying',
@@ -28,6 +28,16 @@ class WelfareCase extends Model
     public function pen()
     {
         return $this->belongsTo(Pen::class);
+    }
+
+    public function healthCase()
+    {
+        return $this->belongsTo(HealthCase::class);
+    }
+
+    public function recurrenceOf()
+    {
+        return $this->belongsTo(self::class, 'recurrence_of_id');
     }
 
     public function actions()

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Animal;
 use App\Models\Department;
+use App\Models\HealthCase;
 use App\Models\HealthRecord;
 use App\Models\Pen;
 use App\Models\Task;
@@ -11,10 +12,13 @@ use App\Models\WelfareAction;
 use App\Models\WelfareCase;
 use App\Models\WelfareCheck;
 use App\Support\Farm;
+use App\Support\Movements;
+use App\Support\WelfareCare;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,12 +34,14 @@ class WelfareController extends Controller
 {
     public function index(Request $request): Response
     {
-        $cases = WelfareCase::with(['animal', 'pen.shed', 'actions'])->where(fn ($q) => $q->where('status', '!=', 'closed')->orWhere('closed_at', '>=', now()->subDays(90)))
+        $cases = WelfareCase::with(['animal', 'pen.shed', 'actions', 'healthCase', 'recurrenceOf'])->where(fn ($q) => $q->where('status', '!=', 'closed')->orWhere('closed_at', '>=', now()->subDays(90)))
             ->orderByRaw("case status when 'escalated' then 0 when 'open' then 1 when 'vet_referral' then 2 when 'action' then 3 when 'follow_up' then 4 else 5 end")->orderByDesc('opened_on')->get();
         $from = now()->subDays(30)->toDateString();
         $checks30 = WelfareCheck::where('checked_on', '>=', $from)->get();
         $closed = WelfareCase::whereNotNull('closed_at')->where('closed_at', '>=', now()->subDays(90))->get();
         $latest = WelfareCheck::whereNotNull('animal_id')->selectRaw('animal_id, max(checked_on) as last_on, max(next_check_on) as next_on')->groupBy('animal_id')->get();
+
+        $users = \App\Models\User::where('org_id', \App\Support\Tenant::current())->orderBy('name')->pluck('name', 'id');
 
         return Inertia::render('Welfare', [
             'cases' => $cases->map(fn (WelfareCase $c) => [
@@ -43,7 +49,12 @@ class WelfareController extends Controller
                 'opened' => $c->opened_on->format('j M Y'), 'issue' => $c->issue, 'severity' => $c->severity, 'triage' => $c->triage, 'status' => $c->status, 'by' => $c->opened_by,
                 'referred' => $c->health_record_id !== null, 'closedBy' => $c->closed_by, 'closedAt' => $c->closed_at?->format('j M Y'), 'evidence' => $c->closure_evidence,
                 'canClose' => $c->status === 'follow_up' || ($c->status === 'action' && $c->actions->where('kind', 'follow_up')->where('improved', true)->isNotEmpty()),
-                'steps' => $c->actions->map(fn (WelfareAction $a) => ['kind' => $a->kind, 'notes' => $a->notes, 'improved' => $a->improved, 'by' => $a->done_by, 'on' => $a->done_on->format('j M')])->values(),
+                'steps' => $c->actions->map(fn (WelfareAction $a) => ['kind' => $a->kind, 'notes' => $a->notes, 'improved' => $a->improved, 'by' => $a->done_by, 'on' => $a->done_on->format('j M'),
+                    'assignee' => $a->assigned_user_id ? ($users[$a->assigned_user_id] ?? null) : null, 'due' => $a->due_on?->format('j M')])->values(),
+                // D-199
+                'healthCase' => $c->healthCase ? ['label' => $c->healthCase->label(), 'condition' => $c->healthCase->condition, 'status' => $c->healthCase->status, 'active' => in_array($c->healthCase->status, HealthCase::ACTIVE, true)] : null,
+                'repeatOf' => $c->recurrenceOf?->label(), 'restricted' => WelfareCare::restricts($c), 'handlingClearedBy' => $c->handling_cleared_by,
+                'held' => Task::where('welfare_hold_case_id', $c->id)->where('status', 'blocked')->count(),
             ]),
             'checks' => WelfareCheck::with(['pen.shed', 'animal'])->where('checked_on', '>=', now()->subDays(14)->toDateString())->orderByDesc('checked_on')->orderByDesc('id')->limit(200)->get()->map(fn (WelfareCheck $w) => [
                 'id' => $w->id, 'on' => $w->checked_on->format('j M'), 'goat' => $w->animal?->farm_number, 'pen' => $w->pen?->fullName(),
@@ -55,7 +66,8 @@ class WelfareController extends Controller
                 'lamenessRate' => $checks30->count() ? round($checks30->where('lameness', '>=', 1)->count() / $checks30->count() * 100, 1) : null,
                 'unresolved' => WelfareCase::where('status', '!=', 'closed')->count(),
                 'closeDays' => $closed->count() ? round($closed->avg(fn ($c) => $c->opened_on->diffInDays($c->closed_at)), 1) : null,
-            ],
+            ] + WelfareCare::kpis(),
+            'users' => $users->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values(),
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number']),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'options' => ['issues' => WelfareCase::ISSUES, 'severity' => WelfareCase::SEVERITY, 'status' => WelfareCase::STATUS, 'behaviour' => WelfareCheck::BEHAVIOUR,
@@ -115,10 +127,16 @@ class WelfareController extends Controller
     {
         DB::statement('LOCK TABLE welfare_cases IN SHARE ROW EXCLUSIVE MODE');
         $animal = $animalId ? Animal::find($animalId) : null;
+        $repeat = WelfareCare::recurrenceOf($animalId, $issue); // D-199: the same problem again within 90 days goes to the vet
+        if ($repeat && ! in_array($severity, WelfareCare::SERIOUS, true)) {
+            $severity = 'high';
+        }
         $case = WelfareCase::create([
             'case_no' => (int) WelfareCase::max('case_no') + 1, 'animal_id' => $animalId, 'pen_id' => $penId ?? $animal?->pen_id, 'opened_on' => now()->toDateString(),
-            'issue' => $issue, 'severity' => $severity, 'triage' => $triage, 'status' => 'open', 'opened_by' => $by,
+            'issue' => $issue, 'severity' => $severity, 'status' => 'open', 'opened_by' => $by, 'recurrence_of_id' => $repeat,
+            'triage' => $repeat ? trim('Repeat of '.WelfareCase::find($repeat)->label().'. '.($triage ?? '')) : $triage,
         ]);
+        WelfareCare::holdTasks($case);
         if ($animal) {
             Farm::event($animal, 'health', 'Welfare case '.$case->label().': '.WelfareCase::ISSUES[$issue].' ('.strtolower(WelfareCase::SEVERITY[$severity]).')', $by);
         }
@@ -138,10 +156,20 @@ class WelfareController extends Controller
     {
         abort_if($case->status === 'closed', 422, 'This welfare case is closed.');
         $data = $request->validate([
-            'kind' => ['required', Rule::in(array_keys(WelfareAction::KINDS))], 'notes' => ['nullable', 'string', 'max:1000'],
+            'kind' => ['required', Rule::in(array_diff(array_keys(WelfareAction::KINDS), ['vet_update']))], 'notes' => ['nullable', 'string', 'max:1000'],
+            'pen_id' => ['nullable', 'required_if:kind,housing', 'exists:pens,id'], 'assigned_user_id' => ['nullable', 'exists:users,id'], 'due_on' => ['nullable', 'date', 'after_or_equal:today'],
             'improved' => ['nullable', 'required_if:kind,follow_up', 'boolean'], 'evidence' => ['nullable', 'required_if:kind,close', 'string', 'max:1000'],
         ], ['evidence.required_if' => 'Closing a welfare case needs the evidence of recovery.']);
         $user = $request->user();
+        if ($data['kind'] === 'handling_ok') { // D-199: only the vet lifts the hold on routine handling
+            abort_unless($user->passes('clinical'), 403, 'The vet clears routine handling.');
+        }
+        if ($data['kind'] === 'housing') {
+            abort_unless($case->animal_id, 422, 'Choose a goat case to move a goat.');
+        }
+        if ($data['kind'] === 'close' && $case->health_case_id && in_array(HealthCase::whereKey($case->health_case_id)->value('status'), HealthCase::ACTIVE, true)) {
+            throw ValidationException::withMessages(['kind' => 'The vet\'s health case is still active: the vet\'s diagnosis and treatment come first.']);
+        }
         if ($data['kind'] === 'close') {
             $improved = $case->status === 'follow_up' || $case->actions()->where('kind', 'follow_up')->where('improved', true)->exists();
             abort_unless($improved, 422, 'Confirm the welfare improvement with a follow-up before closing.');
@@ -149,15 +177,32 @@ class WelfareController extends Controller
             abort_if($case->health_record_id && ! ($user->passes('clinical') || in_array($user->role, ['ceo', 'manager'], true)), 403, 'A case under a vet plan is closed by the vet.');
         }
         DB::transaction(function () use ($case, $data, $user) {
-            WelfareAction::create(['case_id' => $case->id, 'kind' => $data['kind'], 'notes' => $data['notes'] ?? ($data['evidence'] ?? null), 'improved' => $data['improved'] ?? null, 'done_by' => $user->name, 'done_on' => now()->toDateString()]);
             $animal = $case->animal;
+            $task = null;
+            if (in_array($data['kind'], ['hoof', 'handling', 'habitat'], true) && ! empty($data['assigned_user_id'])) { // D-199: an assigned care action
+                $task = Task::create(['title' => mb_substr(WelfareAction::KINDS[$data['kind']].": welfare {$case->label()} ".($animal?->farm_number ?? $case->pen?->fullName() ?? ''), 0, 190), 'type' => 'health',
+                    'priority' => $case->severity === 'low' ? 'medium' : $case->severity, 'status' => 'open', 'due_on' => $data['due_on'] ?? now()->toDateString(), 'user_id' => $data['assigned_user_id'],
+                    'animal_id' => $case->animal_id, 'pen_id' => $case->pen_id, 'notes' => mb_substr($data['notes'] ?? 'Welfare care action', 0, 500)]);
+            }
+            WelfareAction::create(['case_id' => $case->id, 'kind' => $data['kind'], 'notes' => $data['notes'] ?? ($data['evidence'] ?? null), 'improved' => $data['improved'] ?? null, 'done_by' => $user->name, 'done_on' => now()->toDateString(),
+                'assigned_user_id' => $data['assigned_user_id'] ?? null, 'due_on' => $data['due_on'] ?? null, 'task_id' => $task?->id, 'pen_id' => $data['pen_id'] ?? null]);
+            if ($data['kind'] === 'housing') {
+                Movements::transfer($animal, Pen::findOrFail($data['pen_id']), $user, ['reason' => "Welfare care {$case->label()}"]);
+            }
             match ($data['kind']) {
                 'vet_referral' => $this->refer($case, $data['notes'] ?? null, $user->name),
                 'hoof', 'handling', 'habitat' => $case->update(['status' => 'action']),
                 'follow_up' => $case->update(['status' => $data['improved'] ? 'follow_up' : 'escalated']),
                 'escalate' => $case->update(['status' => 'escalated']),
                 'close' => $case->update(['status' => 'closed', 'closed_by' => $user->name, 'closed_at' => now(), 'closure_evidence' => $data['evidence']]),
+                'housing' => $case->update(['status' => $case->status === 'open' ? 'action' : $case->status]),
+                'handling_ok' => $case->update(['handling_cleared_by' => $user->name, 'handling_cleared_at' => now(), 'handling_note' => $data['notes'] ?? null]),
             };
+            if (in_array($data['kind'], ['close', 'handling_ok'], true)) {
+                WelfareCare::releaseTasks($case);
+            } else {
+                WelfareCare::holdTasks($case->fresh());
+            }
             if (($data['kind'] === 'follow_up' && ! $data['improved']) || $data['kind'] === 'escalate') {
                 Task::create([
                     'title' => mb_substr("Repeat clinical review: welfare {$case->label()} ".($animal?->farm_number ?? ''), 0, 190), 'type' => 'health', 'priority' => 'high', 'status' => 'open',
