@@ -1,5 +1,4 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ArtIcon } from '../components/ArtIcon';
 import { rememberApp, visibleApps } from '../lib/apps';
@@ -14,7 +13,6 @@ type Note = { key: string; count: number; severity: 'critical' | 'warning' | 'in
  */
 export default function Apps() {
     const { auth } = usePage<SharedProps>().props;
-    const [q, setQ] = useState('');
     const [notes, setNotes] = useState<Note[] | null>(null);
 
     useEffect(() => {
@@ -25,10 +23,7 @@ export default function Apps() {
     }, []);
 
     // D-170: the 16 KK Farms apps (and Settings for administrators); search also finds an app by its menu items.
-    const apps = useMemo(() => visibleApps(auth?.modules ?? []).filter((a) => {
-        const t = q.trim().toLowerCase();
-        return !t || a.label.toLowerCase().includes(t) || a.sections.some((x) => x.label.toLowerCase().includes(t));
-    }), [auth, q]);
+    const apps = useMemo(() => visibleApps(auth?.modules ?? []), [auth]);
     const badge = (key: string) => (key === 'dashboard' && notes?.length ? { n: notes.length, urgent: notes.some((x) => x.severity === 'critical') } : null);
 
     return (
@@ -36,13 +31,7 @@ export default function Apps() {
             <Head title="Apps" />
             <div className="kk-apps relative -mx-3 -mt-4 min-h-[calc(100dvh-4rem)] px-4 pt-8 pb-16 sm:-mx-5 sm:px-8 lg:-my-5">
                 <div className="mx-auto max-w-5xl">
-                    <div className="mb-8 flex flex-col items-center gap-3 text-center">
-                        <h1 className="sr-only">Apps</h1>
-                        <label className="relative w-full max-w-md">
-                            <Search size={17} aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-faint" />
-                            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search apps" aria-label="Search apps" className="field rounded-full! pl-10 shadow-sm" />
-                        </label>
-                    </div>
+                    <h1 className="sr-only">Apps</h1>
                     <ul className="grid grid-cols-3 gap-x-3 gap-y-7 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                         {apps.map((a, i) => {
                             const b = badge(a.key);
@@ -59,7 +48,6 @@ export default function Apps() {
                             );
                         })}
                     </ul>
-                    {!apps.length ? <p className="mt-6 text-center text-sm text-ink-soft">No app matches “{q}”.</p> : null}
                 </div>
             </div>
         </>
