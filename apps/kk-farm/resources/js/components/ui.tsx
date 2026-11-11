@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertTriangle, Baby, HeartPulse, Inbox, Mars, Venus } from 'lucide-react';
@@ -194,6 +194,22 @@ export function Note({ children }: { children: ReactNode }) {
 
 export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; label: string; count?: number }>; value: string; onChange: (id: string) => void }) {
     const group = useId();
+    const { url } = usePage();
+    // D-215: opened from an app menu (?solo=1), a section is its own page: no other tabs, a link back to the master page.
+    const [path, query = ''] = url.split('?');
+    const params = new URLSearchParams(query);
+    if (params.get('solo') && tabs.some((t) => t.id === value)) {
+        const current = tabs.find((t) => t.id === value)!;
+        params.delete('solo');
+        params.delete('tab');
+        const master = path + (params.toString() ? `?${params}` : '');
+        return (
+            <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-2">
+                <h2 className="text-lg font-bold text-cobalt-900">{titleCase(current.label)}{current.count !== undefined ? <span className="ml-1.5 text-base font-semibold text-ink-faint">{current.count}</span> : null}</h2>
+                <Link href={master} className="ml-auto text-sm font-semibold text-cobalt-800 hover:underline">Master page: all sections →</Link>
+            </div>
+        );
+    }
     return (
         <div role="tablist" className="-mx-1 mb-4 flex gap-1 overflow-x-auto border-b border-rule px-1">
             {tabs.map((tab) => (

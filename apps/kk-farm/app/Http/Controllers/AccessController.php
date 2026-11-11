@@ -1,0 +1,100 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Department;
+use App\Models\Organization;
+use App\Models\User;
+use App\Support\Access;
+use App\Support\Farm;
+use App\Support\Tenant;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+/**
+ * D-215: Odoo-style access rights. Settings → Access Rights by Role is the master (what each role opens and may do);
+ * Settings → Users → a person is the individual page (tick or untick an app or action for that person; untouched
+ * boxes follow the role). Both read and write the same rules (App\Support\Access), so they always agree.
+ */
+class AccessController extends Controller
+{
+    private function owner(Request $request): void
+    {
+        abort_unless($request->user()->role === 'ceo', 403, 'Only the owner changes access rights.');
+    }
+
+    public function roles(Request $request): Response
+    {
+        $org = $request->user()->org_id;
+
+        return Inertia::render('Settings/Access', [
+            'modules' => Access::roleModules($org), 'gates' => Access::roleGates($org),
+            'moduleLabels' => Access::MODULE_LABELS, 'gateLabels' => Access::GATE_LABELS, 'protected' => Access::PROTECTED_GATES,
+            'overrides' => User::where('org_id', $org)->get()->filter(fn ($u) => ! empty($u->module_access) || ! empty($u->gate_access))
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'count' => count($u->module_access ?? []) + count($u->gate_access ?? [])])->values(),
+            'canEdit' => $request->user()->role === 'ceo',
+        ]);
+    }
+
+    public function saveRoles(Request $request): RedirectResponse
+    {
+        $this->owner($request);
+        $roles = array_keys(config('kkfarm.roles'));
+        $data = $request->validate(['modules' => ['present', 'array'], 'gates' => ['present', 'array']]);
+        $clean = function (array $map, array $keys) use ($roles) {
+            $out = [];
+            foreach ($keys as $k) {
+                $out[$k] = array_values(array_intersect($roles, (array) ($map[$k] ?? [])));
+            }
+
+            return $out;
+        };
+        $modules = $clean($data['modules'], array_keys(config('kkfarm.modules')));
+        $modules['settings'] = array_values(array_unique([...$modules['settings'], 'ceo']));
+        $gates = array_diff_key($clean($data['gates'], array_keys(config('kkfarm.gates'))), array_flip(Access::PROTECTED_GATES));
+        Organization::whereKey($request->user()->org_id)->update(['role_modules' => json_encode($modules), 'role_gates' => json_encode($gates)]);
+        Tenant::flush();
+        Farm::log($request->user(), 'Changed access rights by role', '/settings/access');
+
+        return back()->with('success', 'Access rights saved. Users without their own ticks follow these at once.');
+    }
+
+    public function user(Request $request, int $id): Response
+    {
+        $u = User::where('org_id', $request->user()->org_id)->findOrFail($id);
+        $org = $u->org_id;
+        $roleModules = Access::roleModules($org);
+        $roleGates = Access::roleGates($org);
+
+        return Inertia::render('Settings/UserAccess', [
+            'user' => ['id' => $u->id, 'name' => $u->name, 'login' => $u->email, 'role' => $u->role, 'active' => $u->active, 'department' => $u->department_id, 'me' => $u->is($request->user()),
+                'lastLogin' => $u->last_login_at?->format('j M Y, H:i')],
+            'modules' => collect(Access::MODULE_LABELS)->map(fn ($label, $m) => ['key' => $m, 'label' => $label, 'role' => in_array($u->role, $roleModules[$m] ?? [], true),
+                'own' => $u->module_access[$m] ?? null, 'effective' => $u->canModule($m), 'locked' => $m === 'settings' && $u->role === 'ceo'])->values(),
+            'gates' => collect(Access::GATE_LABELS)->map(fn ($label, $g) => ['key' => $g, 'label' => $label, 'role' => in_array($u->role, $roleGates[$g] ?? [], true),
+                'own' => $u->gate_access[$g] ?? null, 'effective' => $u->passes($g), 'locked' => in_array($g, Access::PROTECTED_GATES, true)])->values(),
+            'departments' => Department::orderBy('name')->get(['id', 'name']),
+            'canEdit' => $request->user()->role === 'ceo',
+        ]);
+    }
+
+    /** One person's ticks: true gives, false refuses, null goes back to the role. */
+    public function saveUser(Request $request, int $id): RedirectResponse
+    {
+        $this->owner($request);
+        $u = User::where('org_id', $request->user()->org_id)->findOrFail($id);
+        $data = $request->validate(['modules' => ['array'], 'modules.*' => ['nullable', 'boolean'], 'gates' => ['array'], 'gates.*' => ['nullable', 'boolean']]);
+        $keep = fn (array $in, array $allowed) => array_map('boolval', array_filter(array_intersect_key($in, array_flip($allowed)), fn ($v) => $v !== null));
+        $modules = $keep($data['modules'] ?? [], array_keys(config('kkfarm.modules')));
+        if ($u->role === 'ceo') {
+            unset($modules['settings']);
+        }
+        $gates = $keep($data['gates'] ?? [], array_diff(array_keys(config('kkfarm.gates')), Access::PROTECTED_GATES));
+        $u->forceFill(['module_access' => $modules ?: null, 'gate_access' => $gates ?: null])->save();
+        Farm::log($request->user(), "Changed access rights of {$u->name}", "/settings/users/{$u->id}");
+
+        return back()->with('success', "Access rights of {$u->name} saved.");
+    }
+}

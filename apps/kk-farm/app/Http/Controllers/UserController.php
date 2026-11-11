@@ -26,6 +26,7 @@ class UserController extends Controller
             'users' => $this->scope($request)->orderBy('name')->get()->map(fn (User $u) => [
                 'id' => $u->id, 'name' => $u->name, 'login' => $u->email, 'role' => $u->role, 'active' => $u->active, 'department' => $u->department_id,
                 'mustChange' => $u->must_change_password, 'lastLogin' => $u->last_login_at?->format('j M Y, H:i'), 'me' => $u->is($request->user()),
+                'own' => count($u->module_access ?? []) + count($u->gate_access ?? []), // D-215
             ]),
             'departments' => Department::withCount(['users' => fn ($q) => $q->where('active', true)])->orderBy('name')->get()->map(fn (Department $d) => ['id' => $d->id, 'name' => $d->name, 'users' => $d->users_count]),
         ]);

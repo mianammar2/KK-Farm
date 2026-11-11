@@ -12,7 +12,7 @@ class Organization extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['meal_times' => 'array'];
+    protected $casts = ['meal_times' => 'array', 'role_modules' => 'array', 'role_gates' => 'array'];
 
     protected static function booted(): void
     {

@@ -12,13 +12,18 @@ use Inertia\Response;
 
 class SettingsController extends Controller
 {
-    public function index(): Response
+    /** D-215: the Settings master page (a card per settings page) or one settings page on its own. */
+    public function index(Request $request, ?string $section = null): Response
     {
+        abort_unless(in_array($section, [null, 'breeds', 'ages', 'system'], true), 404);
+        $org = $request->user()->org_id;
+
         return Inertia::render('Settings', [
+            'section' => $section,
             'breeds' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'next' => $b->nextTagId(), 'gestation' => $b->default_gestation_days, 'lightBelow' => $b->young_below_kg !== null ? (float) $b->young_below_kg : null, 'goats' => Animal::active()->where('breed_id', $b->id)->count()]),
             'ages' => ['growerFrom' => \App\Support\Classification::boundaries()[0], 'adultFrom' => \App\Support\Classification::boundaries()[1]],
-            'matrix' => config('kkfarm.modules'),
-            'gates' => config('kkfarm.gates'),
+            'counts' => ['users' => \App\Models\User::where('org_id', $org)->where('active', true)->count(), 'fields' => \App\Models\FieldDefinition::count(),
+                'overrides' => \App\Models\User::where('org_id', $org)->get()->filter(fn ($u) => ! empty($u->module_access) || ! empty($u->gate_access))->count()],
             'environment' => ['php' => PHP_VERSION, 'laravel' => app()->version(), 'database' => 'PostgreSQL '.explode(' ', \Illuminate\Support\Facades\DB::selectOne('show server_version')->server_version)[0]],
         ]);
     }

@@ -7,7 +7,7 @@ import AddButton from '../../components/AddButton';
 import Sheet from '../../components/Sheet';
 
 type D = { id: number; name: string; users: number };
-type U = { id: number; name: string; login: string; role: string; active: boolean; department: number | null; mustChange: boolean; lastLogin: string | null; me: boolean };
+type U = { id: number; name: string; login: string; role: string; active: boolean; department: number | null; mustChange: boolean; lastLogin: string | null; me: boolean; own: number };
 
 /** The owner decides who can sign in and with which role (D-044). */
 export default function Users({ users, departments }: { users: U[]; departments: D[] }) {
@@ -18,7 +18,7 @@ export default function Users({ users, departments }: { users: U[]; departments:
     return (
         <>
             <Head title="Users" />
-            <PageHeader title="Users and sign-in" description="Each person signs in with their own username and password, so every record shows who made it." actions={<><Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link><AddButton label="Add a user" onClick={() => setAdding(true)} /></>} />
+            <PageHeader title="Users and sign-in" description="Each person signs in with their own username and password, so every record shows who made it." actions={<><Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link><Link href="/settings/access"><Button variant="secondary">Access by role</Button></Link><AddButton label="Add a user" onClick={() => setAdding(true)} /></>} />
             {adding ? <Sheet onClose={() => setAdding(false)}>
                     <Panel title="Add a user">
                         <form onSubmit={(e) => { e.preventDefault(); add.post('/settings/users', { preserveScroll: true, onSuccess: () => { add.reset(); setAdding(false); } }); }} className="space-y-3">
@@ -87,7 +87,7 @@ function UserRow({ user, roles, departments }: { user: U; roles: Record<string, 
     return (
         <li className={`px-4 py-3 ${user.active ? '' : 'bg-tile/60'}`}>
             <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold text-cobalt-900">{user.name}</span>
+                <Link href={`/settings/users/${user.id}`} className="font-semibold text-cobalt-900 hover:underline">{user.name}</Link>
                 <span className="font-mono text-sm text-ink-soft">{user.login}</span>
                 {user.me ? <Chip className="bg-cobalt-100 text-cobalt-800">You</Chip> : null}
                 {!user.active ? <Chip className="bg-crit-100 text-crit-700">Disabled</Chip> : null}
@@ -100,6 +100,7 @@ function UserRow({ user, roles, departments }: { user: U; roles: Record<string, 
                 {!user.me ? <label className="flex min-h-11 items-center gap-1.5 text-sm"><input type="checkbox" className="size-5" checked={form.data.active} onChange={(e) => form.setData('active', e.target.checked)} /> Can sign in</label> : null}
                 {reset ? <div className="w-56"><Field label="New temporary password" error={form.errors.password}><input className="field" type="text" autoComplete="off" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} /></Field></div> : !user.me ? <button type="button" className="min-h-11 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setReset(true)}>Reset password</button> : null}
                 <Button variant="secondary" disabled={form.processing || !form.isDirty} onClick={save}>Save</Button>
+                <Link href={`/settings/users/${user.id}`} className="min-h-11 content-center text-sm font-semibold text-cobalt-800 hover:underline">Access rights{user.own ? ` (${user.own} own)` : ''} →</Link>
             </div>
             {reset ? <div className="mt-2"><Note>Give this temporary password to {user.name}. They must choose a new one when they sign in.</Note></div> : null}
         </li>

@@ -13,7 +13,7 @@ class User extends Authenticatable
     /** Same defaults as the database, so a user created in code is not mistaken for a disabled account. */
     protected $attributes = ['active' => true, 'must_change_password' => false];
 
-    protected $casts = ['active' => 'boolean', 'biohazard_trained' => 'boolean', 'must_change_password' => 'boolean', 'last_login_at' => 'datetime', 'password' => 'hashed'];
+    protected $casts = ['active' => 'boolean', 'biohazard_trained' => 'boolean', 'must_change_password' => 'boolean', 'last_login_at' => 'datetime', 'password' => 'hashed', 'module_access' => 'array', 'gate_access' => 'array'];
 
     public function canModule(string $module): bool
     {
@@ -21,12 +21,12 @@ class User extends Authenticatable
             return false; // D-202: optional app, off by default; the owner can open it to turn it on
         }
 
-        return in_array($this->role, config("kkfarm.modules.$module", []), true);
+        return \App\Support\Access::module($this, $module); // D-215: role settings + the user's own ticks
     }
 
     public function passes(string $gate): bool
     {
-        return in_array($this->role, config("kkfarm.gates.$gate", []), true);
+        return \App\Support\Access::gate($this, $gate); // D-215
     }
 
     public function department()

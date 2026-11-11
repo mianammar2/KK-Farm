@@ -1,7 +1,7 @@
 import BrandMark from './BrandMark';
 import NotificationBell from './NotificationBell';
 import { ArtIcon, NavIcon } from './ArtIcon';
-import { APPS, currentApp, GROUPS, isHere, rememberApp, type ErpApp } from '../lib/apps';
+import { APPS, currentApp, GROUPS, isHere, masterHref, menuHref, rememberApp, type ErpApp } from '../lib/apps';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
@@ -78,10 +78,10 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                 <Link href="/apps" onClick={onNavigate} className="mb-3 flex min-h-10 items-center gap-2 rounded-tile px-2.5 text-sm font-semibold text-cobalt-200 hover:bg-cobalt-800 hover:text-white">
                     <LayoutGrid size={17} aria-hidden /> All Apps
                 </Link>
-                <div className="mb-2 flex items-center gap-2.5 rounded-tile bg-white/10 px-2.5 py-2.5">
+                <Link href={masterHref(app.key)} onClick={onNavigate} aria-current={url.startsWith(masterHref(app.key)) ? 'page' : undefined} className={cx('mb-2 flex items-center gap-2.5 rounded-tile px-2.5 py-2.5', url.startsWith(masterHref(app.key)) ? 'bg-white/20 ring-1 ring-white/40' : 'bg-white/10 hover:bg-white/15')}>
                     <ArtIcon name={app.art} size={38} />
-                    <span className="min-w-0"><span className="block text-base leading-tight font-bold text-white">{app.label}</span>{app.no ? <span className="text-[11px] text-cobalt-200">App {app.no}</span> : null}</span>
-                </div>
+                    <span className="min-w-0"><span className="block text-base leading-tight font-bold text-white">{app.label}</span><span className="text-[11px] text-cobalt-200">Master page{app.no ? ` · App ${app.no}` : ''}</span></span>
+                </Link>
                 {GROUPS.map((g) => {
                     const items = app.sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
                     if (!items.length) return null;
@@ -91,7 +91,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                             <ul className="space-y-0.5">
                                 {items.map((x) => (
                                     <li key={`${x.group}${x.href}`}>
-                                        <Link href={x.href} onClick={() => { rememberApp(app.key); onNavigate?.(); }} aria-current={x.i === active ? 'page' : undefined}
+                                        <Link href={menuHref(x.href)} onClick={() => { rememberApp(app.key); onNavigate?.(); }} aria-current={x.i === active ? 'page' : undefined}
                                             className={cx('flex min-h-9 items-center gap-2.5 rounded-tile px-3 py-1.5 text-sm font-medium transition-colors duration-150', x.i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
                                             <span className={cx('size-1.5 shrink-0 rounded-full', x.i === active ? 'bg-turq-600' : 'bg-cobalt-200/50')} aria-hidden />
                                             {x.label}
@@ -108,7 +108,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                         <ul className="space-y-0.5">
                             {linked.map((l) => (
                                 <li key={l.key}>
-                                    <Link href={l.sections[0].href} prefetch onClick={() => { rememberApp(l.key); onNavigate?.(); }} className="flex min-h-10 items-center gap-2.5 rounded-tile px-2.5 py-1.5 text-sm font-medium text-cobalt-100 hover:bg-cobalt-800">
+                                    <Link href={masterHref(l.key)} prefetch onClick={() => { rememberApp(l.key); onNavigate?.(); }} className="flex min-h-10 items-center gap-2.5 rounded-tile px-2.5 py-1.5 text-sm font-medium text-cobalt-100 hover:bg-cobalt-800">
                                         <ArtIcon name={l.art} size={26} />
                                         {l.label}
                                     </Link>

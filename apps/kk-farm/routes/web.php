@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
+    Route::get('/apps/{key}', fn (string $key) => \Inertia\Inertia::render('AppHub', ['appKey' => $key]))->where('key', '[a-z]+'); // D-215: an app's master page
     // D-187: App 18 Fattening & Meat Production
     Route::middleware('module:fodder')->group(function (): void { // D-202: App 22 Fodder & Pasture
         $fc = \App\Http\Controllers\FodderController::class;
@@ -460,6 +461,11 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware('module:settings')->group(function (): void {
         Route::get('/settings', [SettingsController::class, 'index']);
+        Route::get('/settings/{section}', [SettingsController::class, 'index'])->whereIn('section', ['breeds', 'ages', 'system']); // D-215
+        Route::get('/settings/access', [\App\Http\Controllers\AccessController::class, 'roles']);
+        Route::post('/settings/access', [\App\Http\Controllers\AccessController::class, 'saveRoles']);
+        Route::get('/settings/users/{id}', [\App\Http\Controllers\AccessController::class, 'user'])->whereNumber('id');
+        Route::post('/settings/users/{id}/access', [\App\Http\Controllers\AccessController::class, 'saveUser'])->whereNumber('id');
         Route::post('/settings/breeds', [SettingsController::class, 'addBreed']);
         Route::post('/settings/breeds/{breed}', [SettingsController::class, 'updateBreed']);
         Route::post('/settings/ages', [SettingsController::class, 'updateAges']);

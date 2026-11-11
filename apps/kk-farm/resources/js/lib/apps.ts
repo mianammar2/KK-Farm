@@ -31,7 +31,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/actions', 'Alerts & Action Center'),
         S('Records', '/activity', 'Activity Log'),
         S('Reporting', '/reports', 'Farm Reports'),
-        S('Configuration', '/settings#users', 'Users & Roles'),
+        S('Configuration', '/settings/users', 'Users & Roles'),
     ] },
     { key: 'livestock', no: '02', label: 'Livestock', art: 'mod-livestock', modules: ['goats'], linked: ['housing', 'breeding', 'maternity', 'veterinary', 'growth', 'sales'], sections: [
         S('Overview', '/goats', 'All Goats'),
@@ -43,13 +43,13 @@ export const APPS: ErpApp[] = [
         S('Records', '/goats?show=pregnant', 'Pregnant Does'),
         S('Records', '/goats?show=attention', 'Need Attention'),
         S('Records', '/goats?show=missing', 'Missing Data'),
-        S('Reporting', '/reports#herd', 'Herd Census'),
-        S('Reporting', '/reports#age', 'Age-Wise Report'),
-        S('Reporting', '/reports#breeds', 'Breed-Wise Population'),
-        S('Reporting', '/reports#exits', 'Exits & Mortality'),
-        S('Configuration', '/settings#breeds', 'Breed Master'),
-        S('Configuration', '/settings#ages', 'Age Groups'),
-        S('Configuration', '/settings#fields', 'Register Fields'),
+        S('Reporting', '/reports?section=herd', 'Herd Census'),
+        S('Reporting', '/reports?section=age', 'Age-Wise Report'),
+        S('Reporting', '/reports?section=breeds', 'Breed-Wise Population'),
+        S('Reporting', '/reports?section=exits', 'Exits & Mortality'),
+        S('Configuration', '/settings/breeds', 'Breed Master'),
+        S('Configuration', '/settings/ages', 'Age Groups'),
+        S('Configuration', '/settings/fields', 'Register Fields'),
     ] },
     { key: 'breeding', no: '03', label: 'Breeding', art: 'mod-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
         S('Operations', '/breeding?tab=heat', 'Heat Detection'),
@@ -62,7 +62,7 @@ export const APPS: ErpApp[] = [
         S('Records', '/breeding?tab=pedigree', 'Genetics & Family Tree'),
         S('Records', '/goats?show=pregnant', 'Pregnant Does'),
         S('Reporting', '/breeding?tab=performance', 'Doe Performance'),
-        S('Reporting', '/reports#sires', 'Buck Performance'),
+        S('Reporting', '/reports?section=sires', 'Buck Performance'),
         S('Configuration', '/breeding?tab=settings', 'Gestation & Check Days'),
     ] },
     { key: 'maternity', no: '04', label: 'Maternity', art: 'ic-kidding', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
@@ -108,7 +108,7 @@ export const APPS: ErpApp[] = [
         S('Records', '/feeding?tab=rations', 'Feeding Plans & Rations'),
         S('Reporting', '/feed-cost', 'Feed True Cost (per Goat & KG Gain)'),
         S('Operations', '/feed-cost?tab=stock', 'Stock Count & Shrinkage'),
-        S('Reporting', '/reports#spending', 'Feed Spending'),
+        S('Reporting', '/reports?section=spending', 'Feed Spending'),
         S('Reporting', '/feeding?tab=waste', 'Feed Offered, Refused & Wasted'),
         S('Configuration', '/feeding?tab=nutrition', 'Nutrition Standards'),
         S('Configuration', '/feeding?tab=tmr', 'TMR Formulas'),
@@ -133,7 +133,7 @@ export const APPS: ErpApp[] = [
         S('Records', '/growth?tab=selections', 'Selection Records'),
         S('Reporting', '/weights', 'Daily Gain (ADG)'),
         S('Configuration', '/growth?tab=plan', 'Growth Plans & Selection Age'),
-        S('Configuration', '/settings#breeds', 'Breed Weight Lines'),
+        S('Configuration', '/settings/breeds', 'Breed Weight Lines'),
     ] },
     { key: 'operations', no: '09', label: 'Operations', art: 'ic-active', modules: ['tasks'], linked: ['employees', 'dashboard', 'veterinary', 'feeding'], sections: [
         S('Overview', '/operations?tab=checklists', "Today's Checklists"),
@@ -157,7 +157,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/feeding?tab=tmr', 'TMR Mixing'),
         S('Records', '/inventory?tab=moves', 'Stock Moves'),
         S('Reporting', '/inventory?tab=reorder', 'Reorder List'),
-        S('Reporting', '/reports#spending', 'Consumption & Spending'),
+        S('Reporting', '/reports?section=spending', 'Consumption & Spending'),
         S('Configuration', '/inventory?tab=general', 'Store Items'),
     ] },
     { key: 'purchase', no: '11', label: 'Purchase', art: 'mod-procurement', modules: ['purchase', 'finance', 'goats', 'animal_purchase'], linked: ['inventory', 'livestock', 'veterinary', 'housing', 'accounting'], sections: [
@@ -167,7 +167,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/purchase/animals?tab=new', 'Goat Purchase Request'),
         S('Operations', '/intake', 'Animal Intake & Quarantine'),
         S('Records', '/purchase?tab=suppliers', 'Suppliers'),
-        S('Reporting', '/reports#spending', 'Purchase Analysis'),
+        S('Reporting', '/reports?section=spending', 'Purchase Analysis'),
         S('Configuration', '/finance/books?tab=accounts', 'Purchase Accounts'),
     ] },
     { key: 'sales', no: '12', label: 'Sales', art: 'mod-sales', modules: ['sales', 'value', 'finance'], linked: ['livestock', 'growth', 'accounting'], sections: [
@@ -182,7 +182,7 @@ export const APPS: ErpApp[] = [
         S('Records', '/sales?tab=customers', 'Customers'),
         S('Records', '/value', 'Herd Value & Pricing'),
         S('Reporting', '/sales?tab=monthly', 'Monthly Sales'),
-        S('Reporting', '/reports#exits', 'Sales & Exits'),
+        S('Reporting', '/reports?section=exits', 'Sales & Exits'),
         S('Configuration', '/value', 'Market Rates'),
     ] },
     { key: 'accounting', no: '13', label: 'Accounting', art: 'mod-finance', modules: ['finance'], linked: ['sales', 'purchase', 'employees', 'reports'], sections: [
@@ -206,7 +206,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/hr?tab=report', 'Attendance Report'),
         S('Reporting', '/hr/training?tab=matrix', 'Skills Compliance'),
         S('Reporting', '/tasks?tab=closed', 'Task Completion'),
-        S('Configuration', '/settings#users', 'Users & Permissions'),
+        S('Configuration', '/settings/users', 'Users & Permissions'),
     ] },
     { key: 'maintenance', no: '15', label: 'Maintenance', art: 'mod-assets', modules: ['maintenance', 'sensors'], linked: ['housing', 'operations', 'accounting', 'inventory'], sections: [
         S('Overview', '/maintenance?tab=jobs', 'Open Jobs & Breakdowns'),
@@ -222,10 +222,10 @@ export const APPS: ErpApp[] = [
     { key: 'reports', no: '16', label: 'Reports', art: 'mod-reports', modules: ['reports'], linked: ['dashboard', 'accounting', 'breeding', 'veterinary'], sections: [
         S('Overview', '/reports', 'Reports & Analytics'),
         S('Operations', '/', 'CEO Dashboard'),
-        S('Reporting', '/reports#herd', 'Livestock Reports'),
+        S('Reporting', '/reports?section=herd', 'Livestock Reports'),
         S('Reporting', '/breeding?tab=performance', 'Breeding Reports'),
         S('Reporting', '/finance/books?tab=pl', 'Financial Reports'),
-        S('Configuration', '/settings#access', 'Report Access'),
+        S('Configuration', '/settings/access', 'Report Access'),
     ] },
     // D-184: V3.0 apps 17–21 (owner's blueprint). Each lists the screens that exist today; their own screens follow.
     { key: 'dairy', no: '17', label: 'Dairy', art: 'ic-lactating', modules: ['milking'], linked: ['maternity', 'veterinary', 'feeding', 'inventory', 'sales', 'accounting'], sections: [
@@ -293,12 +293,21 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/fodder?tab=setup', 'Fodder Settings'),
     ] },
     { key: 'settings', no: '', label: 'Settings', art: 'mod-settings', modules: ['settings'], linked: ['employees', 'housing', 'feeding', 'breeding'], sections: [
-        S('Configuration', '/settings#breeds', 'Animal Master Data'),
-        S('Configuration', '/settings#fields', 'Identification & Register'),
-        S('Configuration', '/settings#users', 'User Management'),
-        S('Configuration', '/settings#access', 'Roles & Access'),
+        S('Overview', '/settings', 'Master Settings'),
+        S('Configuration', '/settings/users', 'Users'),
+        S('Configuration', '/settings/access', 'Access Rights by Role'),
+        S('Configuration', '/settings/breeds', 'Breeds'),
+        S('Configuration', '/settings/ages', 'Age Groups'),
+        S('Configuration', '/settings/fields', 'Register Fields'),
+        S('Configuration', '/settings/system', 'System'),
     ] },
 ];
+
+/** D-215: a menu link to a ?tab= section opens it as its own page (no other tabs); see Tabs in ui.tsx. */
+export const menuHref = (href: string) => (href.includes('tab=') ? `${href}${href.includes('?') ? '&' : '?'}solo=1` : href);
+
+/** D-215: every app's master page lists all its pages. */
+export const masterHref = (key: string) => `/apps/${key}`;
 
 export const visibleApps = (modules: string[]) => APPS.filter((a) => a.modules.some((m) => modules.includes(m)));
 
@@ -329,6 +338,8 @@ export function currentApp(url: string, modules: string[]): ErpApp | null {
     const path = url.split('#')[0].split('?')[0];
     if (path === '/apps') return null;
     const apps = visibleApps(modules);
+    const hub = path.match(/^\/apps\/([a-z]+)$/); // D-215: an app's master page
+    if (hub) return apps.find((a) => a.key === hub[1]) ?? null;
     let last: string | null = null;
     try { last = sessionStorage.getItem(LAST); } catch { /* private mode */ }
     const base = (h: string) => h.split('#')[0].split('?')[0];
