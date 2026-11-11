@@ -18,6 +18,11 @@ class QualityHold extends Model
         return $this->belongsTo(QualityCase::class, 'case_id');
     }
 
+    public function milkLot()
+    {
+        return $this->belongsTo(MilkLot::class); // D-196
+    }
+
     public function scopeActive($q)
     {
         return $q->whereNull('released_at');

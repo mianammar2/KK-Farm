@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
+import { MilkTracePanel, RecallKpis, type RecallKpi, type TraceData } from '../components/MilkTrace';
 
 type Session = {
     session: string; produced: number; held: number; colostrum: number; does: number;
@@ -20,6 +21,7 @@ type Props = {
     day: string; sessions: Session[]; lots: Lot[]; customers: Array<{ id: number; name: string }>; options: { status: Record<string, string> }; canQuality: boolean;
     kpi: { perDoeDay: number | null; saleablePct: number | null; lossPct: number | null; produced: number; revenue: number; costPerLitre: number | null; feedDay: number; costActual: boolean; revenuePerLitre: number | null; contributionPerLitre: number | null; owed: number };
     orders: Order[]; invoices: Invoice[]; monthly: Month[]; maxTemp: number;
+    trace: TraceData | null; recallKpi: RecallKpi; // D-196
 };
 
 const LOT_CLS: Record<string, string> = { pending_qc: 'bg-watch-100 text-watch-700', stored: 'bg-cobalt-100 text-cobalt-800', released: 'bg-ok-100 text-ok-700', hold: 'bg-treat-100 text-treat-700', rejected: 'bg-crit-100 text-crit-700', dispatched: 'bg-glaze text-ink-soft', recalled: 'bg-crit-100 text-crit-700' };
@@ -48,7 +50,8 @@ export default function Dairy(p: Props) {
                 </div>
             ) : null}
             {tab === 'lots' ? <Lots {...p} lots={p.lots.filter((l) => !['dispatched', 'recalled', 'rejected'].includes(l.status))} empty="No lots waiting. Close a session to create one." /> : null}
-            {tab === 'trace' ? <Lots {...p} lots={p.lots} empty="No milk lots in the last 30 days." /> : null}
+            {tab === 'trace' ? <><RecallKpis k={p.recallKpi} /><Lots {...p} lots={p.lots} empty="No milk lots in the last 30 days." /></> : null}
+            {p.trace ? <MilkTracePanel t={p.trace} canQuality={p.canQuality} onClose={() => router.get('/dairy', { tab: tab === 'trace' ? 'trace' : tab }, { preserveScroll: true })} /> : null}
             {tab === 'orders' ? <Orders {...p} /> : null}
             {tab === 'money' ? <Money {...p} /> : null}
         </>
@@ -130,7 +133,8 @@ function Lots({ lots, customers, options, canQuality, empty, orders, maxTemp }: 
 }
 
 function LotItem({ l, customers, options, canQuality, orders, maxTemp }: { l: Lot; customers: Props['customers']; options: Props['options']; canQuality: boolean; orders: Order[]; maxTemp: number }) {
-    const [mode, setMode] = useState<'test' | 'dispatch' | 'hold' | 'recall' | null>(null);
+    const [mode, setMode] = useState<'test' | 'dispatch' | 'hold' | 'recall' | 'temp' | null>(null);
+    const temp = useForm({ temp_c: '' });
     const test = useForm({ appearance_ok: true, smell_ok: true, residue: 'negative', tank: '', storage_temp_c: '', notes: '' });
     const send = useForm({ kind: 'sale', litres: String(l.remaining), dispatched_on: today(), customer_id: '', buyer: '', price_per_litre: '', order_id: '', terms: 'cash', credit_days: '30', dispatch_temp_c: '', container_ok: false as boolean, vehicle_ok: false as boolean });
     const openOrders = orders.filter((o) => o.status === 'open');
@@ -148,6 +152,8 @@ function LotItem({ l, customers, options, canQuality, orders, maxTemp }: { l: Lo
                     {l.status === 'released' ? <Button onClick={() => setMode(mode === 'dispatch' ? null : 'dispatch')}>Dispatch</Button> : null}
                     {['stored', 'released'].includes(l.status) && canQuality ? <Button variant="quiet" onClick={() => setMode('hold')}>Hold</Button> : null}
                     {['released', 'dispatched', 'hold'].includes(l.status) && canQuality ? <Button variant="quiet" onClick={() => setMode('recall')}>Recall</Button> : null}
+                    {['pending_qc', 'stored', 'released'].includes(l.status) ? <Button variant="quiet" onClick={() => setMode(mode === 'temp' ? null : 'temp')}>Log Temperature</Button> : null}
+                    <Button variant="secondary" onClick={() => router.get('/dairy', { tab: new URLSearchParams(window.location.search).get('tab') ?? 'lots', trace: l.id }, { preserveScroll: true, preserveState: true })}>Trace</Button>
                 </span>
             </div>
             {l.testedBy || l.releasedBy || l.hold ? <p className="mt-1 text-xs text-ink-soft">{l.testedBy ? `Tested by ${l.testedBy}` : ''}{l.releasedBy ? ` · released by ${l.releasedBy}` : ''}{l.hold ? ` · ${l.hold}` : ''}</p> : null}
@@ -180,6 +186,12 @@ function LotItem({ l, customers, options, canQuality, orders, maxTemp }: { l: Lo
                         <label className="flex items-center gap-1.5 pt-5"><input type="checkbox" checked={send.data.vehicle_ok} onChange={(x) => send.setData('vehicle_ok', x.target.checked)} /> Vehicle fit</label>
                     </> : null}
                     <div className="flex items-end"><Button type="submit" disabled={send.processing}>Dispatch</Button></div>
+                </form>
+            ) : null}
+            {mode === 'temp' ? (
+                <form className="mt-2 flex items-end gap-2" onSubmit={(ev) => { ev.preventDefault(); temp.post(`/dairy/lots/${l.id}/temperature`, { preserveScroll: true, onSuccess: () => { temp.reset(); setMode(null); } }); }}>
+                    <Field label={`Storage temperature °C (limit ${maxTemp} °C)`} error={(temp.errors as Record<string, string>).temp_c}><input type="number" step="0.1" className="field" value={temp.data.temp_c} onChange={(x) => temp.setData('temp_c', x.target.value)} autoFocus /></Field>
+                    <Button type="submit" disabled={temp.processing}>Save</Button>
                 </form>
             ) : null}
             {mode === 'hold' || mode === 'recall' ? (

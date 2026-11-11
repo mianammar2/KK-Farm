@@ -339,6 +339,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/dairy/lots/{lot}/release', [\App\Http\Controllers\DairyController::class, 'release']);
         Route::post('/dairy/lots/{lot}/hold', [\App\Http\Controllers\DairyController::class, 'hold']);
         Route::post('/dairy/lots/{lot}/recall', [\App\Http\Controllers\DairyController::class, 'recall']);
+        Route::post('/dairy/lots/{lot}/temperature', [\App\Http\Controllers\DairyController::class, 'temperature']); // D-196
+        Route::post('/dairy/dispatches/{dispatch}/complaint', [\App\Http\Controllers\DairyController::class, 'complaint']);
+        Route::post('/dairy/dispatches/{dispatch}/settle', [\App\Http\Controllers\DairyController::class, 'settle']);
         Route::post('/dairy/lots/{lot}/dispatch', [\App\Http\Controllers\DairyController::class, 'dispatch']);
         Route::post('/dairy/orders', [\App\Http\Controllers\DairyController::class, 'order']); // D-195
         Route::post('/dairy/orders/{order}/cancel', [\App\Http\Controllers\DairyController::class, 'cancelOrder']);

@@ -431,6 +431,10 @@ class HealthController extends Controller
             $this->syncHealth($case->animal);
         });
         Farm::log($request->user(), "Treated {$case->animal->farm_number}: {$data['product']}", '/health');
+        // D-196 (journey G): a milk withdrawal, possibly entered late, holds her milk in lots made since the dose.
+        if (! empty($data['milk_clear_on']) && $case->animal->sex === 'female') {
+            \App\Support\MilkTrace::doeFlagged($case->animal, "treated with {$data['product']}, no milk until ".\Illuminate\Support\Carbon::parse($data['milk_clear_on'])->format('j M Y'), $data['given_on'], $request->user());
+        }
 
         $warning = $short > 0 ? " Warning: not enough in-date {$medicine->name} in the store ({$short} {$medicine->unit} short), so stock shows below zero. Record the receipt or check for expired packs." : '';
 

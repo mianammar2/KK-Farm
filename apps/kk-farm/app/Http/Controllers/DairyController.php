@@ -79,7 +79,10 @@ class DairyController extends Controller
         $sold = MilkDispatch::where('dispatched_on', '>=', $since)->whereNotNull('sale_id')->sum('litres');
         $feedTotal = $actualFeed ?? ($feedDay * $milkDays / 100);
 
+        $traceLot = $request->query('trace') ? MilkLot::find($request->query('trace')) : null; // D-196
         return Inertia::render('Dairy', [
+            'trace' => $traceLot ? \App\Support\MilkTrace::trace($traceLot) : null,
+            'recallKpi' => \App\Support\MilkTrace::kpis(),
             'day' => $day, 'sessions' => $sessions,
             'lots' => MilkLot::with(['session', 'dispatches.customer'])->where(fn ($q) => $q->whereNotIn('status', ['dispatched', 'rejected', 'recalled'])->orWhere('updated_at', '>=', now()->subDays(30)))
                 ->orderByDesc('id')->limit(100)->get()->map(fn (MilkLot $l) => [
@@ -163,6 +166,8 @@ class DairyController extends Controller
                 Task::create(['title' => mb_substr("Mastitis check: {$doe->farm_number}", 0, 190), 'type' => 'health', 'priority' => 'high', 'status' => 'open', 'due_on' => now()->toDateString(),
                     'animal_id' => $doeId, 'pen_id' => $doe->pen_id, 'department_id' => Department::where('name', 'Veterinary')->value('id'), 'notes' => 'Udder check at milking: milk held until the vet decides.']);
                 Farm::event($doe, 'health', 'Udder check: mastitis suspected, milk held', $user->name);
+                // D-196 (journey G): her milk in earlier lots of the last few days is held, or listed for recall.
+                \App\Support\MilkTrace::doeFlagged($doe, 'mastitis suspected at the udder check', now()->subDays(\App\Support\MilkTrace::traceDays())->toDateString(), $user);
             }
             $t = $this->tally($data['milked_on'], $data['session']);
             if ($t['produced'] <= 0) {
@@ -210,6 +215,9 @@ class DairyController extends Controller
         ]);
         $pass = $data['appearance_ok'] && $data['smell_ok'] && $data['residue'] === 'negative';
         $lot->update($data + ['status' => $pass ? 'stored' : 'rejected', 'tested_by' => $request->user()->name, 'tested_at' => now(), 'hold_reason' => $pass ? null : 'Failed quality or residue check: discard']);
+        if ($data['residue'] === 'positive') {
+            \App\Support\MilkTrace::residuePositive($lot, $request->user()); // D-196: find the treated doe
+        }
 
         return back()->with('success', $pass ? "{$lot->code} passed and is stored. Release it for dispatch." : "{$lot->code} failed: rejected and to be discarded.");
     }
@@ -242,13 +250,12 @@ class DairyController extends Controller
         abort_unless($this->quality($request), 403);
         abort_unless(in_array($lot->status, ['released', 'dispatched', 'hold'], true), 422);
         $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
-        $buyers = $lot->dispatches()->with('customer')->get()->map(fn ($d) => $d->customer?->name ?? $d->buyer ?? 'Processing')->unique()->implode(', ');
-        DB::transaction(function () use ($lot, $data, $buyers, $request) {
-            $lot->update(['status' => 'recalled', 'hold_reason' => $data['reason']]);
-            Task::create(['title' => mb_substr("Milk recall {$lot->code}: notify buyers", 0, 190), 'type' => 'other', 'priority' => 'critical', 'status' => 'open', 'due_on' => now()->toDateString(),
-                'department_id' => Department::where('name', 'Management')->value('id'), 'notes' => mb_substr("Reason: {$data['reason']}. Buyers: ".($buyers ?: 'none yet'), 0, 500)]);
-            Farm::log($request->user(), "Recalled milk lot {$lot->code}", '/dairy?tab=lots');
-        });
+        $buyers = $lot->dispatches()->with('customer')->get()->map(fn ($d) => $d->kind === 'processing' ? 'Processing' : ($d->customer?->name ?? $d->buyer ?? 'buyer'))->unique()->implode(', ');
+        // D-196: every recall is a quality case (containment recall), so the corrective action is tracked and verified.
+        $case = \App\Support\QualityCases::open(['source' => 'milk', 'subject' => 'milk_lot', 'milk_lot_id' => $lot->id, 'severity' => 'critical', 'immediate_risk' => true, 'containment' => 'recall',
+            'title' => "Recall {$lot->code}", 'description' => $data['reason']], $request->user());
+        $lot->update(['hold_reason' => $data['reason']]);
+        Farm::log($request->user(), "Recalled milk lot {$lot->code} (quality {$case->label()})", '/dairy?tab=trace');
 
         return back()->with('success', "{$lot->code} recalled.".($buyers ? " Notify: {$buyers}." : ''));
     }
@@ -369,5 +376,36 @@ class DairyController extends Controller
         });
 
         return back()->with('success', "Payment for {$dispatch->invoice_no} received.");
+    }
+
+    /** D-196: a storage temperature reading; above the limit the lot is held under a quality case. */
+    public function temperature(Request $request, MilkLot $lot): RedirectResponse
+    {
+        abort_unless($this->quality($request) || $request->user()->role === 'caretaker', 403);
+        $c = (float) $request->validate(['temp_c' => ['required', 'numeric', 'between:-5,40']], [], ['temp_c' => 'temperature'])['temp_c'];
+        $case = \App\Support\MilkTrace::temperature($lot, $c, $request->user());
+
+        return back()->with('success', $case ? "{$lot->code} at {$c} °C is above the limit: held under quality {$case->label()}." : "Temperature {$c} °C recorded for {$lot->code}.");
+    }
+
+    /** D-196: a customer complaint about milk sold; the quality lead may recall the lot at once. */
+    public function complaint(Request $request, MilkDispatch $dispatch): RedirectResponse
+    {
+        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        $data = $request->validate(['details' => ['required', 'string', 'max:1000'], 'severity' => ['required', Rule::in(['low', 'medium', 'high', 'critical'])], 'recall' => ['required', 'boolean']]);
+        abort_if($data['recall'] && ! $this->quality($request), 403, 'Only the quality lead recalls a lot.');
+        $case = \App\Support\MilkTrace::complaint($dispatch, $data['details'], $data['severity'], (bool) $data['recall'], $request->user());
+
+        return back()->with('success', "Complaint recorded as quality {$case->label()}".($data['recall'] ? '; the lot is recalled and its buyers listed.' : '.'));
+    }
+
+    /** D-196: refund or credit a sale of a recalled lot; the books are corrected and returned litres noted. */
+    public function settle(Request $request, MilkDispatch $dispatch): RedirectResponse
+    {
+        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        $data = $request->validate(['kind' => ['required', Rule::in(['refund', 'credit'])], 'amount' => ['nullable', 'numeric', 'gt:0'], 'returned_l' => ['nullable', 'numeric', 'min:0']]);
+        \App\Support\MilkTrace::settle($dispatch, $data['kind'], isset($data['amount']) ? (float) $data['amount'] : null, isset($data['returned_l']) ? (float) $data['returned_l'] : null, $request->user());
+
+        return back()->with('success', "{$dispatch->invoice_no} ".($data['kind'] === 'credit' ? 'credited' : 'refunded').'.');
     }
 }

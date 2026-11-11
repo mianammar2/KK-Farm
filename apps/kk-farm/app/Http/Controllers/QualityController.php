@@ -196,30 +196,7 @@ class QualityController extends Controller
         if ($data['immediate_risk'] && ! $this->lead($request) && $data['containment'] === 'recall') {
             abort(403, 'Only the quality lead recalls a lot.');
         }
-        $case = DB::transaction(function () use ($data, $request) {
-            DB::statement('LOCK TABLE quality_cases IN SHARE ROW EXCLUSIVE MODE');
-            $keep = fn (string $s) => $data['subject'] === $s;
-            $case = QualityCase::create([
-                'case_no' => (int) QualityCase::max('case_no') + 1, 'source' => $data['source'], 'title' => $data['title'], 'description' => $data['description'] ?? null,
-                'subject' => $data['subject'], 'animal_id' => $keep('animal') ? $data['animal_id'] : null, 'milk_lot_id' => $keep('milk_lot') ? $data['milk_lot_id'] : null,
-                'feed_item_id' => $keep('feed_item') ? $data['feed_item_id'] : null, 'medicine_id' => $keep('medicine') ? $data['medicine_id'] : null,
-                'batch' => $keep('medicine') ? ($data['batch'] ?? null) : null, 'process' => $keep('process') ? $data['process'] : null, 'incident_id' => $data['incident_id'] ?? null,
-                'immediate_risk' => (bool) $data['immediate_risk'], 'severity' => $data['severity'], 'status' => $data['immediate_risk'] ? 'contained' : 'investigating',
-                'opened_by' => $request->user()->name, 'opened_on' => now()->toDateString(),
-            ]);
-            if ($data['immediate_risk']) {
-                $this->contain($case, $data['containment'], $request->user());
-            }
-            if (in_array($data['severity'], ['high', 'critical'], true)) {
-                $this->task("Quality case {$case->label()}: {$case->title}", $data['severity'], 'Management', $case->subjectName().'. Gather the root cause and evidence, then plan the CAPA.', $case);
-            }
-            if ($case->animal) {
-                Farm::event($case->animal, 'health', "Quality case {$case->label()}: {$case->title}", $request->user()->name);
-            }
-            Farm::log($request->user(), "Opened quality case {$case->label()}", '/quality?tab=cases');
-
-            return $case;
-        });
+        $case = \App\Support\QualityCases::open($data, $request->user()); // D-196: shared with the automatic triggers
 
         return back()->with('success', $case->immediate_risk ? "{$case->label()} recorded and contained. Gather the root cause and evidence." : "{$case->label()} recorded. Gather the root cause and evidence.");
     }
@@ -227,41 +204,12 @@ class QualityController extends Controller
     /** Place hold / isolate / recall. A held product cannot sell or be used until the lead releases it. */
     private function contain(QualityCase $case, string $kind, User $by): QualityHold
     {
-        if ($case->subject === 'process') {
-            throw ValidationException::withMessages(['containment' => 'A process has nothing to hold. Choose No for immediate risk, or record the affected animal, lot, feed or medicine.']);
-        }
-        if ($kind === 'isolate' && $case->subject !== 'animal') {
-            throw ValidationException::withMessages(['containment' => 'Only an animal is isolated. Hold or recall a product.']);
-        }
-        if ($kind === 'recall' && $case->subject !== 'milk_lot') {
-            throw ValidationException::withMessages(['containment' => 'A recall is for a milk lot that has left the farm. Hold feed or medicine instead.']);
-        }
-        $hold = QualityHold::create([
-            'case_id' => $case->id, 'kind' => $kind, 'subject' => $case->subject, 'animal_id' => $case->animal_id, 'milk_lot_id' => $case->milk_lot_id,
-            'feed_item_id' => $case->feed_item_id, 'medicine_id' => $case->medicine_id, 'batch' => $case->batch, 'placed_by' => $by->name, 'placed_at' => now(),
-        ]);
-        if ($lot = $case->milkLot) {
-            if ($kind === 'recall') {
-                $buyers = $lot->dispatches()->with('customer')->get()->map(fn ($d) => $d->kind === 'processing' ? 'Processing' : ($d->customer?->name ?? $d->buyer ?? 'unknown buyer'))->unique()->implode(', ');
-                $lot->update(['status' => 'recalled', 'hold_reason' => "Quality {$case->label()}: {$case->title}"]);
-                $this->task("Milk recall {$lot->code}: notify buyers", 'critical', 'Management', mb_substr("Quality {$case->label()}. Buyers: ".($buyers ?: 'none yet'), 0, 500), $case);
-            } elseif (in_array($lot->status, ['pending_qc', 'stored', 'released'], true)) {
-                $lot->update(['status' => 'hold', 'hold_reason' => "Quality {$case->label()}: {$case->title}"]);
-            }
-        }
-        if ($kind === 'isolate' && $case->animal) {
-            $this->task("Isolate {$case->animal->farm_number} (quality {$case->label()})", 'high', 'Veterinary', 'Move to the isolation pen and assess under the vet plan as the vet decides.', $case, $case->animal_id);
-        }
-
-        return $hold;
+        return \App\Support\QualityCases::contain($case, $kind, $by);
     }
 
     private function task(string $title, string $priority, string $department, string $notes, QualityCase $case, ?string $animalId = null, ?int $userId = null): void
     {
-        Task::create([
-            'title' => mb_substr($title, 0, 190), 'type' => 'other', 'priority' => $priority, 'status' => 'open', 'due_on' => now()->toDateString(),
-            'animal_id' => $animalId ?? $case->animal_id, 'department_id' => Department::where('name', $department)->value('id'), 'user_id' => $userId, 'notes' => mb_substr($notes, 0, 500),
-        ]);
+        \App\Support\QualityCases::task($title, $priority, $department, $notes, $case, $animalId, $userId);
     }
 
     /** Add a further containment to an open case (e.g. the risk became clear during investigation). */
