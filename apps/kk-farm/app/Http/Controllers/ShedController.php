@@ -209,10 +209,10 @@ class ShedController extends Controller
 
     public function transfer(Request $request): RedirectResponse
     {
-        $data = $request->validate(['animal_id' => ['required', 'exists:animals,id'], 'pen_id' => ['required', 'exists:pens,id']]);
+        $data = $request->validate(['animal_id' => ['required', 'exists:animals,id'], 'pen_id' => ['required', 'exists:pens,id'], 'capacity_override' => ['nullable', 'string', 'max:200']]);
         $animal = Animal::with('pen.shed')->findOrFail($data['animal_id']);
         $pen = Pen::with('shed')->findOrFail($data['pen_id']);
-        $movement = \App\Support\Movements::transfer($animal, $pen, $request->user()); // D-076
+        $movement = \App\Support\Movements::transfer($animal, $pen, $request->user(), ['capacity_override' => $data['capacity_override'] ?? null]); // D-076, D-207
         if (! $movement) {
             return back()->with('success', "{$animal->farm_number} is already in {$pen->fullName()}.");
         }

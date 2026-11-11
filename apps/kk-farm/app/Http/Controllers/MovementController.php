@@ -52,7 +52,7 @@ class MovementController extends Controller
             'destination' => ['nullable', 'string', 'max:120'], 'reason' => ['nullable', 'string', 'max:200'], 'authorized_by' => ['nullable', 'string', 'max:80'],
             'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'fee' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
             'evidence_ref' => ['nullable', 'string', 'max:80'], 'notes' => ['nullable', 'string', 'max:500'],
-            'sale_category' => ['nullable', Rule::in(['live_goat', 'breeding_goat'])],
+            'sale_category' => ['nullable', Rule::in(['live_goat', 'breeding_goat'])], 'capacity_override' => ['nullable', 'string', 'max:200'], // D-207
         ], ['to_pen_id.required_if' => 'Choose the pen to move to.'], ['animal_ids' => 'goats', 'amount' => 'price']);
         $exit = AnimalMovement::TYPES[$data['type']][1];
         abort_if($exit && ! $request->user()->passes('exit_animal'), 403, 'Only the owner or manager records a goat leaving the farm.');

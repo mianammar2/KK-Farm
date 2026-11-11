@@ -117,7 +117,8 @@ export const APPS: ErpApp[] = [
         S('Overview', '/sheds', 'Farms, Units & Pens'),
         S('Operations', '/movements', 'Animal Movements'),
         S('Records', '/goats?show=no_pen', 'Goats Without a Pen'),
-        S('Reporting', '/', 'Pen Occupancy'),
+        S('Operations', '/housing', 'Pen Status, Capacity & Cleaning'),
+        S('Reporting', '/housing', 'Pen Occupancy'),
         S('Configuration', '/sheds', 'Unit & Pen Setup'),
     ] },
     { key: 'growth', no: '08', label: 'Growth & Performance', art: 'mod-growth', modules: ['weights'], linked: ['maternity', 'breeding', 'livestock', 'feeding', 'veterinary', 'sales'], sections: [

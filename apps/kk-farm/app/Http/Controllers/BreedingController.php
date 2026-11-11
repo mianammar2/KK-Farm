@@ -302,7 +302,7 @@ class BreedingController extends Controller
                     'notes' => 'Newborn assessed not viable / stable. Warmth, colostrum and treatment as the vet decides, then reassess.',
                 ]);
                 try {
-                    \App\Support\Movements::transfer($kid, \App\Support\Maternity::pen('NCU-01'), new \App\Models\User(['name' => $by]), ['reason' => 'Not stable: Neonatal Care Unit']);
+                    \App\Support\Movements::transfer($kid, \App\Support\Maternity::pen('NCU-01'), new \App\Models\User(['name' => $by]), ['reason' => 'Not stable: Neonatal Care Unit', 'care' => true]);
                 } catch (\Illuminate\Validation\ValidationException) {
                     // stays where it is (e.g. intake quarantine rules); the task tells the vet
                 }

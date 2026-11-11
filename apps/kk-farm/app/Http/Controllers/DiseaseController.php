@@ -145,7 +145,7 @@ class DiseaseController extends Controller
                 HealthRecord::whereKey($data['report_id'])->update(['status' => 'closed']);
             }
             if (! empty($data['isolate_pen_id']) && (int) $data['isolate_pen_id'] !== (int) $homePen) {
-                Movements::transfer($animal, Pen::findOrFail($data['isolate_pen_id']), $user, ['reason' => "Isolation: {$case->label()} {$data['condition']}"]);
+                Movements::transfer($animal, Pen::findOrFail($data['isolate_pen_id']), $user, ['care' => true, 'reason' => "Isolation: {$case->label()} {$data['condition']}"]);
             }
             if ($case->emergency) {
                 foreach (['Veterinary' => 'Isolation protocol, PPE, footbath and treatment as the vet decides. Check pen mates.', 'Management' => 'Emergency: no movements or sales from the affected pen until the vet clears it.'] as $dept => $what) {

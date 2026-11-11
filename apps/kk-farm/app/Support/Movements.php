@@ -34,15 +34,31 @@ final class Movements
         if ((int) $animal->pen_id === (int) $to->id) {
             return null;
         }
+        // D-207: only an active pen takes goats; BR-004: a full pen takes one more only with the owner's or manager's reason.
+        // Care moves (maternity, isolation, welfare, kid care) are never stopped by capacity: humane handling comes first.
+        if (($to->status ?? 'active') !== 'active') {
+            throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is ".($to->status === 'cleaning' ? 'being cleaned' : "under {$to->status}").($to->status_reason ? " ({$to->status_reason})" : '').'. Choose another pen.']);
+        }
+        $override = null;
+        if ($to->capacity && empty($extra['care']) && $to->animals()->active()->count() >= $to->capacity) {
+            if (empty($extra['capacity_override'])) {
+                throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is full ({$to->capacity} goats). The owner or manager can authorise one more with a reason."]);
+            }
+            if (! in_array($by->role, ['ceo', 'manager'], true)) {
+                throw ValidationException::withMessages(['to_pen_id' => 'Only the owner or manager authorises a move into a full pen.']);
+            }
+            $override = mb_substr("Over capacity ({$to->capacity}), authorised by {$by->name}: {$extra['capacity_override']}", 0, 300);
+        }
         Intake::assertNoMixing($animal, $to); // D-190: no direct mixing before clearance
         Biosecurity::assertMoveAllowed($animal, $to, $by); // D-193: affected pens stay put until the vet clears them
         $on = Carbon::parse($extra['moved_on'] ?? now());
 
-        return DB::transaction(function () use ($animal, $to, $by, $extra, $on) {
+        return DB::transaction(function () use ($animal, $to, $by, $extra, $on, $override) {
             $from = $animal->pen;
             $movement = AnimalMovement::create([
                 'animal_id' => $animal->id, 'moved_on' => $on, 'type' => 'transfer', 'from_pen_id' => $animal->pen_id, 'to_pen_id' => $to->id,
                 'reason' => $extra['reason'] ?? null, 'authorized_by' => $extra['authorized_by'] ?? $by->name, 'notes' => $extra['notes'] ?? null, 'recorded_by' => $by->name,
+                'capacity_override' => $override,
             ]);
             $animal->update(['pen_id' => $to->id]);
             Farm::event($animal, 'move', 'Moved from '.($from?->fullName() ?? 'no pen')." to {$to->fullName()}".(! empty($extra['reason']) ? " ({$extra['reason']})" : ''), $by->name, $on);

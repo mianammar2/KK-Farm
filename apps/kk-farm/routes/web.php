@@ -322,6 +322,11 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware('module:sheds')->group(function (): void {
         Route::get('/sheds', [ShedController::class, 'index']);
+        Route::get('/housing', [\App\Http\Controllers\HousingController::class, 'index']); // D-207
+        Route::post('/housing/pens/{pen}/status', [\App\Http\Controllers\HousingController::class, 'status']);
+        Route::post('/housing/pens/{pen}/clean', [\App\Http\Controllers\HousingController::class, 'start']);
+        Route::post('/housing/cleanings/{cleaning}/finish', [\App\Http\Controllers\HousingController::class, 'finish']);
+        Route::post('/housing/cleanings/{cleaning}/verify', [\App\Http\Controllers\HousingController::class, 'verify']);
         Route::post('/sheds/transfer', [ShedController::class, 'transfer']);
         Route::get('/movements', [\App\Http\Controllers\MovementController::class, 'index']);
         Route::post('/movements', [\App\Http\Controllers\MovementController::class, 'store']);

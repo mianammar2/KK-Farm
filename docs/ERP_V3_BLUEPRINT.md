@@ -26,7 +26,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 04 | Maternity & Kid Care | Pre-Kidding; Kidding; Pregnancy Outcomes; Newborn Registry; Mother Care; Kid Nutrition; Weaning; Reporting | Built (D-161–D-164, D-171, D-176) |
 | 05 | Veterinary & Biosecurity | Health Monitoring; Medical Cases; Treatment; Preventive Care; Quarantine; Reproduction Health; Withdrawal & Disposal; Reporting | Partial (D-172–D-174, D-193 disease control, restrictions, outbreaks; antimicrobial use report to do) |
 | 06 | Feeding & Nutrition | Feed Master; Nutrition Standards; Ration Formulas; Daily Feed Plans; Feed Production; Consumption; Feed Safety; Cost & Reports | Partial (D-177; feed safety lot holds to do) |
-| 07 | Housing & Pen Management | Farm Structure; Unit Categories; Pen Operations; Biosecure Areas; Housing Conditions; Cleaning; Traceability; Reports | Partial (pen status, capacity block, cleaning to do) |
+| 07 | Housing & Pen Management | Farm Structure; Unit Categories; Pen Operations; Biosecure Areas; Housing Conditions; Cleaning; Traceability; Reports | Built (D-207: pen status, capacity block with authorised override, cleaning verified by someone else) |
 | 08 | Growth & Performance | Weighing; Growth Plans; Body Condition; Performance; Breeder Selection; Fattening Integration; Reports | Partial (growth plans, interventions, breeder selection D-191; outlier/duplicate weight flags outside fattening to do) |
 | 09 | Farm Operations & Tasks | Daily Routines; Task Planner; Work Orders; Checklists; Incidents; Approvals; Reports | Built (D-180) |
 | 10 | Inventory & Stores | Products; Stock Locations; Operations; Batch & Expiry; Reordering; Consumption; Valuation; Reporting | Partial (D-178) |
@@ -73,7 +73,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-001 | Immutable Animal ID, never reused | Partial (UUID PK; readable permanent series to do) |
 | BR-002 | One active animal per EPC | Built |
 | BR-003 | Intake quarantine before regular pen | Built (D-172) |
-| BR-004 | Block pen overcapacity unless authorised | To do |
+| BR-004 | Block pen overcapacity unless authorised | Done (D-207; care moves exempt) |
 | BR-005 | Breeding selection: maturity, BCS, health, relatedness | Built (D-191 selection checks maturity, growth, BCS, health, pedigree; shared-ancestor check at mating) |
 | BR-006 | Ultrasound result, fetus count, viability independent | Built (D-166) |
 | BR-007 | Kidding: event + each kid record, mixed outcomes | Built (D-161) |

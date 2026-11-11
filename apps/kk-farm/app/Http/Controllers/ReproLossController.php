@@ -53,7 +53,7 @@ class ReproLossController extends Controller
         $data = $request->validate(['pen_id' => ['required', 'exists:pens,id']], [], ['pen_id' => 'isolation pen']);
         DB::transaction(function () use ($case, $data, $request) {
             if ($case->dam?->status === 'active') {
-                Movements::transfer($case->dam, Pen::findOrFail($data['pen_id']), $request->user(), ['reason' => "Isolation after pregnancy loss {$case->label()}"]);
+                Movements::transfer($case->dam, Pen::findOrFail($data['pen_id']), $request->user(), ['care' => true, 'reason' => "Isolation after pregnancy loss {$case->label()}"]);
             }
             $case->update(['isolated_at' => now(), 'isolation_pen_id' => $data['pen_id'], 'status' => 'contained']);
         });

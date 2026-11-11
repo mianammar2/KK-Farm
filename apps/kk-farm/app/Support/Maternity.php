@@ -67,7 +67,7 @@ final class Maternity
     {
         $to = self::damPen($k);
         try {
-            Movements::transfer($dam, $to, $by, [
+            Movements::transfer($dam, $to, $by, ['care' => true, 
                 'moved_on' => $k->kidded_on->toDateString(),
                 'reason' => in_array($k->outcome, Kidding::LOSSES, true) ? 'Maternity isolation after pregnancy loss' : 'Post-kidding care with her kids',
             ]);
@@ -81,7 +81,7 @@ final class Maternity
     private static function tryMove(Animal $goat, Pen $to, User $by, string $reason): bool
     {
         try {
-            return Movements::transfer($goat, $to, $by, ['reason' => $reason]) !== null;
+            return Movements::transfer($goat, $to, $by, ['reason' => $reason, 'care' => true]) !== null;
         } catch (\Illuminate\Validation\ValidationException) {
             return false;
         }

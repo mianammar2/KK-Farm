@@ -187,7 +187,7 @@ class WelfareController extends Controller
             WelfareAction::create(['case_id' => $case->id, 'kind' => $data['kind'], 'notes' => $data['notes'] ?? ($data['evidence'] ?? null), 'improved' => $data['improved'] ?? null, 'done_by' => $user->name, 'done_on' => now()->toDateString(),
                 'assigned_user_id' => $data['assigned_user_id'] ?? null, 'due_on' => $data['due_on'] ?? null, 'task_id' => $task?->id, 'pen_id' => $data['pen_id'] ?? null]);
             if ($data['kind'] === 'housing') {
-                Movements::transfer($animal, Pen::findOrFail($data['pen_id']), $user, ['reason' => "Welfare care {$case->label()}"]);
+                Movements::transfer($animal, Pen::findOrFail($data['pen_id']), $user, ['care' => true, 'reason' => "Welfare care {$case->label()}"]);
             }
             match ($data['kind']) {
                 'vet_referral' => $this->refer($case, $data['notes'] ?? null, $user->name),

@@ -353,7 +353,7 @@ export default function GoatShow(props: Props) {
 function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pens: Props['pens']; close: () => void }) {
     const weight = useForm({ animal_id: goat.id, weight_kg: '' });
     const concern = useForm({ animal_id: goat.id, title: '', severity: 'low', notes: '' });
-    const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? '') });
+    const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? ''), capacity_override: '' });
     const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
     const [ask, confirmBox] = useConfirm(); // D-133
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
@@ -404,7 +404,8 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     if (kind === 'move') {
         return (
             <form onSubmit={(e) => { e.preventDefault(); move.post('/sheds/transfer', options); }} className="flex flex-wrap items-end gap-2">
-                <div className="w-64"><Field label="Move to"><select className="field" value={move.data.pen_id} onChange={(e) => move.setData('pen_id', e.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</select></Field></div>
+                <div className="w-64"><Field label="Move to" error={(move.errors as Record<string, string>).to_pen_id}><select className="field" value={move.data.pen_id} onChange={(e) => move.setData('pen_id', e.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</select></Field></div>
+                {(move.errors as Record<string, string>).to_pen_id?.includes(' is full') || move.data.capacity_override ? <div className="w-64"><Field label="Over-capacity reason (owner or manager)"><input className="field" value={move.data.capacity_override} onChange={(e) => move.setData('capacity_override', e.target.value)} /></Field></div> : null}
                 <Button type="submit" disabled={move.processing}>Move goat</Button>
             </form>
         );

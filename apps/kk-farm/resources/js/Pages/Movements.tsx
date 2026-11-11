@@ -72,7 +72,7 @@ export default function Movements({ movements, goats, pens, types, month, canExi
 
 function MoveForm({ goats, pens, types, canExit, saleCategories, onDone }: Omit<Props, 'movements' | 'month'> & { onDone?: () => void }) {
     const [query, setQuery] = useState('');
-    const form = useForm({ animal_ids: [] as string[], type: 'transfer', moved_on: today(), to_pen_id: '', destination: '', reason: '', authorized_by: '', amount: '', fee: '', evidence_ref: '', notes: '', sale_category: 'live_goat' });
+    const form = useForm({ animal_ids: [] as string[], type: 'transfer', moved_on: today(), to_pen_id: '', destination: '', reason: '', authorized_by: '', amount: '', fee: '', evidence_ref: '', notes: '', sale_category: 'live_goat', capacity_override: '' });
     const e = form.errors as Record<string, string>;
     const exit = types[form.data.type]?.exit;
     const picked = goats.filter((g) => form.data.animal_ids.includes(g.id));
@@ -113,7 +113,10 @@ function MoveForm({ goats, pens, types, canExit, saleCategories, onDone }: Omit<
                     {!canExit ? <p className="text-xs text-ink-faint">Goats leaving the farm are recorded by the owner or manager.</p> : null}
                     <Field label="Date" error={e.moved_on}><input type="date" max={today()} className="field" value={form.data.moved_on} onChange={(x) => form.setData('moved_on', x.target.value)} /></Field>
                     {!exit ? (
-                        <Field label="To pen" error={e.to_pen_id}><select className="field" value={form.data.to_pen_id} onChange={(x) => form.setData('to_pen_id', x.target.value)}><option value="">Choose pen…</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                        <>
+                            <Field label="To pen" error={e.to_pen_id}><select className="field" value={form.data.to_pen_id} onChange={(x) => form.setData('to_pen_id', x.target.value)}><option value="">Choose pen…</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                            {e.to_pen_id?.includes(' is full') || form.data.capacity_override ? <Field label="Over-capacity reason (owner or manager)" hint="BR-004: recorded with your name on each move"><input className="field" value={form.data.capacity_override} onChange={(x) => form.setData('capacity_override', x.target.value)} /></Field> : null}
+                        </>
                     ) : (
                         <>
                             <Field label={form.data.type === 'sale' ? 'Buyer' : 'Destination'} error={e.destination}><input className="field" value={form.data.destination} onChange={(x) => form.setData('destination', x.target.value)} placeholder={form.data.type === 'sale' ? 'Name or market' : 'Farm, place or person'} /></Field>
