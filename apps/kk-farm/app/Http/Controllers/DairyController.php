@@ -171,6 +171,7 @@ class DairyController extends Controller
     {
         abort_unless($this->quality($request), 403, 'The quality lead releases milk lots.');
         abort_unless($lot->status === 'stored', 422, 'Only a tested, stored lot is released.');
+        abort_if(\App\Support\Quality::milkLotHold($lot->id) !== null, 422, "{$lot->code} is on a quality hold. Quality releases it first."); // D-189
         abort_if($lot->tested_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the tester releases the lot.');
         $lot->update(['status' => 'released', 'released_by' => $request->user()->name, 'released_at' => now()]);
 

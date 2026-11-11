@@ -64,6 +64,7 @@ final class Tmr
             if (! $formula->active || $formula->lines->isEmpty()) {
                 throw ValidationException::withMessages(['total_kg' => 'This formula is not in use.']);
             }
+            Quality::assertFeedNotHeld($formula->lines->pluck('feed_item_id')->all(), 'total_kg'); // D-189 / BR-016
             $stock = Feed::stock(true);
             $need = $formula->lines->map(fn ($l) => ['item' => $l->item, 'kg' => round($totalKg * $l->pct / 100, 2)]);
             $short = $need->filter(fn ($n) => ($stock[$n['item']->id] ?? 0) < $n['kg']);

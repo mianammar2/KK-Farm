@@ -231,12 +231,19 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/environment?tab=records', 'Water & Heat Compliance'),
         S('Configuration', '/environment?tab=setup', 'Water Points & Heat Limit'),
     ] },
-    { key: 'quality', no: '21', label: 'Quality & Compliance', art: 'mod-biosecurity', modules: ['tasks'], linked: ['operations', 'veterinary', 'inventory', 'sales'], sections: [
-        S('Overview', '/operations?tab=incidents', 'Incidents'),
-        S('Operations', '/operations?tab=incidents', 'Report an Incident'),
+    { key: 'quality', no: '21', label: 'Quality & Compliance', art: 'mod-biosecurity', modules: ['quality'], linked: ['dairy', 'inventory', 'veterinary', 'sales', 'operations', 'feeding'], sections: [
+        S('Overview', '/quality?tab=dashboard', 'Quality Dashboard'),
+        S('Operations', '/quality?tab=new', 'Raise a Quality Alarm'),
+        S('Operations', '/quality?tab=cases', 'Cases & CAPA'),
+        S('Operations', '/quality?tab=holds', 'Holds, Isolation & Recall'),
+        S('Operations', '/operations?tab=incidents', 'Incident Register'),
+        S('Records', '/quality?tab=sops', 'SOP Library'),
+        S('Records', '/quality?tab=register', 'Regulatory Register'),
+        S('Records', '/quality?tab=drills', 'Emergency Readiness'),
         S('Records', '/health?tab=withdrawal', 'Withdrawal Holds'),
+        S('Reporting', '/quality?tab=closed', 'Closed Cases & Learning'),
         S('Reporting', '/activity', 'Audit Trail'),
-        S('Configuration', '/operations?tab=templates', 'Checklists & SOPs'),
+        S('Configuration', '/operations?tab=templates', 'Checklists'),
     ] },
     { key: 'settings', no: '', label: 'Settings', art: 'mod-settings', modules: ['settings'], linked: ['employees', 'housing', 'feeding', 'breeding'], sections: [
         S('Configuration', '/settings#breeds', 'Animal Master Data'),

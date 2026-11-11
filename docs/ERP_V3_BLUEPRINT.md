@@ -40,7 +40,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | Built – flow 18 (D-187); feeder purchase lots and quotations to do |
 | 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review to do |
 | 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | Built – flow 20 (D-186); water-quality lab tests, manure/compost logs to do |
-| 21 | Quality, Compliance & Safety | Quality Dashboard; SOP Library; Feed & Milk Safety; Regulatory Register; Incidents & CAPA; Traceability & Recall; Emergency Readiness; Compliance Reporting | To do (incident register D-180) |
+| 21 | Quality, Compliance & Safety | Quality Dashboard; SOP Library; Feed & Milk Safety; Regulatory Register; Incidents & CAPA; Traceability & Recall; Emergency Readiness; Compliance Reporting | Built – flow 21 (D-180, D-189) |
 | 22 | Fodder & Pasture (Optional) | Land & Field Registry; Crop Planning; Cultivation; Crop Monitoring; Harvest; Preservation; Feed Store Transfer; Costing | To do (off by default) |
 | – | System Settings | Farm Configuration; Master Data; Animal Identity; Clinical Protocols; Production Settings; Equipment & Integrations; Security & Permissions; Data Governance; Automation; Finance | Partial |
 
@@ -56,14 +56,14 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-006 | Ultrasound result, fetus count, viability independent | Built (D-166) |
 | BR-007 | Kidding: event + each kid record, mixed outcomes | Built (D-161) |
 | BR-008 | Infectious abortion → isolation + vet | Built (D-161, D-163) |
-| BR-009 | Colostrum never auto-saleable | To do (dairy allocation) |
+| BR-009 | Colostrum never auto-saleable | Built (D-188) |
 | BR-010 | Milk withdrawal blocks milk | Built (D-188) |
 | BR-011 | Meat withdrawal blocks sale/dispatch | Built (D-073) |
 | BR-012 | Only Released milk lots dispatch | Built (D-188) |
 | BR-013 | Milk lot genealogy | Built (D-188) |
 | BR-014 | Milk mass balance | Built (D-188) |
 | BR-015 | Daily feed trace 3 shifts + stock | Built |
-| BR-016 | Rejected feed lots not mixed into TMR | To do |
+| BR-016 | Rejected feed lots not mixed into TMR | Built (D-189): a quality hold on a feed blocks daily feeding and TMR mixing |
 | BR-017 | DM vs as-fed, kg vs litres | Partial |
 | BR-018 | Duplicate/impossible weight flags | Built (D-187) – fattening weighings |
 | BR-019 | Fattening eligibility | Built (D-187) |
@@ -72,9 +72,9 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-022 | Configurable heat-stress threshold | Built (D-186) |
 | BR-023 | Major welfare concern → inspection/medical task | Built (D-185) |
 | BR-024 | Every dose consumes a traceable lot | Partial |
-| BR-025 | Held stock/milk/feed never sold | Partial |
+| BR-025 | Held stock/milk/feed never sold | Built (D-188, D-189): quality holds block goat sale/meat exit, milk release/dispatch, feed use and medicine batch issue |
 | BR-026 | Dispatch verifies tag/RFID + approved sale | Built for fattening dispatch (D-187) |
-| BR-027 | Creator cannot self-approve restricted changes | Partial |
+| BR-027 | Creator cannot self-approve restricted changes | Partial (milk release, CAPA approval and verification, SOP approval: D-188, D-189) |
 | BR-028 | Offline sync without silent overwrite | Partial |
 | BR-029 | Audit of key changes (old/new) | Partial |
 | BR-030 | Emergencies create assigned incident | Partial (D-180) |

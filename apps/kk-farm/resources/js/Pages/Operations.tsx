@@ -115,7 +115,8 @@ function IncidentItem({ i, options, canResolve }: { i: IncidentRow; options: Pro
                 <Chip className={SEV[i.severity]}>{options.severity[i.severity]}</Chip>
                 <span className="text-ink-soft">{i.at}{i.pen ? ` · ${i.pen}` : ''} · {i.by}</span>
                 {i.goat ? <Link href={`/goats/${i.goat.id}`} className="font-mono text-cobalt-800 hover:underline">{i.goat.number}</Link> : null}
-                {i.status === 'open' && canResolve ? <Button variant="secondary" className="ml-auto" onClick={() => setResolving(!resolving)}>Resolve</Button> : null}
+                {canResolve ? <Link href={`/quality?tab=new&incident=${i.id}`} className="ml-auto text-xs font-semibold text-cobalt-800 hover:underline">Raise Quality Case</Link> : null}
+                {i.status === 'open' && canResolve ? <Button variant="secondary" onClick={() => setResolving(!resolving)}>Resolve</Button> : null}
             </div>
             <p className="mt-1">{i.description}</p>
             {i.resolution ? <p className="mt-1 text-ok-700">Resolved by {i.resolvedBy} ({i.resolvedAt}): {i.resolution}</p> : null}

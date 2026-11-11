@@ -63,6 +63,27 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
     });
+    // D-189: App 21 Quality, Compliance & Safety
+    Route::middleware('module:quality')->group(function (): void {
+        $q = \App\Http\Controllers\QualityController::class;
+        Route::get('/quality', [$q, 'index']);
+        Route::post('/quality/cases', [$q, 'open']);
+        Route::post('/quality/cases/{case}/hold', [$q, 'hold']);
+        Route::post('/quality/cases/{case}/investigate', [$q, 'investigate']);
+        Route::post('/quality/cases/{case}/capa', [$q, 'capa']);
+        Route::post('/quality/cases/{case}/close', [$q, 'close']);
+        Route::post('/quality/capas/{capa}/approve', [$q, 'approve']);
+        Route::post('/quality/capas/{capa}/execute', [$q, 'execute']);
+        Route::post('/quality/capas/{capa}/verify', [$q, 'verify']);
+        Route::post('/quality/holds/{hold}/release', [$q, 'release']);
+        Route::post('/quality/sops', [$q, 'sop']);
+        Route::post('/quality/sops/{sop}/revise', [$q, 'revise']);
+        Route::post('/quality/sop-revisions/{revision}/approve', [$q, 'approveSop']);
+        Route::post('/quality/register', [$q, 'register']);
+        Route::post('/quality/register/{item}', [$q, 'register']);
+        Route::post('/quality/drills', [$q, 'drill']);
+    });
+
     // D-185: App 19 Animal Welfare & Husbandry
     Route::middleware('module:welfare')->group(function (): void {
         Route::get('/welfare', [\App\Http\Controllers\WelfareController::class, 'index']);

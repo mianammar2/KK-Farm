@@ -61,8 +61,12 @@ final class MedicineStock
     {
         $left = $qty;
         $today = now()->startOfDay();
+        $held = Quality::heldBatches($medicine->id); // D-189: a quality hold on a batch (or the whole medicine) blocks its use
+        if (in_array(null, $held, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['medicine_id' => "{$medicine->name} is on quality hold. Use another medicine or ask Quality to release it."]);
+        }
         foreach (self::batches($medicine->id)[$medicine->id] ?? [] as $batch) {
-            if ($left <= 0 || ($batch['expiry'] && $batch['expiry']->lessThan($today))) {
+            if ($left <= 0 || ($batch['expiry'] && $batch['expiry']->lessThan($today)) || in_array($batch['batch'], $held, true)) {
                 continue;
             }
             $take = min($left, $batch['qty']);

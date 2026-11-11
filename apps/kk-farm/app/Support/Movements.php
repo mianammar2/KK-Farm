@@ -63,6 +63,7 @@ final class Movements
             throw ValidationException::withMessages(['animal_id' => "{$animal->farm_number} is no longer on the farm."]);
         }
         if (in_array($type, AnimalMovement::MEAT_EXITS, true)) {
+            Quality::assertAnimalNotHeld($animal, 'type'); // D-189: held animals cannot sell
             $meat = Withdrawal::forAnimal($animal->id)['meat'];
             if ($meat) {
                 throw ValidationException::withMessages(['type' => "{$animal->farm_number} is under meat withdrawal until {$meat->format('j M Y')} (veterinary treatment). It cannot leave for meat before then."]);
