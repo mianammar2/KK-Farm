@@ -253,6 +253,14 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/milking/start', [\App\Http\Controllers\MilkingController::class, 'start']);
         Route::post('/milking/settings', [\App\Http\Controllers\MilkingController::class, 'settings']);
         Route::post('/milking/lactations/{lactation}/dry-off', [\App\Http\Controllers\MilkingController::class, 'dryOff']);
+        // D-188: App 17 Dairy & Milk: sessions, lots, QA, release, dispatch
+        Route::get('/dairy', [\App\Http\Controllers\DairyController::class, 'index']);
+        Route::post('/dairy/sessions', [\App\Http\Controllers\DairyController::class, 'close']);
+        Route::post('/dairy/lots/{lot}/test', [\App\Http\Controllers\DairyController::class, 'test']);
+        Route::post('/dairy/lots/{lot}/release', [\App\Http\Controllers\DairyController::class, 'release']);
+        Route::post('/dairy/lots/{lot}/hold', [\App\Http\Controllers\DairyController::class, 'hold']);
+        Route::post('/dairy/lots/{lot}/recall', [\App\Http\Controllers\DairyController::class, 'recall']);
+        Route::post('/dairy/lots/{lot}/dispatch', [\App\Http\Controllers\DairyController::class, 'dispatch']);
     });
     Route::middleware('module:value')->group(function (): void { // D-113
         Route::get('/value', [\App\Http\Controllers\HerdValueController::class, 'index']);

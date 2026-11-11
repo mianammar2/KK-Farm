@@ -40,7 +40,7 @@ return [
         'tasks' => $all,
         'finance' => ['ceo', 'finance'],
         'value' => ['ceo', 'manager', 'finance'], // D-113: Herd Value
-        'milking' => ['ceo', 'manager', 'vet', 'caretaker'], // D-117
+        'milking' => ['ceo', 'manager', 'vet', 'caretaker', 'finance'], // D-117; finance for milk dispatch (D-188)
         'reports' => ['ceo', 'manager', 'finance'],
         'settings' => ['ceo'],
         'sensors' => ['ceo', 'manager', 'vet'], // D-087: devices, readings, sensor alerts

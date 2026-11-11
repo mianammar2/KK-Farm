@@ -14,7 +14,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 |---|---|---|
 | Breeding & Genetics | selection → heat → mating → ultrasound → pregnancy → kidding → kid care → replacement/sale | Partial (heat, mating, ultrasound, outcomes, kid care built; relatedness check, replacement selection to do) |
 | Fattening & Meat | feeder selection → quarantine → finishing lot → TMR → weight/ADG → welfare & vet clearance → live sale | Built (D-187) |
-| Dairy & Milk | kidding/lactation → udder screening → AM/PM milking → kid/colostrum allocation → QA → chilling → batch dispatch | Partial (lactations, milk records); allocation, QA, lots, dispatch to do |
+| Dairy & Milk | kidding/lactation → udder screening → AM/PM milking → kid/colostrum allocation → QA → chilling → batch dispatch | Built (D-117, D-188) |
 
 ## Apps (§3–4)
 
@@ -36,7 +36,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 14 | Employees & Workforce | People; Shifts; Training; Skills; Leave & Payroll; Safety; Reports | Partial (D-181; training/skills to do) |
 | 15 | Assets & Maintenance | Assets; Preventive Plan; Breakdowns; Dairy Equipment; Water Equipment; Parts & Cost; Reporting | Built (D-182) |
 | 16 | Reports & Analytics | Operational; Breeding; Fattening; Dairy; Finance; Compliance; Self-Service BI; KPI Definitions | Partial |
-| 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Partial (lactations, milk records D-117) |
+| 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Built – flow 17 (D-117, D-188); processing products to do |
 | 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | Built – flow 18 (D-187); feeder purchase lots and quotations to do |
 | 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review to do |
 | 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | Built – flow 20 (D-186); water-quality lab tests, manure/compost logs to do |
@@ -57,11 +57,11 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-007 | Kidding: event + each kid record, mixed outcomes | Built (D-161) |
 | BR-008 | Infectious abortion → isolation + vet | Built (D-161, D-163) |
 | BR-009 | Colostrum never auto-saleable | To do (dairy allocation) |
-| BR-010 | Milk withdrawal blocks milk | Partial |
+| BR-010 | Milk withdrawal blocks milk | Built (D-188) |
 | BR-011 | Meat withdrawal blocks sale/dispatch | Built (D-073) |
-| BR-012 | Only Released milk lots dispatch | To do |
-| BR-013 | Milk lot genealogy | To do |
-| BR-014 | Milk mass balance | To do |
+| BR-012 | Only Released milk lots dispatch | Built (D-188) |
+| BR-013 | Milk lot genealogy | Built (D-188) |
+| BR-014 | Milk mass balance | Built (D-188) |
 | BR-015 | Daily feed trace 3 shifts + stock | Built |
 | BR-016 | Rejected feed lots not mixed into TMR | To do |
 | BR-017 | DM vs as-fed, kg vs litres | Partial |

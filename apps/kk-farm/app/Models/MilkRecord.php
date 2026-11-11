@@ -26,4 +26,9 @@ class MilkRecord extends Model
     {
         return $this->belongsTo(Animal::class);
     }
+
+    public function lactation()
+    {
+        return $this->belongsTo(Lactation::class);
+    }
 }

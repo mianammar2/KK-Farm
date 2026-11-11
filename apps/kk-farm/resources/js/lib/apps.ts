@@ -196,11 +196,13 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings#access', 'Report Access'),
     ] },
     // D-184: V3.0 apps 17–21 (owner's blueprint). Each lists the screens that exist today; their own screens follow.
-    { key: 'dairy', no: '17', label: 'Dairy & Milk', art: 'ic-lactating', modules: ['milking'], linked: ['maternity', 'veterinary', 'feeding', 'sales'], sections: [
-        S('Overview', '/milking', 'Lactations & Milk Sessions'),
-        S('Operations', '/milking', 'Record Milking'),
-        S('Records', '/breeding?tab=kidding', 'Kiddings Starting Lactation'),
-        S('Reporting', '/milking', 'Yield per Doe'),
+    { key: 'dairy', no: '17', label: 'Dairy & Milk', art: 'ic-lactating', modules: ['milking'], linked: ['maternity', 'veterinary', 'feeding', 'inventory', 'sales', 'accounting'], sections: [
+        S('Overview', '/dairy?tab=sessions', 'Close AM / PM Sessions'),
+        S('Operations', '/milking', 'Log Litres per Doe'),
+        S('Operations', '/dairy?tab=lots', 'Milk Lots, QA & Release'),
+        S('Operations', '/dairy?tab=trace', 'Dispatch & Trace'),
+        S('Records', '/milking', 'Lactations'),
+        S('Reporting', '/dairy?tab=trace', 'Lot Traceability & Revenue'),
         S('Configuration', '/milking', 'Milking Settings'),
     ] },
     { key: 'fattening', no: '18', label: 'Fattening & Meat', art: 'cls-ftn', modules: ['fattening'], linked: ['livestock', 'veterinary', 'feeding', 'growth', 'housing', 'sales', 'accounting'], sections: [
