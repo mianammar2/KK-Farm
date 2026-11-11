@@ -95,7 +95,9 @@ export const APPS: ErpApp[] = [
         S('Operations', '/feeding?tab=tmr', 'TMR Mixing Batches'),
         S('Records', '/feeding?tab=history', 'Feeding History'),
         S('Records', '/feeding?tab=rations', 'Feeding Plans & Rations'),
-        S('Reporting', '/reports#spending', 'Feed Cost'),
+        S('Reporting', '/feed-cost', 'Feed True Cost (per Goat & KG Gain)'),
+        S('Operations', '/feed-cost?tab=stock', 'Stock Count & Shrinkage'),
+        S('Reporting', '/reports#spending', 'Feed Spending'),
         S('Reporting', '/feeding?tab=waste', 'Feed Offered, Refused & Wasted'),
         S('Configuration', '/feeding?tab=nutrition', 'Nutrition Standards'),
         S('Configuration', '/feeding?tab=tmr', 'TMR Formulas'),
@@ -172,6 +174,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/finance/books?tab=trial', 'Trial Balance'),
         S('Reporting', '/finance/books?tab=pl', 'Profit & Loss'),
         S('Reporting', '/finance/books?tab=balance', 'Balance Sheet'),
+        S('Reporting', '/feed-cost', 'Feed Cost per KG Gained'),
         S('Configuration', '/finance/books?tab=accounts', 'Chart of Accounts'),
     ] },
     { key: 'employees', no: '14', label: 'Employees & Workforce', art: 'mod-hr', modules: ['employees'], linked: ['operations', 'accounting'], sections: [

@@ -50,7 +50,8 @@ Every app follows: app launch → Overview → Operations → Records → Report
 |---|---|---|
 | A – Purchase-to-Quarantine | 24 | Built (D-172, D-190): purchase request → approval by another person → receive, count, inspect → IDs/EPC → dedicated quarantine pen → vet clearance or extension → transfer to operating pen; no mixing before clearance; lot cost and supplier bill posted once |
 | B – Birth-to-Breeder | 25 | Built (D-161–D-176, D-191): kidding with live / stillborn per kid (no IDs for stillborns), colostrum and kid care, viable and stable? → neonatal care unit and vet, kid ID + RFID, weaning, growth vs plan → nutrition / vet intervention with follow-up, BR-005 replacement breeder or sale selection |
-| C–Q | 26–40 | To do |
+| C – Feed-to-True-Cost | 26 | Built (D-054–D-177, D-192): forecast vs stock → draft PO for the shortfall, TMR batch with weighed output (mixing loss), 3 meals offered / refused, stock counts with shrinkage, pen cost split to the goats present, gain, cost per KG gained, FCR proxy, margin, poor-response review; assumptions shown |
+| D–Q | 27–40 | To do |
 
 ## Business rules (§9)
 
@@ -72,7 +73,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-014 | Milk mass balance | Built (D-188) |
 | BR-015 | Daily feed trace 3 shifts + stock | Built |
 | BR-016 | Rejected feed lots not mixed into TMR | Built (D-189): a quality hold on a feed blocks daily feeding and TMR mixing |
-| BR-017 | DM vs as-fed, kg vs litres | Partial |
+| BR-017 | DM vs as-fed, kg vs litres | Partial (feed conversion uses DM where the feed has a DM %, D-192) |
 | BR-018 | Duplicate/impossible weight flags | Built (D-187) – fattening weighings |
 | BR-019 | Fattening eligibility | Built (D-187) |
 | BR-020 | No double-counted fattening feed cost | Built (D-187) |
@@ -87,7 +88,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-029 | Audit of key changes (old/new) | Partial |
 | BR-030 | Emergencies create assigned incident | Partial (D-180) |
 | BR-031 | Access control, retention, backups, restore test | Partial |
-| BR-032 | Cost allocation with basis/period, post once | Partial |
+| BR-032 | Cost allocation with basis/period, post once | Partial (feed cost to goats by head per meal, basis shown, not re-posted: D-192) |
 
 ## Deployment roadmap (§15) – build order
 

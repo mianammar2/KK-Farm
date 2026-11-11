@@ -55,10 +55,18 @@ final class Tmr
         return array_map(fn ($l) => [$items[$l['feed_item_id']], (float) $l['pct']], $lines);
     }
 
-    /** Mix a batch: each ingredient leaves stock (share × total), the TMR enters stock at the ingredients' cost. */
-    public static function mix(TmrFormula $formula, float $totalKg, string $mixedOn, User $by, ?string $notes = null): TmrBatch
+    /**
+     * Mix a batch: each ingredient leaves stock (share × total), the TMR enters stock at the ingredients' cost.
+     * D-192: when the mixed TMR is weighed ($outputKg), that is what enters stock and the ingredients' cost is spread over
+     * it, so mixing shrinkage raises the TMR cost per KG instead of disappearing.
+     */
+    public static function mix(TmrFormula $formula, float $totalKg, string $mixedOn, User $by, ?string $notes = null, ?float $outputKg = null): TmrBatch
     {
-        return DB::transaction(function () use ($formula, $totalKg, $mixedOn, $by, $notes) {
+        if ($outputKg !== null && ($outputKg <= 0 || $outputKg > $totalKg * 1.05)) {
+            throw ValidationException::withMessages(['output_kg' => 'The weighed TMR cannot be more than the ingredients put in.']);
+        }
+
+        return DB::transaction(function () use ($formula, $totalKg, $mixedOn, $by, $notes, $outputKg) {
             DB::statement('LOCK TABLE feed_stock_movements IN SHARE ROW EXCLUSIVE MODE');
             $formula->load('lines.item', 'item');
             if (! $formula->active || $formula->lines->isEmpty()) {
@@ -73,12 +81,13 @@ final class Tmr
             }
             $cost = (int) round($need->sum(fn ($n) => $n['kg'] * $n['item']->cost_per_kg_minor));
             $no = 'TMR-'.now()->format('ymd').'-'.str_pad((string) (TmrBatch::whereDate('created_at', today())->count() + 1), 2, '0', STR_PAD_LEFT);
-            $batch = TmrBatch::create(['tmr_formula_id' => $formula->id, 'batch_no' => $no, 'mixed_on' => $mixedOn, 'total_kg' => $totalKg, 'cost_minor' => $cost, 'mixed_by' => $by->name, 'notes' => $notes]);
+            $batch = TmrBatch::create(['tmr_formula_id' => $formula->id, 'batch_no' => $no, 'mixed_on' => $mixedOn, 'total_kg' => $totalKg, 'output_kg' => $outputKg, 'cost_minor' => $cost, 'mixed_by' => $by->name, 'notes' => $notes]);
             foreach ($need as $n) {
                 FeedStockMovement::create(['feed_item_id' => $n['item']->id, 'moved_on' => $mixedOn, 'type' => 'mix_out', 'qty_kg' => -$n['kg'], 'rate_minor' => $n['item']->cost_per_kg_minor, 'reference' => $no, 'tmr_batch_id' => $batch->id, 'recorded_by' => $by->name]);
             }
-            $rate = $totalKg > 0 ? (int) round($cost / $totalKg) : 0;
-            FeedStockMovement::create(['feed_item_id' => $formula->feed_item_id, 'moved_on' => $mixedOn, 'type' => 'mix_in', 'qty_kg' => $totalKg, 'rate_minor' => $rate, 'reference' => $no, 'tmr_batch_id' => $batch->id, 'recorded_by' => $by->name]);
+            $made = $outputKg ?? $totalKg;
+            $rate = $made > 0 ? (int) round($cost / $made) : 0;
+            FeedStockMovement::create(['feed_item_id' => $formula->feed_item_id, 'moved_on' => $mixedOn, 'type' => 'mix_in', 'qty_kg' => $made, 'rate_minor' => $rate, 'reference' => $no, 'tmr_batch_id' => $batch->id, 'recorded_by' => $by->name]);
             $formula->item->update(['cost_per_kg_minor' => $rate]); // the TMR is costed at its latest batch
             Tenant::flush();
 

@@ -76,9 +76,9 @@ class TmrController extends Controller
         $data = $request->validate([
             'total_kg' => ['required', 'numeric', 'gt:0', 'max:100000'],
             'mixed_on' => ['required', 'date', 'before_or_equal:today'],
-            'notes' => ['nullable', 'string', 'max:300'],
-        ], [], ['total_kg' => 'batch size']);
-        $batch = Tmr::mix($formula, (float) $data['total_kg'], $data['mixed_on'], $request->user(), $data['notes'] ?? null);
+            'notes' => ['nullable', 'string', 'max:300'], 'output_kg' => ['nullable', 'numeric', 'gt:0', 'max:105000'], // D-192: weighed after mixing
+        ], [], ['total_kg' => 'batch size', 'output_kg' => 'weighed TMR']);
+        $batch = Tmr::mix($formula, (float) $data['total_kg'], $data['mixed_on'], $request->user(), $data['notes'] ?? null, isset($data['output_kg']) ? (float) $data['output_kg'] : null);
         Farm::log($request->user(), "Mixed {$batch->total_kg} KG {$formula->name} ({$batch->batch_no})", '/feeding?tab=tmr');
 
         return back()->with('success', "Batch {$batch->batch_no}: {$batch->total_kg} KG {$formula->name} mixed and in store. Ingredients taken out of stock.");

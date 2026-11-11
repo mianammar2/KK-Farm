@@ -136,15 +136,16 @@ function FormulaForm({ formula, feeds, onDone }: { formula: Formula | null; feed
 }
 
 function MixForm({ formula, onDone }: { formula: Formula; onDone: () => void }) {
-    const form = useForm({ total_kg: '', mixed_on: today(), notes: '' });
+    const form = useForm({ total_kg: '', mixed_on: today(), notes: '', output_kg: '' });
     const e = form.errors as Record<string, string>;
     const total = Number(form.data.total_kg) || 0;
     return (
         <Panel title={`Mix ${formula.name}`} description="The ingredients are taken out of the store and the TMR is put in.">
-            <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/feeding/tmr/${formula.id}/mix`, { preserveScroll: true, onSuccess: onDone }); }} className="space-y-3">
+            <form onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, output_kg: d.output_kg || null })); form.post(`/feeding/tmr/${formula.id}/mix`, { preserveScroll: true, onSuccess: onDone }); }} className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Batch size KG" error={e.total_kg}><input className="field" type="number" inputMode="decimal" min={1} step="1" value={form.data.total_kg} onChange={(x) => form.setData('total_kg', x.target.value)} autoFocus required /></Field>
                     <Field label="Mixed on" error={e.mixed_on}><input className="field" type="date" max={today()} value={form.data.mixed_on} onChange={(x) => form.setData('mixed_on', x.target.value)} required /></Field>
+                    <Field label="Weighed after mixing KG" error={e.output_kg} hint={total && Number(form.data.output_kg) ? `Shrinkage ${Math.round((1 - Number(form.data.output_kg) / total) * 1000) / 10}%` : 'Optional: captures mixing loss'}><input className="field" type="number" inputMode="decimal" min={1} step="0.1" value={form.data.output_kg} onChange={(x) => form.setData('output_kg', x.target.value)} /></Field>
                 </div>
                 <table className="w-full text-sm">
                     <thead className="text-left text-xs text-ink-soft"><tr><th className="py-1">Feed</th><th className="py-1 text-right">Uses</th><th className="py-1 text-right">In store</th></tr></thead>

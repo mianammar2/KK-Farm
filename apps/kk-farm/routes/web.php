@@ -63,6 +63,16 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
     });
+    // D-192: journey C Feed-to-True-Cost
+    Route::middleware('module:feed_cost')->group(function (): void {
+        $fc = \App\Http\Controllers\FeedCostController::class;
+        Route::get('/feed-cost', [$fc, 'index']);
+        Route::post('/feed-cost/count', [$fc, 'count']);
+        Route::post('/feed-cost/purchase', [$fc, 'purchase']);
+        Route::post('/feed-cost/pens/{pen}/review', [$fc, 'review']);
+        Route::post('/feed-cost/settings', [$fc, 'settings']);
+    });
+
     // D-191: journey B Birth-to-Breeder: growth check, interventions, breeder / sale selection, growth plan
     Route::middleware('module:weights')->group(function (): void {
         $bb = \App\Http\Controllers\BirthToBreederController::class;

@@ -52,6 +52,7 @@ return [
         'environment' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning', 'feeding'], // D-186: App 20 Water, Climate & Environment
         'quality' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'finance'], // D-189: App 21 Quality & Compliance (anyone raises a quality alarm; the lead decides)
         'animal_purchase' => ['ceo', 'manager', 'vet', 'finance'], // D-190: journey A goat purchase lots (request, approve, receive into quarantine)
+        'feed_cost' => ['ceo', 'manager', 'vet', 'feeding', 'finance'], // D-192: journey C Feed-to-True-Cost
         'maintenance' => $all, // D-182: anyone reports a breakdown; owner and manager keep the asset register
     ],
 
