@@ -80,7 +80,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                 </Link>
                 <Link href={masterHref(app.key)} onClick={onNavigate} aria-current={url.startsWith(masterHref(app.key)) ? 'page' : undefined} className={cx('mb-2 flex items-center gap-2.5 rounded-tile px-2.5 py-2.5', url.startsWith(masterHref(app.key)) ? 'bg-white/20 ring-1 ring-white/40' : 'bg-white/10 hover:bg-white/15')}>
                     <ArtIcon name={app.art} size={38} />
-                    <span className="min-w-0"><span className="block text-base leading-tight font-bold text-white">{app.label}</span><span className="text-[11px] text-cobalt-200">Master page{app.no ? ` · App ${app.no}` : ''}</span></span>
+                    <span className="min-w-0 text-base leading-tight font-bold text-white">{app.label}</span>
                 </Link>
                 {GROUPS.map((g) => {
                     const items = app.sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
