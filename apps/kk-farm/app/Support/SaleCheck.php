@@ -41,6 +41,9 @@ final class SaleCheck
         if ($case) {
             $out[] = $case->condition === Intake::CONDITION ? 'In intake quarantine' : "Open health case {$case->label()}";
         }
+        if (($m = Fattening::openMember($a->id)) && $m->batch?->status === 'sale_hold') {
+            $out[] = "Finishing batch {$m->batch->code} on Sale Hold"; // D-197
+        }
         $other = SaleOrderLine::with('order')->where('animal_id', $a->id)->whereIn('status', SaleOrderLine::OPEN)->when($ignoreOrderId, fn ($q) => $q->where('order_id', '!=', $ignoreOrderId))->first();
         if ($other) {
             $out[] = 'Already on order '.$other->order?->order_no;

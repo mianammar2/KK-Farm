@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\FatteningBatch;
 use App\Models\FatteningBatchAnimal;
 use App\Models\HealthCase;
+use App\Models\MeatSelection;
 use App\Models\Pen;
 use App\Models\RationPlan;
 use App\Models\WeightRecord;
@@ -53,6 +54,15 @@ class FatteningController extends Controller
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'options' => ['status' => FatteningBatch::STATUS, 'memberStatus' => FatteningBatchAnimal::STATUS],
             'canManage' => $this->supervisor($request), 'isVet' => $request->user()->passes('clinical'),
+            // D-197: meat selections (journey H): open ones, then the last decisions
+            'selections' => MeatSelection::with('animal.breed')->orderByRaw("case status when 'proposed' then 0 when 'approved' then 1 else 2 end")->latest('id')->limit(60)->get()
+                ->map(fn (MeatSelection $s) => ['id' => $s->id, 'goatId' => $s->animal_id, 'number' => $s->animal?->farm_number, 'breed' => $s->animal?->breed?->name, 'sex' => $s->animal?->sex,
+                    'purpose' => $s->animal?->animal_purpose, 'reason' => $s->reason, 'notes' => $s->notes, 'status' => $s->status, 'proposedBy' => $s->proposed_by, 'proposedAt' => $s->created_at?->format('j M Y'),
+                    'decidedBy' => $s->decided_by, 'decidedAt' => $s->decided_at?->format('j M Y'), 'decisionNote' => $s->decision_note,
+                    'mine' => $s->proposed_by === $request->user()->name])->values(),
+            'proposable' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number', 'sex', 'animal_purpose'])
+                ->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'purpose' => $a->animal_purpose])->values(),
+            'reasons' => MeatSelection::REASONS,
         ]);
     }
 
@@ -91,6 +101,9 @@ class FatteningController extends Controller
         if ($a->status !== 'active') {
             return 'not on the farm';
         }
+        if (in_array($a->animal_purpose, Fattening::BREEDING_STOCK, true)) {
+            return 'breeding stock: needs an approved meat selection';
+        }
         if (FatteningBatchAnimal::where('animal_id', $a->id)->whereIn('status', ['finishing', 'ready', 'reserved'])->exists()) {
             return 'already in a batch';
         }
@@ -114,6 +127,7 @@ class FatteningController extends Controller
         if ($batch->pen_id && (int) $a->pen_id !== (int) $batch->pen_id) {
             Movements::transfer($a->fresh(), $batch->pen, $user, ['reason' => "Finishing batch {$batch->code}"]);
         }
+        MeatSelection::where('animal_id', $a->id)->whereIn('status', ['proposed', 'approved'])->update(['status' => 'batched', 'batch_id' => $batch->id]);
         Farm::event($a, 'origin', "Joined finishing batch {$batch->code}".($weight ? " at {$weight} KG" : ''), $user->name);
     }
 
@@ -216,28 +230,67 @@ class FatteningController extends Controller
         if ($code !== strtoupper($a->farm_number) && $code !== strtoupper((string) $epc)) {
             throw ValidationException::withMessages(['scanned' => "The scanned tag is not {$a->farm_number}. Loading stopped."]);
         }
-        [$feed, $basis] = Fattening::exitCost($member); // worked out before the sale changes the goat
-        DB::transaction(function () use ($member, $a, $data, $request, $feed, $basis) {
+        abort_if($member->batch->status === 'sale_hold', 422, "{$member->batch->code} is on Sale Hold.");
+        DB::transaction(function () use ($member, $a, $data, $request) {
             $customer = ! empty($data['customer_id']) ? Customer::find($data['customer_id']) : null;
-            $movement = Movements::exit($a, 'sale', $request->user(), [
-                'moved_on' => $data['sold_on'], 'destination' => $customer?->name ?? ($data['buyer'] ?? null), 'amount' => $data['price'], 'sale_category' => 'live_goat',
-                'reason' => "Finishing batch {$member->batch->code}", 'evidence_ref' => "Dispatch scan {$data['scanned']}",
-            ]);
-            $sale = \App\Models\Sale::where('movement_id', $movement->id)->first();
-            if ($sale && $customer) {
-                $sale->update(['customer_id' => $customer->id]);
-            }
             if (! empty($data['exit_weight_kg'])) {
                 WeightRecord::create(['animal_id' => $a->id, 'measured_on' => $data['sold_on'], 'weight_kg' => $data['exit_weight_kg'], 'context' => 'sale', 'measured_by' => $request->user()->name]);
+                $member->update(['exit_weight_kg' => $data['exit_weight_kg']]);
             }
-            $member->update(['status' => 'sold', 'sale_id' => $sale?->id, 'left_on' => $data['sold_on'], 'exit_weight_kg' => $data['exit_weight_kg'] ?? Fattening::latestWeight($a->id),
-                'feed_cost_minor' => $feed, 'cost_basis' => $basis, 'exit_reason' => 'Sold']);
-            $batch = $member->batch;
-            if (! $batch->members()->whereIn('status', ['finishing', 'ready', 'reserved'])->exists()) {
-                $batch->update(['status' => 'closed', 'closed_on' => $data['sold_on']]);
-            }
+            // D-197: Movements enters the sale once and closes this batch record with its costs (feed, health) and revenue
+            Movements::exit($a, 'sale', $request->user(), [
+                'moved_on' => $data['sold_on'], 'destination' => $customer?->name ?? ($data['buyer'] ?? null), 'amount' => $data['price'], 'sale_category' => 'live_goat',
+                'reason' => "Finishing batch {$member->batch->code}", 'evidence_ref' => "Dispatch scan {$data['scanned']}", 'customer_id' => $customer?->id,
+            ]);
         });
 
         return back()->with('success', "{$a->farm_number} sold and dispatched. Margin posted to the batch.");
+    }
+
+    /**
+     * D-197 (journey H): propose a goat for the meat business: a breeder cull, a feeder or a slow grower. Refused for a
+     * pregnant doe, a goat already finishing, or one with an open selection.
+     */
+    public function propose(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['animal_id' => ['required', 'uuid', 'exists:animals,id'], 'reason' => ['required', Rule::in(array_keys(MeatSelection::REASONS))],
+            'notes' => ['nullable', 'string', 'max:500']], [], ['animal_id' => 'goat']);
+        $a = Animal::findOrFail($data['animal_id']);
+        $why = match (true) {
+            $a->status !== 'active' => 'is not on the farm',
+            Fattening::openMember($a->id) !== null => 'is already in a finishing batch',
+            MeatSelection::where('animal_id', $a->id)->whereIn('status', ['proposed', 'approved'])->exists() => 'already has an open meat selection',
+            $a->sex === 'female' && ($a->repro_status === 'pregnant' || \App\Models\Mating::where('dam_id', $a->id)->where('status', 'pregnant')->exists()) => 'is pregnant: wait until she kids',
+            default => null,
+        };
+        if ($why) {
+            throw ValidationException::withMessages(['animal_id' => "{$a->farm_number} {$why}."]);
+        }
+        MeatSelection::create($data + ['proposed_by' => $request->user()->name]);
+        Farm::log($request->user(), "Proposed {$a->farm_number} for meat", '/fattening?tab=selection');
+
+        return back()->with('success', "{$a->farm_number} proposed for meat. The owner or manager decides.");
+    }
+
+    /** Approve or reject: the owner or a manager, never the person who proposed it (the owner may decide their own). */
+    public function decide(Request $request, MeatSelection $selection): RedirectResponse
+    {
+        abort_unless($this->supervisor($request), 403, 'The owner or manager approves meat selections.');
+        abort_unless($selection->status === 'proposed', 422, 'This selection was already decided.');
+        $user = $request->user();
+        if ($selection->proposed_by === $user->name && $user->role !== 'ceo') {
+            throw ValidationException::withMessages(['decision' => 'Someone other than the proposer must approve this.']);
+        }
+        $data = $request->validate(['decision' => ['required', Rule::in(['approved', 'rejected'])], 'note' => ['nullable', 'required_if:decision,rejected', 'string', 'max:300']], [], ['note' => 'reason']);
+        $a = $selection->animal;
+        DB::transaction(function () use ($selection, $data, $user, $a) {
+            $selection->update(['status' => $data['decision'], 'decided_by' => $user->name, 'decided_at' => now(), 'decision_note' => $data['note'] ?? null]);
+            if ($data['decision'] === 'approved') {
+                $a->update(['animal_purpose' => 'fattening']);
+                Farm::event($a, 'origin', 'Selected for meat ('.MeatSelection::REASONS[$selection->reason].'), approved by '.$user->name, $user->name);
+            }
+        });
+
+        return back()->with('success', $data['decision'] === 'approved' ? "{$a->farm_number} approved for meat: now a finishing candidate." : "Meat selection of {$a->farm_number} rejected.");
     }
 }

@@ -227,6 +227,7 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'fattening', no: '18', label: 'Fattening & Meat', art: 'cls-ftn', modules: ['fattening'], linked: ['livestock', 'veterinary', 'feeding', 'growth', 'housing', 'sales', 'accounting'], sections: [
         S('Overview', '/fattening?tab=batches', 'Finishing Batches'),
+        S('Operations', '/fattening?tab=selection', 'Meat Selection'),
         S('Operations', '/fattening?tab=new', 'New Batch (Select Feeders)'),
         S('Operations', '/feeding?tab=now', 'Daily Feed & Water'),
         S('Records', '/value', 'Herd Value & Market Rates'),

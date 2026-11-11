@@ -72,10 +72,15 @@ final class Movements
                 throw ValidationException::withMessages(['type' => "{$animal->farm_number} is under meat withdrawal until {$meat->format('j M Y')} (veterinary treatment). It cannot leave for meat before then."]);
             }
         }
+        $finishing = Fattening::openMember($animal->id); // D-197
+        if ($finishing && $type === 'sale' && $finishing->batch?->status === 'sale_hold') {
+            throw ValidationException::withMessages(['type' => "{$animal->farm_number}'s finishing batch {$finishing->batch->code} is on Sale Hold."]);
+        }
+        $cost = $finishing ? Fattening::exitCost($finishing) : null; // fixed before the exit changes the goat
         $on = Carbon::parse($data['moved_on'] ?? now());
         $amount = isset($data['amount']) && $data['amount'] !== '' ? (int) round((float) $data['amount'] * 100) : null;
 
-        return DB::transaction(function () use ($animal, $type, $by, $data, $on, $amount) {
+        return DB::transaction(function () use ($animal, $type, $by, $data, $on, $amount, $finishing, $cost) {
             $movement = AnimalMovement::create([
                 'animal_id' => $animal->id, 'moved_on' => $on, 'type' => $type, 'from_pen_id' => $animal->pen_id, 'destination' => $data['destination'] ?? null,
                 'reason' => $data['reason'] ?? null, 'authorized_by' => $data['authorized_by'] ?? $by->name, 'amount_minor' => $amount,
@@ -88,12 +93,16 @@ final class Movements
             $label = AnimalMovement::TYPES[$type][0];
             Farm::event($animal, 'exit', "Left the farm: {$label}".(! empty($data['destination']) ? " · {$data['destination']}" : '').($amount ? ' · PKR '.number_format($amount / 100) : ''), $by->name, $on);
 
+            $sale = null;
             if ($type === 'sale' && $amount) {
-                self::sale([
+                $sale = self::sale([
                     'sold_on' => $on->toDateString(), 'animal_id' => $animal->id, 'category' => $data['sale_category'] ?? 'live_goat', 'buyer' => $data['destination'] ?? null,
                     'gross' => $amount / 100, 'fee' => $data['fee'] ?? 0, 'receipt_ref' => $data['evidence_ref'] ?? null, 'movement_id' => $movement->id,
                     'payment_status' => $data['payment_status'] ?? 'paid', 'customer_id' => $data['customer_id'] ?? null,
                 ], $by, "Sale of {$animal->farm_number}");
+            }
+            if ($finishing) {
+                Fattening::closeMember($finishing, $type, $on, $sale?->id, $cost, $label);
             }
 
             return $movement;

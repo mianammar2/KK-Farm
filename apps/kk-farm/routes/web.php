@@ -52,6 +52,8 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/fattening/members/{member}/clear', [\App\Http\Controllers\FatteningController::class, 'clear']);
         Route::post('/fattening/members/{member}/reserve', [\App\Http\Controllers\FatteningController::class, 'reserve']);
         Route::post('/fattening/members/{member}/sell', [\App\Http\Controllers\FatteningController::class, 'sell']);
+        Route::post('/fattening/selections', [\App\Http\Controllers\FatteningController::class, 'propose']);
+        Route::post('/fattening/selections/{selection}/decide', [\App\Http\Controllers\FatteningController::class, 'decide']);
     });
     // D-186: App 20 Water, Climate & Environment
     Route::middleware('module:environment')->group(function (): void {

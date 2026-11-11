@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { BreedBadge } from '../components/GoatBadges';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
@@ -6,19 +6,25 @@ import { useTabParam } from '../lib/useTabParam';
 
 type Member = {
     id: number; goatId: string; number: string; breed: string | null; sex: string; status: string; joined: string; days: number; entry: number | null; current: number | null;
-    gain: number | null; adg: number | null; bcs: number | null; lastWeighed: string | null; kgDay: number; feedCost: number; entryCost: number | null; costPerKgGain: number | null;
+    gain: number | null; adg: number | null; bcs: number | null; lastWeighed: string | null; kgDay: number; feedCost: number; feedBasis: string; healthCost: number; totalCost: number; revenue: number | null; profit: number | null; entryCost: number | null; costPerKgGain: number | null;
     atTarget: boolean; exception: string | null; meatHold: string | null; cleared: boolean; clearedBy: string | null; health: string; saleId: number | null; exitWeight: number | null; exitReason: string | null; leftOn: string | null;
 };
 type Batch = {
     id: number; code: string; name: string | null; pen: string | null; penId: number | null; ration: string | null; rationId: number | null; started: string; daysOnFeed: number;
     targetWeight: number; targetDays: number; targetDate: string; status: string; notes: string | null; headcount: number; atTarget: number; exceptions: number; adg: number | null;
-    feedCost: number; costPerKgGain: number | null; sold: number; died: number; revenue: number; margin: number | null; members: Member[];
+    feedCost: number; healthCost: number; feedBasis: string; costPerKgGain: number | null; sold: number; died: number; revenue: number; margin: number | null; returnPerHead: number | null; avgDaysOnFeed: number | null; members: Member[];
 };
 type Props = {
     batches: Batch[]; candidates: Array<{ id: string; number: string; breed: string | null; sex: string; purpose: string | null; health: string; quarantine: boolean }>;
     pens: Array<{ id: number; name: string }>; rations: Array<{ id: number; name: string }>; customers: Array<{ id: number; name: string }>;
     options: { status: Record<string, string>; memberStatus: Record<string, string> }; canManage: boolean; isVet: boolean;
+    selections: Selection[]; proposable: Array<{ id: string; number: string; sex: string; purpose: string | null }>; reasons: Record<string, string>;
 };
+type Selection = {
+    id: number; goatId: string; number: string | null; breed: string | null; sex: string | null; purpose: string | null; reason: string; notes: string | null; status: string;
+    proposedBy: string; proposedAt: string | null; decidedBy: string | null; decidedAt: string | null; decisionNote: string | null; mine: boolean;
+};
+const SEL_TONE: Record<string, string> = { proposed: 'bg-watch-100 text-watch-700', approved: 'bg-ok-100 text-ok-700', rejected: 'bg-crit-100 text-crit-700', batched: 'bg-cobalt-100 text-cobalt-800' };
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const money = (minor: number | null) => (minor === null ? '—' : pkr(minor / 100));
@@ -31,6 +37,13 @@ export default function Fattening(p: Props) {
     const open = p.batches.filter((b) => b.status !== 'closed');
     const [selected, setSelected] = useState<number | null>(open[0]?.id ?? null);
     const batch = p.batches.find((b) => b.id === selected) ?? open[0] ?? null;
+    const sold = p.batches.flatMap((b) => b.members.filter((m) => m.status === 'sold'));
+    const gainKg = p.batches.reduce((n, b) => n + b.members.reduce((x, m) => x + Math.max(0, m.gain ?? 0), 0), 0);
+    const costKgGain = gainKg > 0 ? Math.round(p.batches.reduce((n, b) => n + b.feedCost + b.healthCost, 0) / gainKg) : null;
+    const returnHead = sold.length ? Math.round(sold.reduce((n, m) => n + (m.profit ?? 0), 0) / sold.length) : null;
+    const allMembers = p.batches.flatMap((b) => b.members);
+    const daysOnFeed = allMembers.length ? Math.round(allMembers.reduce((n, m) => n + m.days, 0) / allMembers.length) : null;
+    const waiting = p.selections.filter((x) => x.status === 'proposed').length;
     return (
         <>
             <Head title="Fattening & Meat" />
@@ -40,12 +53,17 @@ export default function Fattening(p: Props) {
                 <Stat label="At target weight" value={open.reduce((n, b) => n + b.atTarget, 0)} />
                 <Stat label="Exceptions" value={open.reduce((n, b) => n + b.exceptions, 0)} tone={open.some((b) => b.exceptions) ? 'alert' : undefined} />
                 <Stat label="Batch margin (sold)" value={money(p.batches.reduce((n, b) => n + (b.margin ?? 0), 0))} />
+                <Stat label="Cost per KG gained" value={money(costKgGain)} note="Feed + health ÷ KG gained" />
+                <Stat label="Return per head" value={money(returnHead)} note="Profit per goat sold" tone={returnHead !== null && returnHead < 0 ? 'alert' : undefined} />
+                <Stat label="Days on feed" value={daysOnFeed ?? '—'} note="Average per goat" />
             </StatRow>
             <Tabs value={tab} onChange={setTab} tabs={[
                 { id: 'batches', label: 'Finishing Batches', count: open.length || undefined },
+                { id: 'selection', label: 'Meat Selection', count: waiting || undefined },
                 ...(p.canManage ? [{ id: 'new', label: 'New Batch' }] : []),
                 { id: 'profit', label: 'Batch Profitability' },
             ]} />
+            {tab === 'selection' ? <Selections {...p} /> : null}
             {tab === 'new' && p.canManage ? <NewBatch {...p} onDone={() => setTab('batches')} /> : null}
             {tab === 'batches' ? (
                 open.length ? (
@@ -56,10 +74,17 @@ export default function Fattening(p: Props) {
                 ) : <Panel><Empty title="No finishing batches">{p.canManage ? 'Create one under New Batch from goats of fattening, sale or meat purpose and growing males.' : 'The owner or manager creates batches.'}</Empty></Panel>
             ) : null}
             {tab === 'profit' ? (
-                <Panel flush title="Batch Profitability" description="Feed cost from each goat's ration (KG/day × feed price × days on feed), allocated once at exit">
-                    {p.batches.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Batch</th><th>Status</th><th>Started</th><th>Head</th><th>ADG g/day</th><th>Feed cost</th><th>Cost / KG gain</th><th>Sold</th><th>Revenue</th><th>Margin</th></tr></thead><tbody>
-                        {p.batches.map((b) => <tr key={b.id}><td className="font-mono font-semibold">{b.code}</td><td>{p.options.status[b.status]}</td><td>{b.started}</td><td>{b.headcount}</td><td>{b.adg ?? '—'}</td><td>{money(b.feedCost)}</td><td>{money(b.costPerKgGain)}</td><td>{b.sold}{b.died ? ` (${b.died} died)` : ''}</td><td>{money(b.revenue)}</td><td className={b.margin !== null && b.margin < 0 ? 'font-semibold text-crit-700' : 'font-semibold'}>{money(b.margin)}</td></tr>)}
+                <Panel flush title="Batch Profitability" description="Per goat: purchase / entry + feed actually fed (ration estimate only when no feeding was recorded) + health (treatments and lab) = total cost. Fixed at exit.">
+                    {p.batches.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Batch</th><th>Status</th><th>Started</th><th>Head</th><th>Days on feed</th><th>ADG g/day</th><th>Feed cost</th><th>Health cost</th><th>Cost / KG gain</th><th>Sold</th><th>Revenue</th><th>Margin</th><th>Return / head</th></tr></thead><tbody>
+                        {p.batches.map((b) => <tr key={b.id}><td className="font-mono font-semibold">{b.code}</td><td>{p.options.status[b.status]}</td><td>{b.started}</td><td>{b.headcount}</td><td>{b.avgDaysOnFeed ?? '—'}</td><td>{b.adg ?? '—'}</td><td>{money(b.feedCost)}{b.feedBasis !== 'actual' ? <span className="block text-xs text-watch-700">{b.feedBasis === 'mixed' ? 'part estimate' : 'estimate'}</span> : null}</td><td>{money(b.healthCost)}</td><td>{money(b.costPerKgGain)}</td><td>{b.sold}{b.died ? ` (${b.died} died)` : ''}</td><td>{money(b.revenue)}</td><td className={b.margin !== null && b.margin < 0 ? 'font-semibold text-crit-700' : 'font-semibold'}>{money(b.margin)}</td><td>{money(b.returnPerHead)}</td></tr>)}
                     </tbody></table></div> : <Empty title="No batches yet" />}
+                </Panel>
+            ) : null}
+            {tab === 'profit' && sold.length ? (
+                <Panel flush title="Goat Profitability" description="Every goat sold from a finishing batch">
+                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Goat</th><th>Days</th><th>Gain KG</th><th>Entry</th><th>Feed</th><th>Health</th><th>Total cost</th><th>Sale</th><th>Profit</th></tr></thead><tbody>
+                        {sold.map((m) => <tr key={m.id}><td><Link href={`/goats/${m.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{m.number}</Link></td><td>{m.days}</td><td>{m.gain ?? '—'}</td><td>{money(m.entryCost)}</td><td>{money(m.feedCost)}{m.feedBasis === 'estimate' ? <span className="text-xs text-watch-700"> est.</span> : null}</td><td>{money(m.healthCost)}</td><td>{money(m.totalCost)}</td><td>{money(m.revenue)}</td><td className={m.profit !== null && m.profit < 0 ? 'font-semibold text-crit-700' : 'font-semibold'}>{money(m.profit)}</td></tr>)}
+                    </tbody></table></div>
                 </Panel>
             ) : null}
         </>
@@ -89,7 +114,7 @@ function NewBatch({ candidates, pens, rations, onDone }: Props & { onDone: () =>
                             <span className="font-mono font-semibold">{c.number}</span><BreedBadge breed={c.breed} />
                             {c.quarantine ? <Chip className="bg-watch-100 text-watch-700">Quarantine</Chip> : c.health !== 'healthy' ? <Chip className="bg-crit-100 text-crit-700">{c.health}</Chip> : null}
                         </label>
-                    ))}</div> : <p className="text-sm text-ink-soft">No eligible goats. Set Animal Purpose to Fattening, Sale or Meat Sale on the goats to finish.</p>}
+                    ))}</div> : <p className="text-sm text-ink-soft">No eligible goats. Breeding stock needs an approved Meat Selection first; otherwise set Animal Purpose to Fattening, Sale or Meat Sale.</p>}
                 </div>
                 <Button type="submit" disabled={form.processing || !form.data.animal_ids.length}>Create Batch</Button>
             </form>
@@ -105,20 +130,21 @@ function BatchView({ b, pens, rations, customers, options, canManage, isVet }: {
         <Panel flush title={`${b.code}${b.name ? ` · ${b.name}` : ''}`} description={`${options.status[b.status]} · started ${b.started} · day ${b.daysOnFeed} of ${b.targetDays} · target ${b.targetWeight} KG by ${b.targetDate}${b.pen ? ` · ${b.pen}` : ''}${b.ration ? ` · ${b.ration}` : ''}`}
             actions={<span className="flex gap-1.5"><Button variant="secondary" onClick={() => setMode(mode === 'weigh' ? null : 'weigh')}><LibIcon name="mod-growth" size={16} /> Weigh Batch</Button>{canManage || isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'plan' ? null : 'plan')}>Revise Plan</Button> : null}</span>}>
             <div className="grid grid-cols-2 gap-2 border-b border-rule p-3 text-sm sm:grid-cols-5">
-                {[['Head', b.headcount], ['Avg ADG', b.adg !== null ? `${b.adg} g/day` : '—'], ['At target', b.atTarget], ['Feed cost', money(b.feedCost)], ['Cost / KG gain', money(b.costPerKgGain)]].map(([l, v]) => <div key={l as string} className="rounded-lg bg-glaze px-3 py-2"><div className="text-xs text-ink-soft">{l}</div><div className="font-bold text-cobalt-900">{v}</div></div>)}
+                {[['Head', b.headcount], ['Avg ADG', b.adg !== null ? `${b.adg} g/day` : '—'], ['At target', b.atTarget], ['Feed + health', money(b.feedCost + b.healthCost)], ['Cost / KG gain', money(b.costPerKgGain)]].map(([l, v]) => <div key={l as string} className="rounded-lg bg-glaze px-3 py-2"><div className="text-xs text-ink-soft">{l}</div><div className="font-bold text-cobalt-900">{v}</div></div>)}
             </div>
             {mode === 'weigh' ? <WeighForm b={b} live={live} onDone={() => setMode(null)} /> : null}
             {mode === 'plan' ? <PlanForm b={b} pens={pens} rations={rations} onDone={() => setMode(null)} /> : null}
             {selling ? <SellForm m={selling} customers={customers} onDone={() => setSelling(null)} /> : null}
             <div className="overflow-x-auto">
                 <table className="data-table">
-                    <thead><tr><th>Goat</th><th>Flow</th><th>Entry → Now</th><th>ADG</th><th>BCS</th><th>Feed cost</th><th>Exception</th><th /></tr></thead>
+                    <thead><tr><th>Goat</th><th>Flow</th><th>Entry → Now</th><th>ADG</th><th>BCS</th><th>Feed cost</th><th>Health</th><th>Total cost</th><th>Exception</th><th /></tr></thead>
                     <tbody>{b.members.map((m) => (
                         <tr key={m.id} className={m.exception && !['sold', 'died', 'removed'].includes(m.status) ? 'bg-crit-100/30' : ''}>
                             <td><Link href={`/goats/${m.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{m.number}</Link> <BreedBadge breed={m.breed} /></td>
                             <td><div className="flex gap-0.5">{FLOW.map((f, i) => <span key={f} title={f} className={`h-2 w-5 rounded-full ${i <= flowStep(m) ? 'bg-cobalt-900' : 'bg-rule'}`} />)}</div><span className="text-xs text-ink-soft">{FLOW[flowStep(m)]}</span></td>
                             <td>{m.entry ?? '—'} → <strong>{m.current ?? '—'}</strong> KG{m.gain !== null ? <span className={m.gain < 0 ? 'text-crit-700' : 'text-ok-700'}> ({m.gain > 0 ? '+' : ''}{m.gain})</span> : null}{m.lastWeighed ? <div className="text-xs text-ink-soft">{m.lastWeighed}</div> : null}</td>
-                            <td>{m.adg !== null ? `${m.adg} g` : '—'}</td><td>{m.bcs ?? '—'}</td><td>{money(m.feedCost)}</td>
+                            <td>{m.adg !== null ? `${m.adg} g` : '—'}</td><td>{m.bcs ?? '—'}</td><td>{money(m.feedCost)}{m.feedBasis === 'estimate' ? <span className="block text-xs text-watch-700">estimate</span> : null}</td><td>{money(m.healthCost)}</td>
+                            <td>{money(m.totalCost)}{m.profit !== null ? <span className={`block text-xs font-semibold ${m.profit < 0 ? 'text-crit-700' : 'text-ok-700'}`}>Profit {money(m.profit)}</span> : null}</td>
                             <td>{m.meatHold ? <Chip className="bg-crit-100 text-crit-700">Meat hold to {m.meatHold}</Chip> : m.exception ? <Chip className="bg-watch-100 text-watch-700">{m.exception}</Chip> : null}</td>
                             <td className="whitespace-nowrap">
                                 {m.status === 'finishing' && m.atTarget && isVet ? <Button onClick={() => router.post(`/fattening/members/${m.id}/clear`, {}, { preserveScroll: true })}>Vet Clearance</Button> : null}
@@ -182,5 +208,48 @@ function SellForm({ m, customers, onDone }: { m: Member; customers: Props['custo
             {e.type ? <p className="sm:col-span-6 text-sm text-crit-700">{e.type}</p> : null}
             <div className="flex gap-2 sm:col-span-6"><Button type="submit" disabled={form.processing}>Dispatch & Post Margin</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
         </form>
+    );
+}
+
+/** D-197 (journey H): propose a breeder cull, feeder or slow grower for meat; the owner or manager (not the proposer) decides. */
+function Selections({ selections, proposable, reasons, canManage }: Props) {
+    const form = useForm({ animal_id: '', reason: 'cull_breeder', notes: '' });
+    const e = form.errors as Record<string, string>;
+    const [rejecting, setRejecting] = useState<number | null>(null);
+    const [note, setNote] = useState('');
+    const err = (usePage().props.errors ?? {}) as Record<string, string>;
+    const decide = (id: number, decision: string, n?: string) => router.post(`/fattening/selections/${id}/decide`, { decision, note: n ?? null }, { preserveScroll: true, onSuccess: () => { setRejecting(null); setNote(''); } });
+    return (
+        <div className="space-y-3">
+            <Panel title="Propose for Meat" description="A pregnant doe cannot be proposed. Approval makes the goat a finishing candidate.">
+                <form className="grid gap-3 p-4 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.post('/fattening/selections', { preserveScroll: true, onSuccess: () => form.reset() }); }}>
+                    <Field label="Goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)} required><option value="">Choose…</option>{proposable.map((a) => <option key={a.id} value={a.id}>{a.number} · {a.sex}{a.purpose ? ` · ${a.purpose}` : ''}</option>)}</select></Field>
+                    <Field label="Reason" error={e.reason}><select className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)}>{Object.entries(reasons).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <Field label="Notes" error={e.notes}><input className="field" placeholder="e.g. 3 failed matings" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
+                    <div className="flex items-end"><Button type="submit" disabled={form.processing}>Propose</Button></div>
+                </form>
+            </Panel>
+            <Panel flush title="Meat Selections" description={err.decision ?? err.note ?? undefined}>
+                {selections.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Goat</th><th>Reason</th><th>Proposed</th><th>Status</th><th>Decision</th><th /></tr></thead><tbody>
+                    {selections.map((x) => (
+                        <tr key={x.id}>
+                            <td><Link href={`/goats/${x.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{x.number}</Link> <BreedBadge breed={x.breed} /></td>
+                            <td>{reasons[x.reason]}{x.notes ? <span className="block text-xs text-ink-soft">{x.notes}</span> : null}</td>
+                            <td>{x.proposedBy}<span className="block text-xs text-ink-soft">{x.proposedAt}</span></td>
+                            <td><Chip className={SEL_TONE[x.status]}>{x.status}</Chip></td>
+                            <td>{x.decidedBy ? <>{x.decidedBy} · {x.decidedAt}{x.decisionNote ? <span className="block text-xs text-ink-soft">{x.decisionNote}</span> : null}</> : '—'}</td>
+                            <td className="whitespace-nowrap">
+                                {x.status === 'proposed' && canManage ? (rejecting === x.id ? (
+                                    <span className="flex gap-1"><input className="field !w-44 !py-1" placeholder="Why rejected" value={note} onChange={(v) => setNote(v.target.value)} /><Button variant="secondary" disabled={!note.trim()} onClick={() => decide(x.id, 'rejected', note)}>Reject</Button></span>
+                                ) : (
+                                    <span className="flex gap-1"><Button onClick={() => decide(x.id, 'approved')}>Approve</Button><Button variant="secondary" onClick={() => setRejecting(x.id)}>Reject</Button></span>
+                                )) : null}
+                                {x.status === 'proposed' && !canManage ? <span className="text-xs text-ink-soft">Waiting for owner or manager</span> : null}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody></table></div> : <Empty title="No meat selections yet" />}
+            </Panel>
+        </div>
     );
 }
