@@ -33,6 +33,12 @@ class IntakeController extends Controller
         $data = $request->validate(['notes' => ['nullable', 'string', 'max:500'], 'pen_id' => ['nullable', \Illuminate\Validation\Rule::exists('pens', 'id')->where('kind', 'pen')]]);
         \Illuminate\Support\Facades\DB::transaction(function () use ($case, $data, $request) {
             Intake::clear($case, $request->user(), $data['notes'] ?? null);
+            // D-211: a goat from a feeder lot is proposed for finishing (the owner or manager still approves, D-197).
+            $goat = $case->animal->fresh();
+            $lot = $goat->purchase_lot_id ? \App\Models\AnimalPurchaseLot::find($goat->purchase_lot_id) : null;
+            if ($lot?->kind === 'feeder' && ! \App\Models\MeatSelection::where('animal_id', $goat->id)->whereIn('status', ['proposed', 'approved', 'batched'])->exists()) {
+                \App\Models\MeatSelection::create(['animal_id' => $goat->id, 'reason' => 'feeder', 'notes' => "Purchased feeder, lot {$lot->lot_no}; cleared from quarantine", 'proposed_by' => $request->user()->name]);
+            }
             // D-190: clearance granted → transfer into the approved operating pen.
             if (! empty($data['pen_id'])) {
                 \App\Support\Movements::transfer($case->animal->fresh(), \App\Models\Pen::findOrFail($data['pen_id']), $request->user(), ['reason' => 'Cleared from intake quarantine']);

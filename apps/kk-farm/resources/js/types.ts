@@ -2,6 +2,7 @@ export type Health = 'healthy' | 'watch' | 'treatment' | 'critical';
 
 export type GoatCard = {
     id: string;
+    animalId?: string | null; // D-208: permanent Animal ID
     number: string;
     name: string | null;
     sex: 'male' | 'female';

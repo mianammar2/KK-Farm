@@ -102,12 +102,12 @@ class WorkerController extends Controller
         $animal = $this->goat($request);
         \App\Support\WelfareCare::assertRoutineAllowed($animal); // D-199
         $data = $request->validate(['weight_kg' => ['required', 'numeric', 'min:0.5', 'max:200'], 'body_score' => ['nullable', 'integer', 'between:1,5']], [], ['weight_kg' => 'weight']);
-        WeightRecord::create(['animal_id' => $animal->id, 'weight_kg' => $data['weight_kg'], 'measured_on' => now()->toDateString(), 'measured_by' => $request->user()->name, 'body_score' => $data['body_score'] ?? null]);
+        $w = WeightRecord::create(['animal_id' => $animal->id, 'weight_kg' => $data['weight_kg'], 'measured_on' => now()->toDateString(), 'measured_by' => $request->user()->name, 'body_score' => $data['body_score'] ?? null]);
         Farm::event($animal, 'weight', "Weighed {$data['weight_kg']} KG".(! empty($data['body_score']) ? ", body score {$data['body_score']}" : '').' (RFID gun)', $request->user()->name);
         Farm::log($request->user(), "Weighed {$animal->farm_number} at {$data['weight_kg']} KG", "/goats/{$animal->id}");
         self::tick($request);
 
-        return redirect('/worker')->with('success', "{$animal->farm_number}: {$data['weight_kg']} KG saved. Scan the next goat.");
+        return redirect('/worker')->with('success', "{$animal->farm_number}: {$data['weight_kg']} KG saved".($w->review_status === 'held' ? ' but held for review (looks wrong: weigh again if you can)' : '').'. Scan the next goat.');
     }
 
     /** Health check on a round: looks fine (noted on its lifecycle), or a concern for the vet (the same as Report a Concern). */

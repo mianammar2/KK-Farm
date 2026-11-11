@@ -21,24 +21,24 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | No. | App | Primary menus (SRS) | Status |
 |---|---|---|---|
 | 01 | Farm Dashboard | Overview; Herd Intelligence; Production Intelligence; Care & Risk; Cost & Revenue; Decisions & Alerts; Reporting | Partial |
-| 02 | Livestock Registry & Traceability | Animals; Intake; Identification; Classification; Pedigree; Movements; Exit; Reporting | Partial (permanent Animal ID series separate from descriptive tag: to do) |
+| 02 | Livestock Registry & Traceability | Animals; Intake; Identification; Classification; Pedigree; Movements; Exit; Reporting | Built (D-208 permanent Animal ID series KKF-000001, immutable, never reused) |
 | 03 | Breeding & Genetics | Breeding Stock; Heat Detection; Mating; Pregnancy; Genetics; Reproduction Issues; Performance; Configuration | Partial (D-161, D-166, D-175) |
 | 04 | Maternity & Kid Care | Pre-Kidding; Kidding; Pregnancy Outcomes; Newborn Registry; Mother Care; Kid Nutrition; Weaning; Reporting | Built (D-161–D-164, D-171, D-176) |
-| 05 | Veterinary & Biosecurity | Health Monitoring; Medical Cases; Treatment; Preventive Care; Quarantine; Reproduction Health; Withdrawal & Disposal; Reporting | Partial (D-172–D-174, D-193 disease control, restrictions, outbreaks; antimicrobial use report to do) |
-| 06 | Feeding & Nutrition | Feed Master; Nutrition Standards; Ration Formulas; Daily Feed Plans; Feed Production; Consumption; Feed Safety; Cost & Reports | Partial (D-177; feed safety lot holds to do) |
+| 05 | Veterinary & Biosecurity | Health Monitoring; Medical Cases; Treatment; Preventive Care; Quarantine; Reproduction Health; Withdrawal & Disposal; Reporting | Built (D-172–D-174, D-193 disease control, restrictions, outbreaks; antimicrobial use report D-209) |
+| 06 | Feeding & Nutrition | Feed Master; Nutrition Standards; Ration Formulas; Daily Feed Plans; Feed Production; Consumption; Feed Safety; Cost & Reports | Built (D-177; feed safety lots, tests and holds D-209) |
 | 07 | Housing & Pen Management | Farm Structure; Unit Categories; Pen Operations; Biosecure Areas; Housing Conditions; Cleaning; Traceability; Reports | Built (D-207: pen status, capacity block with authorised override, cleaning verified by someone else) |
-| 08 | Growth & Performance | Weighing; Growth Plans; Body Condition; Performance; Breeder Selection; Fattening Integration; Reports | Partial (growth plans, interventions, breeder selection D-191; outlier/duplicate weight flags outside fattening to do) |
+| 08 | Growth & Performance | Weighing; Growth Plans; Body Condition; Performance; Breeder Selection; Fattening Integration; Reports | Built (growth plans, interventions, breeder selection D-191; held weight review for every channel D-208) |
 | 09 | Farm Operations & Tasks | Daily Routines; Task Planner; Work Orders; Checklists; Incidents; Approvals; Reports | Built (D-180) |
 | 10 | Inventory & Stores | Products; Stock Locations; Operations; Batch & Expiry; Reordering; Consumption; Valuation; Reporting | Partial (D-178) |
 | 11 | Purchase & Procurement | Suppliers; Purchase Requests; Purchase Orders; Animal Purchase; Materials Purchase; Receiving; Vendor Bills; Reporting | Partial (D-178; animal purchase lots D-190) |
 | 12 | Sales & Livestock Trading | Animal Catalogue; Customers; Sales Pipeline; Sales Orders; Health Clearance; Dispatch; Billing; Reporting | Built (D-178, D-194 sale orders, RFID dispatch, invoices, receivables) |
 | 13 | Accounting & Finance | Accounting; Cash & Bank; Payables; Receivables; Farm Costing; Production Economics; Budgets; Reports | Partial |
-| 14 | Employees & Workforce | People; Shifts; Training; Skills; Leave & Payroll; Safety; Reports | Partial (D-181; training/skills to do) |
+| 14 | Employees & Workforce | People; Shifts; Training; Skills; Leave & Payroll; Safety; Reports | Built (D-181; training compliance, skills and authorisations D-210) |
 | 15 | Assets & Maintenance | Assets; Preventive Plan; Breakdowns; Dairy Equipment; Water Equipment; Parts & Cost; Reporting | Built (D-182) |
 | 16 | Reports & Analytics | Operational; Breeding; Fattening; Dairy; Finance; Compliance; Self-Service BI; KPI Definitions | Partial |
-| 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Built – flow 17 (D-117, D-188, D-195 orders, invoices, milk profit); processing products to do |
-| 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | Built – flow 18 (D-187); feeder purchase lots and quotations to do |
-| 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review to do |
+| 17 | Dairy & Milk Production | Lactation; Milk Sessions; Milk Allocation; Udder & Milk Health; Quality Assurance; Storage & Processing; Dairy Sales; Economics | Built – flow 17 (D-117, D-188, D-195 orders, invoices, milk profit); processing batches D-211 |
+| 18 | Fattening & Meat Production | Fattening Dashboard; Batch Setup; Animal Selection; Finishing Plans; Daily Monitoring; Market Readiness; Sales Handover; Profitability | Built – flow 18 (D-187); feeder purchase lots D-211; quotations via Sale Orders D-194 |
+| 19 | Animal Welfare & Husbandry | Daily Welfare; Hoof & Mobility; Physical Care; Group Welfare; Welfare Cases; Humane End of Life; Inspection & Audits; Reporting | Built – flow 19 (D-185); humane end-of-life review D-211 |
 | 20 | Water, Climate & Environment | Drinking Water; Water Quality; Water Assets; Climate & Heat; Ventilation; Waste & Manure; Utilities; Reports | Built – flow 20 (D-186), water lab tests and incidents (D-198), waste and manure disposal (D-204) |
 | 21 | Quality, Compliance & Safety | Quality Dashboard; SOP Library; Feed & Milk Safety; Regulatory Register; Incidents & CAPA; Traceability & Recall; Emergency Readiness; Compliance Reporting | Built – flow 21 (D-180, D-189) |
 | 22 | Fodder & Pasture (Optional) | Land & Field Registry; Crop Planning; Cultivation; Crop Monitoring; Harvest; Preservation; Feed Store Transfer; Costing | Built (D-202), off by default; the owner turns it on |
@@ -70,7 +70,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 
 | Rule | Requirement | Status |
 |---|---|---|
-| BR-001 | Immutable Animal ID, never reused | Partial (UUID PK; readable permanent series to do) |
+| BR-001 | Immutable Animal ID, never reused | Done (D-208: KKF-NNNNNN series, database trigger blocks changes, counter never reused) |
 | BR-002 | One active animal per EPC | Built |
 | BR-003 | Intake quarantine before regular pen | Built (D-172) |
 | BR-004 | Block pen overcapacity unless authorised | Done (D-207; care moves exempt) |
@@ -85,9 +85,9 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-013 | Milk lot genealogy | Built (D-188) |
 | BR-014 | Milk mass balance | Built (D-188) |
 | BR-015 | Daily feed trace 3 shifts + stock | Built |
-| BR-016 | Rejected feed lots not mixed into TMR | Built (D-189): a quality hold on a feed blocks daily feeding and TMR mixing |
+| BR-016 | Rejected feed lots not mixed into TMR | Built (D-189 quality holds; D-209 lots quarantined until tested and released) |
 | BR-017 | DM vs as-fed, kg vs litres | Partial (feed conversion uses DM where the feed has a DM %, D-192) |
-| BR-018 | Duplicate/impossible weight flags | Built (D-187) – fattening weighings |
+| BR-018 | Duplicate/impossible weight flags | Built (D-187 fattening; D-208 every weight held for review) |
 | BR-019 | Fattening eligibility | Built (D-187) |
 | BR-020 | No double-counted fattening feed cost | Built (D-187) |
 | BR-021 | No drinking water = critical alert | Built (D-186) |

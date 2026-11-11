@@ -180,14 +180,15 @@ class FeedingController extends Controller
             // D-084: never give more than the store holds. A correction only needs stock for the extra KG on top of what was already given.
             FeedItem::whereIn('id', array_column($data['lines'], 'feed_item_id'))->lockForUpdate()->get();
             \App\Support\Quality::assertFeedNotHeld(array_map('intval', array_column(array_filter($data['lines'], fn ($l) => (float) $l['offered_kg'] > 0), 'feed_item_id'))); // D-189 / BR-016
-            $stock = Feed::stock(fresh: true);
+            $stock = Feed::usable(fresh: true); // D-209: quarantined feed lots are not available
             $short = [];
             foreach ($data['lines'] as $i => $l) {
                 $extra = (float) $l['offered_kg'] - (float) ($current[$l['feed_item_id']]?->offered_kg ?? 0);
                 $have = max(0, (float) ($stock[$l['feed_item_id']] ?? 0));
                 if ($extra > $have + 0.0001 && ! FeedUsage::whereKey($l['id'])->exists()) {
                     $name = FeedItem::find($l['feed_item_id'])?->name ?? 'this feed';
-                    $short["lines.$i.offered_kg"] = 'Only '.rtrim(rtrim(number_format($have + (float) ($current[$l['feed_item_id']]?->offered_kg ?? 0), 2, '.', ''), '0'), '.')." KG of {$name} available. Record a purchase in Feed store first.";
+                    $lots = Feed::quarantinedLots([(int) $l['feed_item_id']]);
+                    $short["lines.$i.offered_kg"] = 'Only '.rtrim(rtrim(number_format($have + (float) ($current[$l['feed_item_id']]?->offered_kg ?? 0), 2, '.', ''), '0'), '.')." KG of {$name} available.".($lots ? " Lot {$lots} is waiting for its safety test." : ' Record a purchase in Feed store first.');
                 }
             }
             if ($short) {

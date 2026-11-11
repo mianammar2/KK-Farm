@@ -137,6 +137,8 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:weights')->group(function (): void {
         $bb = \App\Http\Controllers\BirthToBreederController::class;
         Route::get('/growth', [$bb, 'index']);
+        Route::get('/weights/review', [\App\Http\Controllers\WeightReviewController::class, 'index']); // D-208
+        Route::post('/weights/review/{record}', [\App\Http\Controllers\WeightReviewController::class, 'decide']);
         Route::post('/growth/{animal}/intervene', [$bb, 'intervene']);
         Route::post('/growth/interventions/{intervention}/follow-up', [$bb, 'followUp']);
         Route::post('/growth/{animal}/select', [$bb, 'select']);
@@ -168,6 +170,13 @@ Route::middleware('auth')->group(function (): void {
     // D-185: App 19 Animal Welfare & Husbandry
     Route::middleware('module:welfare')->group(function (): void {
         Route::get('/welfare', [\App\Http\Controllers\WelfareController::class, 'index']);
+        $eol = \App\Http\Controllers\EndOfLifeController::class; // D-211
+        Route::get('/welfare/end-of-life', [$eol, 'index']);
+        Route::post('/welfare/end-of-life', [$eol, 'store']);
+        Route::post('/welfare/end-of-life/{review}/assess', [$eol, 'assess']);
+        Route::post('/welfare/end-of-life/{review}/authorise', [$eol, 'authorise']);
+        Route::post('/welfare/end-of-life/{review}/perform', [$eol, 'perform']);
+        Route::post('/welfare/end-of-life/{review}/withdraw', [$eol, 'withdraw']);
         Route::post('/welfare/checks', [\App\Http\Controllers\WelfareController::class, 'check']);
         Route::post('/welfare/cases', [\App\Http\Controllers\WelfareController::class, 'open']);
         Route::post('/welfare/cases/{case}/step', [\App\Http\Controllers\WelfareController::class, 'step']);
@@ -273,6 +282,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware('module:health')->group(function (): void {
         Route::get('/health', [HealthController::class, 'index']);
+        Route::get('/health/antimicrobials', [\App\Http\Controllers\AntimicrobialController::class, 'index']); // D-209
+        Route::post('/health/antimicrobials/{medicine}', [\App\Http\Controllers\AntimicrobialController::class, 'mark']);
         Route::post('/health/observations', [HealthController::class, 'observe']);
         Route::post('/health/clinical', [HealthController::class, 'clinical']);
         Route::post('/health/records/{record}/close', [HealthController::class, 'close']);
@@ -304,6 +315,12 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware('module:feeding')->group(function (): void {
         Route::get('/feeding', [FeedingController::class, 'index']);
+        $fl = \App\Http\Controllers\FeedLotController::class; // D-209
+        Route::get('/feeding/lots', [$fl, 'index']);
+        Route::post('/feeding/lots/limits', [$fl, 'limits']);
+        Route::post('/feeding/lots/items/{item}', [$fl, 'item']);
+        Route::post('/feeding/lots/{lot}/test', [$fl, 'test']);
+        Route::post('/feeding/lots/{lot}/decide', [$fl, 'decide']);
         Route::post('/feeding/record', [FeedingController::class, 'record']);
         Route::post('/feeding/leftover', [FeedingController::class, 'leftover']);
         Route::post('/feeding/items', [FeedingController::class, 'storeItem']);
@@ -365,6 +382,10 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:employees')->group(function (): void {
         // D-181: attendance, shift roster and leave
         Route::get('/hr', [\App\Http\Controllers\HrController::class, 'index']);
+        Route::get('/hr/training', [\App\Http\Controllers\TrainingController::class, 'index']); // D-210
+        Route::post('/hr/training', [\App\Http\Controllers\TrainingController::class, 'train']);
+        Route::post('/hr/skills', [\App\Http\Controllers\TrainingController::class, 'skill']);
+        Route::post('/hr/skills/{skill}/revoke', [\App\Http\Controllers\TrainingController::class, 'revoke']);
         Route::post('/hr/attendance', [\App\Http\Controllers\HrController::class, 'mark']);
         Route::post('/hr/attendance/all-present', [\App\Http\Controllers\HrController::class, 'allPresent']);
         Route::post('/hr/leave', [\App\Http\Controllers\HrController::class, 'requestLeave']);
@@ -388,6 +409,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/milking/lactations/{lactation}/dry-off', [\App\Http\Controllers\MilkingController::class, 'dryOff']);
         // D-188: App 17 Dairy & Milk: sessions, lots, QA, release, dispatch
         Route::get('/dairy', [\App\Http\Controllers\DairyController::class, 'index']);
+        Route::get('/dairy/processing', [\App\Http\Controllers\MilkProcessingController::class, 'index']); // D-211
+        Route::post('/dairy/processing', [\App\Http\Controllers\MilkProcessingController::class, 'store']);
+        Route::post('/dairy/processing/{batch}/decide', [\App\Http\Controllers\MilkProcessingController::class, 'decide']);
         Route::post('/dairy/sessions', [\App\Http\Controllers\DairyController::class, 'close']);
         Route::post('/dairy/lots/{lot}/test', [\App\Http\Controllers\DairyController::class, 'test']);
         Route::post('/dairy/lots/{lot}/release', [\App\Http\Controllers\DairyController::class, 'release']);

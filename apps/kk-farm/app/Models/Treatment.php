@@ -18,6 +18,11 @@ class Treatment extends Model
         return $this->belongsTo(HealthCase::class);
     }
 
+    public function medicine()
+    {
+        return $this->belongsTo(Medicine::class);
+    }
+
     public function animal()
     {
         return $this->belongsTo(Animal::class);

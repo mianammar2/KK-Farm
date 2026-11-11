@@ -24,6 +24,21 @@ class FeedStockMovement extends Model
         return array_diff_key(self::TYPES, array_flip(['mix_in', 'mix_out']));
     }
 
+    /** D-209: every purchase or receipt becomes a traceable lot; a feed that needs a safety test arrives quarantined. */
+    protected static function booted(): void
+    {
+        static::created(function (self $m) {
+            if (! in_array($m->type, ['purchase', 'receipt'], true) || $m->qty_kg <= 0) {
+                return;
+            }
+            $item = $m->item;
+            $prefix = 'FL-'.now()->format('ym').'-';
+            $n = (int) FeedLot::where('lot_no', 'like', $prefix.'%')->count() + 1;
+            FeedLot::create(['lot_no' => $prefix.str_pad((string) $n, 3, '0', STR_PAD_LEFT), 'feed_item_id' => $m->feed_item_id, 'movement_id' => $m->id, 'received_on' => $m->moved_on,
+                'qty_kg' => $m->qty_kg, 'supplier' => $m->party, 'status' => $item?->safety_test ? 'quarantined' : 'released', 'received_by' => $m->recorded_by]);
+        });
+    }
+
     public function item()
     {
         return $this->belongsTo(FeedItem::class, 'feed_item_id');

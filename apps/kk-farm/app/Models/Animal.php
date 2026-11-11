@@ -101,6 +101,9 @@ class Animal extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (self $a) {
+            $a->animal_code ??= \App\Support\AnimalCode::next(); // D-208 / BR-001
+        });
         static::saving(function (self $a) {
             if ($a->isDirty('health_flag') && $a->health_flag) {
                 $a->health_status = self::FLAG_TO_STATUS[$a->health_flag] ?? 'healthy';
@@ -131,6 +134,7 @@ class Animal extends Model
     {
         return [
             'id' => $this->id,
+            'animalId' => $this->animal_code, // D-208: permanent Animal ID
             'number' => $this->farm_number,
             'name' => $this->name,
             'sex' => $this->sex,

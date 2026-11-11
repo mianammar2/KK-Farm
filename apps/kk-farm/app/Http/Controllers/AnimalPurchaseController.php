@@ -55,7 +55,7 @@ class AnimalPurchaseController extends Controller
 
         return Inertia::render('AnimalPurchase', [
             'lots' => $lots->map(fn (AnimalPurchaseLot $l) => [
-                'id' => $l->id, 'no' => $l->lot_no, 'supplier' => $l->supplier?->name, 'source' => $l->source, 'purpose' => $l->purpose, 'expected' => $l->expected_head,
+                'id' => $l->id, 'no' => $l->lot_no, 'kind' => $l->kind, 'supplier' => $l->supplier?->name, 'source' => $l->source, 'purpose' => $l->purpose, 'expected' => $l->expected_head,
                 'budget' => $l->budget_minor / 100, 'status' => $l->status, 'requestedBy' => $l->requested_by, 'approvedBy' => $l->approved_by, 'note' => $l->decision_note,
                 'requestedAt' => $l->created_at->format('j M Y'), 'receivedOn' => $l->received_on?->format('j M Y'), 'receivedBy' => $l->received_by, 'pen' => $l->quarantinePen?->fullName(),
                 'paid' => $l->paid_minor !== null ? $l->paid_minor / 100 : null, 'transport' => $l->transport_minor !== null ? $l->transport_minor / 100 : null,
@@ -96,6 +96,7 @@ class AnimalPurchaseController extends Controller
         $data = $request->validate([
             'supplier_id' => ['nullable', 'exists:suppliers,id'], 'source' => ['required', 'string', 'max:120'], 'purpose' => ['nullable', 'string', 'max:160'],
             'expected_head' => ['required', 'integer', 'between:1,2000'], 'budget' => ['required', 'numeric', 'min:1', 'max:1000000000'],
+            'kind' => ['nullable', \Illuminate\Validation\Rule::in(['breeding', 'feeder'])], // D-211
         ], [], ['source' => 'market or breeder', 'expected_head' => 'number of goats', 'budget' => 'agreed price']);
         $lot = DB::transaction(function () use ($data, $request) {
             DB::statement('LOCK TABLE animal_purchase_lots IN SHARE ROW EXCLUSIVE MODE');
@@ -105,6 +106,7 @@ class AnimalPurchaseController extends Controller
             return AnimalPurchaseLot::create([
                 'lot_no' => $prefix.str_pad((string) $n, 4, '0', STR_PAD_LEFT), 'supplier_id' => $data['supplier_id'] ?? null, 'source' => $data['source'], 'purpose' => $data['purpose'] ?? null,
                 'expected_head' => $data['expected_head'], 'budget_minor' => (int) round($data['budget'] * 100), 'status' => 'requested', 'requested_by' => $request->user()->name,
+                'kind' => $data['kind'] ?? 'breeding',
             ]);
         });
         Farm::log($request->user(), "Requested goat purchase {$lot->lot_no}", '/purchase/animals');
@@ -198,7 +200,7 @@ class AnimalPurchaseController extends Controller
                         throw ValidationException::withMessages(collect($v->errors()->messages())->mapWithKeys(fn ($m, $k) => ["items.$i.".($k === 'farm_number' ? 'tag_id' : $k) => $m[0]])->all());
                     }
                     $animal = GoatRegistration::register($v->validated(), $user);
-                    $animal->update(['purchase_lot_id' => $lot->id]);
+                    $animal->update(['purchase_lot_id' => $lot->id] + ($lot->kind === 'feeder' ? ['animal_purpose' => 'fattening'] : [])); // D-211: feeders are bought for meat
                     if ($it['screening'] === 'sick') {
                         HealthRecord::create([
                             'animal_id' => $animal->id, 'kind' => 'observation', 'occurred_on' => $data['received_on'], 'title' => mb_substr("Sick on arrival ({$lot->lot_no})", 0, 120),

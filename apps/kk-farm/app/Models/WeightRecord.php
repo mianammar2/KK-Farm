@@ -2,22 +2,36 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class WeightRecord extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['measured_on' => 'date', 'weight_kg' => 'float'];
+    protected $casts = ['measured_on' => 'date', 'weight_kg' => 'float', 'reviewed_at' => 'datetime'];
 
-    /** D-110: a goat's first weighing estimates its age when nothing else tells it. */
     protected static function booted(): void
     {
-        static::created(fn (self $record) => \App\Support\AgeFromWeight::fromRecord($record));
+        // D-208 / BR-018: held and rejected readings never count anywhere (growth, ADG, costing, latest weight).
+        static::addGlobalScope('counted', fn (Builder $q) => $q->where(fn ($w) => $w->whereNull('weight_records.review_status')->orWhere('weight_records.review_status', 'accepted')));
+        static::creating(function (self $record) {
+            if ($record->review_status === null && ($f = \App\Support\WeightCheck::assess($record->animal_id, $record->measured_on ?? now(), (float) $record->weight_kg))) {
+                [$record->flag, $record->flag_note] = $f;
+                $record->review_status = 'held';
+            }
+        });
+        // D-110: a goat's first weighing estimates its age when nothing else tells it.
+        static::created(fn (self $record) => $record->review_status === 'held' ? null : \App\Support\AgeFromWeight::fromRecord($record));
     }
 
     public function animal()
     {
         return $this->belongsTo(Animal::class);
+    }
+
+    public function scopeHeld(Builder $q): Builder
+    {
+        return $q->withoutGlobalScope('counted')->where('review_status', 'held');
     }
 }

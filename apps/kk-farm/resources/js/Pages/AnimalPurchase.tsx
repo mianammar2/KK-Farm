@@ -9,7 +9,7 @@ type Item = {
     goat: { id: string; number: string; inQuarantine: boolean; status: string; pen: string | null } | null;
 };
 type Lot = {
-    id: number; no: string; supplier: string | null; source: string; purpose: string | null; expected: number; budget: number; status: string; requestedBy: string; approvedBy: string | null;
+    id: number; no: string; kind: string; supplier: string | null; source: string; purpose: string | null; expected: number; budget: number; status: string; requestedBy: string; approvedBy: string | null;
     note: string | null; requestedAt: string; receivedOn: string | null; receivedBy: string | null; pen: string | null; paid: number | null; transport: number | null;
     discrepancy: string | null; reconciledBy: string | null; reconciliation: string | null; billPosted: boolean; billStatus: string | null; items: Item[]; canDecide: boolean;
 };
@@ -47,13 +47,14 @@ export default function AnimalPurchase(p: Props) {
 }
 
 function RequestForm({ suppliers, done }: Props & { done: () => void }) {
-    const form = useForm({ supplier_id: '', source: '', purpose: '', expected_head: '', budget: '' });
+    const form = useForm({ supplier_id: '', source: '', purpose: '', expected_head: '', budget: '', kind: 'breeding' });
     const e = form.errors as Record<string, string>;
     return (
         <Panel title="Goat Purchase Request" description="The owner or manager approves it (not the person asking).">
             <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, supplier_id: d.supplier_id || null })); form.post('/purchase/animals', { preserveScroll: true, onSuccess: () => { form.reset(); done(); } }); }}>
                 <Field label="Market or breeder" error={e.source}><input className="field" value={form.data.source} onChange={(x) => form.setData('source', x.target.value)} placeholder="e.g. Shahpur Kanjra cattle market" /></Field>
                 <Field label="Supplier" error={e.supplier_id} hint="Optional"><select className="field" value={form.data.supplier_id} onChange={(x) => form.setData('supplier_id', x.target.value)}><option value="">—</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+                <Field label="Bought for" error={e.kind}><select className="field" value={form.data.kind} onChange={(x) => form.setData('kind', x.target.value)}><option value="breeding">Herd / breeding</option><option value="feeder">Feeders for fattening (meat)</option></select></Field>
                 <Field label="Purpose" error={e.purpose}><input className="field" value={form.data.purpose} onChange={(x) => form.setData('purpose', x.target.value)} placeholder="e.g. Fattening lot for Eid" /></Field>
                 <Field label="Number of goats" error={e.expected_head}><input type="number" min={1} className="field" value={form.data.expected_head} onChange={(x) => form.setData('expected_head', x.target.value)} /></Field>
                 <Field label="Agreed price for the lot (PKR)" error={e.budget}><input type="number" min={1} className="field" value={form.data.budget} onChange={(x) => form.setData('budget', x.target.value)} /></Field>
@@ -92,6 +93,7 @@ function LotItem({ l, options, canApprove, canReceive, ...p }: Props & { l: Lot 
             {stage >= 0 ? <ol className="mt-2 flex flex-wrap items-center gap-1 text-[11px] font-semibold">
                 {FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className={`rounded-full px-2 py-0.5 ${i <= stage ? 'bg-cobalt-900 text-white' : 'bg-glaze text-ink-soft ring-1 ring-rule'}`}>{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}
             </ol> : null}
+            {l.kind === 'feeder' ? <p className="mt-1 text-xs font-semibold text-treat-700">Feeder lot: each goat is proposed for a finishing batch when the vet clears it from quarantine.</p> : null}
             {l.purpose ? <p className="mt-1 text-ink-soft">{l.purpose}</p> : null}
             {l.note ? <p className="mt-1 text-ink-soft">Note: {l.note}</p> : null}
             {l.status === 'received' ? <p className="mt-1">Received {l.receivedOn} by {l.receivedBy} into <strong>{l.pen}</strong> · paid {pkr(l.paid ?? 0)}{l.transport ? ` + transport ${pkr(l.transport)}` : ''} · bill {l.billPosted ? (l.billStatus === 'paid' ? 'posted, paid' : 'posted, owed to supplier') : 'none'} · {cleared} of {accepted.length} cleared</p> : null}

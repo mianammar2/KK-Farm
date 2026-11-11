@@ -121,6 +121,7 @@ export default function GoatShow(props: Props) {
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt="" className="size-14 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} sex={goat.sex} stage={goat.stage} repro={goat.repro} size={56} />}</span>
                             <h1 className="font-mono text-xl font-bold tracking-tight text-cobalt-900 sm:text-2xl">{goat.number}</h1>
+                            {goat.animalId ? <span className="rounded-[4px] bg-glaze px-1.5 py-0.5 font-mono text-xs font-semibold text-ink-soft ring-1 ring-rule" title="Permanent Animal ID: never changes, even when the tag does">{goat.animalId}</span> : null}
                             <SexIcon sex={goat.sex} />
                             {onFarm ? <HealthChip health={goat.health} /> : removed ? <Chip className="bg-glaze text-ink-soft">Removed (wrong entry)</Chip> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}
                             <ReproChip repro={goat.repro} until={goat.monitorUntil} />

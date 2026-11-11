@@ -64,14 +64,16 @@ class WeightController extends Controller
         $animal = Animal::findOrFail($data['animal_id']);
         abort_unless($animal->status === 'active', 422, 'This goat is no longer on the farm.');
         $heightCm = isset($data['height_in']) ? round($data['height_in'] * 2.54, 1) : null;
-        WeightRecord::create(['animal_id' => $animal->id, 'weight_kg' => $data['weight_kg'], 'measured_on' => $data['measured_on'] ?? now()->toDateString(), 'measured_by' => $request->user()->name, 'body_score' => $data['body_score'] ?? null, 'height_cm' => $heightCm]);
+        $w = WeightRecord::create(['animal_id' => $animal->id, 'weight_kg' => $data['weight_kg'], 'measured_on' => $data['measured_on'] ?? now()->toDateString(), 'measured_by' => $request->user()->name, 'body_score' => $data['body_score'] ?? null, 'height_cm' => $heightCm]);
         if ($heightCm) {
             $animal->update(['height_cm' => $heightCm]);
         }
         Farm::event($animal, 'weight', "Weighed {$data['weight_kg']} KG".(! empty($data['body_score']) ? ", body score {$data['body_score']}" : '').(! empty($data['height_in']) ? ", {$data['height_in']} in" : ''), $request->user()->name);
         Farm::log($request->user(), "Weighed {$animal->farm_number} at {$data['weight_kg']} KG", "/goats/{$animal->id}");
 
-        return back()->with('success', "Weight saved for {$animal->farm_number}.");
+        return $w->review_status === 'held' // D-208: kept, but held for review
+            ? back()->with('success', "Saved for {$animal->farm_number} but held for review: {$w->flag_note} It counts once the owner, manager or vet accepts it.")
+            : back()->with('success', "Weight saved for {$animal->farm_number}.");
     }
 
     /** D-099: correct a weighing: the person who weighed, or the administrator. The old values stay as a revision. */

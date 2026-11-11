@@ -491,7 +491,21 @@ final class Feed
         return FeedItem::pluck('id')->mapWithKeys(fn ($id) => [$id => round((float) ($in[$id] ?? 0) - (float) ($out[$id] ?? 0), 2)]);
     }
 
-    public static function stockStatus(float $kg, float $reorder): string
+    /** D-209: KG that may be fed or mixed: in store less lots still quarantined for their safety test. */
+    public static function usable(bool $fresh = false): Collection
+    {
+        $held = \App\Models\FeedLot::where('status', 'quarantined')->groupBy('feed_item_id')->selectRaw('feed_item_id, sum(qty_kg) as kg')->pluck('kg', 'feed_item_id');
+
+        return self::stock($fresh)->map(fn ($kg, $id) => round($kg - (float) ($held[$id] ?? 0), 2));
+    }
+
+    /** D-209: the quarantined lots of these feeds, for messages. */
+    public static function quarantinedLots(array $itemIds): string
+    {
+        return \App\Models\FeedLot::where('status', 'quarantined')->whereIn('feed_item_id', $itemIds)->pluck('lot_no')->implode(', ');
+    }
+
+        public static function stockStatus(float $kg, float $reorder): string
     {
         return match (true) {
             $kg < 0 => 'negative',

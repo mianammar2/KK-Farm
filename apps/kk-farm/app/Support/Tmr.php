@@ -73,11 +73,11 @@ final class Tmr
                 throw ValidationException::withMessages(['total_kg' => 'This formula is not in use.']);
             }
             Quality::assertFeedNotHeld($formula->lines->pluck('feed_item_id')->all(), 'total_kg'); // D-189 / BR-016
-            $stock = Feed::stock(true);
+            $stock = Feed::usable(true); // D-209: quarantined feed lots cannot be mixed (BR-016)
             $need = $formula->lines->map(fn ($l) => ['item' => $l->item, 'kg' => round($totalKg * $l->pct / 100, 2)]);
             $short = $need->filter(fn ($n) => ($stock[$n['item']->id] ?? 0) < $n['kg']);
             if ($short->isNotEmpty()) {
-                throw ValidationException::withMessages(['total_kg' => 'Not enough in store: '.$short->map(fn ($n) => "{$n['item']->name} needs {$n['kg']} KG, ".max(0, $stock[$n['item']->id] ?? 0).' KG in store')->implode('; ').'.']);
+                throw ValidationException::withMessages(['total_kg' => 'Not enough in store: '.$short->map(fn ($n) => "{$n['item']->name} needs {$n['kg']} KG, ".max(0, $stock[$n['item']->id] ?? 0).' KG usable'.(($lots = Feed::quarantinedLots([$n['item']->id])) ? " (lot {$lots} waiting for its safety test)" : ''))->implode('; ').'.']);
             }
             $cost = (int) round($need->sum(fn ($n) => $n['kg'] * $n['item']->cost_per_kg_minor));
             $no = 'TMR-'.now()->format('ymd').'-'.str_pad((string) (TmrBatch::whereDate('created_at', today())->count() + 1), 2, '0', STR_PAD_LEFT);

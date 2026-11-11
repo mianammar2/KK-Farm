@@ -65,7 +65,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
     const rows = useMemo(() => {
         const q = query.trim().toLowerCase();
         const list = goats.filter((g) =>
-            (!q || [g.number, g.name, g.tag, g.breed].some((v) => v?.toLowerCase().includes(q))) &&
+            (!q || [g.number, g.name, g.tag, g.breed, g.animalId].some((v) => v?.toLowerCase().includes(q))) &&
             (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || g.health === health) &&
             (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone),
         );
