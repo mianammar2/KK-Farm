@@ -30,6 +30,7 @@ export const APPS: ErpApp[] = [
         S('Overview', '/', 'Executive Dashboard'),
         S('Operations', '/actions', 'Alerts & Action Center'),
         S('Records', '/activity', 'Activity Log'),
+        S('Reporting', '/dashboard/weight-change', 'Weight Gain & Loss'),
         S('Reporting', '/reports', 'Farm Reports'),
         S('Configuration', '/settings/users', 'Users & Roles'),
     ] },
