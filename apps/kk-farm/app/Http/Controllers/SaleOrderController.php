@@ -225,6 +225,17 @@ class SaleOrderController extends Controller
         if ($missing = array_diff(array_keys(SaleOrder::CHECKLIST), $order->checklist ?? [])) {
             throw ValidationException::withMessages(['dispatch' => 'Finish the dispatch checklist: '.implode(', ', array_map(fn ($k) => SaleOrder::CHECKLIST[$k], $missing)).'.']);
         }
+        // D-203: no loading out without a trip on an approved vehicle and every goat checked fit to travel
+        $trip = $order->trip;
+        if (! $trip || ! $trip->vehicle?->usable()) {
+            throw ValidationException::withMessages(['dispatch' => $trip ? "Vehicle {$trip->vehicle?->reg_no} is no longer approved." : 'Plan the transport (approved vehicle and driver) first.']);
+        }
+        if ($lines->count() > $trip->vehicle->capacity_head) {
+            throw ValidationException::withMessages(['dispatch' => "{$trip->vehicle->reg_no} carries {$trip->vehicle->capacity_head}; {$lines->count()} goats are loaded."]);
+        }
+        if ($unchecked = $lines->filter(fn ($l) => $l->fit_ok !== true)->map(fn ($l) => $l->animal->farm_number)->implode(', ')) {
+            throw ValidationException::withMessages(['dispatch' => "Fitness to travel not confirmed: {$unchecked}."]);
+        }
         $data = $request->validate(['dispatched_on' => ['required', 'date', 'before_or_equal:today']]);
         $costs = SaleCheck::costBasis($lines->pluck('animal'));
         DB::transaction(function () use ($order, $lines, $data, $request, $costs) {
@@ -239,6 +250,8 @@ class SaleOrderController extends Controller
                 $sale = Sale::where('movement_id', $movement->id)->first();
                 $l->update(['status' => 'sold', 'sale_id' => $sale?->id, 'cost' => $costs[$l->animal_id] ?? null]);
             }
+            $gp = 'GP-'.now()->format('ym').'-'.str_pad((string) (\App\Models\TransportTrip::whereNotNull('gate_pass_no')->where('gate_pass_no', 'like', 'GP-'.now()->format('ym').'-%')->count() + 1), 3, '0', STR_PAD_LEFT);
+            $order->trip->update(['status' => 'in_transit', 'departed_at' => now(), 'head_loaded' => $lines->count(), 'gate_pass_no' => $gp]); // D-203
             $order->update(['status' => 'dispatched', 'dispatched_on' => $data['dispatched_on'], 'dispatched_by' => $request->user()->name, 'invoice_no' => $invoice,
                 'collected_at' => $order->terms === 'cash' ? now() : null]);
             Farm::log($request->user(), "Dispatched {$order->order_no} ({$invoice})", '/sales/orders');

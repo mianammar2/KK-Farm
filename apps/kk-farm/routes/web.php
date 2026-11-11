@@ -83,6 +83,16 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/issues/{issue}/health-check', [\App\Http\Controllers\EnvironmentController::class, 'healthCheck']);
     });
     // D-194: journey E Sale-to-Cash & Exit
+    Route::middleware('module:goats')->group(function (): void { // D-203: sales plans, vet / caretakers check fitness, the crew checks on the road
+        Route::get('/transport', [\App\Http\Controllers\TransportController::class, 'index']); // D-203
+        Route::post('/transport/vehicles', [\App\Http\Controllers\TransportController::class, 'vehicle']);
+        Route::post('/transport/vehicles/{vehicle}', [\App\Http\Controllers\TransportController::class, 'vehicle']);
+        Route::post('/transport/trips', [\App\Http\Controllers\TransportController::class, 'plan']);
+        Route::post('/transport/lines/{line}/fitness', [\App\Http\Controllers\TransportController::class, 'fitness']);
+        Route::post('/transport/trips/{trip}/check', [\App\Http\Controllers\TransportController::class, 'check']);
+        Route::post('/transport/trips/{trip}/deliver', [\App\Http\Controllers\TransportController::class, 'deliver']);
+        Route::post('/transport/claims/{claim}', [\App\Http\Controllers\TransportController::class, 'claim']);
+    });
     Route::middleware('module:sales')->group(function (): void {
         $so = \App\Http\Controllers\SaleOrderController::class;
         Route::get('/sales/orders', [$so, 'index']);

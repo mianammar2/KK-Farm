@@ -26,6 +26,11 @@ class SaleOrder extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function trip()
+    {
+        return $this->hasOne(TransportTrip::class, 'sale_order_id');
+    }
+
     public function scans()
     {
         return $this->hasMany(SaleScan::class, 'order_id');

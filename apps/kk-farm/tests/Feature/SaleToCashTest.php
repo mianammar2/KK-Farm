@@ -15,6 +15,9 @@ use App\Models\SaleOrderLine;
 use App\Models\SaleScan;
 use App\Models\Shed;
 use App\Models\Treatment;
+use App\Models\TransportClaim;
+use App\Models\TransportTrip;
+use App\Models\Vehicle;
 use App\Models\User;
 use App\Models\WeightRecord;
 use App\Support\Accounting;
@@ -90,7 +93,37 @@ class SaleToCashTest extends TestCase
         $scan('S-2')->assertSessionHasNoErrors();
         $this->actingAs($this->user('manager'))->post("/sales/orders/{$order->id}/dispatch", ['dispatched_on' => now()->toDateString()])->assertSessionHasErrors('dispatch'); // checklist
         $this->actingAs($this->user('manager'))->post("/sales/orders/{$order->id}/checklist", ['done' => array_keys(SaleOrder::CHECKLIST)])->assertSessionHasNoErrors();
+
+        // D-203 journey N: no dispatch without a trip on an approved vehicle and every goat fit to travel.
+        $this->actingAs($this->user('manager'))->post("/sales/orders/{$order->id}/dispatch", ['dispatched_on' => now()->toDateString()])->assertSessionHasErrors('dispatch');
+        $all = array_keys(Vehicle::POINTS);
+        $this->actingAs($this->user('manager'))->post('/transport/vehicles', ['reg_no' => 'lhr-1234', 'kind' => 'truck', 'capacity_head' => 1, 'ownership' => 'hired', 'driver' => 'Aslam', 'inspection' => array_slice($all, 1)])->assertSessionHasNoErrors();
+        $truck = Vehicle::sole();
+        $plan = ['sale_order_id' => $order->id, 'vehicle_id' => $truck->id, 'destination' => 'Lahore Mandi', 'distance_km' => 120];
+        $this->actingAs($this->user('finance'))->post('/transport/trips', $plan)->assertSessionHasErrors('vehicle_id'); // not approved: one point failed
+        $this->actingAs($this->user('manager'))->post("/transport/vehicles/{$truck->id}", ['reg_no' => 'LHR-1234', 'kind' => 'truck', 'capacity_head' => 1, 'ownership' => 'hired', 'driver' => 'Aslam', 'inspection' => $all])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('finance'))->post('/transport/trips', $plan)->assertSessionHasErrors('vehicle_id'); // too small for 2
+        $truck->update(['capacity_head' => 10]);
+        $this->actingAs($this->user('finance'))->post('/transport/trips', $plan)->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post("/sales/orders/{$order->id}/dispatch", ['dispatched_on' => now()->toDateString()])->assertSessionHasErrors('dispatch'); // fitness
+        foreach ($order->lines as $l) {
+            $this->actingAs($this->user('finance'))->post("/transport/lines/{$l->id}/fitness", ['fit' => true])->assertForbidden();
+            $this->actingAs($this->user('vet'))->post("/transport/lines/{$l->id}/fitness", ['fit' => true])->assertSessionHasNoErrors();
+        }
         $this->actingAs($this->user('manager'))->post("/sales/orders/{$order->id}/dispatch", ['dispatched_on' => now()->toDateString()])->assertSessionHasNoErrors();
+        $trip = TransportTrip::sole();
+        $this->assertSame(['in_transit', 2, 'GP-'.now()->format('ym').'-001'], [$trip->status, $trip->head_loaded, $trip->gate_pass_no]);
+
+        // On the road one goat dies; the buyer receives one: a death claim, accepted with a credit posted once.
+        $this->actingAs($this->user('caretaker'))->post("/transport/trips/{$trip->id}/check", ['location' => 'Sahiwal', 'down' => 0, 'injured' => 0, 'dead' => 3])->assertSessionHasErrors('dead');
+        $this->actingAs($this->user('caretaker'))->post("/transport/trips/{$trip->id}/check", ['location' => 'Sahiwal', 'down' => 1, 'injured' => 0, 'dead' => 1, 'watered' => true, 'temp_c' => 38])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post("/transport/trips/{$trip->id}/deliver", ['head_received' => 1, 'injured' => 0, 'received_by' => 'Haji Rafiq', 'claimed' => 60000])->assertSessionHasNoErrors();
+        $claim = TransportClaim::sole();
+        $this->assertSame(['death', 1, 6000000], [$claim->kind, $claim->head, (int) $claim->claimed_minor]);
+        $this->actingAs($this->user('finance'))->post("/transport/claims/{$claim->id}", ['decision' => 'accepted', 'credit' => 30000])->assertForbidden();
+        $this->actingAs($this->user('manager'))->post("/transport/claims/{$claim->id}", ['decision' => 'accepted', 'credit' => 30000])->assertSessionHasNoErrors();
+        $this->assertSame(30000.0, (float) LedgerEntry::where('category', 'Transit Claims')->sole()->amount);
+        $this->actingAs($this->user('manager'))->get('/transport')->assertInertia(fn ($p) => $p->where('kpi.lossPct', 50)->where('kpi.mismatches', 1)->where('kpi.openClaims', 0));
 
         $order->refresh();
         $this->assertSame(['dispatched', 'INV-'.now()->format('ym').'-001'], [$order->status, $order->invoice_no]);
