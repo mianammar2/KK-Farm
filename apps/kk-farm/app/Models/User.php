@@ -17,6 +17,10 @@ class User extends Authenticatable
 
     public function canModule(string $module): bool
     {
+        if ($module === 'fodder' && $this->role !== 'ceo' && ! \App\Support\Fodder::enabled()) {
+            return false; // D-202: optional app, off by default; the owner can open it to turn it on
+        }
+
         return in_array($this->role, config("kkfarm.modules.$module", []), true);
     }
 

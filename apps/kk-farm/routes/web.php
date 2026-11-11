@@ -43,6 +43,18 @@ Route::middleware('auth')->group(function (): void {
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
     // D-187: App 18 Fattening & Meat Production
+    Route::middleware('module:fodder')->group(function (): void { // D-202: App 22 Fodder & Pasture
+        $fc = \App\Http\Controllers\FodderController::class;
+        Route::get('/fodder', [$fc, 'index']);
+        Route::post('/fodder/toggle', [$fc, 'toggle']);
+        Route::post('/fodder/fields', [$fc, 'field']);
+        Route::post('/fodder/fields/{field}', [$fc, 'field']);
+        Route::post('/fodder/crops', [$fc, 'crop']);
+        Route::post('/fodder/crops/{crop}/inputs', [$fc, 'input']);
+        Route::post('/fodder/crops/{crop}/harvest', [$fc, 'harvest']);
+        Route::post('/fodder/lots/{lot}/test', [$fc, 'test']);
+        Route::post('/fodder/lots/{lot}/decide', [$fc, 'decide']);
+    });
     Route::middleware('module:fattening')->group(function (): void {
         Route::get('/fattening', [\App\Http\Controllers\FatteningController::class, 'index']);
         Route::post('/fattening/batches', [\App\Http\Controllers\FatteningController::class, 'store']);

@@ -271,6 +271,13 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/activity', 'Audit Trail'),
         S('Configuration', '/operations?tab=templates', 'Checklists'),
     ] },
+    { key: 'fodder', no: '22', label: 'Fodder & Pasture', art: 'mod-feeding', modules: ['fodder'], linked: ['feeding', 'inventory', 'quality', 'accounting'], sections: [
+        S('Overview', '/fodder?tab=crops', 'Crops & Fields'),
+        S('Operations', '/fodder?tab=lots', 'Harvest Lots: Test & Release'),
+        S('Records', '/fodder?tab=fields', 'Field Registry'),
+        S('Reporting', '/fodder?tab=report', 'Yield & Cost per KG DM'),
+        S('Configuration', '/fodder?tab=setup', 'Fodder Settings'),
+    ] },
     { key: 'settings', no: '', label: 'Settings', art: 'mod-settings', modules: ['settings'], linked: ['employees', 'housing', 'feeding', 'breeding'], sections: [
         S('Configuration', '/settings#breeds', 'Animal Master Data'),
         S('Configuration', '/settings#fields', 'Identification & Register'),

@@ -19,7 +19,7 @@ class HandleInertiaRequests extends Middleware
                 'name' => $user->name,
                 'role' => $user->role,
                 'roleLabel' => $user->roleLabel(),
-                'modules' => array_keys(array_filter(config('kkfarm.modules'), fn ($roles) => in_array($user->role, $roles, true))),
+                'modules' => array_values(array_filter(array_keys(config('kkfarm.modules')), fn ($m) => $user->canModule($m))),
                 'gates' => array_keys(array_filter(config('kkfarm.gates'), fn ($roles) => in_array($user->role, $roles, true))),
             ] : null,
             'roles' => config('kkfarm.roles'),
