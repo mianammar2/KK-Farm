@@ -51,8 +51,14 @@ class OperationsTest extends TestCase
         $i = Incident::sole();
         $this->assertTrue(Task::where('title', 'Incident: Water or Power Failure')->where('priority', 'high')->exists());
         $this->actingAs($this->user('caretaker'))->post("/operations/incidents/{$i->id}/resolve", ['resolution' => 'x'])->assertForbidden();
-        $this->actingAs($this->user('manager'))->post("/operations/incidents/{$i->id}/resolve", ['resolution' => 'Pump repaired'])->assertSessionHasNoErrors();
-        $this->assertSame(['resolved', 'Test manager'], [$i->fresh()->status, $i->fresh()->resolved_by]);
+        // D-205: a high incident goes to a quality case and cannot be resolved directly.
+        $this->assertSame('escalated', $i->fresh()->status);
+        $this->actingAs($this->user('manager'))->post("/operations/incidents/{$i->id}/resolve", ['resolution' => 'Pump repaired', 'root_cause' => 'Worn capacitor'])->assertStatus(422);
+        $this->actingAs($this->user('caretaker'))->post('/operations/incidents', ['occurred_at' => now()->subHour()->format('Y-m-d H:i'), 'kind' => 'feed_shortage', 'severity' => 'medium', 'description' => 'Short on wanda'])->assertSessionHasNoErrors();
+        $m = Incident::where('kind', 'feed_shortage')->sole();
+        $this->actingAs($this->user('manager'))->post("/operations/incidents/{$m->id}/resolve", ['resolution' => 'Bought 5 bags'])->assertSessionHasErrors('root_cause');
+        $this->actingAs($this->user('manager'))->post("/operations/incidents/{$m->id}/resolve", ['resolution' => 'Bought 5 bags', 'root_cause' => 'Reorder level too low'])->assertSessionHasNoErrors();
+        $this->assertSame(['resolved', 'Test manager'], [$m->fresh()->status, $m->fresh()->resolved_by]);
     }
 
     public function test_a_handover_is_saved_with_who_handed_over(): void

@@ -13,6 +13,7 @@ use App\Models\Task;
 use App\Support\Farm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -42,18 +43,23 @@ class OperationsController extends Controller
             'history' => ChecklistRun::with('template')->where('run_on', '>=', now()->subDays(7)->toDateString())->where('run_on', '<', $today)->orderByDesc('run_on')->get()->map(fn (ChecklistRun $r) => [
                 'on' => $r->run_on->format('D j M'), 'name' => $r->template?->name, 'done' => count($r->done), 'total' => count($r->template?->items ?? []), 'by' => $r->completed_by, 'verifiedBy' => $r->verified_by,
             ]),
-            'incidents' => Incident::with(['pen.shed', 'animal'])->where('occurred_at', '>=', now()->subDays(90))->orderByRaw("case status when 'open' then 0 else 1 end")->orderByDesc('occurred_at')->get()->map(fn (Incident $i) => [
+            'incidents' => Incident::with(['pen.shed', 'animal', 'qualityCase', 'sop'])->where('occurred_at', '>=', now()->subDays(90))->orderByRaw("case status when 'open' then 0 else 1 end")->orderByDesc('occurred_at')->get()->map(fn (Incident $i) => [
                 'id' => $i->id, 'at' => $i->occurred_at->format('j M g:i A'), 'kind' => $i->kind, 'severity' => $i->severity, 'pen' => $i->pen?->fullName(),
                 'goat' => $i->animal ? ['id' => $i->animal_id, 'number' => $i->animal->farm_number] : null, 'description' => $i->description, 'by' => $i->reported_by,
                 'status' => $i->status, 'resolution' => $i->resolution, 'resolvedBy' => $i->resolved_by, 'resolvedAt' => $i->resolved_at?->format('j M g:i A'),
+                'category' => $i->category, 'rootCause' => $i->root_cause, 'repeat' => $i->recurrence_of_id !== null,
+                'case' => $i->qualityCase ? ['label' => $i->qualityCase->label(), 'status' => $i->qualityCase->status] : null,
+                'sop' => $i->sop ? "{$i->sop->code} v{$i->sop_version}".($i->sop_version_after ? " → v{$i->sop_version_after}" : '') : null,
             ]),
+            'incidentKpi' => \App\Support\IncidentCapa::kpis(),
+            'sops' => \App\Models\Sop::where('active', true)->orderBy('code')->get(['id', 'code', 'title']),
             'handovers' => ShiftHandover::where('handed_on', '>=', now()->subDays(14)->toDateString())->orderByDesc('id')->get()->map(fn (ShiftHandover $h) => [
                 'id' => $h->id, 'on' => $h->handed_on->format('D j M'), 'shift' => $h->shift, 'from' => $h->from_name, 'to' => $h->to_name, 'summary' => $h->summary, 'pending' => $h->pending,
             ]),
             'templates' => ChecklistTemplate::orderByDesc('active')->orderBy('shift')->get(['id', 'name', 'shift', 'items', 'active']),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number']),
-            'options' => ['shifts' => ChecklistTemplate::SHIFTS, 'kinds' => Incident::KINDS, 'severity' => Incident::SEVERITY],
+            'options' => ['shifts' => ChecklistTemplate::SHIFTS, 'kinds' => Incident::KINDS, 'severity' => Incident::SEVERITY, 'categories' => Incident::CATEGORIES],
             'canSupervise' => $this->supervisor($request), 'canResolve' => $this->supervisor($request) || $request->user()->role === 'vet',
         ]);
     }
@@ -87,9 +93,20 @@ class OperationsController extends Controller
         $data = $request->validate([
             'occurred_at' => ['required', 'date', 'before_or_equal:now'], 'kind' => ['required', Rule::in(array_keys(Incident::KINDS))],
             'severity' => ['required', Rule::in(array_keys(Incident::SEVERITY))], 'pen_id' => ['nullable', 'exists:pens,id'], 'animal_id' => ['nullable', 'exists:animals,id'],
-            'description' => ['required', 'string', 'max:1000'],
+            'description' => ['required', 'string', 'max:1000'], 'sop_id' => ['nullable', 'exists:sops,id'], 'containment' => ['nullable', Rule::in(['hold', 'isolate', 'recall'])],
         ]);
-        $incident = Incident::create($data + ['reported_by' => $request->user()->name]);
+        $user = $request->user();
+        abort_if(! empty($data['containment']) && ! ($this->supervisor($request) || $user->role === 'vet'), 403, 'The owner, manager or vet places a hold.');
+        $incident = DB::transaction(function () use ($data, $user) {
+            $sop = ! empty($data['sop_id']) ? \App\Models\Sop::find($data['sop_id']) : null;
+            $incident = Incident::create(collect($data)->except('containment')->all() + ['reported_by' => $user->name, 'category' => Incident::CATEGORY[$data['kind']] ?? 'operations', 'sop_version' => $sop?->version]);
+            $incident->update(['recurrence_of_id' => \App\Support\IncidentCapa::repeatOf($incident)?->id]); // D-205
+            if (\App\Support\IncidentCapa::mustEscalate($incident) || ! empty($data['containment'])) {
+                \App\Support\IncidentCapa::escalate($incident, $user, $data['containment'] ?? null);
+            }
+
+            return $incident->fresh();
+        });
         $label = Incident::KINDS[$data['kind']];
         if ($incident->animal) {
             Farm::event($incident->animal, 'health', "Incident: {$label}", $request->user()->name, $incident->occurred_at);
@@ -103,16 +120,28 @@ class OperationsController extends Controller
         }
         Farm::log($request->user(), "Reported an incident: {$label}", '/operations?tab=incidents');
 
-        return back()->with('success', 'Incident reported.');
+        return back()->with('success', $incident->quality_case_id ? 'Incident reported'.($incident->recurrence_of_id ? ' (a repeat)' : '').' and sent to a quality case for root cause and CAPA.' : 'Incident reported.');
     }
 
     public function resolve(Request $request, Incident $incident): RedirectResponse
     {
         abort_unless($this->supervisor($request) || $request->user()->role === 'vet', 403);
-        $data = $request->validate(['resolution' => ['required', 'string', 'max:1000']]);
-        $incident->update(['status' => 'resolved', 'resolution' => $data['resolution'], 'resolved_by' => $request->user()->name, 'resolved_at' => now()]);
+        abort_if($incident->status !== 'open', 422, $incident->status === 'escalated' ? 'This incident closes through its quality case (root cause, CAPA, independent verification).' : 'Already resolved.');
+        $data = $request->validate(['resolution' => ['required', 'string', 'max:1000'], 'root_cause' => ['required', 'string', 'max:1000']], [], ['root_cause' => 'root cause']);
+        $incident->update(['status' => 'resolved', 'resolution' => $data['resolution'], 'root_cause' => $data['root_cause'], 'resolved_by' => $request->user()->name, 'resolved_at' => now()]);
 
         return back()->with('success', 'Incident resolved.');
+    }
+
+    /** D-205: send any open incident to a quality case. */
+    public function escalate(Request $request, Incident $incident): RedirectResponse
+    {
+        abort_unless($this->supervisor($request) || $request->user()->role === 'vet', 403);
+        abort_unless($incident->status === 'open', 422, 'Only an open incident is escalated.');
+        $data = $request->validate(['containment' => ['nullable', Rule::in(['hold', 'isolate', 'recall'])]]);
+        $case = \App\Support\IncidentCapa::escalate($incident, $request->user(), $data['containment'] ?? null);
+
+        return back()->with('success', "Sent to quality case {$case->label()}.");
     }
 
     public function handover(Request $request): RedirectResponse

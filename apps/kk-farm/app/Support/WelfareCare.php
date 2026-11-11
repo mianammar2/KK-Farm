@@ -36,6 +36,9 @@ final class WelfareCare
     /** Refuse routine handling while a welfare case holds the goat. */
     public static function assertRoutineAllowed(Animal $a, string $field = 'animal_id'): void
     {
+        if ($h = Quality::animalHold($a->id)) { // D-205: a recall / quality hold overrides normal work
+            throw ValidationException::withMessages([$field => "{$a->farm_number} is under ".strtolower(\App\Models\QualityHold::KINDS[$h->kind] ?? 'a quality hold')." ({$h->qualityCase?->label()}): only the quality lead's actions until it is released."]);
+        }
         if ($c = self::restriction($a->id)) {
             throw ValidationException::withMessages([$field => "{$a->farm_number} is under welfare case {$c->label()} (".WelfareCase::ISSUES[$c->issue].'): humane handling first. Only care and vet work until the vet clears routine handling.']);
         }

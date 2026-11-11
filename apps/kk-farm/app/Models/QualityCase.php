@@ -7,6 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 /** D-189: a quality / compliance case QC-0001 (V3 App 21, flow 21). */
 class QualityCase extends Model
 {
+    /** D-205: closing a case closes the incidents it came from. */
+    protected static function booted(): void
+    {
+        static::updated(function (QualityCase $c) {
+            if ($c->wasChanged('status') && $c->status === 'closed') {
+                \App\Support\IncidentCapa::caseClosed($c);
+            }
+        });
+    }
+
     protected $guarded = [];
 
     protected $casts = ['opened_on' => 'date', 'closed_at' => 'datetime', 'immediate_risk' => 'boolean'];

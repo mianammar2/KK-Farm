@@ -6,13 +6,15 @@ import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 
 type Checklist = { id: number; name: string; shift: string; items: string[]; run: { id: number; done: number[]; by: string | null; at: string | null; verifiedBy: string | null; notes: string | null } | null };
-type IncidentRow = { id: number; at: string; kind: string; severity: string; pen: string | null; goat: { id: string; number: string } | null; description: string; by: string; status: string; resolution: string | null; resolvedBy: string | null; resolvedAt: string | null };
+type IncidentRow = { id: number; at: string; kind: string; severity: string; pen: string | null; goat: { id: string; number: string } | null; description: string; by: string; status: string; resolution: string | null; resolvedBy: string | null; resolvedAt: string | null;
+    category: string | null; rootCause: string | null; repeat: boolean; case: { label: string; status: string } | null; sop: string | null };
 type Props = {
     checklists: Checklist[]; history: Array<{ on: string; name: string; done: number; total: number; by: string | null; verifiedBy: string | null }>;
     incidents: IncidentRow[]; handovers: Array<{ id: number; on: string; shift: string; from: string; to: string | null; summary: string; pending: string | null }>;
     templates: Array<{ id: number; name: string; shift: string; items: string[]; active: boolean }>;
     pens: Array<{ id: number; name: string }>; goats: Array<{ id: string; farm_number: string }>;
-    options: { shifts: Record<string, string>; kinds: Record<string, string>; severity: Record<string, string> }; canSupervise: boolean; canResolve: boolean;
+    options: { shifts: Record<string, string>; kinds: Record<string, string>; severity: Record<string, string>; categories: Record<string, string> }; canSupervise: boolean; canResolve: boolean;
+    incidentKpi: { capaClosure: number | null; casesClosed: number; cases: number; repeats: number; repeatRate: number | null; escalatedOpen: number }; sops: Array<{ id: number; code: string; title: string }>;
 };
 
 const SEV: Record<string, string> = { low: 'bg-glaze text-ink-soft', medium: 'bg-watch-100 text-watch-700', high: 'bg-treat-100 text-treat-700', critical: 'bg-crit-100 text-crit-700' };
@@ -76,27 +78,35 @@ function ChecklistCard({ c, canSupervise }: { c: Checklist; canSupervise: boolea
     );
 }
 
-function Incidents({ incidents, pens, goats, options, canResolve }: Props) {
+function Incidents({ incidents, pens, goats, options, canResolve, incidentKpi, sops }: Props) {
     const [adding, setAdding] = useState(false);
     const [shown, more] = useFive(incidents);
-    const form = useForm({ occurred_at: nowLocal(), kind: 'equipment_failure', severity: 'medium', pen_id: '', animal_id: '', description: '' });
+    const form = useForm({ occurred_at: nowLocal(), kind: 'equipment_failure', severity: 'medium', pen_id: '', animal_id: '', description: '', sop_id: '', containment: '' });
     const e = form.errors as Record<string, string>;
     return (
         <div className="space-y-3">
             {adding ? (
                 <Panel title="Report an Incident">
-                    <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, pen_id: d.pen_id || null, animal_id: d.animal_id || null })); form.post('/operations/incidents', { preserveScroll: true, onSuccess: () => { setAdding(false); form.reset(); } }); }}>
+                    <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, pen_id: d.pen_id || null, animal_id: d.animal_id || null, sop_id: d.sop_id || null, containment: d.containment || null })); form.post('/operations/incidents', { preserveScroll: true, onSuccess: () => { setAdding(false); form.reset(); } }); }}>
                         <Field label="What happened" error={e.kind}><select className="field" value={form.data.kind} onChange={(x) => form.setData('kind', x.target.value)}>{Object.entries(options.kinds).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                         <Field label="When" error={e.occurred_at}><input type="datetime-local" max={nowLocal()} className="field" value={form.data.occurred_at} onChange={(x) => form.setData('occurred_at', x.target.value)} /></Field>
                         <Field label="Severity" error={e.severity} hint="High and critical raise a task for the manager"><select className="field" value={form.data.severity} onChange={(x) => form.setData('severity', x.target.value)}>{Object.entries(options.severity).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                         <Field label="Pen (optional)" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">—</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
                         <Field label="Goat (optional)" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">—</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
                         <Field label="Description" error={e.description}><input className="field" value={form.data.description} onChange={(x) => form.setData('description', x.target.value)} /></Field>
+                        <Field label="Procedure involved (optional)" hint="The SOP version in force is recorded"><select className="field" value={form.data.sop_id} onChange={(x) => form.setData('sop_id', x.target.value)}><option value="">—</option>{sops.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.title}</option>)}</select></Field>
+                        {canResolve ? <Field label="Contain now (optional)" error={e.containment} hint="Hold, isolate or recall; overrides normal work"><select className="field" value={form.data.containment} onChange={(x) => form.setData('containment', x.target.value)}><option value="">No</option><option value="hold">Hold</option><option value="isolate">Isolate</option><option value="recall">Recall</option></select></Field> : null}
                         <div className="flex gap-2 sm:col-span-3"><Button type="submit" disabled={form.processing}>Report</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                     </form>
                 </Panel>
             ) : null}
-            <Panel flush title="Incident Register" description="Last 90 days, open first" actions={<Button onClick={() => setAdding(true)}>+ Report Incident</Button>}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[['CAPA closure', incidentKpi.capaClosure !== null ? `${incidentKpi.capaClosure}%` : '—'], ['Quality cases closed', `${incidentKpi.casesClosed} of ${incidentKpi.cases}`],
+                    ['Repeat incidents (90 days)', `${incidentKpi.repeats}${incidentKpi.repeatRate !== null ? ` · ${incidentKpi.repeatRate}%` : ''}`], ['Waiting on CAPA', incidentKpi.escalatedOpen]].map(([l, v]) => (
+                    <div key={l as string} className="rounded-tile bg-glaze px-3 py-2 text-sm"><div className="text-xs text-ink-soft">{l}</div><div className="font-bold text-cobalt-900">{v}</div></div>
+                ))}
+            </div>
+            <Panel flush title="Incident Register" description="Last 90 days, open first. High, critical and repeat incidents go to a quality case and close only through its CAPA." actions={<Button onClick={() => setAdding(true)}>+ Report Incident</Button>}>
                 {incidents.length ? <ul className="divide-y divide-rule">{shown.map((i) => <IncidentItem key={i.id} i={i} options={options} canResolve={canResolve} />)}</ul> : <Empty title="No incidents">Report escapes, breakdowns, shortages and other events here.</Empty>}
                 {more}
             </Panel>
@@ -106,7 +116,8 @@ function Incidents({ incidents, pens, goats, options, canResolve }: Props) {
 
 function IncidentItem({ i, options, canResolve }: { i: IncidentRow; options: Props['options']; canResolve: boolean }) {
     const [resolving, setResolving] = useState(false);
-    const form = useForm({ resolution: '' });
+    const form = useForm({ resolution: '', root_cause: '' });
+    const fe = form.errors as Record<string, string>;
     return (
         <li className="px-4 py-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
@@ -115,14 +126,20 @@ function IncidentItem({ i, options, canResolve }: { i: IncidentRow; options: Pro
                 <Chip className={SEV[i.severity]}>{options.severity[i.severity]}</Chip>
                 <span className="text-ink-soft">{i.at}{i.pen ? ` · ${i.pen}` : ''} · {i.by}</span>
                 {i.goat ? <Link href={`/goats/${i.goat.id}`} className="font-mono text-cobalt-800 hover:underline">{i.goat.number}</Link> : null}
-                {canResolve ? <Link href={`/quality?tab=new&incident=${i.id}`} className="ml-auto text-xs font-semibold text-cobalt-800 hover:underline">Raise Quality Case</Link> : null}
-                {i.status === 'open' && canResolve ? <Button variant="secondary" onClick={() => setResolving(!resolving)}>Resolve</Button> : null}
+                {i.category ? <span className="text-xs text-ink-soft">{options.categories[i.category]}</span> : null}
+                {i.repeat ? <Chip className="bg-treat-100 text-treat-700">Repeat</Chip> : null}
+                {i.sop ? <span className="text-xs">SOP {i.sop}</span> : null}
+                {i.case ? <Link href="/quality?tab=cases" className="ml-auto text-xs font-semibold text-cobalt-800 hover:underline">Quality case {i.case.label} · {i.case.status}</Link> : null}
+                {i.status === 'open' && canResolve ? <span className="ml-auto flex gap-1.5"><Button variant="secondary" onClick={() => router.post(`/operations/incidents/${i.id}/escalate`, {}, { preserveScroll: true })}>Send to CAPA</Button><Button variant="secondary" onClick={() => setResolving(!resolving)}>Resolve</Button></span> : null}
             </div>
             <p className="mt-1">{i.description}</p>
+            {i.rootCause ? <p className="mt-1 text-xs text-ink-soft">Root cause: {i.rootCause}</p> : null}
             {i.resolution ? <p className="mt-1 text-ok-700">Resolved by {i.resolvedBy} ({i.resolvedAt}): {i.resolution}</p> : null}
             {resolving ? (
                 <form className="mt-2 flex flex-wrap gap-2" onSubmit={(ev) => { ev.preventDefault(); form.post(`/operations/incidents/${i.id}/resolve`, { preserveScroll: true, onSuccess: () => setResolving(false) }); }}>
+                    <input className="field flex-1" placeholder="Root cause" value={form.data.root_cause} onChange={(x) => form.setData('root_cause', x.target.value)} />
                     <input className="field flex-1" placeholder="What was done" value={form.data.resolution} onChange={(x) => form.setData('resolution', x.target.value)} />
+                    {fe.root_cause ? <span className="w-full text-xs text-crit-700">{fe.root_cause}</span> : null}
                     <Button type="submit" disabled={form.processing}>Save</Button>
                 </form>
             ) : null}

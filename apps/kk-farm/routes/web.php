@@ -187,6 +187,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/operations/runs/{run}/verify', [\App\Http\Controllers\OperationsController::class, 'verify']);
         Route::post('/operations/incidents', [\App\Http\Controllers\OperationsController::class, 'incident']);
         Route::post('/operations/incidents/{incident}/resolve', [\App\Http\Controllers\OperationsController::class, 'resolve']);
+        Route::post('/operations/incidents/{incident}/escalate', [\App\Http\Controllers\OperationsController::class, 'escalate']); // D-205
         Route::post('/operations/handovers', [\App\Http\Controllers\OperationsController::class, 'handover']);
         Route::post('/operations/templates', [\App\Http\Controllers\OperationsController::class, 'template']);
         Route::post('/operations/templates/{template}', [\App\Http\Controllers\OperationsController::class, 'template']);
