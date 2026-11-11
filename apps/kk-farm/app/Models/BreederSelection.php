@@ -9,9 +9,14 @@ class BreederSelection extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['checks' => 'array', 'override' => 'boolean', 'decided_on' => 'date'];
+    protected $casts = ['checks' => 'array', 'override' => 'boolean', 'decided_on' => 'date', 'merit' => 'array', 'planned_coi_pct' => 'float'];
 
     public const DECISIONS = ['replacement' => 'Replacement Breeder', 'sale' => 'Sale Stock', 'keep' => 'Keep Growing'];
+
+    public function plannedSire()
+    {
+        return $this->belongsTo(Animal::class, 'planned_sire_id');
+    }
 
     public function animal()
     {

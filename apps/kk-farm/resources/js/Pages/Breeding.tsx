@@ -38,7 +38,7 @@ type Props = {
     kidCare: KidRow[]; kidCareOptions: KidCareOptions; // D-176
     weaned: Array<{ id: number; kidId: string; kid: string; on: string; age: number | null; weight: number | null; method: string | null; by: string }>;
     performance: Array<{ id: string; number: string; name: string | null; kiddings: number; alive: number; stillborn: number; litter: number }>;
-    focus: { id: string; number: string; tree: PedigreeNode } | null; pairCheck: { shared: number; sire: string; dam: string } | null;
+    focus: { id: string; number: string; tree: PedigreeNode } | null; pairCheck: { shared: number; sire: string; dam: string; coi: number; limit: number } | null;
     does: Option[]; bucks: Option[]; goats: Option[]; pens: Array<{ id: number; name: string }>;
     settings: { gestation: number; check: number; alert: number; weaning: number };
     options: { methods: Record<string, string>; checkMethods: Record<string, string>; results: Record<string, string>; assisted: Record<string, string>; weanMethods: Record<string, string>; pregnancy: Record<string, string> } & OutcomeOptions & UltrasoundOptions;
@@ -262,7 +262,7 @@ function WeaningRow({ w, pens, options }: { w: Due } & Props) {
 }
 
 function MatingForm({ does, bucks, pairCheck, options, settings, onDone, presetDam }: Props & { onDone?: () => void; presetDam?: string | null }) {
-    const mating = useForm({ dam_id: String(presetDam ?? does[0]?.id ?? ''), sire_id: String(bucks[0]?.id ?? ''), mated_on: today(), method: 'natural', heat_observed: 'yes', handler: '', notes: '' });
+    const mating = useForm({ dam_id: String(presetDam ?? does[0]?.id ?? ''), sire_id: String(bucks[0]?.id ?? ''), mated_on: today(), method: 'natural', heat_observed: 'yes', handler: '', notes: '', coi_override_reason: '' });
     const checkPair = () => router.get('/breeding', { sire: mating.data.sire_id, dam: mating.data.dam_id }, { preserveState: true, preserveScroll: true, only: ['pairCheck'] });
     const e = mating.errors as Record<string, string>;
     const mated = new Date(`${mating.data.mated_on}T12:00:00`);
@@ -281,6 +281,8 @@ function MatingForm({ does, bucks, pairCheck, options, settings, onDone, presetD
                 <Field label="Handler / vet" error={e.handler} hint="Leave empty for yourself"><input className="field" value={mating.data.handler} onChange={(x) => mating.setData('handler', x.target.value)} /></Field>
                 <p className="rounded-tile bg-glaze px-3 py-2 text-sm text-ink-soft">Pregnancy check due <strong className="text-cobalt-900">{plus(settings.check)}</strong> · expected kidding <strong className="text-cobalt-900">{plus(settings.gestation)}</strong></p>
                 <Button variant="secondary" className="w-full" onClick={checkPair}>Check relatedness</Button>
+                {pairCheck ? <p className={`text-sm font-semibold ${pairCheck.coi > pairCheck.limit ? 'text-crit-700' : 'text-cobalt-900'}`}>Kid inbreeding (COI): {pairCheck.coi}% · farm limit {pairCheck.limit}%</p> : null}
+                {e.sire_id?.startsWith('Inbreeding') ? <Field label="Reason to mate anyway (owner, manager or vet)" error={e.coi_override_reason}><input className="field" value={mating.data.coi_override_reason} onChange={(x) => mating.setData('coi_override_reason', x.target.value)} /></Field> : null}
                 {pairCheck ? (pairCheck.shared ? <Note>{pairCheck.sire} and {pairCheck.dam} share {pairCheck.shared} recorded ancestor{pairCheck.shared > 1 ? 's' : ''} within three generations. Your vet decides.</Note> : <p className="text-sm text-ok-700">No shared ancestors recorded within three generations.</p>) : null}
                 <Button type="submit" className="w-full" disabled={mating.processing || !does.length}>Save mating</Button>
             </form>

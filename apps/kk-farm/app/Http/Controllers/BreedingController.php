@@ -33,6 +33,7 @@ class BreedingController extends Controller
 
     public function index(Request $request): Response
     {
+        \App\Support\Genetics::flush(); // D-201: fresh pedigree per request
         $org = $this->org();
         $focus = $request->query('goat') ? Animal::with(['breed', 'sire.breed', 'dam.breed', 'sire.sire', 'sire.dam', 'dam.sire', 'dam.dam'])->find($request->query('goat')) : null;
         $focus ??= Animal::with(['breed', 'sire.breed', 'dam.breed', 'sire.sire', 'sire.dam', 'dam.sire', 'dam.dam'])->active()->whereNotNull('sire_id')->orderByDesc('birth_date')->first();
@@ -85,7 +86,8 @@ class BreedingController extends Controller
                 ->selectRaw('animals.id, animals.farm_number as number, animals.name, count(*) as kiddings, sum(born_alive) as alive, sum(stillborn) as stillborn, round(avg(born_alive + stillborn)::numeric, 1)::float as litter')
                 ->orderByDesc('alive')->limit(20)->get(),
             'focus' => $focus ? ['id' => $focus->id, 'number' => $focus->farm_number, 'tree' => Farm::pedigree($focus)] : null,
-            'pairCheck' => $sire && $dam ? ['shared' => count(Farm::sharedAncestors($sire, $dam)), 'sire' => $sire->farm_number, 'dam' => $dam->farm_number] : null,
+            'pairCheck' => $sire && $dam ? ['shared' => count(Farm::sharedAncestors($sire, $dam)), 'sire' => $sire->farm_number, 'dam' => $dam->farm_number,
+                'coi' => \App\Support\Genetics::coi($sire->id, $dam->id), 'limit' => \App\Support\Genetics::limit()] : null, // D-201
             'does' => Animal::active()->where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'bucks' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name']),
             'goats' => Animal::orderBy('farm_number')->get(['id', 'farm_number', 'name']),
@@ -125,6 +127,7 @@ class BreedingController extends Controller
             'dam_id' => ['required', 'exists:animals,id'], 'sire_id' => ['nullable', 'exists:animals,id', 'different:dam_id'],
             'mated_on' => ['required', 'date', 'before_or_equal:today'], 'method' => ['required', Rule::in(array_keys(Mating::METHODS))],
             'heat_observed' => ['nullable', Rule::in(['yes', 'no', 'unknown'])], 'handler' => ['nullable', 'string', 'max:80'], 'notes' => ['nullable', 'string', 'max:500'],
+            'coi_override_reason' => ['nullable', 'string', 'max:300'],
         ]);
         $dam = Animal::findOrFail($data['dam_id']);
         abort_unless($dam->sex === 'female', 422, 'The dam must be a female goat.');
@@ -134,6 +137,17 @@ class BreedingController extends Controller
         }
         if (! empty($data['sire_id']) && Animal::whereKey($data['sire_id'])->value('sex') !== 'male') {
             throw ValidationException::withMessages(['sire_id' => 'The buck must be a male goat.']);
+        }
+        // D-201: inbreeding of the kid this mating would produce; above the farm limit it needs the lead's reason
+        \App\Support\Genetics::flush(); // fresh pedigree for this request (Octane keeps statics)
+        $data['coi_pct'] = ! empty($data['sire_id']) ? \App\Support\Genetics::coi($data['sire_id'], $dam->id) : null;
+        if ($data['coi_pct'] !== null && $data['coi_pct'] > \App\Support\Genetics::limit()) {
+            if (empty($data['coi_override_reason'])) {
+                throw ValidationException::withMessages(['sire_id' => "Inbreeding alert: the kid would be {$data['coi_pct']}% inbred (farm limit ".\App\Support\Genetics::limit().'%). Choose another buck or give the reason.']);
+            }
+            abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 403, 'Only the owner, manager or vet can approve a mating above the inbreeding limit.');
+        } else {
+            $data['coi_override_reason'] = null;
         }
         $org = $this->org();
         $mated = Carbon::parse($data['mated_on']);

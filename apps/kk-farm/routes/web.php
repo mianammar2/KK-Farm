@@ -224,6 +224,9 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:breeding')->group(function (): void {
         Route::get('/breeding', [BreedingController::class, 'index']);
         Route::post('/breeding/matings', [BreedingController::class, 'store']);
+        Route::get('/genetics', [\App\Http\Controllers\GeneticsController::class, 'index']); // D-201
+        Route::post('/genetics/decide/{animal}', [\App\Http\Controllers\GeneticsController::class, 'decide']);
+        Route::post('/genetics/settings', [\App\Http\Controllers\GeneticsController::class, 'settings']);
         Route::post('/breeding/heat', [BreedingController::class, 'heat']); // D-175
         Route::post('/breeding/kid-care', [BreedingController::class, 'kidCare']); // D-176
         Route::post('/breeding/matings/{mating}/check', [BreedingController::class, 'check']);

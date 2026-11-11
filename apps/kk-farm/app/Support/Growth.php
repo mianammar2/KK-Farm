@@ -112,7 +112,9 @@ final class Growth
             'growth' => ['ok' => $s['pct'] !== null && $s['pct'] >= 100 - (100 - $alertPct) / 2 && ! $s['stale'], 'label' => $s['pct'] === null ? 'No weight' : "{$s['weight']} KG = {$s['pct']}% of target".($s['stale'] ? ' (old weight)' : '')],
             'bcs' => ['ok' => $bcs === null || $bcs >= 3, 'label' => $bcs === null ? 'BCS not scored' : "BCS {$bcs}"],
             'health' => ['ok' => ! $sick && ! $open && ($a->health_status ?? 'healthy') === 'healthy', 'label' => $sick ? 'Open health case' : ($open ? 'Growth intervention open' : 'Healthy')],
-            'pedigree' => ['ok' => (bool) ($a->sire_id || $a->sire_tag) && (bool) ($a->dam_id || $a->dam_tag), 'label' => ($a->sire_id || $a->sire_tag) && ($a->dam_id || $a->dam_tag) ? 'Sire and dam known' : 'Parent unknown'],
+            // D-201: a welfare case blocks selection; pedigree completeness is shown but is not proof of merit, so never a gate
+            'welfare' => ['ok' => ! \App\Models\WelfareCase::where('animal_id', $a->id)->where('status', '!=', 'closed')->exists(), 'label' => \App\Models\WelfareCase::where('animal_id', $a->id)->where('status', '!=', 'closed')->exists() ? 'Open welfare case' : 'No welfare concern'],
+            'pedigree' => ['ok' => true, 'info' => true, 'label' => ($a->sire_id || $a->sire_tag) && ($a->dam_id || $a->dam_tag) ? 'Sire and dam known (information only)' : 'Parent unknown (information only)'],
         ];
     }
 }

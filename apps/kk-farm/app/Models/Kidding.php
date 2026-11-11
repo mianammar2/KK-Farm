@@ -97,6 +97,11 @@ class Kidding extends Model
         return $this->hasMany(Animal::class, 'birth_kidding_id');
     }
 
+    public function mating()
+    {
+        return $this->belongsTo(Mating::class);
+    }
+
     public function dam()
     {
         return $this->belongsTo(Animal::class, 'dam_id');
