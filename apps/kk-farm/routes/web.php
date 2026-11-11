@@ -64,6 +64,11 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/water-points', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
+        Route::post('/environment/water/report', [\App\Http\Controllers\EnvironmentController::class, 'report']);
+        Route::post('/environment/water/tests', [\App\Http\Controllers\EnvironmentController::class, 'test']);
+        Route::post('/environment/issues/{issue}/supply', [\App\Http\Controllers\EnvironmentController::class, 'supply']);
+        Route::post('/environment/issues/{issue}/approve-supply', [\App\Http\Controllers\EnvironmentController::class, 'approveSupply']);
+        Route::post('/environment/issues/{issue}/health-check', [\App\Http\Controllers\EnvironmentController::class, 'healthCheck']);
     });
     // D-194: journey E Sale-to-Cash & Exit
     Route::middleware('module:sales')->group(function (): void {

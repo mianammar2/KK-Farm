@@ -64,6 +64,9 @@ class EnvironmentTest extends TestCase
 
         $this->actingAs($this->user('caretaker'))->post("/environment/issues/{$i->id}/resolve", ['resolution' => 'Tanker water, pump fixed'])->assertSessionHasNoErrors();
         $this->actingAs($this->user('caretaker'))->post("/environment/issues/{$i->id}/verify")->assertForbidden();
+        $this->actingAs($this->user('manager'))->post("/environment/issues/{$i->id}/verify")->assertSessionHasErrors('verify'); // D-198: vet check and repair first
+        MaintenanceJob::sole()->update(['status' => 'done', 'done_on' => now()->toDateString(), 'work_done' => 'Pump fixed', 'done_by' => 'x']);
+        $this->actingAs($this->user('vet'))->post("/environment/issues/{$i->id}/health-check", ['goats_ill' => 0, 'outcome' => 'No signs of dehydration'])->assertSessionHasNoErrors();
         $this->actingAs($this->user('manager'))->post("/environment/issues/{$i->id}/verify")->assertSessionHasNoErrors();
         $this->assertSame('verified', $i->fresh()->status);
     }

@@ -14,12 +14,15 @@ use App\Models\Shed;
 use App\Models\Task;
 use App\Models\WaterCheck;
 use App\Models\WaterPoint;
+use App\Models\WaterTest;
 use App\Support\Farm;
 use App\Support\Tenant;
+use App\Support\WaterIncident;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -57,11 +60,20 @@ class EnvironmentController extends Controller
                     'risk' => $latest[$s->id]->climate_risk, 'water' => $latest[$s->id]->water_ok, 'waste' => $latest[$s->id]->waste_ok] : null,
                 'openIssues' => EnvironmentIssue::where('shed_id', $s->id)->where('status', 'open')->count(),
             ]),
-            'issues' => EnvironmentIssue::with('shed')->where(fn ($q) => $q->where('status', '!=', 'verified')->orWhere('verified_at', '>=', now()->subDays(30)))
+            'issues' => EnvironmentIssue::with(['shed', 'welfareCase', 'jobs.asset'])->where(fn ($q) => $q->where('status', '!=', 'verified')->orWhere('verified_at', '>=', now()->subDays(30)))
                 ->orderByRaw("case status when 'open' then 0 when 'resolved' then 1 else 2 end")->orderByRaw("case severity when 'critical' then 0 when 'high' then 1 else 2 end")->orderByDesc('id')->get()
                 ->map(fn (EnvironmentIssue $i) => [
                     'id' => $i->id, 'shed' => $i->shed?->name, 'kind' => $i->kind, 'severity' => $i->severity, 'description' => $i->description, 'status' => $i->status,
                     'at' => $i->created_at->format('j M g:i A'), 'resolution' => $i->resolution, 'resolvedBy' => $i->resolved_by, 'verifiedBy' => $i->verified_by,
+                    'water' => $i->kind === 'water' && $i->started_at ? [ // D-198: the incident timeline
+                        'problem' => $i->problem, 'started' => $i->started_at->format('j M g:i A'), 'outage' => WaterIncident::outageMinutes($i),
+                        'supply' => $i->supply_at ? ['source' => $i->supply_source, 'at' => $i->supply_at->format('j M g:i A'), 'by' => $i->supply_by, 'cost' => $i->supply_cost_minor,
+                            'approvedBy' => $i->supply_approved_by, 'approvedAt' => $i->supply_approved_at?->format('j M g:i A')] : null,
+                        'restored' => $i->restored_at?->format('j M g:i A'), 'exposed' => $i->goats_exposed, 'ill' => $i->goats_ill, 'outcome' => $i->health_outcome,
+                        'checkedBy' => $i->health_checked_by, 'welfare' => $i->welfareCase ? ['label' => $i->welfareCase->label(), 'status' => $i->welfareCase->status] : null,
+                        'jobs' => $i->jobs->map(fn ($j) => ['id' => $j->id, 'asset' => $j->asset?->name, 'status' => $j->status])->values(),
+                        'cost' => WaterIncident::cost($i), 'blockers' => $i->status === 'resolved' ? WaterIncident::verifyBlockers($i) : [],
+                    ] : null,
                 ]),
             'rounds' => EnvironmentRound::with('shed')->where('round_at', '>=', $since)->orderByDesc('round_at')->limit(150)->get()->map(fn (EnvironmentRound $r) => [
                 'id' => $r->id, 'at' => $r->round_at->format('j M g:i A'), 'shed' => $r->shed?->name, 'trigger' => $r->trigger, 'water' => $r->water_ok, 'temp' => $r->temperature_c,
@@ -76,10 +88,16 @@ class EnvironmentController extends Controller
                 'compliance' => $rounds30->count() ? round($rounds30->filter(fn ($r) => $r->water_ok && ! $r->climate_risk && $r->waste_ok)->count() / $rounds30->count() * 100) : null,
                 'rounds' => $rounds30->count(), 'utility30' => (int) round($rounds30->sum('utility_cost_minor') / 100),
             ],
+            'waterKpi' => WaterIncident::kpis(),
+            'waterTests' => WaterTest::with('point.shed')->orderByDesc('sampled_on')->orderByDesc('id')->limit(60)->get()->map(fn (WaterTest $t) => [
+                'id' => $t->id, 'point' => $t->point?->name, 'shed' => $t->point?->shed?->name, 'on' => $t->sampled_on->format('j M Y'), 'lab' => $t->lab, 'ph' => $t->ph, 'tds' => $t->tds_ppm,
+                'coliform' => $t->coliform_cfu, 'nitrate' => $t->nitrate_mg_l, 'verdict' => $t->verdict, 'cost' => $t->cost_minor, 'by' => $t->recorded_by, 'notes' => $t->notes]),
+            'isVet' => $request->user()->passes('clinical'),
             'threshold' => $this->threshold(),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'shedId' => $p->shed_id])->values(),
             'assets' => Asset::where('status', '!=', 'retired')->orderBy('name')->get(['id', 'name', 'code']),
-            'options' => ['kinds' => WaterPoint::KINDS, 'quality' => WaterCheck::QUALITY, 'issues' => EnvironmentIssue::KINDS, 'utilities' => EnvironmentRound::UTILITIES],
+            'options' => ['kinds' => WaterPoint::KINDS, 'quality' => WaterCheck::QUALITY, 'issues' => EnvironmentIssue::KINDS, 'utilities' => EnvironmentRound::UTILITIES,
+                'problems' => EnvironmentIssue::PROBLEMS, 'sources' => EnvironmentIssue::SOURCES],
             'canConfigure' => $this->canConfigure($request),
         ]);
     }
@@ -119,14 +137,12 @@ class EnvironmentController extends Controller
                 WaterCheck::create(['round_id' => $round->id] + $c);
             }
             $raised = [];
-            if (! $waterOk) { // BR-021: no or unsafe drinking water is a critical owned alert
+            if (! $waterOk) { // BR-021: no or unsafe drinking water is a critical owned alert; D-198: one water incident
                 $bad = $checks->reject(fn ($c) => $c['available'] && $c['quality'] === 'clean');
                 $names = WaterPoint::whereIn('id', $bad->pluck('water_point_id'))->pluck('name')->implode(', ');
-                $raised[] = $this->issue($round, $shed, 'water', 'critical', 'Drinking water not available or not acceptable'.($names ? ": {$names}" : '').'. Give an emergency supply now and repair.', ['Management', 'Veterinary']);
-                foreach (WaterPoint::whereIn('id', $bad->pluck('water_point_id'))->whereNotNull('asset_id')->get() as $wp) { // linked asset → maintenance job
-                    MaintenanceJob::create(['asset_id' => $wp->asset_id, 'kind' => 'repair', 'requested_on' => now()->toDateString(), 'problem' => "Water point {$wp->name}: no or unsafe water", 'priority' => 'critical', 'requested_by' => $user->name]);
-                    Asset::whereKey($wp->asset_id)->update(['status' => 'under_repair']);
-                }
+                $problem = $bad->contains(fn ($c) => ! $c['available'] || $c['quality'] === 'empty') ? 'interruption' : 'inspection';
+                $raised[] = WaterIncident::open($shed, $problem, $bad->pluck('water_point_id')->map(fn ($v) => (int) $v)->all(),
+                    'Drinking water not available or not acceptable'.($names ? ": {$names}" : '').'. Give an emergency supply now and repair.', $user, $round);
             }
             if ($risk) {
                 $what = collect([$heat ? "heat stress (THI {$thi}, limit {$this->threshold()})" : null, ! $data['power_ok'] ? 'power failure' : null, ! $data['ventilation_ok'] ? 'ventilation / airflow failure' : null])->filter()->implode(', ');
@@ -163,6 +179,9 @@ class EnvironmentController extends Controller
     {
         abort_unless($issue->status === 'open', 422, 'This issue is already resolved.');
         $data = $request->validate(['resolution' => ['required', 'string', 'max:1000']]);
+        if ($issue->kind === 'water') {
+            WaterIncident::restore($issue); // D-198: resolving a water incident means normal supply is back
+        }
         $issue->update(['status' => 'resolved', 'resolution' => $data['resolution'], 'resolved_by' => $request->user()->name, 'resolved_at' => now()]);
 
         return back()->with('success', 'Marked resolved. A supervisor verifies it.');
@@ -174,7 +193,13 @@ class EnvironmentController extends Controller
         abort_unless($this->canConfigure($request), 403);
         abort_unless($issue->status === 'resolved', 422, 'Only a resolved issue can be verified.');
         abort_if($issue->resolved_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the person who resolved it verifies.');
+        if ($issue->kind === 'water' && ($why = WaterIncident::verifyBlockers($issue))) { // D-198: monitored resolution
+            throw ValidationException::withMessages(['verify' => 'Cannot verify yet: '.implode(', ', $why).'.']);
+        }
         $issue->update(['status' => 'verified', 'verified_by' => $request->user()->name, 'verified_at' => now()]);
+        if ($issue->kind === 'water') {
+            WaterIncident::closeWelfare($issue, $request->user());
+        }
         Task::whereKey($issue->task_id)->whereIn('status', Task::OPEN)->update(['status' => 'completed', 'completed_at' => now(), 'completed_by' => $request->user()->name]);
 
         return back()->with('success', 'Verified.');
@@ -199,5 +224,64 @@ class EnvironmentController extends Controller
         Organization::whereKey(Tenant::current())->update($data);
 
         return back()->with('success', "Heat-stress alert at THI {$data['heat_stress_thi']}.");
+    }
+
+    /** D-198: report a water interruption, shortage or contamination at any time, outside a round. */
+    public function report(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['shed_id' => ['required', 'exists:sheds,id'], 'problem' => ['required', Rule::in(['interruption', 'shortage', 'contamination'])],
+            'point_ids' => ['array'], 'point_ids.*' => ['integer', 'exists:water_points,id'], 'description' => ['required', 'string', 'max:500']]);
+        $shed = Shed::findOrFail($data['shed_id']);
+        $points = WaterPoint::whereIn('id', $data['point_ids'] ?? [])->where('shed_id', $shed->id)->pluck('id')->all();
+        $issue = WaterIncident::open($shed, $data['problem'], $points, $data['description'], $request->user());
+        Farm::log($request->user(), "Reported water {$data['problem']} in {$shed->name}", '/environment?tab=issues');
+
+        return back()->with('success', "Water incident open for {$shed->name}: {$issue->goats_exposed} goats affected. Management and the vet are assigned.");
+    }
+
+    /** D-198: a water lab test; an unsafe result opens (or widens) a contamination incident. The fee is posted once. */
+    public function test(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['water_point_id' => ['required', 'exists:water_points,id'], 'sampled_on' => ['required', 'date', 'before_or_equal:today'], 'lab' => ['nullable', 'string', 'max:120'],
+            'ph' => ['nullable', 'numeric', 'between:0,14'], 'tds_ppm' => ['nullable', 'integer', 'between:0,50000'], 'coliform_cfu' => ['nullable', 'integer', 'min:0'],
+            'nitrate_mg_l' => ['nullable', 'numeric', 'min:0'], 'verdict' => ['required', Rule::in(['safe', 'unsafe'])], 'notes' => ['nullable', 'string', 'max:500'], 'cost' => ['nullable', 'numeric', 'min:0']]);
+        $user = $request->user();
+        $issue = DB::transaction(function () use ($data, $user) {
+            $point = WaterPoint::with('shed')->findOrFail($data['water_point_id']);
+            $minor = ! empty($data['cost']) ? (int) round($data['cost'] * 100) : null;
+            $ledger = $minor ? LedgerEntry::create(['direction' => 'out', 'category' => 'Water Testing', 'amount' => $minor / 100, 'occurred_on' => $data['sampled_on'], 'counterparty' => $data['lab'] ?? null,
+                'description' => "Water test {$point->name}", 'recorded_by' => $user->name, 'payment_status' => 'pending']) : null;
+            $test = WaterTest::create(collect($data)->except('cost')->all() + ['cost_minor' => $minor, 'ledger_entry_id' => $ledger?->id, 'recorded_by' => $user->name]);
+            if ($data['verdict'] === 'unsafe' && $point->shed) {
+                return WaterIncident::open($point->shed, 'contamination', [$point->id], "Lab test of {$point->name} unsafe".(isset($data['coliform_cfu']) ? " (coliform {$data['coliform_cfu']}/100 ml)" : '').'. Stop this water; give a safe supply.', $user, null, $test);
+            }
+
+            return null;
+        });
+
+        return back()->with('success', $issue ? 'Unsafe water: contamination incident opened.' : 'Water test saved.');
+    }
+
+    public function supply(Request $request, EnvironmentIssue $issue): RedirectResponse
+    {
+        $data = $request->validate(['source' => ['required', Rule::in(array_keys(EnvironmentIssue::SOURCES))], 'cost' => ['nullable', 'numeric', 'min:0']]);
+        WaterIncident::supply($issue, $data['source'], isset($data['cost']) ? (float) $data['cost'] : null, $request->user());
+
+        return back()->with('success', 'Emergency supply recorded. Someone else approves it as safe.');
+    }
+
+    public function approveSupply(Request $request, EnvironmentIssue $issue): RedirectResponse
+    {
+        WaterIncident::approveSupply($issue, $request->user());
+
+        return back()->with('success', 'Emergency supply approved as safe.');
+    }
+
+    public function healthCheck(Request $request, EnvironmentIssue $issue): RedirectResponse
+    {
+        $data = $request->validate(['goats_ill' => ['required', 'integer', 'min:0'], 'outcome' => ['required', 'string', 'max:500']]);
+        WaterIncident::healthCheck($issue, (int) $data['goats_ill'], $data['outcome'], $request->user());
+
+        return back()->with('success', 'Health check recorded.');
     }
 }

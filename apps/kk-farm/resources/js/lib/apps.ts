@@ -246,6 +246,7 @@ export const APPS: ErpApp[] = [
     { key: 'environment', no: '20', label: 'Water & Climate', art: 'mod-assets', modules: ['environment'], linked: ['housing', 'welfare', 'veterinary', 'maintenance', 'quality', 'accounting'], sections: [
         S('Overview', '/environment?tab=sheds', 'Shed Rounds'),
         S('Operations', '/environment?tab=issues', 'Water, Heat & Waste Issues'),
+        S('Operations', '/environment?tab=tests', 'Water Lab Tests'),
         S('Operations', '/sensors?tab=alerts', 'Sensor Alarms'),
         S('Records', '/environment?tab=records', 'Round Records'),
         S('Records', '/sensors?tab=readings', 'Sensor Readings'),
