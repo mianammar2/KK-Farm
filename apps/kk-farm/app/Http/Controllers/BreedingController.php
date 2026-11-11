@@ -273,6 +273,21 @@ class BreedingController extends Controller
                     ]);
                 }
             }
+            // D-191 (journey B): kid not viable / stable → neonatal care unit and the vet's queue; reassessed with "Viable & Stable".
+            if ($data['kind'] === 'neonatal_care') {
+                \App\Models\HealthRecord::create(['animal_id' => $kid->id, 'kind' => 'observation', 'occurred_on' => now()->toDateString(), 'title' => 'Newborn not stable: neonatal care',
+                    'notes' => $data['notes'] ?? null, 'severity' => 'high', 'recorded_by' => $by, 'recorded_role' => 'Maternity', 'status' => 'open']);
+                \App\Models\Task::create([
+                    'title' => "Neonatal care: {$kid->farm_number}", 'type' => 'health', 'priority' => 'critical', 'status' => 'open', 'due_on' => now()->toDateString(),
+                    'animal_id' => $kid->id, 'pen_id' => $kid->pen_id, 'department_id' => \App\Models\Department::where('name', 'Veterinary')->value('id'),
+                    'notes' => 'Newborn assessed not viable / stable. Warmth, colostrum and treatment as the vet decides, then reassess.',
+                ]);
+                try {
+                    \App\Support\Movements::transfer($kid, \App\Support\Maternity::pen('NCU-01'), new \App\Models\User(['name' => $by]), ['reason' => 'Not stable: Neonatal Care Unit']);
+                } catch (\Illuminate\Validation\ValidationException) {
+                    // stays where it is (e.g. intake quarantine rules); the task tells the vet
+                }
+            }
             Farm::event($kid, 'breeding', $label.$extra, $by, \Illuminate\Support\Carbon::parse($data['given_at']));
         });
 

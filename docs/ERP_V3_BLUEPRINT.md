@@ -12,7 +12,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 
 | Stream | Lifecycle | Status |
 |---|---|---|
-| Breeding & Genetics | selection → heat → mating → ultrasound → pregnancy → kidding → kid care → replacement/sale | Partial (heat, mating, ultrasound, outcomes, kid care built; relatedness check, replacement selection to do) |
+| Breeding & Genetics | selection → heat → mating → ultrasound → pregnancy → kidding → kid care → replacement/sale | Built (heat, mating, ultrasound, outcomes, kid care, growth plan and replacement selection D-191; relatedness check at mating) |
 | Fattening & Meat | feeder selection → quarantine → finishing lot → TMR → weight/ADG → welfare & vet clearance → live sale | Built (D-187) |
 | Dairy & Milk | kidding/lactation → udder screening → AM/PM milking → kid/colostrum allocation → QA → chilling → batch dispatch | Built (D-117, D-188) |
 
@@ -27,7 +27,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | 05 | Veterinary & Biosecurity | Health Monitoring; Medical Cases; Treatment; Preventive Care; Quarantine; Reproduction Health; Withdrawal & Disposal; Reporting | Partial (D-172–D-174; antimicrobial use report to do) |
 | 06 | Feeding & Nutrition | Feed Master; Nutrition Standards; Ration Formulas; Daily Feed Plans; Feed Production; Consumption; Feed Safety; Cost & Reports | Partial (D-177; feed safety lot holds to do) |
 | 07 | Housing & Pen Management | Farm Structure; Unit Categories; Pen Operations; Biosecure Areas; Housing Conditions; Cleaning; Traceability; Reports | Partial (pen status, capacity block, cleaning to do) |
-| 08 | Growth & Performance | Weighing; Growth Plans; Body Condition; Performance; Breeder Selection; Fattening Integration; Reports | Partial (outlier/duplicate weight flags to do) |
+| 08 | Growth & Performance | Weighing; Growth Plans; Body Condition; Performance; Breeder Selection; Fattening Integration; Reports | Partial (growth plans, interventions, breeder selection D-191; outlier/duplicate weight flags outside fattening to do) |
 | 09 | Farm Operations & Tasks | Daily Routines; Task Planner; Work Orders; Checklists; Incidents; Approvals; Reports | Built (D-180) |
 | 10 | Inventory & Stores | Products; Stock Locations; Operations; Batch & Expiry; Reordering; Consumption; Valuation; Reporting | Partial (D-178) |
 | 11 | Purchase & Procurement | Suppliers; Purchase Requests; Purchase Orders; Animal Purchase; Materials Purchase; Receiving; Vendor Bills; Reporting | Partial (D-178; animal purchase lots D-190) |
@@ -49,7 +49,8 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | Journey | Flow | Status |
 |---|---|---|
 | A – Purchase-to-Quarantine | 24 | Built (D-172, D-190): purchase request → approval by another person → receive, count, inspect → IDs/EPC → dedicated quarantine pen → vet clearance or extension → transfer to operating pen; no mixing before clearance; lot cost and supplier bill posted once |
-| B–Q | 25–40 | To do |
+| B – Birth-to-Breeder | 25 | Built (D-161–D-176, D-191): kidding with live / stillborn per kid (no IDs for stillborns), colostrum and kid care, viable and stable? → neonatal care unit and vet, kid ID + RFID, weaning, growth vs plan → nutrition / vet intervention with follow-up, BR-005 replacement breeder or sale selection |
+| C–Q | 26–40 | To do |
 
 ## Business rules (§9)
 
@@ -59,7 +60,7 @@ Every app follows: app launch → Overview → Operations → Records → Report
 | BR-002 | One active animal per EPC | Built |
 | BR-003 | Intake quarantine before regular pen | Built (D-172) |
 | BR-004 | Block pen overcapacity unless authorised | To do |
-| BR-005 | Breeding selection: maturity, BCS, health, relatedness | Partial (shared-ancestor check exists) |
+| BR-005 | Breeding selection: maturity, BCS, health, relatedness | Built (D-191 selection checks maturity, growth, BCS, health, pedigree; shared-ancestor check at mating) |
 | BR-006 | Ultrasound result, fetus count, viability independent | Built (D-166) |
 | BR-007 | Kidding: event + each kid record, mixed outcomes | Built (D-161) |
 | BR-008 | Infectious abortion → isolation + vet | Built (D-161, D-163) |

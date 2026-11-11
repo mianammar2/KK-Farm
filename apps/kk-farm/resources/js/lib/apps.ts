@@ -55,6 +55,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/breeding?tab=heat', 'Heat Detection'),
         S('Operations', '/breeding?tab=cycle', 'Mating, Pregnancy & Ultrasound'),
         S('Records', '/breeding?tab=calendar', 'Pregnancy Calendar'),
+        S('Operations', '/growth?tab=selection', 'Replacement Breeder Selection'),
         S('Records', '/breeding?tab=pedigree', 'Genetics & Family Tree'),
         S('Records', '/goats?show=pregnant', 'Pregnant Does'),
         S('Reporting', '/breeding?tab=performance', 'Doe Performance'),
@@ -67,6 +68,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
         S('Operations', '/breeding?tab=kidcare', 'Kid Care'),
         S('Operations', '/breeding?tab=weaning', 'Weaning'),
+        S('Operations', '/growth?tab=growth', 'Kid Growth vs Plan'),
         S('Operations', '/milking', 'Mother Care & Lactation'),
         S('Records', '/sheds', 'Maternity Unit'),
         S('Reporting', '/breeding?tab=performance', 'Kidding Rate & Litter Size'),
@@ -107,10 +109,15 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/', 'Pen Occupancy'),
         S('Configuration', '/sheds', 'Unit & Pen Setup'),
     ] },
-    { key: 'growth', no: '08', label: 'Growth & Performance', art: 'mod-growth', modules: ['weights'], linked: ['livestock', 'feeding', 'sales'], sections: [
+    { key: 'growth', no: '08', label: 'Growth & Performance', art: 'mod-growth', modules: ['weights'], linked: ['maternity', 'breeding', 'livestock', 'feeding', 'veterinary', 'sales'], sections: [
+        S('Overview', '/growth?tab=growth', 'Growth vs Plan'),
         S('Operations', '/weights', 'Record Weights'),
+        S('Operations', '/growth?tab=interventions', 'Nutrition & Vet Interventions'),
+        S('Operations', '/growth?tab=selection', 'Breeder / Sale Selection'),
         S('Records', '/goats?show=no_weight', 'No Weight Yet'),
+        S('Records', '/growth?tab=selections', 'Selection Records'),
         S('Reporting', '/weights', 'Daily Gain (ADG)'),
+        S('Configuration', '/growth?tab=plan', 'Growth Plans & Selection Age'),
         S('Configuration', '/settings#breeds', 'Breed Weight Lines'),
     ] },
     { key: 'operations', no: '09', label: 'Farm Operations', art: 'ic-active', modules: ['tasks'], linked: ['employees', 'dashboard', 'veterinary', 'feeding'], sections: [

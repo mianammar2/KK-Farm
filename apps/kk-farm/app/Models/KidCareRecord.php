@@ -11,7 +11,8 @@ class KidCareRecord extends Model
 
     protected $casts = ['given_at' => 'datetime'];
 
-    public const KINDS = ['colostrum' => 'Colostrum', 'bottle_feed' => 'Bottle Feed', 'nursing_check' => 'Nursing Check', 'warming' => 'Warming', 'fostered' => 'Fostered to a Doe'];
+    public const KINDS = ['colostrum' => 'Colostrum', 'bottle_feed' => 'Bottle Feed', 'nursing_check' => 'Nursing Check', 'warming' => 'Warming', 'fostered' => 'Fostered to a Doe',
+        'stable' => 'Assessed: Viable & Stable', 'neonatal_care' => 'Not Stable: Neonatal / Vet Care']; // D-191: journey B kid viable and stable?
 
     public const SOURCES = ['dam' => 'From its mother', 'other_doe' => 'From another doe', 'stored' => 'Stored colostrum', 'replacer' => 'Milk replacer'];
 

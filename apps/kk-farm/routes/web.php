@@ -63,6 +63,17 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/water-points/{point}', [\App\Http\Controllers\EnvironmentController::class, 'waterPoint']);
         Route::post('/environment/settings', [\App\Http\Controllers\EnvironmentController::class, 'settings']);
     });
+    // D-191: journey B Birth-to-Breeder: growth check, interventions, breeder / sale selection, growth plan
+    Route::middleware('module:weights')->group(function (): void {
+        $bb = \App\Http\Controllers\BirthToBreederController::class;
+        Route::get('/growth', [$bb, 'index']);
+        Route::post('/growth/{animal}/intervene', [$bb, 'intervene']);
+        Route::post('/growth/interventions/{intervention}/follow-up', [$bb, 'followUp']);
+        Route::post('/growth/{animal}/select', [$bb, 'select']);
+        Route::post('/growth/plan', [$bb, 'plan']);
+        Route::post('/growth/settings', [$bb, 'settings']);
+    });
+
     // D-189: App 21 Quality, Compliance & Safety
     Route::middleware('module:quality')->group(function (): void {
         $q = \App\Http\Controllers\QualityController::class;
