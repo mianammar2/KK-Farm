@@ -31,7 +31,7 @@ final class HerdStats
         $stages = AgeStages::stages()->flatMap(fn ($st) => ["stage_{$st->code}" => "{$st->code} · {$st->label}", "stage_{$st->code}_female" => "{$st->code} · {$st->label} · Females", "stage_{$st->code}_male" => "{$st->code} · {$st->label} · Males"])->all(); // D-226
 
         $teeth = Teeth::stages()->mapWithKeys(fn ($t) => ["teeth_{$t->key}" => "{$t->key} · {$t->label}", "teeth_{$t->key}_female" => "{$t->key} · {$t->label} · Females", "teeth_{$t->key}_male" => "{$t->key} · {$t->label} · Males"])->all()
-            + ['teeth_UNK' => 'UNK · Teeth not examined', 'teeth_UNK_female' => 'UNK · Teeth not examined · Females', 'teeth_UNK_male' => 'UNK · Teeth not examined · Males']; // D-229
+            + ['teeth_UNK' => 'UNK · Age and teeth not known', 'teeth_UNK_female' => 'UNK · Age and teeth not known · Females', 'teeth_UNK_male' => 'UNK · Age and teeth not known · Males']; // D-229
 
         $life = collect(Lifecycle::LABELS)->flatMap(fn ($codes, $dim) => collect($codes)->mapWithKeys(fn ($l, $c) => ["life_{$dim}_{$c}" => ucfirst($dim === 'lactation' ? 'milk' : $dim).": {$l}"]))->all(); // D-233
         $roles = collect(Designations::CODES)->mapWithKeys(fn ($r, $c) => ["role_{$c}" => "{$c} · {$r[0]}", "role_{$c}_{$r[1]}" => "{$c} · {$r[0]}"])->all(); // D-230
@@ -96,8 +96,8 @@ final class HerdStats
             $tests["no_stage_{$sex}"] = true;
         }
         // D-229: teeth (dental code), for the dashboard's Herd by Teeth; UNK = never examined.
-        $tests['teeth_'.Teeth::code($a->teeth)] = true;
-        $tests['teeth_'.Teeth::code($a->teeth)."_{$sex}"] = true;
+        $tests['teeth_'.Teeth::code($a->teethCode())] = true; // D-238: checked, else the teeth for the age
+        $tests['teeth_'.Teeth::code($a->teethCode())."_{$sex}"] = true;
         // D-233: the lifecycle statuses as last recorded (status history), so the scorecard's numbers open their goats.
         foreach (self::lifecycle()[$a->id] ?? [] as $dim => $code) {
             $tests["life_{$dim}_{$code}"] = true;

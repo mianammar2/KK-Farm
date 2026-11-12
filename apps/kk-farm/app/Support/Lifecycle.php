@@ -144,7 +144,7 @@ final class Lifecycle
     public static function record(Animal $a): int
     {
         $now = self::statuses($a);
-        $current = collect($now)->map(fn ($s) => $s['code'])->all() + array_filter(['age' => $a->ageStageCode(), 'teeth' => Teeth::code($a->teeth), 'role' => Designations::main($a)]);
+        $current = collect($now)->map(fn ($s) => $s['code'])->all() + array_filter(['age' => $a->ageStageCode(), 'teeth' => Teeth::code($a->teethCode()), 'role' => Designations::main($a)]);
         $last = StatusHistory::where('animal_id', $a->id)->whereIn('id', StatusHistory::where('animal_id', $a->id)->selectRaw('max(id)')->groupBy('dimension'))->pluck('to_status', 'dimension');
         $n = 0;
         foreach ($current as $dim => $code) {

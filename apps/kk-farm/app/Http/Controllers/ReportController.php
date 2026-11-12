@@ -30,7 +30,7 @@ class ReportController extends Controller
             })(),
             // D-229: by teeth (dental code from the latest examination); UNK = never examined.
             'teeth' => (function () {
-                $counts = Animal::where('status', 'active')->pluck('teeth')->countBy(fn ($t) => \App\Support\Teeth::code($t));
+                $counts = Animal::where('status', 'active')->get()->countBy(fn ($a) => \App\Support\Teeth::code($a->teethCode())); // D-238: teeth follow age
 
                 return \App\Support\Teeth::stages()->map(fn ($t) => ['band' => $t->key, 'value' => $counts[$t->key] ?? 0])->push(['band' => 'UNK', 'value' => $counts['UNK'] ?? 0])->filter(fn ($r) => $r['value'] > 0)->values();
             })(),

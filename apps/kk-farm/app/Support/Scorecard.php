@@ -50,7 +50,7 @@ final class Scorecard
                 ['label' => 'Deaths this year', 'value' => Animal::where('exit_reason', 'died')->where('exit_date', '>=', $year)->count(), 'url' => '/reports?section=exits'],
             ]],
             ['key' => 'age', 'title' => 'Age Distribution', 'items' => AgeStages::stages()->map(fn ($s) => $goat("{$s->code} · {$s->label}", "stage_{$s->code}"))->push($goat('Age not known', 'no_stage'))->all()],
-            ['key' => 'teeth', 'title' => 'Dental Distribution', 'items' => Teeth::stages()->map(fn ($t) => $goat("{$t->key} · {$t->label}", "teeth_{$t->key}"))->push($goat('UNK · Not examined', 'teeth_UNK'))->all()],
+            ['key' => 'teeth', 'title' => 'Dental Distribution', 'items' => Teeth::stages()->map(fn ($t) => $goat("{$t->key} · {$t->label}", "teeth_{$t->key}"))->push($goat('UNK · Age and teeth not known', 'teeth_UNK'))->all()],
             ['key' => 'stock', 'title' => 'Breeding Stock', 'items' => [$goat('BB · Breeding Bucks', 'role_BB'), $goat('BD · Breeding Does', 'role_BD'), $goat('RB · Replacement Bucks', 'role_RB'), $goat('RD · Replacement Does', 'role_RD'), $goat('PS · Proven Sires', 'role_PS'), $goat('PD · Proven Dams', 'role_PD')]],
             ['key' => 'eligibility', 'title' => 'Breeding Eligibility', 'items' => [
                 ['label' => 'Qualified, approval pending', 'value' => $elig->where('status', 'qualified')->count(), 'url' => '/breeding/eligibility'],

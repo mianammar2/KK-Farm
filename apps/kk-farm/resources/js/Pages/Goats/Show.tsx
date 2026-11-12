@@ -16,7 +16,7 @@ import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, LibIcon, Note, P
 import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
-type Dental = { code: string; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
+type Dental = { code: string; fromAge?: boolean; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
 type Goat = GoatCard & { ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
@@ -525,7 +525,7 @@ function DentalFact({ dental, teeth, goatId, canEdit, options }: { dental: Denta
     const form = useForm({ teeth: dental.code === 'UNK' ? '' : dental.code, dental_condition: 'normal', examined_on: new Date().toISOString().slice(0, 10) });
     return (
         <span className="block">
-            {dental.code === 'UNK' ? <span className="text-ink-soft">UNK · not examined</span> : <span>{teeth ?? dental.code}{dental.condition && dental.condition !== 'Normal' ? <Chip className="ml-1.5 bg-watch-100 text-watch-700">{dental.condition}</Chip> : null}</span>}
+            {dental.code === 'UNK' ? <span className="text-ink-soft">Not known (no age, no check)</span> : dental.fromAge ? <span>{dental.code} <span className="text-xs text-ink-soft">(from age, not checked)</span></span> : <span>{teeth ?? dental.code}{dental.condition && dental.condition !== 'Normal' ? <Chip className="ml-1.5 bg-watch-100 text-watch-700">{dental.condition}</Chip> : null}</span>}
             {dental.checkedOn ? <span className="block text-xs text-ink-faint">Checked {dental.checkedOn}{dental.history.length > 1 ? ` · ${dental.history.length} checks on record` : ''}</span> : null}
             {canEdit && !open ? <button type="button" className="mt-1 text-xs font-semibold text-cobalt-800 hover:underline" onClick={() => setOpen(true)}>Record a teeth check</button> : null}
             {open ? (

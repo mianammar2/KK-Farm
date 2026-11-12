@@ -172,7 +172,7 @@ class DashboardController extends Controller
 
         // D-229: Herd by Teeth, from the latest examination of each goat; UNK = teeth never examined.
         $teeth = \App\Support\Teeth::stages()->map(fn ($t) => ['key' => "teeth_{$t->key}", 'code' => $t->key, 'label' => $t->label, 'local' => $t->local_term, 'range' => 'about '.$t->ageText(), 'female' => $count("teeth_{$t->key}_female"), 'male' => $count("teeth_{$t->key}_male"), 'total' => $count("teeth_{$t->key}")])
-            ->push(['key' => 'teeth_UNK', 'code' => 'UNK', 'label' => 'Not Examined', 'local' => 'Teeth not checked', 'range' => 'Any age', 'female' => $count('teeth_UNK_female'), 'male' => $count('teeth_UNK_male'), 'total' => $count('teeth_UNK')])
+            ->push(['key' => 'teeth_UNK', 'code' => 'UNK', 'label' => 'Not Known', 'local' => 'No age and no teeth check', 'range' => 'Any age', 'female' => $count('teeth_UNK_female'), 'male' => $count('teeth_UNK_male'), 'total' => $count('teeth_UNK')])
             ->filter(fn ($r) => $r['total'] > 0)->values();
 
         return [
