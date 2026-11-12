@@ -38,6 +38,14 @@ class AutomationRulesTest extends TestCase
         $this->actingAs($owner)->post('/goats', ['origin' => 'purchased', 'breed_id' => $breed->id, 'pen_id' => $pen->id, 'sex' => 'female', 'animal_purpose' => 'sale', 'tag_id' => 'A2', 'birth_date' => now()->subMonths(20)->toDateString()])->assertSessionHasNoErrors();
         $this->assertSame('retired', Animal::where('farm_number', 'A2')->value('repro_status'));
 
+        // D-239: a gender code's settings can be changed; new registrations use them.
+        $this->actingAs($owner)->post('/settings/automation/codes/FF', ['label' => 'Qurbani Doe', 'purpose' => 'fattening', 'class' => 'breeding_male', 'stage' => 'ADT'])->assertSessionHasErrors('class');
+        $this->actingAs($owner)->post('/settings/automation/codes/FF', ['label' => 'Qurbani Doe', 'purpose' => 'meat', 'class' => 'growing_female', 'stage' => 'ADT'])->assertSessionHasNoErrors();
+        Tenant::flush();
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn ($p) => $p->where('roleOptions', fn ($o) => ($ff = collect($o)->firstWhere('value', 'FF')) && $ff['label'] === 'FF · Qurbani Doe' && $ff['purpose'] === 'meat' && $ff['stage'] === 'ADT'));
+        $this->actingAs($owner)->post('/goats', ['origin' => 'purchased', 'breed_id' => $breed->id, 'pen_id' => $pen->id, 'sex' => 'female', 'role_code' => 'FF', 'tag_id' => 'A3'])->assertSessionHasNoErrors();
+        $ff = Animal::where('farm_number', 'A3')->sole();
+        $this->assertSame(['meat', 'ADT'], [$ff->animal_purpose, $ff->ageStageCode()]);
         $rule = ClassificationRule::where('purpose', 'sale')->firstOrFail();
         $this->actingAs($owner)->delete("/settings/automation/rules/{$rule->id}")->assertSessionHasNoErrors();
         $base = ClassificationRule::where('purpose', '*')->firstOrFail();

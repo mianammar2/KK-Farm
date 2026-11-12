@@ -2,10 +2,11 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { Button, Field, PageHeader, Panel } from '../../components/ui';
 
+type Pick = { value: string; label: string; name: string; sex: string; purpose: string | null; class: string; stage: string | null };
 type RuleRow = { id: number; sex: string; stage: string; purpose: string; class: string; status: string | null; goats: number; role: string | null; fixed: boolean };
 type Props = {
     rules: RuleRow[]; stages: Array<{ code: string; label: string; range: string; group: string }>; teeth: Array<{ code: string; label: string; age: string }>;
-    picks: Array<{ value: string; label: string; sex: string; purpose: string | null; class: string; stage: string | null }>; categories: Record<string, string>; categorySex: Record<string, string>;
+    picks: Pick[]; goalPurposes: Record<string, string>; categories: Record<string, string>; categorySex: Record<string, string>;
     statuses: Record<string, string>; purposes: Record<string, string>; kid: { newbornDays: number; weaningDays: number };
     breeding: { min_age_months: number; min_weight_kg: number; min_bcs: number | null }; market: { male: number; female: number };
 };
@@ -21,9 +22,9 @@ export default function Automation(p: Props) {
             <PageHeader title="Automation Rules" description="The registry asks for origin, breed, gender code, age (birth date, age stage or teeth), purpose, weight and pen. Everything below is filled in by itself from these rules, for every goat at once."
                 actions={<Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>} />
             <div className="space-y-4">
-                <Panel flush title="1. Gender code fills in" description="Picking a code in the Gender field sets these at once. For a bought goat with no age yet it also fills in the age stage (and so the teeth and an estimated birth date).">
-                    <div className="overflow-x-auto"><table className="data-table min-w-[560px]"><thead><tr><th>Code</th><th>Gender</th><th>Purpose</th><th>Category</th><th>Age if not known</th></tr></thead>
-                        <tbody>{p.picks.map((r) => <tr key={r.value}><td className="font-semibold">{r.label}</td><td>{r.sex === 'female' ? 'Female' : 'Male'}</td><td>{r.purpose ? p.purposes[r.purpose] ?? r.purpose : '—'}</td><td>{p.categories[r.class] ?? r.class}</td><td className="font-mono">{r.stage ?? '—'}</td></tr>)}</tbody></table></div>
+                <Panel flush title="1. Gender code fills in" description="Picking a code in the Gender field sets these at once; for a bought goat with no age yet it also sets the age stage (and so the teeth and an estimated birth date). Change any value: it saves straight away and applies to new registrations.">
+                    <div className="overflow-x-auto"><table className="data-table min-w-[900px]"><thead><tr><th>Code</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Category</th><th>Age if not known</th></tr></thead>
+                        <tbody>{p.picks.map((r) => <CodeRow key={r.value} r={r} p={p} />)}</tbody></table></div>
                 </Panel>
 
                 <Panel flush title="2. Age and teeth" description="From the birth date (or the age stage or teeth picked for a bought goat). Change them in Age Groups." actions={<Link href="/settings/ages" className="text-sm font-semibold text-cobalt-800 hover:underline">Edit in Age Groups</Link>}>
@@ -68,5 +69,22 @@ export default function Automation(p: Props) {
                 </Panel>
             </div>
         </>
+    );
+}
+
+/** D-239: one gender code, every value editable in place (saved on change). */
+function CodeRow({ r, p }: { r: Pick; p: Props }) {
+    const save = (patch: Partial<{ label: string; purpose: string; class: string; stage: string }>) => router.post(`/settings/automation/codes/${r.value}`,
+        { label: r.name, purpose: r.purpose ?? '', class: r.class, stage: r.stage ?? '', ...patch }, { preserveScroll: true });
+    const fits = Object.entries(p.categories).filter(([k]) => !p.categorySex[k] || p.categorySex[k] === r.sex);
+    return (
+        <tr>
+            <td className="font-mono font-semibold">{r.value}</td>
+            <td><input className="field py-1" aria-label={`${r.value} name`} defaultValue={r.name} maxLength={40} onBlur={(e) => e.target.value.trim() && e.target.value !== r.name && save({ label: e.target.value.trim() })} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} /></td>
+            <td>{r.sex === 'female' ? 'Female' : 'Male'}</td>
+            <td><select className="field py-1" aria-label={`${r.value} purpose`} value={r.purpose ?? ''} onChange={(e) => save({ purpose: e.target.value })}><option value="">None</option>{Object.entries(p.goalPurposes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
+            <td><select className="field py-1" aria-label={`${r.value} category`} value={r.class} onChange={(e) => save({ class: e.target.value })}>{fits.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
+            <td><select className="field py-1" aria-label={`${r.value} starting age`} value={r.stage ?? ''} onChange={(e) => save({ stage: e.target.value })}><option value="">Leave empty</option>{p.stages.map((s) => <option key={s.code} value={s.code}>{s.code} · {s.label}</option>)}</select></td>
+        </tr>
     );
 }

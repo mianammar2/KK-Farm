@@ -44,14 +44,35 @@ final class Designations
         'FF' => ['female', 'fattening', 'growing_female'], 'CF' => ['female', 'sale', 'cull'],
     ];
 
+    /**
+     * D-239: each code as the farm set it (Settings → Automation Rules), else the framework default:
+     * code => [gender, purpose, category, label, starting age stage].
+     */
+    public static function picks(): array
+    {
+        return Tenant::memo('role_codes', function () {
+            $saved = Tenant::current() ? \App\Models\RoleCode::all()->keyBy('code') : collect();
+
+            return collect(self::PICK)->map(fn ($p, $c) => ($r = $saved[$c] ?? null)
+                ? [$p[0], $r->purpose, $r->animal_class, $r->label, $r->stage_code]
+                : [$p[0], $p[1], $p[2], self::CODES[$c][0], self::defaultStage($c)])->all();
+        });
+    }
+
     /** @return array<string, array{value: string, label: string, sex: string, group: string}> options for the Gender field */
     public static function pickOptions(): array
     {
-        return collect(self::PICK)->map(fn ($p, $c) => ['value' => $c, 'label' => "{$c} · ".self::CODES[$c][0], 'sex' => $p[0], 'group' => $p[0] === 'male' ? 'Male' : 'Female', 'purpose' => $p[1], 'class' => $p[2], 'stage' => self::stageFor($c)])->all();
+        return collect(self::picks())->map(fn ($p, $c) => ['value' => $c, 'label' => "{$c} · {$p[3]}", 'name' => $p[3], 'sex' => $p[0], 'group' => $p[0] === 'male' ? 'Male' : 'Female', 'purpose' => $p[1], 'class' => $p[2], 'stage' => $p[4]])->all();
     }
 
-    /** D-237: the age a code means when the age is not known yet: kids → first kid stage after newborn, growers → GRW, the rest → first adult stage. */
+    /** D-237 / D-239: the age a code means when the age is not known yet (the farm's setting, else the default). */
     public static function stageFor(string $code): ?string
+    {
+        return self::picks()[$code][4] ?? self::defaultStage($code);
+    }
+
+    /** kids → first kid stage after newborn, growers → GRW, the rest → first adult stage. */
+    private static function defaultStage(string $code): ?string
     {
         $group = match ($code) { 'BK', 'DK' => 'kid', 'GB', 'GD', 'RB', 'RD', 'FM', 'FF', 'WTH' => 'grower', default => 'adult' };
         $stages = AgeStages::stages()->where('age_group', $group)->values();
@@ -115,7 +136,7 @@ final class Designations
     /** @return array<string, string> code => "BD · Breeding Doe" */
     public static function labels(array $codes): array
     {
-        return collect($codes)->mapWithKeys(fn ($c) => [$c => self::CODES[$c][0] ?? $c])->all();
+        return collect($codes)->mapWithKeys(fn ($c) => [$c => self::picks()[$c][3] ?? self::CODES[$c][0] ?? $c])->all();
     }
 
     /** Sires and dams with recorded offspring (a registered kid or a kidding), and does in an open lactation. */

@@ -483,6 +483,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/settings/ages', [SettingsController::class, 'updateAges']);
         Route::get('/settings/automation', [\App\Http\Controllers\AutomationController::class, 'index']); // D-236
         Route::post('/settings/automation/rules', [\App\Http\Controllers\AutomationController::class, 'save']);
+        Route::post('/settings/automation/codes/{code}', [\App\Http\Controllers\AutomationController::class, 'saveCode'])->where('code', '[A-Z]{2,4}'); // D-239
         Route::delete('/settings/automation/rules/{rule}', [\App\Http\Controllers\AutomationController::class, 'delete']);
         Route::post('/settings/stages', [SettingsController::class, 'addStage']); // D-221
         Route::post('/settings/stages/{stage}', [SettingsController::class, 'editStage']);

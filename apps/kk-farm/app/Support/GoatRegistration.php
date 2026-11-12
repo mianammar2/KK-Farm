@@ -89,7 +89,7 @@ final class GoatRegistration
     /** D-235: a picked role code sets gender, purpose and goat category (the code wins over the separate fields). */
     public static function applyRole(array $data): array
     {
-        if (! empty($data['role_code']) && ($p = Designations::PICK[$data['role_code']] ?? null)) {
+        if (! empty($data['role_code']) && ($p = Designations::picks()[$data['role_code']] ?? null)) {
             $data['sex'] = $p[0];
             $data['animal_purpose'] = $p[1] ?? ($data['animal_purpose'] ?? null);
             $data['animal_class'] = $p[2];

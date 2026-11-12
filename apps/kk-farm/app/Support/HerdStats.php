@@ -34,7 +34,7 @@ final class HerdStats
             + ['teeth_UNK' => 'UNK · Age and teeth not known', 'teeth_UNK_female' => 'UNK · Age and teeth not known · Females', 'teeth_UNK_male' => 'UNK · Age and teeth not known · Males']; // D-229
 
         $life = collect(Lifecycle::LABELS)->flatMap(fn ($codes, $dim) => collect($codes)->mapWithKeys(fn ($l, $c) => ["life_{$dim}_{$c}" => ucfirst($dim === 'lactation' ? 'milk' : $dim).": {$l}"]))->all(); // D-233
-        $roles = collect(Designations::CODES)->mapWithKeys(fn ($r, $c) => ["role_{$c}" => "{$c} · {$r[0]}", "role_{$c}_{$r[1]}" => "{$c} · {$r[0]}"])->all(); // D-230
+        $roles = collect(Designations::CODES)->mapWithKeys(fn ($r, $c) => ["role_{$c}" => "{$c} · ".Designations::labels([$c])[$c], "role_{$c}_{$r[1]}" => "{$c} · ".Designations::labels([$c])[$c]])->all(); // D-230
 
         return self::LABELS + $stages + $teeth + $roles + $life + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
     }

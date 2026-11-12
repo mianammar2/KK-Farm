@@ -44,6 +44,7 @@ class AutomationController extends Controller
             'categorySex' => Classification::categorySex(),
             'statuses' => Classification::FEMALE_STATUSES,
             'purposes' => AutoRules::PURPOSES,
+            'goalPurposes' => Classification::PURPOSES,
             'kid' => ['newbornDays' => (int) (AgeStages::stages()->get(1)?->startDays() ?? 15), 'weaningDays' => (int) (Tenant::org()?->weaning_age_days ?? 84)],
             'breeding' => Eligibility::rule(null, 'female')->only(['min_age_months', 'min_weight_kg', 'min_bcs']),
             'market' => Lifecycle::marketWeights(),
@@ -66,6 +67,23 @@ class AutomationController extends Controller
         Farm::log($request->user(), "Automation rule: {$data['sex']} {$data['stage']} {$data['purpose']} → {$data['class']}", '/settings/automation');
 
         return back()->with('success', 'Rule saved. Every goat without a hand-set category follows it now.');
+    }
+
+    /** D-239: change what a gender code fills in: its name, purpose, category and starting age. */
+    public function saveCode(Request $request, string $code): RedirectResponse
+    {
+        $pick = Designations::picks()[$code] ?? abort(404);
+        $data = $request->validate([
+            'label' => ['required', 'string', 'max:40'], 'purpose' => ['nullable', Rule::in(array_keys(Classification::PURPOSES))],
+            'class' => ['required', Rule::in(array_keys(Classification::CATEGORIES))], 'stage' => ['nullable', Rule::in(AgeStages::stages()->pluck('code')->all())],
+        ]);
+        if (($need = Classification::categorySex()[$data['class']] ?? null) && $need !== $pick[0]) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['class' => "{$code} is a ".($pick[0] === 'male' ? 'male' : 'female').' code: choose a '.($pick[0] === 'male' ? 'male' : 'female').' category.']);
+        }
+        \App\Models\RoleCode::updateOrCreate(['code' => $code], ['label' => $data['label'], 'purpose' => $data['purpose'] ?? null, 'animal_class' => $data['class'], 'stage_code' => $data['stage'] ?? null]);
+        Farm::log($request->user(), "Gender code {$code}: {$data['label']}, ".($data['purpose'] ?? 'no purpose').", {$data['class']}, ".($data['stage'] ?? 'no age'), '/settings/automation');
+
+        return back()->with('success', "{$code} saved. New registrations use it; goats already registered keep what they have.");
     }
 
     public function delete(Request $request, ClassificationRule $rule): RedirectResponse
