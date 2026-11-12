@@ -1,7 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Copy, ScanLine, Sparkles, Tag } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import PhotoPicker from '../../components/PhotoPicker';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
@@ -272,12 +272,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                         setEstMonths(String(Math.round(mid * 10) / 10));
                         form.setData((data: Record<string, any>) => ({ ...data, teeth: st.teeth ?? '', birth_date: d.toISOString().slice(0, 10) }));
                     };
-                    return (
-                        <select className="field" value={current?.code ?? ''} onChange={(e) => pick(e.target.value)}>
-                            <option value="">Not set</option>
-                            {ageStages.map((st) => <option key={st.code} value={st.code}>{st.code} · {st.label} · {st.to === null ? `${st.from}+ months` : `${st.from}–${st.to} months`}{st.teethLabel ? ` · ${st.teethLabel}` : ''}</option>)}
-                        </select>
-                    );
+                    return <StagePicker stages={ageStages} current={current?.code ?? ''} onPick={pick} />;
                 }
                 // Animal Class only offers classes that fit the chosen sex (a male cannot be a Breeding Doe).
                 const sex = form.data.sex;
@@ -366,7 +361,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                                     <Field
                                         label={`${labelFor(f)}${isRequired(f) ? ' *' : ''}`}
                                         error={error(f)}
-                                        hint={f.key === 'origin' && !editing ? 'Purchased or transferred goats. Kids born on the farm are added automatically when the kidding is recorded in Maternity; the vet completes them under Newborns to Complete.' : f.key === 'estimated_age' ? 'The birth date is worked out from it and saved as an estimate.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date ? 'Estimated from the age. Change it if you know a better date.' : 'Optional. Enter the estimated age, or a date.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
+                                        hint={f.key === 'teeth' && !farmBorn ? 'Type the ERP code (e.g. ADT-T04, T04, GRW) or choose from the list. Fills in the teeth, estimated age and birth date.' : f.key === 'origin' && !editing ? 'Purchased or transferred goats. Kids born on the farm are added automatically when the kidding is recorded in Maternity; the vet completes them under Newborns to Complete.' : f.key === 'estimated_age' ? 'The birth date is worked out from it and saved as an estimate.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date ? 'Estimated from the age. Change it if you know a better date.' : 'Optional. Enter the estimated age, or a date.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
                                     >{control(f)}</Field>
                                 </div>
                             ))}
@@ -397,6 +392,33 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                     </form>
                 </Panel>
             ) : null}
+        </>
+    );
+}
+
+const stageText = (st: AgeStage) => `${st.code} · ${st.label} · ${st.to === null ? `${st.from}+ months` : `${st.from}–${st.to} months`}${st.teethLabel ? ` · ${st.teethLabel}` : ''}`;
+
+/** D-224: type an ERP code (ADT-T04, t04, grw) or pick from the list. A full match is applied straight away. */
+function StagePicker({ stages, current, onPick }: { stages: AgeStage[]; current: string; onPick: (code: string) => void }) {
+    const cur = stages.find((x) => x.code === current);
+    const [text, setText] = useState(cur ? stageText(cur) : '');
+    useEffect(() => { setText(cur ? stageText(cur) : ''); }, [current]); // eslint-disable-line react-hooks/exhaustive-deps
+    const find = (raw: string) => {
+        const t = raw.trim().toUpperCase();
+        if (!t) return undefined;
+        return stages.find((x) => x.code === t || stageText(x).toUpperCase() === t) ?? stages.find((x) => x.code.endsWith(`-${t}`) || x.code.replace(/-/g, '') === t.replace(/-/g, ''));
+    };
+    const change = (raw: string) => {
+        setText(raw);
+        const st = find(raw);
+        if (st) { setText(stageText(st)); onPick(st.code); } else if (!raw.trim()) onPick('');
+    };
+    const none = text.trim() !== '' && !find(text);
+    return (
+        <>
+            <input className="field font-mono" list="age-stage-codes" value={text} onChange={(e) => change(e.target.value)} onFocus={(e) => e.target.select()} placeholder="Type a code (ADT-T04) or choose" autoComplete="off" spellCheck={false} />
+            <datalist id="age-stage-codes">{stages.map((st) => <option key={st.code} value={stageText(st)} />)}</datalist>
+            {none ? <p className="mt-1 text-xs font-semibold text-watch-700">No stage with that code. Codes: {stages.map((x) => x.code).join(', ')}</p> : null}
         </>
     );
 }
