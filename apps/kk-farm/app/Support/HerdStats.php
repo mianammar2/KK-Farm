@@ -22,13 +22,15 @@ final class HerdStats
         'kid_female' => 'Female Kids', 'kid_male' => 'Male Kids', 'grower_female' => 'Female Growers', 'grower_male' => 'Male Growers',
         'adult_female' => 'Adult Females', 'adult_male' => 'Adult Males', 'age_unknown_female' => 'Females, Age Not Known', 'age_unknown_male' => 'Males, Age Not Known',
         // Not CEO categories, but filters the dashboard links to.
-        'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'newborn' => 'Newborns to complete', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data',
+        'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'newborn' => 'Newborns to complete', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data', 'no_stage' => 'No age stage (no birth date)', 'no_stage_female' => 'Females with no age stage', 'no_stage_male' => 'Males with no age stage',
     ];
 
     /** D-123: labels for the class_* filters (/goats?show=class_breeding_female). */
     public static function labels(): array
     {
-        return self::LABELS + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
+        $stages = AgeStages::stages()->flatMap(fn ($st) => ["stage_{$st->code}" => "{$st->code} · {$st->label}", "stage_{$st->code}_female" => "{$st->code} · {$st->label} · Females", "stage_{$st->code}_male" => "{$st->code} · {$st->label} · Males"])->all(); // D-226
+
+        return self::LABELS + $stages + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
     }
 
     public const CATEGORIES = ['breeding_males', 'breeding_females', 'pregnant', 'ready', 'male_kids', 'female_kids', 'growing', 'lactating', 'sick', 'treatment', 'for_sale'];
@@ -79,6 +81,14 @@ final class HerdStats
         $tests[$age] = true;
         $tests[$sex] = true;
         $tests["{$age}_{$sex}"] = true;
+        // D-226: the farm's age stage (ERP code) and gender, for the dashboard's Herd by Age.
+        if ($a->birth_date && ($st = AgeStages::forMonths(AgeStages::months($a->birth_date)))) {
+            $tests["stage_{$st->code}"] = true;
+            $tests["stage_{$st->code}_{$sex}"] = true;
+        } else {
+            $tests['no_stage'] = true;
+            $tests["no_stage_{$sex}"] = true;
+        }
         // D-123: the goat's classification (category), for the dashboard's By Classification view.
         $tests['class_'.($cat ?? 'none')] = true;
 

@@ -293,7 +293,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
 }
 
 type HerdAge = {
-    rows: Array<{ key: string; label: string; range: string; female: number; male: number; total: number }>; female: number; male: number; total: number;
+    rows: Array<{ key: string; code?: string | null; group?: string; label: string; range: string; female: number; male: number; total: number }>; female: number; male: number; total: number;
     classes: Array<{ key: string; label: string; local: string | null; female: number; male: number; total: number }>;
 };
 
@@ -321,7 +321,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
                     <tbody className="divide-y divide-rule">
                         {view === 'age' ? rows.map((r) => (
                             <tr key={r.key}>
-                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><ClassPic group={r.key} size={44} /><span><span className="flex items-center gap-1.5 font-semibold text-cobalt-900">{r.label}<AgeBadge stage={r.key} /></span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
+                                <td className="py-1.5 pr-3"><span className="flex items-center gap-2"><ClassPic group={r.group ?? r.key} size={44} /><span><span className="flex items-center gap-1.5 font-semibold text-cobalt-900">{r.code ? <span className="rounded-[4px] bg-cobalt-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-cobalt-800">{r.code}</span> : null}{r.label}<AgeBadge stage={r.group ?? r.key} /></span><span className="block text-xs text-ink-soft">{r.range}</span></span></span></td>
                                 {showF ? <td className="text-right">{cell(`${r.key}_female`, r.female)}</td> : null}
                                 {showM ? <td className="text-right">{cell(`${r.key}_male`, r.male)}</td> : null}
                                 <td className="text-right">{cell(r.key, r.total, true)}</td>

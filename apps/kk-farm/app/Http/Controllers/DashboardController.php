@@ -161,12 +161,15 @@ class DashboardController extends Controller
      */
     private function herdByAge(\Illuminate\Support\Collection $goats, \Illuminate\Support\Collection $tags): array
     {
-        [$growerFrom, $adultFrom] = \App\Support\Classification::boundaries();
         $count = fn (string $key) => $tags->filter(fn ($t) => in_array($key, $t, true))->count();
-        $bands = ['kid' => "Under {$growerFrom} months", 'grower' => "{$growerFrom} to {$adultFrom} months", 'adult' => "{$adultFrom} months and over", 'age_unknown' => 'No birth date or teeth yet'];
-        $rows = collect($bands)->map(fn ($range, $age) => ['key' => $age, 'label' => HerdStats::LABELS[$age], 'range' => $range,
-            'female' => $count("{$age}_female"), 'male' => $count("{$age}_male"), 'total' => $count($age)])
-            ->filter(fn ($r) => $r['key'] !== 'age_unknown' || $r['total'] > 0)->values();
+        // D-226: one row per age stage from Settings → Age Groups (YKD, KID, GRW, ADT-T02 …), then goats with no age yet.
+        $rows = \App\Support\AgeStages::stages()->map(fn ($st) => ['key' => "stage_{$st->code}", 'code' => $st->code, 'group' => $st->age_group, 'label' => $st->label,
+            'range' => ($st->to_months === null ? rtrim(rtrim(number_format($st->from_months, 1), '0'), '.').' months and over' : rtrim(rtrim(number_format($st->from_months, 1), '0'), '.').' to '.rtrim(rtrim(number_format($st->to_months, 1), '0'), '.').' months')
+                .(($t = \App\Support\Teeth::short()[$st->teeth_key] ?? null) ? " · {$t}" : ''),
+            'female' => $count("stage_{$st->code}_female"), 'male' => $count("stage_{$st->code}_male"), 'total' => $count("stage_{$st->code}")])
+            ->push(['key' => 'no_stage', 'code' => null, 'group' => 'age_unknown', 'label' => 'Age Not Known', 'range' => 'No birth date or teeth yet',
+                'female' => $count('no_stage_female'), 'male' => $count('no_stage_male'), 'total' => $count('no_stage')])
+            ->filter(fn ($r) => $r['total'] > 0)->values();
 
         return [
             'rows' => $rows, 'female' => $count('female'), 'male' => $count('male'), 'total' => $goats->count(),
