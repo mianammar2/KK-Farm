@@ -178,7 +178,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                                 <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
                                             </td>
                                             <td><BreedBadge breed={g.breed} withName /></td>
-                                            <td><SexIcon sex={g.sex} label /></td>
+                                            <td><SexIcon sex={g.sex} label />{g.roles?.length ? <div className="font-mono text-xs font-semibold text-cobalt-800" title="Role codes">{g.roles.join(' · ')}</div> : null}</td>
                                             <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} code={g.ageCode} withLabel />{g.age ?? <span className="text-ink-faint">Unknown</span>}</span></td>
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>

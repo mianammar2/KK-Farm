@@ -178,6 +178,10 @@ class DashboardController extends Controller
         return [
             'rows' => $rows, 'teeth' => $teeth, 'female' => $count('female'), 'male' => $count('male'), 'total' => $goats->count(),
             // D-123: by classification (goat category, set or suggested from gender, age and purpose).
+            // D-230: by role (BK, GB, RB, BB … / DK, GD, RD, BD …): main roles add up to the herd; Proven Sire, Proven Dam
+            // and Dairy Doe also apply to goats already counted, so they are listed apart and not added to the total.
+            'roles' => collect(\App\Support\Designations::CODES)->map(fn ($r, $c) => ['key' => "role_{$c}", 'code' => $c, 'label' => $r[0], 'local' => $r[2], 'main' => $r[3],
+                'female' => $count("role_{$c}_female"), 'male' => $count("role_{$c}_male"), 'total' => $count("role_{$c}")])->filter(fn ($r) => $r['total'] > 0)->sortByDesc('total')->sortByDesc('main')->values(),
             'classes' => $goats->groupBy(fn ($g) => $g->effectiveCategory() ?? 'none')->map(fn ($gs, $c) => ['key' => 'class_'.$c,
                 'label' => \App\Support\Classification::CATEGORIES[$c][0] ?? 'Not Classified', 'local' => \App\Support\Classification::CATEGORIES[$c][1] ?? null,
                 'female' => $gs->where('sex', 'female')->count(), 'male' => $gs->where('sex', '!=', 'female')->count(), 'total' => $gs->count()])->sortBy([['total', 'desc'], ['label', 'asc']])->values(),

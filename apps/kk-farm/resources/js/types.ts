@@ -12,6 +12,7 @@ export type GoatCard = {
     age?: string | null;
     teeth?: string | null;
     ageCode?: string | null; // D-221
+    roles?: string[]; // D-230: BD, PD, DD …
     ageMonths?: number | null;
     pen?: string | null;
     penId?: number | null;

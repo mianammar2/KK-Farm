@@ -29,7 +29,7 @@ authorised person.** (Matches the project rule: the system records and recommend
   5 (ADT-T0x→ADT, ADT-WBT→MAT), including care protocols aimed at a stage.
 
 ## Next phases (planned, not built)
-2. **Production purpose and sex-wise labels**: BK, GB, RB, BB, PS, FM, WTH, CM / DK, GD, RD, BD, PD, DD, FF, CF as
+2. **Done in D-230. Production purpose and sex-wise labels**: BK, GB, RB, BB, PS, FM, WTH, CM / DK, GD, RD, BD, PD, DD, FF, CF as
    generated designations (several can apply, e.g. Breeding Doe + Proven Dam + Dairy Doe). Castration event →
    wether, blocks natural breeding.
 3. **Eligibility engine**: qualification ≠ approval. Per-breed configurable thresholds (minimum age, minimum weight,

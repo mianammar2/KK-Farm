@@ -33,7 +33,9 @@ final class HerdStats
         $teeth = Teeth::stages()->mapWithKeys(fn ($t) => ["teeth_{$t->key}" => "{$t->key} · {$t->label}", "teeth_{$t->key}_female" => "{$t->key} · {$t->label} · Females", "teeth_{$t->key}_male" => "{$t->key} · {$t->label} · Males"])->all()
             + ['teeth_UNK' => 'UNK · Teeth not examined', 'teeth_UNK_female' => 'UNK · Teeth not examined · Females', 'teeth_UNK_male' => 'UNK · Teeth not examined · Males']; // D-229
 
-        return self::LABELS + $stages + $teeth + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
+        $roles = collect(Designations::CODES)->mapWithKeys(fn ($r, $c) => ["role_{$c}" => "{$c} · {$r[0]}", "role_{$c}_{$r[1]}" => "{$c} · {$r[0]}"])->all(); // D-230
+
+        return self::LABELS + $stages + $teeth + $roles + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
     }
 
     public const CATEGORIES = ['breeding_males', 'breeding_females', 'pregnant', 'ready', 'male_kids', 'female_kids', 'growing', 'lactating', 'sick', 'treatment', 'for_sale'];
@@ -95,6 +97,11 @@ final class HerdStats
         // D-229: teeth (dental code), for the dashboard's Herd by Teeth; UNK = never examined.
         $tests['teeth_'.Teeth::code($a->teeth)] = true;
         $tests['teeth_'.Teeth::code($a->teeth)."_{$sex}"] = true;
+        // D-230: main role and added designations (BD, PD, DD …), for the dashboard and filters.
+        foreach (Designations::codes($a) as $code) {
+            $tests["role_{$code}"] = true;
+            $tests["role_{$code}_{$sex}"] = true;
+        }
         // D-123: the goat's classification (category), for the dashboard's By Classification view.
         $tests['class_'.($cat ?? 'none')] = true;
 

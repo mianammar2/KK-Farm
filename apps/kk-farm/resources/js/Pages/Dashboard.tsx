@@ -2,7 +2,7 @@ import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { inScannerApp } from '../lib/native';
 import { ChevronDown, Sun, Sunrise, Sunset } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
 import { axis, FARM } from '../lib/chartTheme';
 import { CountUp, Empty, GoatLabel, LibIcon, monthLabel, PageHeader, Panel, pkrShort } from '../components/ui';
@@ -295,6 +295,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
 type HerdAge = {
     rows: Array<{ key: string; code?: string | null; group?: string; label: string; range: string; female: number; male: number; total: number }>; female: number; male: number; total: number;
     classes: Array<{ key: string; label: string; local: string | null; female: number; male: number; total: number }>;
+    roles: Array<{ key: string; code: string; label: string; local: string; main: boolean; female: number; male: number; total: number }>; // D-230
     teeth: Array<{ key: string; code: string; label: string; local: string | null; range: string; female: number; male: number; total: number }>; // D-229
 };
 
@@ -303,14 +304,14 @@ type HerdAge = {
 /** D-118: Kids, Growers and Adults by gender, from each goat's age today; every number opens those goats. */
 function HerdByAge({ h }: { h: HerdAge }) {
     const [view, setView] = useState<'age' | 'teeth' | 'class'>('age');
-    const VIEWS = { age: ['By Age', 'Herd by Age and Gender', 'Age'], teeth: ['By Teeth', 'Herd by Teeth (Dental Code)', 'Teeth'], class: ['By Classification', 'Herd by Classification', 'Classification'] } as const;
+    const VIEWS = { age: ['By Age', 'Herd by Age and Gender', 'Age'], teeth: ['By Teeth', 'Herd by Teeth (Dental Code)', 'Teeth'], class: ['By Role', 'Herd by Role (BK, BD …)', 'Role'] } as const;
     const cell = (key: string, n: number, strong = false) => n
         ? <Link href={`/goats?show=${key}`} className={`block rounded-[4px] px-2 py-1 tabular-nums hover:bg-glaze hover:underline ${strong ? 'font-bold text-cobalt-900' : 'font-semibold text-cobalt-800'}`}>{n}</Link>
         : <span className="block px-2 py-1" aria-label="none" />;
     const pct = (n: number) => (h.total ? Math.round((n / h.total) * 100) : 0);
     // D-119: rows and columns with nothing in them are not shown.
     const rows = h.rows.filter((r) => r.total > 0);
-    const [classes, moreClasses] = useFive(h.classes);
+    const roleRows = h.roles ?? []; // D-230
     const showF = h.female > 0;
     const showM = h.male > 0;
     return (
@@ -337,19 +338,21 @@ function HerdByAge({ h }: { h: HerdAge }) {
                                 <td className="text-right">{cell(t.key, t.total, true)}</td>
                                 <td className="hidden pl-3 sm:table-cell"><div className="kk-rail" aria-hidden><div className="kk-grow kk-rail-f" style={{ width: `${pct(t.female)}%` }} /><div className="kk-grow kk-rail-m" style={{ width: `${pct(t.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(t.total)}%</span></td>
                             </tr>
-                        )) : classes.map((c) => (
-                            <tr key={c.key}>
-                                <td className="py-1.5 pr-3"><span className="font-semibold text-cobalt-900">{c.label}</span>{c.local ? <span className="block text-xs text-ink-soft">{c.local}</span> : null}</td>
-                                {showF ? <td className="text-right">{cell(`${c.key}`, c.female)}</td> : null}
-                                {showM ? <td className="text-right">{cell(`${c.key}`, c.male)}</td> : null}
-                                <td className="text-right">{cell(c.key, c.total, true)}</td>
-                                <td className="hidden pl-3 sm:table-cell"><div className="kk-rail" aria-hidden><div className="kk-grow kk-rail-f" style={{ width: `${pct(c.female)}%` }} /><div className="kk-grow kk-rail-m" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
-                            </tr>
+                        )) : roleRows.map((c, i) => (
+                            <Fragment key={c.key}>
+                                {!c.main && (i === 0 || roleRows[i - 1].main) ? <tr><td colSpan={5} className="pt-3 pb-1 text-xs font-semibold text-ink-soft">Also (these goats are already counted above)</td></tr> : null}
+                                <tr>
+                                    <td className="py-1.5 pr-3"><span className="flex items-center gap-1.5 font-semibold text-cobalt-900"><span className="rounded-[4px] bg-cobalt-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-cobalt-800">{c.code}</span>{c.label}</span><span className="block text-xs text-ink-soft">{c.local}</span></td>
+                                    {showF ? <td className="text-right">{cell(`${c.key}_female`, c.female)}</td> : null}
+                                    {showM ? <td className="text-right">{cell(`${c.key}_male`, c.male)}</td> : null}
+                                    <td className="text-right">{cell(c.key, c.total, true)}</td>
+                                    <td className="hidden pl-3 sm:table-cell"><div className="kk-rail" aria-hidden><div className="kk-grow kk-rail-f" style={{ width: `${pct(c.female)}%` }} /><div className="kk-grow kk-rail-m" style={{ width: `${pct(c.male)}%` }} /></div><span className="text-xs text-ink-soft">{pct(c.total)}%</span></td>
+                                </tr>
+                            </Fragment>
                         ))}
                     </tbody>
                     <tfoot className="border-t-2 border-[#dbe6de] text-sm"><tr><td className="py-1.5 pr-3 font-bold text-cobalt-900">All Goats</td>{showF ? <td className="text-right">{cell('female', h.female, true)}</td> : null}{showM ? <td className="text-right">{cell('male', h.male, true)}</td> : null}<td className="text-right">{cell('total', h.total, true)}</td><td className="hidden sm:table-cell" /></tr></tfoot>
                 </table>
-                {view === 'class' ? moreClasses : null}
             </div>
         </Panel>
     );

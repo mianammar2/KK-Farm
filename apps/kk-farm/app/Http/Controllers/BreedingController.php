@@ -124,7 +124,7 @@ class BreedingController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'dam_id' => ['required', 'exists:animals,id'], 'sire_id' => ['nullable', 'exists:animals,id', 'different:dam_id'],
+            'dam_id' => ['required', 'exists:animals,id'], 'sire_id' => ['nullable', 'exists:animals,id', 'different:dam_id', \App\Support\Designations::sireRule()],
             'mated_on' => ['required', 'date', 'before_or_equal:today'], 'method' => ['required', Rule::in(array_keys(Mating::METHODS))],
             'heat_observed' => ['nullable', Rule::in(['yes', 'no', 'unknown'])], 'handler' => ['nullable', 'string', 'max:80'], 'notes' => ['nullable', 'string', 'max:500'],
             'coi_override_reason' => ['nullable', 'string', 'max:300'],

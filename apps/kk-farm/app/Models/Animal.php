@@ -11,7 +11,7 @@ class Animal extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'monitor_until' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'teeth_checked_on' => 'date', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
+    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'monitor_until' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'teeth_checked_on' => 'date', 'castrated_on' => 'date', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
 
     /**
      * Age category, worked out from the birth date today so it moves on by itself as the goat ages (D-067).
@@ -111,6 +111,9 @@ class Animal extends Model
                 $a->health_flag = self::STATUS_TO_FLAG[$a->health_status ?? 'healthy'] ?? 'healthy';
                 $a->health_status ??= 'healthy';
             }
+            if ($a->castrated_on && $a->sex === 'male') { // D-230: once castrated, always a wether (never a sire)
+                $a->animal_class = 'wether';
+            }
             if ($a->isDirty(['teeth', 'dental_condition']) && ($a->teeth || $a->getOriginal('teeth'))) {
                 $a->dental_condition = $a->teeth ? ($a->dental_condition ?: 'normal') : null;
                 $a->teeth_checked_on = $a->teeth ? ($a->isDirty('teeth_checked_on') && $a->teeth_checked_on ? $a->teeth_checked_on : now()->toDateString()) : null;
@@ -173,6 +176,7 @@ class Animal extends Model
             'teeth' => $this->teeth, // D-106
             'ageCode' => $this->classCode(), // D-229: age stage + teeth, e.g. GRW-T02
             'stageCode' => $this->ageStageCode(),
+            'roles' => \App\Support\Designations::codes($this), // D-230: BD, PD, DD …
             'ageMonths' => $this->birth_date ? (int) $this->birth_date->diffInMonths($this->exit_date ?? now()) : null,
             'pen' => $this->pen?->fullName(),
             'penId' => $this->pen_id,

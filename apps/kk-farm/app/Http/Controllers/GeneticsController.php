@@ -90,7 +90,7 @@ class GeneticsController extends Controller
         Genetics::flush();
         $data = $request->validate([
             'decision' => ['required', Rule::in(array_keys(BreederSelection::DECISIONS))], 'reason' => ['nullable', 'string', 'max:500'],
-            'planned_sire_id' => ['nullable', 'exists:animals,id'], 'pen_id' => ['nullable', 'exists:pens,id'],
+            'planned_sire_id' => ['nullable', 'exists:animals,id', \App\Support\Designations::sireRule()], 'pen_id' => ['nullable', 'exists:pens,id'],
         ]);
         $org = Organization::findOrFail(Tenant::current());
         $checks = Growth::eligibility($animal, Growth::latest([$animal->id])[$animal->id] ?? null, $org->selection_age_days, $org->growth_alert_pct);

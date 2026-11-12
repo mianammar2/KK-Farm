@@ -146,6 +146,31 @@ class GoatController extends Controller
      * transferred, or never set) the estimated birth date follows the teeth, so the age shows up to today. Kept in
      * the goat's history like any edit.
      */
+    /**
+     * D-230: the vet records a castration that was done. The goat becomes a wether from that day and can no longer be
+     * chosen as a sire; a breeding purpose is cleared (the manager assigns a new one). A recovery check is due in 7 days.
+     */
+    public function castration(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403);
+        if ($animal->sex !== 'male' || $animal->castrated_on) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['castrated_on' => $animal->castrated_on ? 'Already recorded as castrated.' : 'Only a male goat can be castrated.']);
+        }
+        $data = $request->validate(['castrated_on' => ['required', 'date', 'before_or_equal:today'], 'method' => ['required', Rule::in(array_keys(self::CASTRATION_METHODS))], 'notes' => ['nullable', 'string', 'max:500']]);
+        $on = \Illuminate\Support\Carbon::parse($data['castrated_on']);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($animal, $data, $on, $request) {
+            \App\Models\HealthRecord::create(['animal_id' => $animal->id, 'kind' => 'procedure', 'occurred_on' => $on, 'title' => 'Castration ('.self::CASTRATION_METHODS[$data['method']].')',
+                'notes' => $data['notes'] ?? null, 'next_due_on' => $on->copy()->addDays(7), 'recorded_by' => $request->user()->name, 'recorded_role' => $request->user()->roleLabel(), 'status' => 'open']);
+            $animal->forceFill(['castrated_on' => $on->toDateString(), 'animal_purpose' => in_array($animal->animal_purpose, ['breeding', 'replacement'], true) ? null : $animal->animal_purpose])->save();
+            Farm::event($animal, 'health', 'Castrated ('.self::CASTRATION_METHODS[$data['method']].'): now a wether, breeding blocked. Recovery check due '.$on->copy()->addDays(7)->format('j M').'.', $request->user()->name, $on);
+        });
+        Farm::log($request->user(), "Castration recorded for {$animal->farm_number}", "/goats/{$animal->id}");
+
+        return back()->with('success', "{$animal->farm_number} recorded as castrated: now a wether (WTH) and cannot be used as a sire.");
+    }
+
+    public const CASTRATION_METHODS = ['band' => 'Rubber ring / band', 'burdizzo' => 'Burdizzo (bloodless)', 'surgical' => 'Surgical'];
+
     public function teeth(Request $request, Animal $animal): RedirectResponse
     {
         abort_unless($request->user()->passes('edit_goats'), 403);
@@ -262,6 +287,8 @@ class GoatController extends Controller
                 ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('j M Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('j M Y')]),
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
+            'castration' => $animal->sex === 'male' ? ['on' => $animal->castrated_on?->format('j M Y'), 'methods' => self::CASTRATION_METHODS, 'can' => $request->user()->passes('clinical')] : null, // D-230
+            'roleLabels' => \App\Support\Designations::labels(\App\Support\Designations::codes($animal)),
             'dentalOptions' => ['codes' => \App\Support\Teeth::options(), 'conditions' => \App\Support\Teeth::CONDITIONS], // D-229
             'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats'), 'breeding' => $request->user()->canModule('breeding')],
             'pregnancy' => $animal->sex === 'female' ? \App\Support\Checkups::pregnancyThread($animal) : null, // D-100
@@ -359,9 +386,9 @@ class GoatController extends Controller
             if (config('kkfarm.demo')) { // D-228: only the demo install says so; the live farm's export is its real register
                 fputcsv($out, ['Synthetic demonstration data']);
             }
-            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Classification code', 'Age stage', 'Teeth', 'Dental condition', 'Pen', 'Status', 'Health', 'Latest weight (KG)']); // D-227: age stage code
+            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Classification code', 'Age stage', 'Teeth', 'Dental condition', 'Role codes', 'Pen', 'Status', 'Health', 'Latest weight (KG)']); // D-227: age stage code
             Animal::with(['breed', 'pen', 'latestWeight'])->orderBy('farm_number')->each(function (Animal $a) use ($out): void {
-                fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->classCode(), $a->ageStageCode(), \App\Support\Teeth::code($a->teeth), \App\Support\Teeth::CONDITIONS[$a->dental_condition] ?? null, $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
+                fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->classCode(), $a->ageStageCode(), \App\Support\Teeth::code($a->teeth), \App\Support\Teeth::CONDITIONS[$a->dental_condition] ?? null, implode(' ', \App\Support\Designations::codes($a)), $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
             });
             fclose($out);
         }, 'kk-farm-goat-register-demo.csv', ['Content-Type' => 'text/csv']);

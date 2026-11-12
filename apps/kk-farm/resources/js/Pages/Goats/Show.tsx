@@ -34,6 +34,8 @@ type Props = {
     pens: Array<{ id: number; name: string; purpose: string }>;
     can: { edit: boolean; remove: boolean; breeding: boolean };
     dentalOptions: { codes: Record<string, string>; conditions: Record<string, string> };
+    roleLabels: Record<string, string>;
+    castration: { on: string | null; methods: Record<string, string>; can: boolean } | null;
     outcomeOptions: OutcomeOptions;
     scanMating: { id: number; matedOnIso: string; day: number } | null; // D-166
     ultrasoundOptions: UltrasoundOptions;
@@ -50,7 +52,7 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration } = props;
     const [outcome, setOutcome] = useState(false); // D-161
     const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
@@ -130,6 +132,7 @@ export default function GoatShow(props: Props) {
                         </div>
                         <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft sm:text-base">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName size={22} /><span>·</span><AgeBadge stage={goat.stage} code={goat.ageCode} withLabel /><span>{goat.age}</span></p>
                         {goat.classification ? <p className="mt-1 inline-flex rounded-full bg-cobalt-900 px-3 py-1 text-sm font-semibold text-white">{goat.classification}</p> : null}
+                        {Object.keys(roleLabels).length ? <p className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Role codes">{Object.entries(roleLabels).map(([c, l], i) => <span key={c} className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${i === 0 ? 'bg-turq-100 text-turq-800' : 'bg-glaze text-cobalt-800 ring-1 ring-rule'}`}><span className="font-mono">{c}</span> · {l}</span>)}</p> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}
                             {fact('Recent daily gain', goat.adg !== null ? `${goat.adg} g/day` : '—')}
@@ -223,6 +226,7 @@ export default function GoatShow(props: Props) {
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
                                 {goat.ageCode ? fact('Classification code', <span className="font-mono font-semibold text-cobalt-900">{goat.ageCode}</span>) : null}
                                 {goat.ageStage ? fact('Age stage', `${goat.ageStage.code} · ${goat.ageStage.label} (${goat.ageStage.range})${goat.estimated ? ', age estimated' : ''}`) : null}
+                                {castration ? fact('Castration', <Castration goatId={goat.id} c={castration} onFarm={onFarm} />) : null}
                                 {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit} options={dentalOptions} />) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
@@ -528,6 +532,28 @@ function DentalFact({ dental, teeth, goatId, canEdit, options }: { dental: Denta
                 </form>
             ) : null}
             {dental.history.length > 1 ? <details className="mt-1 text-xs text-ink-soft"><summary className="cursor-pointer">Earlier checks</summary><ul className="mt-1 space-y-0.5">{dental.history.slice(1).map((h, i) => <li key={i}>{h.on}: {h.code}{h.condition ? ` · ${h.condition}` : ''}{h.by ? ` · ${h.by}` : ''}</li>)}</ul></details> : null}
+        </span>
+    );
+}
+
+/** D-230: a recorded castration makes the goat a wether (WTH) and blocks it as a sire; only the vet records it. */
+function Castration({ goatId, c, onFarm }: { goatId: string; c: { on: string | null; methods: Record<string, string>; can: boolean }; onFarm: boolean }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({ castrated_on: new Date().toISOString().slice(0, 10), method: Object.keys(c.methods)[0] ?? '', notes: '' });
+    if (c.on) return <span>Castrated {c.on} · wether, cannot be a sire</span>;
+    return (
+        <span className="block">
+            <span className="text-ink-soft">Intact</span>
+            {c.can && onFarm && !open ? <button type="button" className="ml-2 text-xs font-semibold text-cobalt-800 hover:underline" onClick={() => setOpen(true)}>Record castration</button> : null}
+            {open ? (
+                <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-2" onSubmit={(e) => { e.preventDefault(); form.post(`/goats/${goatId}/castration`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
+                    <Field label="Done on" error={form.errors.castrated_on}><input className="field" type="date" max={new Date().toISOString().slice(0, 10)} value={form.data.castrated_on} onChange={(e) => form.setData('castrated_on', e.target.value)} /></Field>
+                    <Field label="Method" error={form.errors.method}><select className="field" value={form.data.method} onChange={(e) => form.setData('method', e.target.value)}>{Object.entries(c.methods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <Field label="Notes" error={form.errors.notes}><input className="field" value={form.data.notes} onChange={(e) => form.setData('notes', e.target.value)} /></Field>
+                    <Note>The goat becomes a wether and can no longer be chosen as a sire. A breeding purpose is cleared. A recovery check is due in 7 days.</Note>
+                    <span className="flex gap-2"><Button type="submit" disabled={form.processing}>Save castration</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></span>
+                </form>
+            ) : null}
         </span>
     );
 }
