@@ -1,9 +1,9 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { Button, Field, PageHeader, Panel } from '../components/ui';
 
-type Breed = { id: number; name: string; code: string; next: string; gestation: number | null; lightBelow: number | null; goats: number };
+type Breed = { id: number; name: string; code: string; next: string; gestation: number | null; lightBelow: number | null; goats: number; used: number };
 type Props = { section: 'breeds' | 'ages' | 'system' | null; ages: { growerFrom: number; adultFrom: number }; breeds: Breed[]; counts: { users: number; fields: number; overrides: number }; environment: Record<string, string> };
 
 /** D-215: each settings page stands on its own; /settings is the master page that links to all of them. */
@@ -39,7 +39,7 @@ function Breeds({ breeds }: { breeds: Breed[] }) {
     const form = useForm({ name: '', code: '' });
     return (
         <Panel flush>
-            <ul className="divide-y divide-rule text-sm">{breeds.map((b) => <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2"><span className="font-medium">{b.name} <span className="ml-1 rounded-[4px] bg-cobalt-100 px-1.5 py-0.5 font-mono text-xs text-cobalt-800">{b.code}</span></span><span className="text-right text-sm text-ink-soft">{b.goats} goats · next {b.next}</span><LightLine id={b.id} value={b.lightBelow} /></li>)}</ul>
+            <ul className="divide-y divide-rule text-sm">{breeds.map((b) => <BreedRow key={b.id} b={b} />)}</ul>
             <p className="border-t border-rule px-4 py-2 text-xs text-ink-soft">Light Below: a goat with no teeth recorded is aged from its first weighing, about 7 months under this weight and about 10 months at or over it. Leave empty for no estimate.</p>
             <form onSubmit={(e) => { e.preventDefault(); form.post('/settings/breeds', { preserveScroll: true, onSuccess: () => form.reset() }); }} className="flex items-end gap-2 border-t border-rule p-4">
                 <div className="flex-1"><Field label="Add a breed" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} /></Field></div>
@@ -47,6 +47,43 @@ function Breeds({ breeds }: { breeds: Breed[] }) {
                 <Button type="submit" disabled={form.processing}>Add</Button>
             </form>
         </Panel>
+    );
+}
+
+/** D-219: one breed: edit its name and tag code, or delete it when no goat or record uses it. */
+function BreedRow({ b }: { b: Breed }) {
+    const [editing, setEditing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const form = useForm({ name: b.name, code: b.code });
+    const remove = () => {
+        if (!window.confirm(`Delete the breed ${b.name}?`)) return;
+        router.delete(`/settings/breeds/${b.id}`, { preserveScroll: true, onError: (e) => setError(e.breed ?? 'Could not delete.') });
+    };
+    if (editing) {
+        return (
+            <li className="px-4 py-3">
+                <form onSubmit={(e) => { e.preventDefault(); form.post(`/settings/breeds/${b.id}/edit`, { preserveScroll: true, onSuccess: () => setEditing(false) }); }} className="flex flex-wrap items-end gap-2">
+                    <div className="min-w-48 flex-1"><Field label="Breed name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} autoFocus /></Field></div>
+                    <div className="w-24"><Field label="Tag code" error={form.errors.code}><input className="field font-mono uppercase" maxLength={8} value={form.data.code} onChange={(e) => form.setData('code', e.target.value.toUpperCase())} /></Field></div>
+                    <Button type="submit" disabled={form.processing || !form.isDirty}>Save</Button>
+                    <Button type="button" variant="secondary" onClick={() => { form.reset(); form.clearErrors(); setEditing(false); }}>Cancel</Button>
+                </form>
+                {b.goats && form.data.code !== b.code ? <p className="mt-1 text-xs text-ink-soft">Goats already tagged keep their Tag ID. New tags will start with {form.data.code || '…'}.</p> : null}
+            </li>
+        );
+    }
+    return (
+        <li className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
+            <span className="font-medium">{b.name} <span className="ml-1 rounded-[4px] bg-cobalt-100 px-1.5 py-0.5 font-mono text-xs text-cobalt-800">{b.code}</span></span>
+            <span className="ml-auto text-right text-sm text-ink-soft">{b.goats} goats · next {b.next}</span>
+            <span className="flex gap-1">
+                <button type="button" className="inline-flex min-h-9 items-center gap-1 rounded-tile px-2 text-xs font-semibold text-cobalt-800 hover:bg-glaze" onClick={() => setEditing(true)}><Pencil size={14} aria-hidden /> Edit</button>
+                <button type="button" className="inline-flex min-h-9 items-center gap-1 rounded-tile px-2 text-xs font-semibold text-crit-700 hover:bg-crit-100 disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-transparent" disabled={b.used > 0} title={b.used > 0 ? `${b.used} goats or records use this breed, so it stays` : undefined} onClick={remove}><Trash2 size={14} aria-hidden /> Delete</button>
+            </span>
+            <LightLine id={b.id} value={b.lightBelow} />
+            {b.used > 0 && !b.goats ? <p className="w-full text-xs text-ink-faint">Used by {b.used} past goats or records, so it cannot be deleted.</p> : null}
+            {error ? <p className="w-full text-xs font-semibold text-crit-700">{error}</p> : null}
+        </li>
     );
 }
 

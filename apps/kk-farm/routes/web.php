@@ -469,6 +469,8 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/settings/users/{id}/access', [\App\Http\Controllers\AccessController::class, 'saveUser'])->whereNumber('id');
         Route::post('/settings/breeds', [SettingsController::class, 'addBreed']);
         Route::post('/settings/breeds/{breed}', [SettingsController::class, 'updateBreed']);
+        Route::post('/settings/breeds/{breed}/edit', [SettingsController::class, 'editBreed']); // D-219
+        Route::delete('/settings/breeds/{breed}', [SettingsController::class, 'deleteBreed']); // D-219
         Route::post('/settings/ages', [SettingsController::class, 'updateAges']);
         Route::get('/settings/users', [UserController::class, 'index']);
         Route::post('/settings/users', [UserController::class, 'store']);

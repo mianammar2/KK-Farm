@@ -20,7 +20,7 @@ class SettingsController extends Controller
 
         return Inertia::render('Settings', [
             'section' => $section,
-            'breeds' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'next' => $b->nextTagId(), 'gestation' => $b->default_gestation_days, 'lightBelow' => $b->young_below_kg !== null ? (float) $b->young_below_kg : null, 'goats' => Animal::active()->where('breed_id', $b->id)->count()]),
+            'breeds' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'next' => $b->nextTagId(), 'gestation' => $b->default_gestation_days, 'lightBelow' => $b->young_below_kg !== null ? (float) $b->young_below_kg : null, 'goats' => Animal::active()->where('breed_id', $b->id)->count(), 'used' => self::breedUses($b)]),
             'ages' => ['growerFrom' => \App\Support\Classification::boundaries()[0], 'adultFrom' => \App\Support\Classification::boundaries()[1]],
             'counts' => ['users' => \App\Models\User::where('org_id', $org)->where('active', true)->count(), 'fields' => \App\Models\FieldDefinition::count(),
                 'overrides' => \App\Models\User::where('org_id', $org)->get()->filter(fn ($u) => ! empty($u->module_access) || ! empty($u->gate_access))->count()],
@@ -50,6 +50,42 @@ class SettingsController extends Controller
         Farm::log($request->user(), "Set {$breed->name} light weight line to ".($data['young_below_kg'] ?? 'none').' KG', '/settings');
 
         return back()->with('success', "{$breed->name}: saved. Goats with no teeth get their age from their first weighing.");
+    }
+
+    /** D-219: rename a breed or change its tag code. Tags already given keep their ID; new tags use the new code. */
+    public function editBreed(Request $request, Breed $breed): RedirectResponse
+    {
+        $request->merge(['code' => Breed::normaliseCode((string) $request->input('code'))]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:60', \Illuminate\Validation\Rule::unique('breeds', 'name')->ignore($breed->id)],
+            'code' => ['required', 'string', 'min:1', 'max:8', \Illuminate\Validation\Rule::unique('breeds', 'code')->ignore($breed->id)],
+        ]);
+        $was = "{$breed->name} ({$breed->code})";
+        $breed->update($data);
+        Farm::log($request->user(), "Changed breed {$was} to {$data['name']} ({$data['code']})", '/settings/breeds');
+
+        return back()->with('success', "{$data['name']}: saved. Tags already given keep their ID; new tags start with {$data['code']}.");
+    }
+
+    /** D-219: delete a breed nothing uses. A breed on any goat (also sold or dead ones) or record stays, so history is kept. */
+    public function deleteBreed(Request $request, Breed $breed): RedirectResponse
+    {
+        $used = self::breedUses($breed);
+        if ($used) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['breed' => "{$breed->name} cannot be deleted: {$used} goats or records use it. Change their breed first."]);
+        }
+        $breed->delete();
+        Farm::log($request->user(), "Deleted breed {$breed->name} ({$breed->code})", '/settings/breeds');
+
+        return back()->with('success', "{$breed->name} deleted.");
+    }
+
+    /** How many rows of any table (goats in every status, purchase lots, plans, standards) point at this breed. */
+    public static function breedUses(Breed $breed): int
+    {
+        $tables = \App\Support\Tenant::memo('breed_id_tables', fn () => collect(\Illuminate\Support\Facades\DB::select("select table_name from information_schema.columns where table_schema = current_schema() and column_name = 'breed_id' and table_name <> 'breeds'"))->pluck('table_name')->all());
+
+        return collect($tables)->sum(fn ($t) => \Illuminate\Support\Facades\DB::table($t)->where('breed_id', $breed->id)->count());
     }
 
     /** Age category boundaries for this farm (D-047): Kid below the first, Adult from the second, Grower between. */
