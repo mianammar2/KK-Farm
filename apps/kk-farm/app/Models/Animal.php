@@ -143,6 +143,7 @@ class Animal extends Model
             'age' => $this->ageLabel(),
             'stage' => $this->effectiveAge(), // D-148: kid | grower | adult, for the age symbol
             'teeth' => $this->teeth, // D-106
+            'ageCode' => $this->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($this->birth_date, $this->exit_date))?->code : null, // D-221
             'ageMonths' => $this->birth_date ? (int) $this->birth_date->diffInMonths($this->exit_date ?? now()) : null,
             'pen' => $this->pen?->fullName(),
             'penId' => $this->pen_id,

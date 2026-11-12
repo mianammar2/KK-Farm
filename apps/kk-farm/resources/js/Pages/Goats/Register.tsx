@@ -10,7 +10,8 @@ type Choice = { value: string | number; label: string; next?: string; nextNumber
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
-type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; canAssignTags: boolean; untagged: Option[];
+type AgeStage = { code: string; label: string; group: string; from: number; to: number | null; teeth: string | null; teethLabel: string | null };
+type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; ageStages: AgeStage[]; canAssignTags: boolean; untagged: Option[];
     goat?: { id: string; number: string; values: Record<string, any> } };
 
 /** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
@@ -21,7 +22,7 @@ const TEMP_HIGH = 103.5;
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
-export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, canAssignTags, untagged, goat }: Props) {
+export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, ageStages, canAssignTags, untagged, goat }: Props) {
     const editing = Boolean(goat);
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
     const [estMonths, setEstMonths] = useState('');
@@ -59,6 +60,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
         return acc;
     }, []);
     const started = Boolean(form.data.origin);
+    const teethLabels: Record<string, string> = Object.fromEntries((fields.find((f) => f.key === 'teeth')?.options ?? []).map((o) => [String(o.value), o.label])); // D-221
     const shown = started ? sections : sections.filter((s) => s.fields.some((f) => f.key === 'origin')).map((s) => ({ ...s, fields: s.fields.filter((f) => f.key === 'origin') }));
     const labelFor = (f: FieldDef) => (f.key === 'acquired_on' && form.data.origin === 'transferred_in' && f.label === 'Purchase Date' ? 'Arrival Date' : f.label);
 
@@ -351,6 +353,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                             ))}
                         </div>
                         {!started ? <p className="mt-3 text-sm text-ink-soft">Choose how the goat came to the farm. The rest of the form follows from it.</p> : null}
+                        {section.name === 'Birth' && started ? <AgeStageNote stages={ageStages} birth={form.data.birth_date} teeth={form.data.teeth} teethLabels={teethLabels} /> : null}
                         {section.name === 'Classification' ? <GeneratedClassification text={summary} /> : null}
                     </Panel>
                     </Fragment>
@@ -376,6 +379,21 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                 </Panel>
             ) : null}
         </>
+    );
+}
+
+/** D-221: the age stage that follows from the birth date (or the estimate), worked out as the form is filled in. */
+function AgeStageNote({ stages, birth, teeth, teethLabels }: { stages: AgeStage[]; birth?: string; teeth?: string; teethLabels: Record<string, string> }) {
+    if (!birth) return <p className="mt-3 text-sm text-ink-soft">The age stage (ERP code) appears here once the birth date, estimated age or teeth are filled in.</p>;
+    const months = (Date.now() - new Date(`${birth}T12:00:00`).getTime()) / 86400000 / 30.4375;
+    const s = stages.find((x) => months >= x.from && (x.to === null || months < x.to));
+    if (!s) return <p className="mt-3 text-sm text-ink-soft">No age stage covers {Math.floor(months)} months. Add one in Settings → Age Groups.</p>;
+    const off = teeth && s.teeth && teeth !== s.teeth;
+    return (
+        <div className={`mt-3 rounded-tile px-3 py-2 text-sm ${off ? 'bg-watch-100 text-watch-700' : 'bg-glaze text-cobalt-900'}`}>
+            <strong className="font-mono">{s.code}</strong> · {s.label} · {s.to === null ? `${s.from}+ months` : `${s.from}–${s.to} months`}{s.teethLabel ? ` · ${s.teethLabel}` : ''}
+            {off ? <span className="block text-xs font-semibold">The teeth entered ({teethLabels[teeth] ?? teeth}) do not match this age. Check the teeth or the birth date.</span> : null}
+        </div>
     );
 }
 

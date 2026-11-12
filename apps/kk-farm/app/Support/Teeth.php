@@ -12,13 +12,13 @@ use Illuminate\Support\Collection;
 final class Teeth
 {
     /** key => [label, from, to, estimate] */
-    public const DEFAULTS = [
-        'milk' => ['Milk teeth only', 0, 12, 8],
-        '2' => ['2 teeth', 12, 18, 15],
-        '4' => ['4 teeth', 18, 24, 21],
-        '6' => ['6 teeth', 30, 36, 32],
-        '8' => ['8 teeth, full mouth', 36, 48, 42],
-        'worn' => ['Worn or broken mouth', 60, null, 66],
+    public const DEFAULTS = [ // D-221: KK Farms age & teeth table
+        'milk' => ['Milk Teeth', 0, 14, 8],
+        '2' => ['2 Permanent Teeth', 14, 18, 16],
+        '4' => ['4 Permanent Teeth', 18, 24, 21],
+        '6' => ['6 Permanent Teeth', 24, 30, 27],
+        '8' => ['8 Permanent Teeth', 30, 48, 39],
+        'worn' => ['Broken Teeth', 48, null, 54],
     ];
 
     /** @return Collection<int, TeethStage> */

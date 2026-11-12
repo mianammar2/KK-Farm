@@ -16,7 +16,7 @@ import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, LibIcon, Note, P
 import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
-type Goat = GoatCard & { withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Goat = GoatCard & { ageStage?: { code: string; label: string; teeth: string | null; match: boolean } | null; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
@@ -219,6 +219,7 @@ export default function GoatShow(props: Props) {
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
+                                {goat.ageStage ? fact('Age stage', <span>{goat.ageStage.code} · {goat.ageStage.label}{goat.ageStage.teeth ? ` · expected ${goat.ageStage.teeth}` : ''}{!goat.ageStage.match ? <span className="block text-xs font-semibold text-watch-700">Recorded teeth do not match this age: check the teeth or the birth date.</span> : null}</span>) : null}
                                 {goat.teeth ? fact('Teeth', goat.teeth) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}

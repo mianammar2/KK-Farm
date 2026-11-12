@@ -6,7 +6,8 @@ import { Button, Field, PageHeader, Panel } from '../components/ui';
 type Breed = { id: number; name: string; code: string; next: string; gestation: number | null; lightBelow: number | null; goats: number; used: number };
 type Group = { key: string; label: string; goats: number };
 type Tooth = { id: number; key: string; label: string; from: number; to: number | null; estimate: number; goats: number };
-type Props = { section: 'breeds' | 'ages' | 'system' | null; ages: { growerFrom: number; adultFrom: number; groups: Group[] }; teeth: Tooth[]; breeds: Breed[]; counts: { users: number; fields: number; overrides: number }; environment: Record<string, string> };
+type Stage = { id: number; code: string; label: string; group: string; from: number; to: number | null; teeth: string | null; teethLabel: string | null; goats: number };
+type Props = { stages: Stage[]; section: 'breeds' | 'ages' | 'system' | null; ages: { growerFrom: number; adultFrom: number; groups: Group[] }; teeth: Tooth[]; breeds: Breed[]; counts: { users: number; fields: number; overrides: number }; environment: Record<string, string> };
 
 /** D-215: each settings page stands on its own; /settings is the master page that links to all of them. */
 const PAGES = [
@@ -21,7 +22,7 @@ const PAGES = [
 export default function Settings(p: Props) {
     const back = <Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>;
     if (p.section === 'breeds') return <><Head title="Breeds" /><PageHeader title="Breeds" description="Breed names, the code each tag starts with, and the light weight line used to estimate age." actions={back} /><div className="max-w-2xl"><Breeds breeds={p.breeds} /></div></>;
-    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="Age groups are worked out from each goat's birth date. Teeth give a bought goat's estimated birth date." actions={back} /><div className="max-w-3xl space-y-4"><Ages ages={p.ages} /><TeethStages teeth={p.teeth} ages={p.ages} /></div></>;
+    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="Each goat's age stage (ERP code) is worked out from its birth date as it grows, and shown when registering. Teeth give a bought goat's estimated birth date." actions={back} /><div className="max-w-5xl space-y-4"><AgeStagesPanel stages={p.stages} teeth={p.teeth} /><TeethStages teeth={p.teeth} ages={p.ages} /></div></>;
     if (p.section === 'system') return <><Head title="System" /><PageHeader title="System" actions={back} /><Panel className="max-w-xl"><dl className="space-y-1 text-sm">{Object.entries(p.environment).map(([k, v]) => <div key={k} className="flex justify-between gap-2"><dt className="text-ink-soft capitalize">{k}</dt><dd className="font-medium">{v}</dd></div>)}</dl></Panel></>;
     return (
         <>
@@ -95,36 +96,68 @@ const delBtn = 'inline-flex min-h-9 items-center gap-1 rounded-tile px-2 text-xs
 const range = (from: number, to: number | null) => (to === null ? `${from} months and older` : `${from}–${to} months`);
 const groupOf = (months: number, a: Props['ages']) => (months < a.growerFrom ? 'Kid' : months < a.adultFrom ? 'Grower' : 'Adult');
 
-/** D-220: the three age groups as rows, like Breeds. Each row edits its own boundary; Kid, Grower and Adult drive feeding and the goat category, so they are not deleted. */
-function Ages({ ages }: { ages: Props['ages'] }) {
-    const [editing, setEditing] = useState<string | null>(null);
-    const form = useForm({ grower_from_months: ages.growerFrom, adult_from_months: ages.adultFrom });
-    const bounds: Record<string, [number, number | null]> = { kid: [0, ages.growerFrom], grower: [ages.growerFrom, ages.adultFrom], adult: [ages.adultFrom, null] };
-    const num = (k: 'grower_from_months' | 'adult_from_months', label: string) => (
-        <div className="w-36"><Field label={label} error={form.errors[k]}><input className="field" type="number" min={1} max={60} inputMode="numeric" value={form.data[k]} onChange={(e) => form.setData(k, Number(e.target.value))} autoFocus /></Field></div>
-    );
+const GROUP_LABEL: Record<string, string> = { kid: 'Kid', grower: 'Grower', adult: 'Adult' };
+type StageForm = { data: { code: string; label: string; age_group: string; from_months: string; to_months: string; teeth_key: string }; errors: Partial<Record<string, string>>; setData: (k: 'code' | 'label' | 'age_group' | 'from_months' | 'to_months' | 'teeth_key', v: string) => void };
+const blankStage = { code: '', label: '', age_group: 'adult', from_months: '', to_months: '', teeth_key: '' };
+const stageTo = (d: StageForm['data']) => ({ ...d, to_months: d.to_months === '' ? null : d.to_months, teeth_key: d.teeth_key || null });
+
+/** D-221: the farm's age stages (ERP code, category, age, teeth), like Breeds: add, edit, delete. */
+function AgeStagesPanel({ stages, teeth }: { stages: Stage[]; teeth: Tooth[] }) {
+    const add = useForm(blankStage);
     return (
-        <Panel flush title="Age Groups">
-            <ul className="divide-y divide-rule text-sm">{ages.groups.map((g) => editing === g.key ? (
-                <li key={g.key} className="px-4 py-3">
-                    <form onSubmit={(e) => { e.preventDefault(); form.post('/settings/ages', { preserveScroll: true, onSuccess: () => setEditing(null) }); }} className="flex flex-wrap items-end gap-2">
-                        <strong className="mr-2 self-center">{g.label}</strong>
-                        {g.key === 'kid' ? num('grower_from_months', 'Kid until (months)') : null}
-                        {g.key === 'grower' ? <>{num('grower_from_months', 'From (months)')}{num('adult_from_months', 'Until (months)')}</> : null}
-                        {g.key === 'adult' ? num('adult_from_months', 'From (months)') : null}
-                        <Button type="submit" disabled={form.processing || !form.isDirty}>Save</Button>
-                        <Button type="button" variant="secondary" onClick={() => { form.reset(); form.clearErrors(); setEditing(null); }}>Cancel</Button>
-                    </form>
-                </li>
-            ) : (
-                <li key={g.key} className={rowCls}>
-                    <span className="font-medium">{g.label}</span>
-                    <span className="ml-auto text-right text-ink-soft">{range(...bounds[g.key])} · {g.goats} goats</span>
-                    <button type="button" className={editBtn} onClick={() => { form.reset(); setEditing(g.key); }}><Pencil size={14} aria-hidden /> Edit</button>
-                </li>
-            ))}</ul>
-            <p className="border-t border-rule px-4 py-2 text-xs text-ink-soft">Kid, Grower and Adult set feeding amounts and the goat category, so they can be changed but not deleted. Every goat is regrouped from its birth date when you save.</p>
+        <Panel flush title="Age Stages" description="'Counts as' decides feeding amounts and the goat category. Kid, Grower and Adult start where the first stage of each begins.">
+            <div className="overflow-x-auto"><table className="data-table min-w-[720px]">
+                <thead><tr><th>ERP Code</th><th>Age Category</th><th>Age</th><th>Teeth</th><th>Counts as</th><th className="text-right">Goats</th><th /></tr></thead>
+                <tbody>{stages.map((st) => <StageRow key={st.id} st={st} teeth={teeth} />)}</tbody>
+            </table></div>
+            <form onSubmit={(e) => { e.preventDefault(); add.transform(stageTo); add.post('/settings/stages', { preserveScroll: true, onSuccess: () => add.reset() }); }} className="flex flex-wrap items-end gap-2 border-t border-rule p-4">
+                <StageFields form={add} teeth={teeth} />
+                <Button type="submit" disabled={add.processing}>Add</Button>
+            </form>
         </Panel>
+    );
+}
+
+function StageFields({ form, teeth }: { form: StageForm; teeth: Tooth[] }) {
+    const n = (k: 'from_months' | 'to_months', label: string, ph?: string) => <div className="w-24"><Field label={label} error={form.errors[k]}><input className="field" type="number" min={0} max={240} step={0.5} inputMode="decimal" placeholder={ph} value={form.data[k]} onChange={(e) => form.setData(k, e.target.value)} /></Field></div>;
+    return (
+        <>
+            <div className="w-28"><Field label="ERP Code" error={form.errors.code}><input className="field font-mono uppercase" maxLength={12} value={form.data.code} onChange={(e) => form.setData('code', e.target.value.toUpperCase())} placeholder="ADT-T04" /></Field></div>
+            <div className="w-36"><Field label="Age Category" error={form.errors.label}><input className="field" value={form.data.label} onChange={(e) => form.setData('label', e.target.value)} placeholder="Adult" /></Field></div>
+            {n('from_months', 'From (months)')}{n('to_months', 'To (months)', 'Older')}
+            <div className="w-44"><Field label="Teeth" error={form.errors.teeth_key}><select className="field" value={form.data.teeth_key} onChange={(e) => form.setData('teeth_key', e.target.value)}><option value="">Not set</option>{teeth.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}</select></Field></div>
+            <div className="w-28"><Field label="Counts as" error={form.errors.age_group}><select className="field" value={form.data.age_group} onChange={(e) => form.setData('age_group', e.target.value)}>{Object.entries(GROUP_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field></div>
+        </>
+    );
+}
+
+function StageRow({ st, teeth }: { st: Stage; teeth: Tooth[] }) {
+    const [editing, setEditing] = useState(false);
+    const form = useForm({ code: st.code, label: st.label, age_group: st.group, from_months: String(st.from), to_months: st.to === null ? '' : String(st.to), teeth_key: st.teeth ?? '' });
+    if (editing) {
+        return (
+            <tr><td colSpan={7}>
+                <form onSubmit={(e) => { e.preventDefault(); form.transform(stageTo); form.post(`/settings/stages/${st.id}`, { preserveScroll: true, onSuccess: () => setEditing(false) }); }} className="flex flex-wrap items-end gap-2 py-1">
+                    <StageFields form={form} teeth={teeth} />
+                    <Button type="submit" disabled={form.processing || !form.isDirty}>Save</Button>
+                    <Button type="button" variant="secondary" onClick={() => { form.reset(); form.clearErrors(); setEditing(false); }}>Cancel</Button>
+                </form>
+            </td></tr>
+        );
+    }
+    return (
+        <tr>
+            <td className="font-mono font-semibold">{st.code}</td>
+            <td>{st.label}</td>
+            <td>{st.to === null ? `${st.from} months and above` : `${st.from}–${st.to} months`}</td>
+            <td>{st.teethLabel ?? <span className="text-ink-faint">Not set</span>}</td>
+            <td>{GROUP_LABEL[st.group] ?? st.group}</td>
+            <td className="text-right">{st.goats}</td>
+            <td className="text-right whitespace-nowrap">
+                <button type="button" className={editBtn} onClick={() => setEditing(true)}><Pencil size={14} aria-hidden /> Edit</button>
+                <button type="button" className={delBtn} onClick={() => { if (window.confirm(`Delete the age stage ${st.code}?`)) router.delete(`/settings/stages/${st.id}`, { preserveScroll: true }); }}><Trash2 size={14} aria-hidden /> Delete</button>
+            </td>
+        </tr>
     );
 }
 

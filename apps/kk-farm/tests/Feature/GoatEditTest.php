@@ -149,7 +149,7 @@ class GoatEditTest extends TestCase
         $this->actingAs($vet)->post("/goats/{$born->id}/teeth", ['teeth' => '2'])->assertSessionHasNoErrors();
         $this->assertSame(['2', now()->subMonths(10)->toDateString()], [$born->fresh()->teeth, $born->fresh()->birth_date->toDateString()], 'a real birth date is kept');
 
-        $this->actingAs($this->user('ceo'))->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p->where('canEdit', true)->where('teethOptions.4', '4 teeth (18–24 months)')
+        $this->actingAs($this->user('ceo'))->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p->where('canEdit', true)->where('teethOptions.4', '4 Permanent Teeth (18–24 months)')
             ->where('goats', fn ($g) => collect($g)->firstWhere('number', 'TD141026-04')['teeth'] === '4' && collect($g)->firstWhere('number', 'TD141026-04')['ageMonths'] === 21));
         $this->actingAs($this->user('caretaker'))->post("/goats/{$bought->id}/teeth", ['teeth' => '6'])->assertForbidden();
     }

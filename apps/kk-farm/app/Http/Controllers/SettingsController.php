@@ -23,6 +23,7 @@ class SettingsController extends Controller
             'breeds' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'next' => $b->nextTagId(), 'gestation' => $b->default_gestation_days, 'lightBelow' => $b->young_below_kg !== null ? (float) $b->young_below_kg : null, 'goats' => Animal::active()->where('breed_id', $b->id)->count(), 'used' => self::breedUses($b)]),
             'ages' => ['growerFrom' => \App\Support\Classification::boundaries()[0], 'adultFrom' => \App\Support\Classification::boundaries()[1],
                 'groups' => $section !== 'ages' ? [] : collect(\App\Support\Classification::AGE_CATEGORIES)->map(fn ($label, $key) => ['key' => $key, 'label' => $label, 'goats' => Animal::active()->get(['birth_date'])->filter(fn ($a) => \App\Support\Classification::ageCategory($a->birth_date) === $key)->count()])->values()],
+            'stages' => $section === 'ages' ? self::stageRows() : [],
             'teeth' => $section === 'ages' ? \App\Support\Teeth::stages()->map(fn (\App\Models\TeethStage $t) => ['id' => $t->id, 'key' => $t->key, 'label' => $t->label, 'from' => $t->from_months, 'to' => $t->to_months, 'estimate' => $t->estimate_months,
                 'goats' => Animal::where('teeth', $t->key)->count()])->values() : [],
             'counts' => ['users' => \App\Models\User::where('org_id', $org)->where('active', true)->count(), 'fields' => \App\Models\FieldDefinition::count(),
@@ -89,6 +90,71 @@ class SettingsController extends Controller
         $tables = \App\Support\Tenant::memo('breed_id_tables', fn () => collect(\Illuminate\Support\Facades\DB::select("select table_name from information_schema.columns where table_schema = current_schema() and column_name = 'breed_id' and table_name <> 'breeds'"))->pluck('table_name')->all());
 
         return collect($tables)->sum(fn ($t) => \Illuminate\Support\Facades\DB::table($t)->where('breed_id', $breed->id)->count());
+    }
+
+    /** D-221: the age stages with how many active goats are in each today. */
+    private static function stageRows(): array
+    {
+        $teeth = \App\Support\Teeth::short();
+        $ages = Animal::active()->whereNotNull('birth_date')->pluck('birth_date')->map(fn ($d) => \App\Support\AgeStages::months(\Illuminate\Support\Carbon::parse($d)));
+
+        return \App\Support\AgeStages::stages()->map(fn (\App\Models\AgeStage $s) => ['id' => $s->id, 'code' => $s->code, 'label' => $s->label, 'group' => $s->age_group,
+            'from' => $s->from_months, 'to' => $s->to_months, 'teeth' => $s->teeth_key, 'teethLabel' => $teeth[$s->teeth_key] ?? null,
+            'goats' => $ages->filter(fn ($m) => $s->contains($m))->count()])->values()->all();
+    }
+
+    /** D-221: add, edit or delete an age stage. Kid / Grower / Adult boundaries follow the stages. */
+    public function addStage(Request $request): RedirectResponse
+    {
+        \App\Support\AgeStages::stages();
+        $data = $this->stageData($request);
+        \App\Models\AgeStage::create($data + ['sort' => (int) ($data['from_months'] * 10)]);
+        \App\Support\AgeStages::syncGroups();
+        Farm::log($request->user(), "Added age stage {$data['code']} {$data['label']}", '/settings/ages');
+
+        return back()->with('success', "{$data['code']} added.");
+    }
+
+    public function editStage(Request $request, \App\Models\AgeStage $stage): RedirectResponse
+    {
+        $data = $this->stageData($request, $stage->id);
+        $was = $stage->code;
+        $stage->update($data);
+        \App\Support\AgeStages::syncGroups();
+        Farm::log($request->user(), "Changed age stage {$was} to {$data['code']} {$data['label']}", '/settings/ages');
+
+        return back()->with('success', "{$data['code']} saved. Every goat's stage follows its age.");
+    }
+
+    public function deleteStage(Request $request, \App\Models\AgeStage $stage): RedirectResponse
+    {
+        $stage->delete();
+        \App\Support\AgeStages::syncGroups();
+        Farm::log($request->user(), "Deleted age stage {$stage->code} {$stage->label}", '/settings/ages');
+
+        return back()->with('success', "{$stage->code} deleted.");
+    }
+
+    private function stageData(Request $request, ?int $ignore = null): array
+    {
+        $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:12', 'regex:/^[A-Z0-9-]+$/', \Illuminate\Validation\Rule::unique('age_stages', 'code')->ignore($ignore)],
+            'label' => ['required', 'string', 'max:40'],
+            'age_group' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Support\Classification::AGE_CATEGORIES))],
+            'from_months' => ['required', 'numeric', 'min:0', 'max:240'],
+            'to_months' => ['nullable', 'numeric', 'gt:from_months', 'max:240'],
+            'teeth_key' => ['nullable', \Illuminate\Validation\Rule::in(array_map('strval', array_keys(\App\Support\Teeth::options())))],
+        ], ['code.regex' => 'Use capital letters, numbers and dashes, e.g. ADT-T04.']);
+        $data['to_months'] ??= null;
+        $data['teeth_key'] ??= null;
+        $overlap = \App\Models\AgeStage::when($ignore, fn ($q) => $q->where('id', '!=', $ignore))->get()
+            ->first(fn ($s) => $data['from_months'] < ($s->to_months ?? INF) && $s->from_months < ($data['to_months'] ?? INF));
+        if ($overlap) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['from_months' => "These months overlap {$overlap->code} ({$overlap->from_months}–".($overlap->to_months ?? '…').').']);
+        }
+
+        return $data;
     }
 
     /** D-220: add a teeth stage. Its short key never changes, because goats store it; the name can change freely. */

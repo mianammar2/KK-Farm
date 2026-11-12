@@ -176,6 +176,7 @@ class GoatController extends Controller
                 'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
             ],
             'teethMonths' => \App\Support\Teeth::months(), // D-220
+            'ageStages' => \App\Support\AgeStages::stages()->map(fn ($s) => ['code' => $s->code, 'label' => $s->label, 'group' => $s->age_group, 'from' => $s->from_months, 'to' => $s->to_months, 'teeth' => $s->teeth_key, 'teethLabel' => \App\Support\Teeth::short()[$s->teeth_key] ?? null])->values(), // D-221
             'classSex' => GoatRegistration::classSex(),
             'classification' => [
                 'categories' => array_map(fn (array $c) => $c[0], Classification::CATEGORIES),
@@ -230,6 +231,8 @@ class GoatController extends Controller
                 'identity' => $animal->id,
                 'removal' => $animal->removal_requested_at || $animal->status === 'voided' ? ['by' => $animal->removal_requested_by, 'on' => $animal->removal_requested_at?->format('j M Y g:i A'), 'reason' => $animal->removal_reason, 'voidedBy' => $animal->voided_by, 'voidedOn' => $animal->voided_at?->format('j M Y g:i A')] : null, // D-091
                 'teeth' => $animal->teeth ? (\App\Support\Teeth::options()[$animal->teeth] ?? $animal->teeth) : null,
+                'ageStage' => ($st = $animal->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($animal->birth_date, $animal->exit_date)) : null)
+                    ? ['code' => $st->code, 'label' => $st->label, 'teeth' => \App\Support\Teeth::short()[$st->teeth_key] ?? null, 'match' => ! $animal->teeth || ! $st->teeth_key || $animal->teeth === $st->teeth_key] : null, // D-221
                 'classification' => $animal->classification(),
                 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null),
                 'dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null),
