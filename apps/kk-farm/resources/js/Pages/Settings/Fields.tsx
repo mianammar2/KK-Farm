@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import DeleteButton from '../../components/DeleteButton';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import { useState } from 'react';
@@ -77,6 +78,7 @@ function FieldRow({ field }: { field: Def }) {
                         </>
                     ) : null}
                     <Button type="submit" variant="secondary" disabled={!form.isDirty || form.processing}>Save</Button>
+                    {!field.builtin ? <DeleteButton type="field" id={field.id} name={field.label} /> : null}
                 </div>
             </form>
         </li>

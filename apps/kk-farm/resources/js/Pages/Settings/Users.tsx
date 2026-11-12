@@ -1,4 +1,5 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import DeleteButton from '../../components/DeleteButton';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
@@ -65,6 +66,7 @@ function Departments({ departments }: { departments: D[] }) {
                                     <span className="flex-1 font-medium text-cobalt-900">{d.name}</span>
                                     <span className="text-sm text-ink-soft">{d.users} {d.users === 1 ? 'person' : 'people'}</span>
                                     <button type="button" className="text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => { setEditing(d); rename.setData('name', d.name); rename.clearErrors(); }}>Rename</button>
+                                    <DeleteButton type="department" id={d.id} name={d.name} />
                                 </>
                             )}
                         </li>

@@ -48,15 +48,29 @@ final class Designations
      * D-239: each code as the farm set it (Settings → Automation Rules), else the framework default:
      * code => [gender, purpose, category, label, starting age stage].
      */
-    public static function picks(): array
+    public static function picks(bool $withOff = false): array
     {
-        return Tenant::memo('role_codes', function () {
+        $all = Tenant::memo('role_codes', function () {
             $saved = Tenant::current() ? \App\Models\RoleCode::all()->keyBy('code') : collect();
+            $out = collect(self::PICK)->map(fn ($p, $c) => ($r = $saved[$c] ?? null)
+                ? [$p[0], $r->purpose, $r->animal_class, $r->label, $r->stage_code, $r->active]
+                : [$p[0], $p[1], $p[2], self::CODES[$c][0], self::defaultStage($c), true])->all();
+            foreach ($saved->reject(fn ($r) => isset(self::PICK[$r->code])) as $r) { // D-240: the farm's own codes
+                $out[$r->code] = [$r->sex, $r->purpose, $r->animal_class, $r->label, $r->stage_code, $r->active];
+            }
 
-            return collect(self::PICK)->map(fn ($p, $c) => ($r = $saved[$c] ?? null)
-                ? [$p[0], $r->purpose, $r->animal_class, $r->label, $r->stage_code]
-                : [$p[0], $p[1], $p[2], self::CODES[$c][0], self::defaultStage($c)])->all();
+            return $out;
         });
+
+        return $withOff ? $all : array_filter($all, fn ($p) => $p[5]);
+    }
+
+    /** D-240: every code with its label and gender, the framework's and the farm's own (for filters and the dashboard). */
+    public static function allCodes(): array
+    {
+        $custom = collect(self::picks(true))->reject(fn ($p, $c) => isset(self::CODES[$c]))->map(fn ($p) => [$p[3], $p[0], 'Farm code', true])->all();
+
+        return self::CODES + $custom;
     }
 
     /** @return array<string, array{value: string, label: string, sex: string, group: string}> options for the Gender field */
@@ -104,6 +118,9 @@ final class Designations
         if (self::castrated($a)) {
             return 'WTH';
         }
+        if ($a->registered_role && ! isset(self::CODES[$a->registered_role])) {
+            return $a->registered_role; // D-240: a farm-made code the goat was registered with
+        }
         $cat = $a->effectiveCategory();
         if ($cat === 'cull') {
             return $m ? 'CM' : 'CF';
@@ -136,7 +153,7 @@ final class Designations
     /** @return array<string, string> code => "BD · Breeding Doe" */
     public static function labels(array $codes): array
     {
-        return collect($codes)->mapWithKeys(fn ($c) => [$c => self::picks()[$c][3] ?? self::CODES[$c][0] ?? $c])->all();
+        return collect($codes)->mapWithKeys(fn ($c) => [$c => self::picks(true)[$c][3] ?? self::CODES[$c][0] ?? $c])->all();
     }
 
     /** Sires and dams with recorded offspring (a registered kid or a kidding), and does in an open lactation. */

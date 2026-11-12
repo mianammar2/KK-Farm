@@ -81,7 +81,7 @@ final class GoatRegistration
         }
 
         // D-235: the Gender field picks a role code (BB, BD, FM …); gender, purpose and category follow from it.
-        $rules['role_code'] = ['nullable', Rule::in(array_keys(Designations::PICK))];
+        $rules['role_code'] = ['nullable', Rule::in(array_keys(Designations::picks()))];
 
         return $rules;
     }

@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
@@ -101,6 +102,7 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                                     {canManage ? (
                                         <span className="flex flex-wrap gap-1.5">
                                             <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'shed', shed })} aria-label={`Edit ${shed.name}`}><Pencil className="size-3.5" aria-hidden />Edit</button>
+                                            <DeleteButton type="shed" id={shed.id} name={shed.name} className="kk-fix kk-lift inline-flex items-center gap-1 text-crit-700" />
                                             <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'pen', shed })}><Plus className="size-3.5" aria-hidden />Pen</button>
                                             <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'pen', shed, area: true })}><Plus className="size-3.5" aria-hidden />Open Area</button>
                                         </span>
@@ -222,6 +224,7 @@ function PenForm({ shed, pen, area = false, onDone }: { shed: Shed; pen?: Pen; a
                 <Field label="Capacity (goats)" error={form.errors.capacity} hint="Optional"><input className="field" type="number" inputMode="numeric" min={1} max={5000} value={form.data.capacity} onChange={(e) => form.setData('capacity', e.target.value)} /></Field>
                 <div className="flex gap-2 sm:col-span-3">
                     <Button type="submit" disabled={form.processing}>{pen ? (area ? 'Save open area' : 'Save pen') : area ? 'Add open area' : 'Add pen'}</Button>
+                    {pen ? <DeleteButton type="pen" id={pen.id} name={pen.name} /> : null}
                     <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
                 </div>
             </form>

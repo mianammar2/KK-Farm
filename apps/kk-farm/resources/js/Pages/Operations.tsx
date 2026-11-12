@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Tabs } from '../components/ui';
@@ -187,7 +188,7 @@ function Templates({ templates, options }: Props) {
                 <ul className="divide-y divide-rule">{templates.map((t) => (
                     <li key={t.id} className={`flex items-start gap-3 px-4 py-3 text-sm ${t.active ? '' : 'opacity-60'}`}>
                         <div className="flex-1"><strong>{t.name}</strong> <span className="text-ink-soft">· {options.shifts[t.shift]} · {t.items.length} items</span><p className="text-xs text-ink-soft">{t.items.join(' · ')}</p></div>
-                        <Button variant="quiet" onClick={() => setEditing(t)}>Edit</Button>
+                        <Button variant="quiet" onClick={() => setEditing(t)}>Edit</Button><DeleteButton type="checklist" id={t.id} name={t.name} />
                     </li>
                 ))}</ul>
             </Panel>

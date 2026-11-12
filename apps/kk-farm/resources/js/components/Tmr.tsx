@@ -1,4 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
+import DeleteButton from './DeleteButton';
 import { Blend, FlaskConical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import Sheet from './Sheet';
@@ -37,7 +38,7 @@ export function TmrPanel({ tmr, items, canPlan, canMix }: { tmr: TmrBoard; items
                                     <span className="kk-icon-tile size-9!" aria-hidden><FlaskConical size={18} /></span>
                                     <span className="min-w-0 flex-1"><span className="block font-semibold text-cobalt-900">{f.name}</span><span className="font-mono text-xs text-ink-soft">{f.code}</span></span>
                                     {!f.active ? <Chip className="bg-glaze text-ink-soft">Not in use</Chip> : null}
-                                    {canPlan ? <Button type="button" variant="quiet" onClick={() => setEditing(f)} aria-label={`Edit ${f.name}`}><Pencil size={15} aria-hidden /></Button> : null}
+                                    {canPlan ? <><Button type="button" variant="quiet" onClick={() => setEditing(f)} aria-label={`Edit ${f.name}`}><Pencil size={15} aria-hidden /></Button><DeleteButton type="tmr" id={f.id} name={f.name} /></> : null}
                                 </div>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     <span className="inline-flex items-center rounded-full bg-[#e8f5ec] px-2.5 py-1 text-sm font-bold tabular-nums text-[#1f7a3a]">CP {f.cp ?? '?'} %</span>

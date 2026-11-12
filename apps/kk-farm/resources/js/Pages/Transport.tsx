@@ -1,4 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
@@ -141,7 +142,7 @@ function Vehicles({ vehicles, options, canDecide }: Props) {
                 {vehicles.length ? <ul className="divide-y divide-rule">{vehicles.map((v) => (
                     <li key={v.id} className="flex flex-wrap items-center gap-2 px-4 py-2 text-sm"><strong className="font-mono">{v.reg}</strong><span className="text-ink-soft">{options.kinds[v.kind]} · {v.capacity} head · {v.ownership}{v.driver ? ` · ${v.driver}` : ''}</span>
                         <Chip className={v.usable ? 'bg-ok-100 text-ok-700' : 'bg-crit-100 text-crit-700'}>{v.usable ? `Approved · inspected ${v.inspected}` : v.approved ? 'Inspection expired' : 'Not approved'}</Chip>
-                        {canDecide ? <Button variant="quiet" className="ml-auto" onClick={() => setEdit(v)}>Re-inspect</Button> : null}</li>
+                        {canDecide ? <><Button variant="quiet" className="ml-auto" onClick={() => setEdit(v)}>Re-inspect</Button><DeleteButton type="vehicle" id={v.id} name={v.reg} /></> : null}</li>
                 ))}</ul> : <Empty title="No vehicles yet" />}
             </Panel>
         </div>

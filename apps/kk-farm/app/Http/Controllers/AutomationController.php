@@ -39,7 +39,8 @@ class AutomationController extends Controller
                     'role' => Designations::FROM_CATEGORY_PUBLIC[$r->animal_class] ?? null, 'fixed' => in_array($r->purpose, ['*', 'none'], true)]),
             'stages' => AgeStages::stages()->map(fn ($s) => ['code' => $s->code, 'label' => $s->label, 'range' => $s->rangeText(), 'group' => $s->age_group])->values(),
             'teeth' => Teeth::stages()->map(fn ($t) => ['code' => $t->key, 'label' => $t->label, 'age' => $t->ageText()])->values(),
-            'picks' => array_values(Designations::pickOptions()),
+            'picks' => collect(Designations::picks(true))->map(fn ($p, $c) => ['value' => $c, 'label' => "{$c} · {$p[3]}", 'name' => $p[3], 'sex' => $p[0], 'purpose' => $p[1], 'class' => $p[2], 'stage' => $p[4],
+                'active' => $p[5], 'custom' => ! isset(Designations::PICK[$c]), 'goats' => Animal::where('registered_role', $c)->count()])->values(),
             'categories' => array_map(fn ($c) => $c[0], Classification::CATEGORIES),
             'categorySex' => Classification::categorySex(),
             'statuses' => Classification::FEMALE_STATUSES,
@@ -69,10 +70,47 @@ class AutomationController extends Controller
         return back()->with('success', 'Rule saved. Every goat without a hand-set category follows it now.');
     }
 
+    /** D-240: add the farm's own gender code. */
+    public function addCode(Request $request): RedirectResponse
+    {
+        $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        $data = $request->validate(['code' => ['required', 'regex:/^[A-Z]{2,4}$/', Rule::notIn(array_keys(Designations::picks(true)))], 'sex' => ['required', Rule::in(['male', 'female'])]],
+            ['code.regex' => 'Use 2 to 4 capital letters, e.g. QB.', 'code.not_in' => 'That code already exists.']);
+        \App\Models\RoleCode::create(['code' => $data['code'], 'sex' => $data['sex'], 'label' => $data['code'], 'animal_class' => $data['sex'] === 'male' ? 'growing_male' : 'growing_female', 'active' => true]);
+        Tenant::flush();
+
+        return $this->saveCode($request, $data['code']);
+    }
+
+    /** D-240: delete a gender code. One goats were registered with is switched off instead (they keep it). */
+    public function deleteCode(Request $request, string $code): RedirectResponse
+    {
+        $pick = Designations::picks(true)[$code] ?? abort(404);
+        $used = Animal::where('registered_role', $code)->count();
+        if ($used || isset(Designations::PICK[$code])) {
+            \App\Models\RoleCode::updateOrCreate(['code' => $code], ['label' => $pick[3], 'purpose' => $pick[1], 'animal_class' => $pick[2], 'stage_code' => $pick[4], 'sex' => $pick[0], 'active' => false]);
+            $msg = $used ? "{$code} is used by {$used} goats: removed from the Gender field, the goats keep it." : "{$code} removed from the Gender field. Add it back any time.";
+        } else {
+            \App\Models\RoleCode::where('code', $code)->delete();
+            $msg = "{$code} deleted.";
+        }
+        Farm::log($request->user(), "Deleted gender code {$code}", '/settings/automation');
+
+        return back()->with('success', $msg);
+    }
+
+    /** D-240: bring back a framework code that was removed. */
+    public function restoreCode(Request $request, string $code): RedirectResponse
+    {
+        \App\Models\RoleCode::where('code', $code)->update(['active' => true]);
+
+        return back()->with('success', "{$code} is back in the Gender field.");
+    }
+
     /** D-239: change what a gender code fills in: its name, purpose, category and starting age. */
     public function saveCode(Request $request, string $code): RedirectResponse
     {
-        $pick = Designations::picks()[$code] ?? abort(404);
+        $pick = Designations::picks(true)[$code] ?? abort(404);
         $data = $request->validate([
             'label' => ['required', 'string', 'max:40'], 'purpose' => ['nullable', Rule::in(array_keys(Classification::PURPOSES))],
             'class' => ['required', Rule::in(array_keys(Classification::CATEGORIES))], 'stage' => ['nullable', Rule::in(AgeStages::stages()->pluck('code')->all())],
@@ -80,7 +118,7 @@ class AutomationController extends Controller
         if (($need = Classification::categorySex()[$data['class']] ?? null) && $need !== $pick[0]) {
             throw \Illuminate\Validation\ValidationException::withMessages(['class' => "{$code} is a ".($pick[0] === 'male' ? 'male' : 'female').' code: choose a '.($pick[0] === 'male' ? 'male' : 'female').' category.']);
         }
-        \App\Models\RoleCode::updateOrCreate(['code' => $code], ['label' => $data['label'], 'purpose' => $data['purpose'] ?? null, 'animal_class' => $data['class'], 'stage_code' => $data['stage'] ?? null]);
+        \App\Models\RoleCode::updateOrCreate(['code' => $code], ['label' => $data['label'], 'purpose' => $data['purpose'] ?? null, 'animal_class' => $data['class'], 'stage_code' => $data['stage'] ?? null, 'sex' => $pick[0], 'active' => $pick[5]]);
         Farm::log($request->user(), "Gender code {$code}: {$data['label']}, ".($data['purpose'] ?? 'no purpose').", {$data['class']}, ".($data['stage'] ?? 'no age'), '/settings/automation');
 
         return back()->with('success', "{$code} saved. New registrations use it; goats already registered keep what they have.");

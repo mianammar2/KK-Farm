@@ -1,4 +1,5 @@
 import { Link, router, useForm } from '@inertiajs/react';
+import DeleteButton from './DeleteButton';
 import { useState } from 'react';
 import { BreedBadge } from './GoatBadges';
 import { Button, Chip, Empty, Field, LibIcon, Panel } from './ui';
@@ -78,7 +79,7 @@ export function Protocols({ protocols, careTypes, applies, medicines, canEdit }:
                             <tr key={p.id} className={p.active ? '' : 'opacity-60'}>
                                 <td className="font-semibold">{p.name}{p.active ? null : <span className="ml-1 text-xs text-ink-soft">(paused)</span>}</td><td>{careTypes[p.kind]}</td><td>{applies[p.appliesTo]}</td>
                                 <td>{p.firstAge !== null ? `${p.firstAge} days old` : '—'}</td><td>{p.interval ? `every ${p.interval} days` : 'once'}</td><td>{p.medicine ? `${p.medicine}${p.dose ? ` · ${p.dose}` : ''}` : '—'}</td>
-                                <td>{canEdit ? <Button variant="quiet" onClick={() => setEditing(p)}>Edit</Button> : null}</td>
+                                <td className="whitespace-nowrap">{canEdit ? <><Button variant="quiet" onClick={() => setEditing(p)}>Edit</Button><DeleteButton type="protocol" id={p.id} name={p.name} /></> : null}</td>
                             </tr>
                         ))}
                     </tbody></table></div>

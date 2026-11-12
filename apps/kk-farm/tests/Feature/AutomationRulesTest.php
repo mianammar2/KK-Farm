@@ -46,6 +46,23 @@ class AutomationRulesTest extends TestCase
         $this->actingAs($owner)->post('/goats', ['origin' => 'purchased', 'breed_id' => $breed->id, 'pen_id' => $pen->id, 'sex' => 'female', 'role_code' => 'FF', 'tag_id' => 'A3'])->assertSessionHasNoErrors();
         $ff = Animal::where('farm_number', 'A3')->sole();
         $this->assertSame(['meat', 'ADT'], [$ff->animal_purpose, $ff->ageStageCode()]);
+        // D-240: the farm adds its own code, uses it, and deletes codes (used ones leave the Gender field, goats keep them).
+        $this->actingAs($owner)->post('/settings/automation/codes', ['code' => 'qb', 'sex' => 'male', 'label' => 'Qurbani Buck', 'purpose' => 'fattening', 'class' => 'fattening_male', 'stage' => 'GRW'])->assertSessionHasNoErrors();
+        $this->actingAs($owner)->post('/settings/automation/codes', ['code' => 'BK', 'sex' => 'male', 'label' => 'Dup', 'class' => 'male_kid'])->assertSessionHasErrors('code');
+        Tenant::flush();
+        $this->actingAs($owner)->post('/goats', ['origin' => 'purchased', 'breed_id' => $breed->id, 'pen_id' => $pen->id, 'sex' => 'male', 'role_code' => 'QB', 'tag_id' => 'Q1'])->assertSessionHasNoErrors();
+        $q1 = Animal::where('farm_number', 'Q1')->sole();
+        $this->assertSame(['QB', 'fattening', 'GRW'], [\App\Support\Designations::main($q1), $q1->animal_purpose, $q1->ageStageCode()]);
+        $this->actingAs($owner)->delete('/settings/automation/codes/QB')->assertSessionHasNoErrors();
+        Tenant::flush();
+        $this->assertArrayNotHasKey('QB', \App\Support\Designations::picks());
+        $this->assertSame('QB', \App\Support\Designations::main($q1->fresh()), 'the goat keeps its code');
+        $this->actingAs($owner)->delete('/settings/automation/codes/CM')->assertSessionHasNoErrors();
+        Tenant::flush();
+        $this->assertArrayNotHasKey('CM', \App\Support\Designations::picks());
+        $this->actingAs($owner)->post('/settings/automation/codes/CM/restore')->assertSessionHasNoErrors();
+        Tenant::flush();
+        $this->assertArrayHasKey('CM', \App\Support\Designations::picks());
         $rule = ClassificationRule::where('purpose', 'sale')->firstOrFail();
         $this->actingAs($owner)->delete("/settings/automation/rules/{$rule->id}")->assertSessionHasNoErrors();
         $base = ClassificationRule::where('purpose', '*')->firstOrFail();

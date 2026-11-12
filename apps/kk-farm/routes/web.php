@@ -226,6 +226,7 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
+    Route::delete('/masters/{type}/{id}', [\App\Http\Controllers\MasterController::class, 'destroy'])->where('type', '[a-z-]+'); // D-240: delete on every master list
     Route::get('/dashboard/scorecard', \App\Http\Controllers\ScorecardController::class)->middleware('module:dashboard'); // D-233
     Route::get('/dashboard/weight-change', \App\Http\Controllers\WeightChangeController::class)->middleware('module:dashboard'); // D-216
     Route::get('/activity', \App\Http\Controllers\ActivityController::class)->middleware('module:dashboard'); // D-122
@@ -483,6 +484,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/settings/ages', [SettingsController::class, 'updateAges']);
         Route::get('/settings/automation', [\App\Http\Controllers\AutomationController::class, 'index']); // D-236
         Route::post('/settings/automation/rules', [\App\Http\Controllers\AutomationController::class, 'save']);
+        Route::post('/settings/automation/codes', [\App\Http\Controllers\AutomationController::class, 'addCode']); // D-240
+        Route::delete('/settings/automation/codes/{code}', [\App\Http\Controllers\AutomationController::class, 'deleteCode'])->where('code', '[A-Z]{2,4}');
+        Route::post('/settings/automation/codes/{code}/restore', [\App\Http\Controllers\AutomationController::class, 'restoreCode'])->where('code', '[A-Z]{2,4}');
         Route::post('/settings/automation/codes/{code}', [\App\Http\Controllers\AutomationController::class, 'saveCode'])->where('code', '[A-Z]{2,4}'); // D-239
         Route::delete('/settings/automation/rules/{rule}', [\App\Http\Controllers\AutomationController::class, 'delete']);
         Route::post('/settings/stages', [SettingsController::class, 'addStage']); // D-221

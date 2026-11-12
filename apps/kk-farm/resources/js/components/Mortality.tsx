@@ -1,4 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
+import DeleteButton from './DeleteButton';
 import { useState } from 'react';
 import { BreedBadge } from './GoatBadges';
 import { Button, Chip, Empty, Field, LibIcon, Panel } from './ui';
@@ -82,7 +83,7 @@ export function DiseaseMaster({ diseases, categories, canEdit }: { diseases: Dis
                             <td className="font-semibold">{d.name}</td><td>{categories[d.category] ?? d.category}</td>
                             <td className="space-x-1">{d.zoonotic ? <Chip className="bg-crit-100 text-crit-700">Zoonotic</Chip> : null}{d.notifiable ? <Chip className="bg-watch-100 text-watch-700">Notifiable</Chip> : null}{d.contagious ? <Chip className="bg-treat-100 text-treat-700">Contagious</Chip> : null}{!d.active ? <Chip className="bg-glaze text-ink-soft">Not used</Chip> : null}</td>
                             <td className="text-ink-soft">{d.notes ?? ''}</td>
-                            <td>{canEdit ? <Button variant="quiet" onClick={() => setEditing(d)}>Edit</Button> : null}</td>
+                            <td className="whitespace-nowrap">{canEdit ? <><Button variant="quiet" onClick={() => setEditing(d)}>Edit</Button><DeleteButton type="disease" id={d.id} name={d.name} /></> : null}</td>
                         </tr>
                     ))}
                 </tbody></table></div>

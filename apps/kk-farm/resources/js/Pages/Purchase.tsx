@@ -1,4 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { PackageCheck, Pencil, Send, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import AddButton from '../components/AddButton';
@@ -80,7 +81,7 @@ export default function Purchase({ orders, suppliers, catalog, kinds, statuses, 
                                 <li key={s.id} className={cx('flex flex-wrap items-center gap-2 px-4 py-2.5', !s.active && 'opacity-60')}>
                                     <span className="min-w-0 flex-1"><span className="font-semibold text-cobalt-900">{s.name}</span><span className="block text-sm text-ink-soft">{[s.supplies, s.city, s.phone].filter(Boolean).join(' · ') || 'No details yet'}</span></span>
                                     <span className="text-sm text-ink-soft">{s.orders} order{s.orders === 1 ? '' : 's'} · {pkr(s.spent)} received</span>
-                                    {can.manage ? <Button type="button" variant="quiet" onClick={() => setSupplier(s)} aria-label={`Edit ${s.name}`}><Pencil size={15} aria-hidden /></Button> : null}
+                                    {can.manage ? <><Button type="button" variant="quiet" onClick={() => setSupplier(s)} aria-label={`Edit ${s.name}`}><Pencil size={15} aria-hidden /></Button><DeleteButton type="supplier" id={s.id} name={s.name} /></> : null}
                                 </li>
                             ))}
                         </ul>

@@ -1,4 +1,5 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
@@ -283,7 +284,7 @@ function Setup({ waterPoints, sheds, pens, assets, options, threshold }: Props) 
             {editing ? <PointForm p={editing === 'new' ? null : editing} sheds={sheds} pens={pens} assets={assets} kinds={options.kinds} onDone={() => setEditing(null)} /> : null}
             <Panel flush title="Water Points & Tanks" actions={<Button onClick={() => setEditing('new')}>+ Water Point</Button>}>
                 {waterPoints.length ? <ul className="divide-y divide-rule">{waterPoints.map((w) => (
-                    <li key={w.id} className={`flex items-center gap-2 px-4 py-2 text-sm ${w.active ? '' : 'opacity-60'}`}><strong>{w.name}</strong><span className="text-ink-soft">{options.kinds[w.kind]} · {w.shed}</span><Button variant="quiet" className="ml-auto" onClick={() => setEditing(w)}>Edit</Button></li>
+                    <li key={w.id} className={`flex items-center gap-2 px-4 py-2 text-sm ${w.active ? '' : 'opacity-60'}`}><strong>{w.name}</strong><span className="text-ink-soft">{options.kinds[w.kind]} · {w.shed}</span><Button variant="quiet" className="ml-auto" onClick={() => setEditing(w)}>Edit</Button><DeleteButton type="water-point" id={w.id} name={w.name} /></li>
                 ))}</ul> : <Empty title="No water points yet">Add each trough, drinker line and tank so every round checks them.</Empty>}
             </Panel>
         </div>

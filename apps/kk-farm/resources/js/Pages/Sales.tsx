@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AddButton from '../components/AddButton';
@@ -75,7 +76,7 @@ export default function Sales({ sales, kpis, monthly, customers, types, can }: P
                                 <li key={c.id} className={cx('flex flex-wrap items-center gap-2 px-4 py-2.5', !c.active && 'opacity-60')}>
                                     <span className="min-w-0 flex-1"><span className="font-semibold text-cobalt-900">{c.name}</span> <Chip className="bg-glaze text-ink-soft">{types[c.type] ?? c.type}</Chip><span className="block text-sm text-ink-soft">{[c.city, c.phone, c.notes].filter(Boolean).join(' · ') || 'No details yet'}</span></span>
                                     <span className="text-sm text-ink-soft">{c.sales} sale{c.sales === 1 ? '' : 's'} · {pkr(c.total)}</span>
-                                    {can.manage ? <Button type="button" variant="quiet" onClick={() => setCustomer(c)} aria-label={`Edit ${c.name}`}><Pencil size={15} aria-hidden /></Button> : null}
+                                    {can.manage ? <><Button type="button" variant="quiet" onClick={() => setCustomer(c)} aria-label={`Edit ${c.name}`}><Pencil size={15} aria-hidden /></Button><DeleteButton type="customer" id={c.id} name={c.name} /></> : null}
                                 </li>
                             ))}
                         </ul>

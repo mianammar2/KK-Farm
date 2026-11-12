@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AddButton from '../components/AddButton';
@@ -87,7 +88,7 @@ export default function Inventory({ overview, moves, items, categories, units, m
                                     <span className="min-w-0 flex-1"><span className="font-semibold text-cobalt-900">{i.name}</span> <span className="font-mono text-xs text-ink-faint">{i.code}</span><span className="block text-sm text-ink-soft">{categories[i.category] ?? i.category} · {pkr(i.cost)} per {units[i.unit] ?? i.unit}{i.notes ? ` · ${i.notes}` : ''}</span></span>
                                     <span className="font-semibold tabular-nums">{num(i.qty)} {units[i.unit] ?? i.unit}</span>
                                     <Chip className={STATUS[i.status].chip}>{STATUS[i.status].label}</Chip>
-                                    {can.manage ? <Button type="button" variant="quiet" onClick={() => setAdding(i)} aria-label={`Edit ${i.name}`}><Pencil size={15} aria-hidden /></Button> : null}
+                                    {can.manage ? <><Button type="button" variant="quiet" onClick={() => setAdding(i)} aria-label={`Edit ${i.name}`}><Pencil size={15} aria-hidden /></Button><DeleteButton type="store-item" id={i.id} name={i.name} /></> : null}
                                 </li>
                             ))}
                         </ul>

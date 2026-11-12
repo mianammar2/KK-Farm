@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { useConfirm } from '../components/Confirm';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
@@ -203,7 +204,7 @@ function AccountsTab({ accounts, types, openLedger }: { accounts: AccountRow[]; 
                             <td className="font-mono">{a.code}</td>
                             <td><button type="button" className="font-semibold text-cobalt-800 hover:underline" onClick={() => openLedger(a.id)}>{a.name}</button>{a.money ? <Chip className="ml-1 bg-ok-100 text-ok-700">Cash/bank</Chip> : null}</td>
                             <td>{types[a.type]}</td><td className="text-right tabular-nums">{money(a.balance)}</td>
-                            <td>{!a.system ? <button type="button" className="text-xs font-semibold text-turq-800 hover:underline" onClick={() => router.post(`/finance/accounts/${a.id}`, { name: a.name, active: !a.active }, { preserveScroll: true })}>{a.active ? 'Switch off' : 'Switch on'}</button> : null}</td>
+                            <td>{!a.system ? <button type="button" className="text-xs font-semibold text-turq-800 hover:underline" onClick={() => router.post(`/finance/accounts/${a.id}`, { name: a.name, active: !a.active }, { preserveScroll: true })}>{a.active ? 'Switch off' : 'Switch on'}</button> : null}{!a.system ? <DeleteButton type="account" id={a.id} name={a.name} /> : null}</td>
                         </tr>
                     ))}</tbody>
                 </table></div>

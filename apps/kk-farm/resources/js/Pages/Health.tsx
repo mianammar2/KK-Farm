@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { AlertTriangle, ChevronDown, ClipboardPlus, Pill, Plus, Stethoscope, Syringe, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, GoatLabel, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -428,7 +429,7 @@ function MedicineEdit({ m, categories }: { m: Medicine; categories: Record<strin
             <Field label="PKR per unit"><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
             <Field label="Storage"><input className="field" value={form.data.storage} onChange={(x) => form.setData('storage', x.target.value)} /></Field>
             <label className="flex items-center gap-2 pt-6 text-sm"><input type="checkbox" className="size-4" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> Still used</label>
-            <div className="sm:col-span-3"><Button type="submit" variant="secondary" disabled={form.processing}>Save</Button></div>
+            <div className="sm:col-span-3"><Button type="submit" variant="secondary" disabled={form.processing}>Save</Button><DeleteButton type="medicine" id={m.id} name={m.name} /></div>
         </form>
     );
 }

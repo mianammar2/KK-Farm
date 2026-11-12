@@ -1,4 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
@@ -120,7 +121,7 @@ function Assets({ assets, sheds, options, canManage }: Props) {
                             <td className="font-mono">{a.code}</td><td className="font-semibold">{a.name}</td><td>{options.categories[a.category]}</td><td>{a.shed ?? '—'}</td>
                             <td><Chip className={STATUS_CLS[a.status]}>{options.status[a.status]}</Chip></td>
                             <td className={a.overdue ? 'font-semibold text-crit-700' : ''}>{a.next ?? '—'}{a.every ? <span className="text-xs text-ink-soft"> · every {a.every} d</span> : null}</td>
-                            <td>{canManage ? <Button variant="quiet" onClick={() => setEditing(a)}>Edit</Button> : null}</td>
+                            <td className="whitespace-nowrap">{canManage ? <><Button variant="quiet" onClick={() => setEditing(a)}>Edit</Button><DeleteButton type="asset" id={a.id} name={a.name} /></> : null}</td>
                         </tr>
                     ))}
                 </tbody></table></div> : <Empty title="No assets yet">{canManage ? 'Add your scales, RFID readers, feed mixer, pumps, fans and vehicles.' : 'The owner or manager adds them.'}</Empty>}

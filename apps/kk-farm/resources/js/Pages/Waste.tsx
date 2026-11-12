@@ -1,4 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
@@ -91,7 +92,7 @@ function Routes({ streams, options, isLead }: Props) {
                         {s.approved ? <Chip className="bg-ok-100 text-ok-700">Set by {s.adviser}, {s.adviserRole} · {s.advised}</Chip> : <Chip className="bg-crit-100 text-crit-700">No adviser: not usable</Chip>}
                         {s.biohazard ? <Chip className="bg-treat-100 text-treat-700">Biological</Chip> : null}
                         {s.every ? <Chip className={s.overdue ? 'bg-crit-100 text-crit-700' : 'bg-glaze text-ink-soft'}>Pickup every {s.every} d · last {s.last ?? 'never'}{s.missed ? ` · ${s.missed} missed` : ''}</Chip> : null}
-                        {isLead ? <Button variant="quiet" className="ml-auto" onClick={() => setEdit(s)}>Edit</Button> : null}</div>
+                        {isLead ? <><Button variant="quiet" className="ml-auto" onClick={() => setEdit(s)}>Edit</Button><DeleteButton type="waste-stream" id={s.id} name={s.name} /></> : null}</div>
                         {s.instructions ? <p className="text-xs text-ink-soft">{s.instructions}</p> : null}</li>
                 ))}</ul> : <Empty title="No waste routes yet" />}
             </Panel>

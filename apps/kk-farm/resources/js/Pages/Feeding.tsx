@@ -1,4 +1,5 @@
 import { Head, router, useForm, usePoll } from '@inertiajs/react';
+import DeleteButton from '../components/DeleteButton';
 import { LIVE_MS } from '../lib/live';
 import FeedRequirement, { type Requirement } from '../components/FeedRequirement';
 import { Check, Clock, Pencil, Plus, Trash2, Wheat } from 'lucide-react';
@@ -349,7 +350,7 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
                                         <span className="ml-auto flex items-center gap-2"><span className="font-semibold">{kg(i.stock)}</span><Chip className={STOCK[i.status].className}>{STOCK[i.status].label}</Chip></span>
                                     </div>
                                     <div className="mt-0.5 text-sm text-ink-soft">{pkr(i.costPerKg)}/KG · worth {pkr(i.value)} · reorder at {kg(i.reorder)}{i.daysLeft !== null ? ` · about ${i.daysLeft} days left` : ''}{i.supplier ? ` · ${i.supplier}` : ''}</div>
-                                    {can.store ? (edit === i.id ? <ItemForm item={i} categories={categories} onDone={() => setEdit(null)} /> : <button type="button" className="mt-1 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setEdit(i.id)}>Edit</button>) : null}
+                                    {can.store ? (edit === i.id ? <ItemForm item={i} categories={categories} onDone={() => setEdit(null)} /> : <button type="button" className="mt-1 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setEdit(i.id)}>Edit</button>) : null}{can.store && edit !== i.id ? <DeleteButton type="feed-item" id={i.id} name={i.name} /> : null}
                                 </li>
                             ))}
                         </ul>
@@ -553,7 +554,7 @@ function Nutrition({ standards, nutritionCategories, methods, breeds, can }: Pro
                                         <td className="px-3 tabular-nums">{s.goats ? <>{Math.round(s.cpKgDay * 1000).toLocaleString('en-PK')} g CP<span className="block text-xs text-ink-soft">{s.feedKgDay} KG feed</span></> : '—'}</td>
                                         <td className="px-3 tabular-nums">{s.feedCostDay !== null && s.goats ? pkr(s.feedCostDay) : <span className="text-ink-faint">—</span>}</td>
                                         <td className="px-3 text-xs">{s.reviewedOn ? <>{s.reviewedOn}{s.reviewedBy ? <span className="block text-ink-soft">{s.reviewedBy}</span> : null}</> : <span className="text-watch-700">Not reviewed</span>}</td>
-                                        {can.plan ? <td className="px-3"><button type="button" className="text-cobalt-800 hover:underline" aria-label={`Edit ${s.name}`} onClick={() => setEditing(editing === s.id ? null : s.id)}><Pencil size={15} /></button></td> : null}
+                                        {can.plan ? <td className="px-3"><button type="button" className="text-cobalt-800 hover:underline" aria-label={`Edit ${s.name}`} onClick={() => setEditing(editing === s.id ? null : s.id)}><Pencil size={15} /></button><DeleteButton type="nutrition" id={s.id} name={s.name} /></td> : null}
                                     </tr>
                                     {editing === s.id ? <tr><td colSpan={12} className="bg-glaze/60 px-4 py-3"><StandardForm standard={s} nutritionCategories={nutritionCategories} methods={methods} breeds={breeds} onDone={() => setEditing(null)} /></td></tr> : null}
                                 </Fragment>
