@@ -30,7 +30,7 @@ class ShedController extends Controller
                 'id' => $s->id, 'farmId' => $s->farm_id, 'code' => $s->code, 'name' => $s->name, 'status' => $s->status, 'type' => $s->type, 'typeName' => $s->typeName(), 'purpose' => $s->purpose(),
                 'pens' => $s->pens->sortBy(fn (Pen $p) => $p->sortKey())->values()->map(fn (Pen $p) => [
                     'id' => $p->id, 'name' => "{$s->name}-{$p->name}", 'code' => $p->name, 'kind' => $p->kind, 'purpose' => $p->purpose, 'capacity' => $p->capacity, 'count' => $p->animals->count(),
-                    'goats' => $p->animals->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'sex' => $a->sex, 'health' => $a->health_status, 'repro' => $a->repro_state, 'breed' => $a->breed?->name, 'stage' => $a->effectiveAge(), 'code' => $a->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($a->birth_date))?->code : null]), // D-147
+                    'goats' => $p->animals->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'coat' => $a->coat, 'sex' => $a->sex, 'health' => $a->health_status, 'repro' => $a->repro_state, 'breed' => $a->breed?->name, 'stage' => $a->effectiveAge(), 'code' => $a->classCode()]), // D-147
                 ]),
             ]),
             'types' => collect(Shed::TYPES)->map(fn ($t, $code) => ['code' => $code, 'name' => $t[0], 'purpose' => $t[1]])->values(),

@@ -16,7 +16,8 @@ import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, LibIcon, Note, P
 import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
-type Goat = GoatCard & { ageStage?: { code: string; label: string; teeth: string | null; match: boolean } | null; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Dental = { code: string; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
+type Goat = GoatCard & { ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
@@ -32,6 +33,7 @@ type Props = {
     cost: { direct: number; sharedPerHead: number; total: number } | null;
     pens: Array<{ id: number; name: string; purpose: string }>;
     can: { edit: boolean; remove: boolean; breeding: boolean };
+    dentalOptions: { codes: Record<string, string>; conditions: Record<string, string> };
     outcomeOptions: OutcomeOptions;
     scanMating: { id: number; matedOnIso: string; day: number } | null; // D-166
     ultrasoundOptions: UltrasoundOptions;
@@ -48,7 +50,7 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions } = props;
     const [outcome, setOutcome] = useState(false); // D-161
     const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
@@ -219,8 +221,9 @@ export default function GoatShow(props: Props) {
                             <dl className="space-y-2">
                                 {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
-                                {goat.ageStage ? fact('Age stage', <span>{goat.ageStage.code} · {goat.ageStage.label}{goat.ageStage.teeth ? ` · expected ${goat.ageStage.teeth}` : ''}{!goat.ageStage.match ? <span className="block text-xs font-semibold text-watch-700">Recorded teeth do not match this age: check the teeth or the birth date.</span> : null}</span>) : null}
-                                {goat.teeth ? fact('Teeth', goat.teeth) : null}
+                                {goat.ageCode ? fact('Classification code', <span className="font-mono font-semibold text-cobalt-900">{goat.ageCode}</span>) : null}
+                                {goat.ageStage ? fact('Age stage', `${goat.ageStage.code} · ${goat.ageStage.label} (${goat.ageStage.range})${goat.estimated ? ', age estimated' : ''}`) : null}
+                                {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit} options={dentalOptions} />) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
                                 {fact('Sire', parentLink(goat.sire))}
@@ -506,3 +509,25 @@ function ActionTile({ icon, label, onClick, primary = false, active = false }: {
 }
 
 const EXIT_WORD: Record<string, string> = { sold: 'sold', died: 'died', sacrificed: 'Qurbani', culled: 'culled', gifted: 'gifted', transferred: 'transferred out' };
+
+/** D-229: the latest teeth examination (dental code and condition), its history, and recording a new one. */
+function DentalFact({ dental, teeth, goatId, canEdit, options }: { dental: Dental; teeth: string | null; goatId: string; canEdit: boolean; options: { codes: Record<string, string>; conditions: Record<string, string> } }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({ teeth: dental.code === 'UNK' ? '' : dental.code, dental_condition: 'normal', examined_on: new Date().toISOString().slice(0, 10) });
+    return (
+        <span className="block">
+            {dental.code === 'UNK' ? <span className="text-ink-soft">UNK · not examined</span> : <span>{teeth ?? dental.code}{dental.condition && dental.condition !== 'Normal' ? <Chip className="ml-1.5 bg-watch-100 text-watch-700">{dental.condition}</Chip> : null}</span>}
+            {dental.checkedOn ? <span className="block text-xs text-ink-faint">Checked {dental.checkedOn}{dental.history.length > 1 ? ` · ${dental.history.length} checks on record` : ''}</span> : null}
+            {canEdit && !open ? <button type="button" className="mt-1 text-xs font-semibold text-cobalt-800 hover:underline" onClick={() => setOpen(true)}>Record a teeth check</button> : null}
+            {open ? (
+                <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-2" onSubmit={(e) => { e.preventDefault(); form.post(`/goats/${goatId}/teeth`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
+                    <Field label="Teeth (dental code)" error={form.errors.teeth}><select className="field" value={form.data.teeth} onChange={(e) => form.setData('teeth', e.target.value)}><option value="">Choose</option>{Object.entries(options.codes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <Field label="Condition" error={form.errors.dental_condition}><select className="field" value={form.data.dental_condition} onChange={(e) => form.setData('dental_condition', e.target.value)}>{Object.entries(options.conditions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <Field label="Checked on" error={form.errors.examined_on}><input className="field" type="date" max={new Date().toISOString().slice(0, 10)} value={form.data.examined_on} onChange={(e) => form.setData('examined_on', e.target.value)} /></Field>
+                    <span className="flex gap-2"><Button type="submit" disabled={form.processing || !form.data.teeth}>Save check</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></span>
+                </form>
+            ) : null}
+            {dental.history.length > 1 ? <details className="mt-1 text-xs text-ink-soft"><summary className="cursor-pointer">Earlier checks</summary><ul className="mt-1 space-y-0.5">{dental.history.slice(1).map((h, i) => <li key={i}>{h.on}: {h.code}{h.condition ? ` · ${h.condition}` : ''}{h.by ? ` · ${h.by}` : ''}</li>)}</ul></details> : null}
+        </span>
+    );
+}

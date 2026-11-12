@@ -80,9 +80,9 @@ final class Classification
      * an estimated birth date for a bought goat; a person can always change it.
      */
     /** D-220: defaults only; each farm keeps its own stages in Settings → Age Groups (App\Support\Teeth). */
-    public const TEETH = ['milk' => 'Milk teeth only (under 12 months)', '2' => '2 teeth (12–18 months)', '4' => '4 teeth (18–24 months)', '6' => '6 teeth (30–36 months)', '8' => '8 teeth, full mouth (36–48 months)', 'worn' => 'Worn or broken mouth (60+ months)'];
+    public const TEETH = ['MLT' => 'MLT · Milk Teeth (Kheeri)', 'T02' => 'T02 · 2 Permanent Incisors (Donda)', 'T04' => 'T04 · 4 Permanent Incisors (Choga)', 'T06' => 'T06 · 6 Permanent Incisors (Chhay Dant)', 'T08' => 'T08 · 8 Permanent Incisors (Aath Dant)']; // D-229
 
-    public const TEETH_MONTHS = ['milk' => 8, '2' => 15, '4' => 21, '6' => 32, '8' => 42, 'worn' => 66];
+    public const TEETH_MONTHS = ['MLT' => 8, 'T02' => 15, 'T04' => 24, 'T06' => 33, 'T08' => 42];
 
     public const PURITY = ['pure' => 'Purebred', 'first_cross' => 'Crossbreed (first cross)', 'later_cross' => 'Crossbreed (later cross)', 'unknown' => 'Unknown'];
 
@@ -105,6 +105,9 @@ final class Classification
     {
         if (! $birthDate) {
             return null;
+        }
+        if ($stage = AgeStages::forBirth($birthDate)) { // D-229: the farm's age stages decide, to the day
+            return $stage->age_group;
         }
         $months = Carbon::parse($birthDate)->diffInMonths(now());
         [$grower, $adult] = self::boundaries();

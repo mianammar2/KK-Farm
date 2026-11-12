@@ -164,15 +164,19 @@ class DashboardController extends Controller
         $count = fn (string $key) => $tags->filter(fn ($t) => in_array($key, $t, true))->count();
         // D-226: one row per age stage from Settings → Age Groups (YKD, KID, GRW, ADT-T02 …), then goats with no age yet.
         $rows = \App\Support\AgeStages::stages()->map(fn ($st) => ['key' => "stage_{$st->code}", 'code' => $st->code, 'group' => $st->age_group, 'label' => $st->label,
-            'range' => ($st->to_months === null ? rtrim(rtrim(number_format($st->from_months, 1), '0'), '.').' months and over' : rtrim(rtrim(number_format($st->from_months, 1), '0'), '.').' to '.rtrim(rtrim(number_format($st->to_months, 1), '0'), '.').' months')
-                .(($t = \App\Support\Teeth::short()[$st->teeth_key] ?? null) ? " · {$t}" : ''),
+            'range' => $st->rangeText(), // D-229
             'female' => $count("stage_{$st->code}_female"), 'male' => $count("stage_{$st->code}_male"), 'total' => $count("stage_{$st->code}")])
             ->push(['key' => 'no_stage', 'code' => null, 'group' => 'age_unknown', 'label' => 'Age Not Known', 'range' => 'No birth date or teeth yet',
                 'female' => $count('no_stage_female'), 'male' => $count('no_stage_male'), 'total' => $count('no_stage')])
             ->filter(fn ($r) => $r['total'] > 0)->values();
 
+        // D-229: Herd by Teeth, from the latest examination of each goat; UNK = teeth never examined.
+        $teeth = \App\Support\Teeth::stages()->map(fn ($t) => ['key' => "teeth_{$t->key}", 'code' => $t->key, 'label' => $t->label, 'local' => $t->local_term, 'range' => 'about '.$t->ageText(), 'female' => $count("teeth_{$t->key}_female"), 'male' => $count("teeth_{$t->key}_male"), 'total' => $count("teeth_{$t->key}")])
+            ->push(['key' => 'teeth_UNK', 'code' => 'UNK', 'label' => 'Not Examined', 'local' => 'Teeth not checked', 'range' => 'Any age', 'female' => $count('teeth_UNK_female'), 'male' => $count('teeth_UNK_male'), 'total' => $count('teeth_UNK')])
+            ->filter(fn ($r) => $r['total'] > 0)->values();
+
         return [
-            'rows' => $rows, 'female' => $count('female'), 'male' => $count('male'), 'total' => $goats->count(),
+            'rows' => $rows, 'teeth' => $teeth, 'female' => $count('female'), 'male' => $count('male'), 'total' => $goats->count(),
             // D-123: by classification (goat category, set or suggested from gender, age and purpose).
             'classes' => $goats->groupBy(fn ($g) => $g->effectiveCategory() ?? 'none')->map(fn ($gs, $c) => ['key' => 'class_'.$c,
                 'label' => \App\Support\Classification::CATEGORIES[$c][0] ?? 'Not Classified', 'local' => \App\Support\Classification::CATEGORIES[$c][1] ?? null,
@@ -199,7 +203,7 @@ class DashboardController extends Controller
                     // D-147: up to 18 goats to draw (females first): gender, kid/grower/adult, breed, needs attention
                     'figures' => $byPen[$p->id]->sortBy(fn ($g) => $g->sex === 'female' ? 0 : 1)->map(fn ($g) => [
                         'female' => $g->sex === 'female', 'stage' => $g->effectiveAge(), 'breed' => $g->breed?->name,
-                        'code' => $g->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($g->birth_date))?->code : null, // D-227
+                        'code' => $g->classCode(), // D-227
                         'id' => $g->id, 'number' => $g->farm_number, 'name' => $g->name, 'health' => $g->health_status, // D-156: shown on hover
                         'flag' => $g->health_flag !== null && $g->health_flag !== 'healthy',
                     ])->values()->all()])->values()->all(),

@@ -50,7 +50,7 @@ class GoatEditTest extends TestCase
     {
         $this->actingAs($this->user('manager'))->post('/goats', $extra + [
             'origin' => 'purchased', 'breed_id' => $this->breed->id, 'acquired_on' => now()->toDateString(), 'sex' => 'female', 'pen_id' => $this->pen->id,
-            'teeth' => '4', 'birth_date' => now()->subMonths(21)->toDateString(), 'temperature_f' => 104.4, 'body_score' => '3', 'latest_weight_kg' => 38,
+            'teeth' => 'T04', 'birth_date' => now()->subMonths(21)->toDateString(), 'temperature_f' => 104.4, 'body_score' => '3', 'latest_weight_kg' => 38,
             'pregnant_at_arrival' => 'yes', 'pregnancy_days' => 90,
         ])->assertSessionHasNoErrors();
 
@@ -60,7 +60,7 @@ class GoatEditTest extends TestCase
     public function test_a_bought_pregnant_doe_gets_teeth_an_arrival_check_and_a_breeding_record(): void
     {
         $doe = $this->registerDoe();
-        $this->assertSame(['4', 'pregnant'], [$doe->teeth, $doe->repro_status]);
+        $this->assertSame(['T04', 'pregnant'], [$doe->teeth, $doe->repro_status]);
 
         $check = HealthRecord::where('animal_id', $doe->id)->sole();
         $this->assertSame(['Arrival check: fever', 'open'], [$check->title, $check->status]);
@@ -91,19 +91,19 @@ class GoatEditTest extends TestCase
         $taken = Animal::create(['farm_number' => 'TD-TAKEN', 'sex' => 'female', 'breed_id' => $this->breed->id, 'origin' => 'purchased', 'pen_id' => $this->pen->id]);
         $vet = $this->user('vet');
 
-        $this->actingAs($vet)->get("/goats/{$doe->id}/edit")->assertOk()->assertInertia(fn (AssertableInertia $p) => $p->component('Goats/Register')->where('goat.values.teeth', '4'));
+        $this->actingAs($vet)->get("/goats/{$doe->id}/edit")->assertOk()->assertInertia(fn (AssertableInertia $p) => $p->component('Goats/Register')->where('goat.values.teeth', 'T04'));
         $this->actingAs($vet)->post("/goats/{$doe->id}/edit", ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'tag_id' => 'TD-TAKEN', 'pen_id' => $this->pen->id])
             ->assertSessionHasErrors('tag_id');
         $this->actingAs($vet)->post("/goats/{$doe->id}/edit", [
             'origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'tag_id' => $doe->farm_number, 'pen_id' => $this->other->id,
-            'name' => 'Rani', 'teeth' => '6', 'purchase_cost_pkr' => 65000, 'birth_date' => $doe->birth_date->toDateString(),
+            'name' => 'Rani', 'teeth' => 'T06', 'purchase_cost_pkr' => 65000, 'birth_date' => $doe->birth_date->toDateString(),
         ])->assertSessionHasNoErrors();
 
         $doe->refresh();
-        $this->assertSame(['Rani', '6', 6500000, $this->other->id], [$doe->name, $doe->teeth, $doe->purchase_cost_minor, $doe->pen_id]);
+        $this->assertSame(['Rani', 'T06', 6500000, $this->other->id], [$doe->name, $doe->teeth, $doe->purchase_cost_minor, $doe->pen_id]);
         $edit = $doe->events()->where('type', 'edit')->sole()->summary;
         $this->assertStringContainsString('Name (optional): empty → Rani', $edit);
-        $this->assertStringContainsString('Teeth (permanent incisors): 4 → 6', $edit);
+        $this->assertStringContainsString('Teeth (Dental Code): T04 → T06', $edit);
         $this->assertStringContainsString('Purchase Cost PKR: empty → PKR 65,000', $edit);
         $this->assertSame(1, AnimalMovement::where('animal_id', $doe->id)->where('type', 'transfer')->count(), 'a pen change is a recorded move');
 
@@ -140,17 +140,17 @@ class GoatEditTest extends TestCase
         $born = Animal::create(['farm_number' => 'TD-B', 'sex' => 'female', 'breed_id' => $this->breed->id, 'origin' => 'born_on_farm', 'pen_id' => $this->pen->id, 'birth_date' => now()->subMonths(10)])->refresh();
         $vet = $this->user('vet');
 
-        $this->actingAs($vet)->post("/goats/{$bought->id}/teeth", ['teeth' => '4'])->assertSessionHasNoErrors();
+        $this->actingAs($vet)->post("/goats/{$bought->id}/teeth", ['teeth' => 'T04'])->assertSessionHasNoErrors();
         $bought->refresh();
-        $this->assertSame(['4', now()->subMonths(21)->toDateString(), true], [$bought->teeth, $bought->birth_date->toDateString(), $bought->birth_date_is_estimate]);
-        $this->assertSame('21 mo (est.)', $bought->ageLabel());
-        $this->assertStringContainsString('Teeth (permanent incisors): empty → 4', $bought->events()->where('type', 'edit')->sole()->summary);
+        $this->assertSame(['T04', now()->subMonths(24)->toDateString(), true], [$bought->teeth, $bought->birth_date->toDateString(), $bought->birth_date_is_estimate]);
+        $this->assertSame('24 mo (est.)', $bought->ageLabel());
+        $this->assertStringContainsString('Teeth (Dental Code): empty → T04', $bought->events()->where('type', 'edit')->sole()->summary);
 
-        $this->actingAs($vet)->post("/goats/{$born->id}/teeth", ['teeth' => '2'])->assertSessionHasNoErrors();
-        $this->assertSame(['2', now()->subMonths(10)->toDateString()], [$born->fresh()->teeth, $born->fresh()->birth_date->toDateString()], 'a real birth date is kept');
+        $this->actingAs($vet)->post("/goats/{$born->id}/teeth", ['teeth' => 'T02'])->assertSessionHasNoErrors();
+        $this->assertSame(['T02', now()->subMonths(10)->toDateString()], [$born->fresh()->teeth, $born->fresh()->birth_date->toDateString()], 'a real birth date is kept');
 
-        $this->actingAs($this->user('ceo'))->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p->where('canEdit', true)->where('teethOptions.4', '4 Permanent Teeth (18–24 months)')
-            ->where('goats', fn ($g) => collect($g)->firstWhere('number', 'TD141026-04')['teeth'] === '4' && collect($g)->firstWhere('number', 'TD141026-04')['ageMonths'] === 21));
-        $this->actingAs($this->user('caretaker'))->post("/goats/{$bought->id}/teeth", ['teeth' => '6'])->assertForbidden();
+        $this->actingAs($this->user('ceo'))->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p->where('canEdit', true)->where('teethOptions.T04', 'T04 · 4 Permanent Incisors (Choga / Char Dant) · about 18–30 months')
+            ->where('goats', fn ($g) => collect($g)->firstWhere('number', 'TD141026-04')['teeth'] === 'T04' && collect($g)->firstWhere('number', 'TD141026-04')['ageMonths'] === 24));
+        $this->actingAs($this->user('caretaker'))->post("/goats/{$bought->id}/teeth", ['teeth' => 'T06'])->assertForbidden();
     }
 }

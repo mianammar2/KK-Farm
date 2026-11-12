@@ -5,8 +5,8 @@ import { Button, Field, PageHeader, Panel } from '../components/ui';
 
 type Breed = { id: number; name: string; code: string; next: string; gestation: number | null; lightBelow: number | null; goats: number; used: number };
 type Group = { key: string; label: string; goats: number };
-type Tooth = { id: number; key: string; label: string; from: number; to: number | null; estimate: number; goats: number };
-type Stage = { id: number; code: string; label: string; group: string; from: number; to: number | null; teeth: string | null; teethLabel: string | null; goats: number };
+type Tooth = { id: number; key: string; label: string; local: string | null; from: number; to: number | null; estimate: number; goats: number };
+type Stage = { id: number; code: string; label: string; group: string; at: number; unit: 'days' | 'months'; range: string; goats: number }; // D-229
 type Props = { stages: Stage[]; section: 'breeds' | 'ages' | 'system' | null; ages: { growerFrom: number; adultFrom: number; groups: Group[] }; teeth: Tooth[]; breeds: Breed[]; counts: { users: number; fields: number; overrides: number }; environment: Record<string, string> };
 
 /** D-215: each settings page stands on its own; /settings is the master page that links to all of them. */
@@ -22,7 +22,7 @@ const PAGES = [
 export default function Settings(p: Props) {
     const back = <Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>;
     if (p.section === 'breeds') return <><Head title="Breeds" /><PageHeader title="Breeds" description="Breed names, the code each tag starts with, and the light weight line used to estimate age." actions={back} /><div className="max-w-2xl"><Breeds breeds={p.breeds} /></div></>;
-    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="Each goat's age stage (ERP code) is worked out from its birth date as it grows, and shown when registering. Picking a stage when registering a bought goat sets its teeth and estimated birth date." actions={back} /><div className="max-w-5xl space-y-4"><AgeStagesPanel stages={p.stages} teeth={p.teeth} /></div></>;
+    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="Age and teeth are two separate facts. The age stage moves on by itself from the birth date; the teeth come from a mouth check. Together they give each goat's code, e.g. GRW-T02 or ADT-T04." actions={back} /><div className="max-w-5xl space-y-4"><AgeStagesPanel stages={p.stages} /><DentalCodesPanel teeth={p.teeth} /></div></>;
     if (p.section === 'system') return <><Head title="System" /><PageHeader title="System" actions={back} /><Panel className="max-w-xl"><dl className="space-y-1 text-sm">{Object.entries(p.environment).map(([k, v]) => <div key={k} className="flex justify-between gap-2"><dt className="text-ink-soft capitalize">{k}</dt><dd className="font-medium">{v}</dd></div>)}</dl></Panel></>;
     return (
         <>
@@ -94,48 +94,46 @@ const editBtn = 'inline-flex min-h-9 items-center gap-1 rounded-tile px-2 text-x
 const delBtn = 'inline-flex min-h-9 items-center gap-1 rounded-tile px-2 text-xs font-semibold text-crit-700 hover:bg-crit-100 disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-transparent';
 
 const GROUP_LABEL: Record<string, string> = { kid: 'Kid', grower: 'Grower', adult: 'Adult' };
-type StageForm = { data: { code: string; label: string; age_group: string; from_months: string; to_months: string; teeth_key: string }; errors: Partial<Record<string, string>>; setData: (k: 'code' | 'label' | 'age_group' | 'from_months' | 'to_months' | 'teeth_key', v: string) => void };
-const blankStage = { code: '', label: '', age_group: 'adult', from_months: '', to_months: '', teeth_key: '' };
-const stageTo = (d: StageForm['data']) => ({ ...d, to_months: d.to_months === '' ? null : d.to_months, teeth_key: d.teeth_key || null });
+type StageForm = { data: { code: string; label: string; age_group: string; starts_at: string; starts_unit: string }; errors: Partial<Record<string, string>>; setData: (k: 'code' | 'label' | 'age_group' | 'starts_at' | 'starts_unit', v: string) => void };
+const blankStage = { code: '', label: '', age_group: 'adult', starts_at: '', starts_unit: 'months' };
 
-/** D-221: the farm's age stages (ERP code, category, age, teeth), like Breeds: add, edit, delete. */
-function AgeStagesPanel({ stages, teeth }: { stages: Stage[]; teeth: Tooth[] }) {
+/** D-229: the farm's age stages. Each starts at an age (days or calendar months) and lasts until the next one starts. */
+function AgeStagesPanel({ stages }: { stages: Stage[] }) {
     const add = useForm(blankStage);
     return (
-        <Panel flush title="Age Stages" description="'Counts as' decides feeding amounts and the goat category. Kid, Grower and Adult start where the first stage of each begins.">
-            <div className="overflow-x-auto"><table className="data-table min-w-[720px]">
-                <thead><tr><th>ERP Code</th><th>Age Category</th><th>Age</th><th>Teeth</th><th>Counts as</th><th className="text-right">Goats</th><th /></tr></thead>
-                <tbody>{stages.map((st) => <StageRow key={st.id} st={st} teeth={teeth} />)}</tbody>
+        <Panel flush title="Age Stages" description="Each stage starts at an age and lasts until the next one starts, so a goat moves on by itself. 'Counts as' decides feeding amounts and the goat category. Reaching Mature Adult does not make a goat old or a cull.">
+            <div className="overflow-x-auto"><table className="data-table min-w-[640px]">
+                <thead><tr><th>ERP Code</th><th>Age Category</th><th>Age</th><th>Counts as</th><th className="text-right">Goats</th><th /></tr></thead>
+                <tbody>{stages.map((st) => <StageRow key={st.id} st={st} />)}</tbody>
             </table></div>
-            <form onSubmit={(e) => { e.preventDefault(); add.transform(stageTo); add.post('/settings/stages', { preserveScroll: true, onSuccess: () => add.reset() }); }} className="flex flex-wrap items-end gap-2 border-t border-rule p-4">
-                <StageFields form={add} teeth={teeth} />
+            <form onSubmit={(e) => { e.preventDefault(); add.post('/settings/stages', { preserveScroll: true, onSuccess: () => add.reset() }); }} className="flex flex-wrap items-end gap-2 border-t border-rule p-4">
+                <StageFields form={add} />
                 <Button type="submit" disabled={add.processing}>Add</Button>
             </form>
         </Panel>
     );
 }
 
-function StageFields({ form, teeth }: { form: StageForm; teeth: Tooth[] }) {
-    const n = (k: 'from_months' | 'to_months', label: string, ph?: string) => <div className="w-24"><Field label={label} error={form.errors[k]}><input className="field" type="number" min={0} max={240} step={0.5} inputMode="decimal" placeholder={ph} value={form.data[k]} onChange={(e) => form.setData(k, e.target.value)} /></Field></div>;
+function StageFields({ form }: { form: StageForm }) {
     return (
         <>
-            <div className="w-28"><Field label="ERP Code" error={form.errors.code}><input className="field font-mono uppercase" maxLength={12} value={form.data.code} onChange={(e) => form.setData('code', e.target.value.toUpperCase())} placeholder="ADT-T04" /></Field></div>
-            <div className="w-36"><Field label="Age Category" error={form.errors.label}><input className="field" value={form.data.label} onChange={(e) => form.setData('label', e.target.value)} placeholder="Adult" /></Field></div>
-            {n('from_months', 'From (months)')}{n('to_months', 'To (months)', 'Older')}
-            <div className="w-44"><Field label="Teeth" error={form.errors.teeth_key}><select className="field" value={form.data.teeth_key} onChange={(e) => form.setData('teeth_key', e.target.value)}><option value="">Not set</option>{teeth.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}</select></Field></div>
+            <div className="w-28"><Field label="ERP Code" error={form.errors.code}><input className="field font-mono uppercase" maxLength={12} value={form.data.code} onChange={(e) => form.setData('code', e.target.value.toUpperCase())} placeholder="ADT" /></Field></div>
+            <div className="w-40"><Field label="Age Category" error={form.errors.label}><input className="field" value={form.data.label} onChange={(e) => form.setData('label', e.target.value)} placeholder="Adult" /></Field></div>
+            <div className="w-24"><Field label="Starts at" error={form.errors.starts_at}><input className="field" type="number" min={0} max={3650} inputMode="numeric" value={form.data.starts_at} onChange={(e) => form.setData('starts_at', e.target.value)} /></Field></div>
+            <div className="w-28"><Field label="Unit" error={form.errors.starts_unit}><select className="field" value={form.data.starts_unit} onChange={(e) => form.setData('starts_unit', e.target.value)}><option value="days">Days</option><option value="months">Months</option></select></Field></div>
             <div className="w-28"><Field label="Counts as" error={form.errors.age_group}><select className="field" value={form.data.age_group} onChange={(e) => form.setData('age_group', e.target.value)}>{Object.entries(GROUP_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field></div>
         </>
     );
 }
 
-function StageRow({ st, teeth }: { st: Stage; teeth: Tooth[] }) {
+function StageRow({ st }: { st: Stage }) {
     const [editing, setEditing] = useState(false);
-    const form = useForm({ code: st.code, label: st.label, age_group: st.group, from_months: String(st.from), to_months: st.to === null ? '' : String(st.to), teeth_key: st.teeth ?? '' });
+    const form = useForm({ code: st.code, label: st.label, age_group: st.group, starts_at: String(st.at), starts_unit: st.unit });
     if (editing) {
         return (
-            <tr><td colSpan={7}>
-                <form onSubmit={(e) => { e.preventDefault(); form.transform(stageTo); form.post(`/settings/stages/${st.id}`, { preserveScroll: true, onSuccess: () => setEditing(false) }); }} className="flex flex-wrap items-end gap-2 py-1">
-                    <StageFields form={form} teeth={teeth} />
+            <tr><td colSpan={6}>
+                <form onSubmit={(e) => { e.preventDefault(); form.post(`/settings/stages/${st.id}`, { preserveScroll: true, onSuccess: () => setEditing(false) }); }} className="flex flex-wrap items-end gap-2 py-1">
+                    <StageFields form={form} />
                     <Button type="submit" disabled={form.processing || !form.isDirty}>Save</Button>
                     <Button type="button" variant="secondary" onClick={() => { form.reset(); form.clearErrors(); setEditing(false); }}>Cancel</Button>
                 </form>
@@ -146,13 +144,74 @@ function StageRow({ st, teeth }: { st: Stage; teeth: Tooth[] }) {
         <tr>
             <td className="font-mono font-semibold">{st.code}</td>
             <td>{st.label}</td>
-            <td>{st.to === null ? `${st.from} months and above` : `${st.from}–${st.to} months`}</td>
-            <td>{st.teethLabel ?? <span className="text-ink-faint">Not set</span>}</td>
+            <td>{st.range}</td>
             <td>{GROUP_LABEL[st.group] ?? st.group}</td>
             <td className="text-right">{st.goats}</td>
             <td className="text-right whitespace-nowrap">
                 <button type="button" className={editBtn} onClick={() => setEditing(true)}><Pencil size={14} aria-hidden /> Edit</button>
                 <button type="button" className={delBtn} onClick={() => { if (window.confirm(`Delete the age stage ${st.code}?`)) router.delete(`/settings/stages/${st.id}`, { preserveScroll: true }); }}><Trash2 size={14} aria-hidden /> Delete</button>
+            </td>
+        </tr>
+    );
+}
+
+/** D-229: the farm's dental codes (MLT, T02 …). Teeth come from a mouth check, never from age; no check = UNK. */
+function DentalCodesPanel({ teeth }: { teeth: Tooth[] }) {
+    const add = useForm({ key: '', label: '', local_term: '', from_months: '', to_months: '', estimate_months: '' });
+    return (
+        <Panel flush title="Dental Codes" description="Recorded from a mouth check (permanent lower incisors). The ages are only a guide: they estimate a bought goat's birth date. Goats never checked show UNK. Worn, broken or missing teeth are recorded as the condition on each check.">
+            <div className="overflow-x-auto"><table className="data-table min-w-[640px]">
+                <thead><tr><th>Code</th><th>Classification</th><th>Farm Term</th><th>About</th><th className="text-right">Estimate</th><th className="text-right">Goats</th><th /></tr></thead>
+                <tbody>{teeth.map((t) => <ToothRow key={t.id} t={t} />)}</tbody>
+            </table></div>
+            <form onSubmit={(e) => { e.preventDefault(); add.transform((d) => ({ ...d, to_months: d.to_months === '' ? null : d.to_months })); add.post('/settings/teeth', { preserveScroll: true, onSuccess: () => add.reset() }); }} className="flex flex-wrap items-end gap-2 border-t border-rule p-4">
+                <div className="w-24"><Field label="Code" error={add.errors.key}><input className="field font-mono uppercase" maxLength={8} value={add.data.key} onChange={(e) => add.setData('key', e.target.value.toUpperCase())} placeholder="T10" /></Field></div>
+                <ToothFields form={add} />
+                <Button type="submit" disabled={add.processing}>Add</Button>
+            </form>
+        </Panel>
+    );
+}
+
+type ToothForm = { data: { label: string; local_term: string; from_months: string; to_months: string; estimate_months: string }; errors: Partial<Record<string, string>>; setData: (k: 'label' | 'local_term' | 'from_months' | 'to_months' | 'estimate_months', v: string) => void };
+
+function ToothFields({ form }: { form: ToothForm }) {
+    const n = (k: 'from_months' | 'to_months' | 'estimate_months', label: string, ph?: string) => <div className="w-24"><Field label={label} error={form.errors[k]}><input className="field" type="number" min={0} max={240} inputMode="numeric" placeholder={ph} value={form.data[k]} onChange={(e) => form.setData(k, e.target.value)} /></Field></div>;
+    return (
+        <>
+            <div className="w-48"><Field label="Classification" error={form.errors.label}><input className="field" value={form.data.label} onChange={(e) => form.setData('label', e.target.value)} placeholder="2 Permanent Incisors" /></Field></div>
+            <div className="w-36"><Field label="Farm term" error={form.errors.local_term}><input className="field" value={form.data.local_term} onChange={(e) => form.setData('local_term', e.target.value)} placeholder="Donda" /></Field></div>
+            {n('from_months', 'From (months)')}{n('to_months', 'To (months)', 'Older')}{n('estimate_months', 'Estimate')}
+        </>
+    );
+}
+
+function ToothRow({ t }: { t: Tooth }) {
+    const [editing, setEditing] = useState(false);
+    const form = useForm({ label: t.label, local_term: t.local ?? '', from_months: String(t.from), to_months: t.to === null ? '' : String(t.to), estimate_months: String(t.estimate) });
+    if (editing) {
+        return (
+            <tr><td colSpan={7}>
+                <form onSubmit={(e) => { e.preventDefault(); form.transform((d) => ({ ...d, to_months: d.to_months === '' ? null : d.to_months })); form.post(`/settings/teeth/${t.id}`, { preserveScroll: true, onSuccess: () => setEditing(false) }); }} className="flex flex-wrap items-end gap-2 py-1">
+                    <span className="self-center font-mono font-semibold">{t.key}</span>
+                    <ToothFields form={form} />
+                    <Button type="submit" disabled={form.processing || !form.isDirty}>Save</Button>
+                    <Button type="button" variant="secondary" onClick={() => { form.reset(); form.clearErrors(); setEditing(false); }}>Cancel</Button>
+                </form>
+            </td></tr>
+        );
+    }
+    return (
+        <tr>
+            <td className="font-mono font-semibold">{t.key}</td>
+            <td>{t.label}</td>
+            <td>{t.local ?? <span className="text-ink-faint">None</span>}</td>
+            <td>{t.to === null ? `${t.from}+ months` : `${t.from}–${t.to} months`}</td>
+            <td className="text-right">{t.estimate} mo</td>
+            <td className="text-right">{t.goats}</td>
+            <td className="text-right whitespace-nowrap">
+                <button type="button" className={editBtn} onClick={() => setEditing(true)}><Pencil size={14} aria-hidden /> Edit</button>
+                <button type="button" className={delBtn} onClick={() => { if (window.confirm(`Delete the dental code ${t.key}?`)) router.delete(`/settings/teeth/${t.id}`, { preserveScroll: true }); }}><Trash2 size={14} aria-hidden /> Delete</button>
             </td>
         </tr>
     );

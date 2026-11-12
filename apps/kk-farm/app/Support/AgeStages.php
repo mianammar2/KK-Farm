@@ -4,67 +4,95 @@ namespace App\Support;
 
 use App\Models\AgeStage;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * D-221: the farm's age stages (Settings → Age Groups). A goat's stage follows from its age (birth date), so it moves
- * on by itself as the goat grows. A farm with none yet gets the KK Farms stages on first use.
+ * D-221 / D-229: the farm's age stages (Settings → Age Groups). Each stage starts at an age in days or calendar months
+ * and lasts until the next one starts, so a goat's stage follows from its birth date and moves on by itself:
+ * YKD on day 0, KID on day 15, GRW on day 60, ADT at 14 calendar months, MAT at 48 calendar months.
+ * Reaching MAT does not make a goat old or a cull; that is decided separately.
  */
 final class AgeStages
 {
-    /** code => [category, counts as, from months, to months, teeth stage key] */
+    /** code => [age category, counts as, starts at, unit] */
     public const DEFAULTS = [
-        'YKD' => ['Young Kid', 'kid', 0, 0.5, 'milk'],
-        'KID' => ['Kid', 'kid', 0.5, 2, 'milk'],
-        'GRW' => ['Grower', 'grower', 2, 14, 'milk'],
-        'ADT-T02' => ['Adult', 'adult', 14, 18, '2'],
-        'ADT-T04' => ['Adult', 'adult', 18, 24, '4'],
-        'ADT-T06' => ['Adult', 'adult', 24, 30, '6'],
-        'ADT-T08' => ['Adult', 'adult', 30, 48, '8'],
-        'ADT-WBT' => ['Old', 'adult', 48, null, 'worn'],
+        'YKD' => ['Newborn Kid', 'kid', 0, 'days'],
+        'KID' => ['Kid', 'kid', 15, 'days'],
+        'GRW' => ['Grower', 'grower', 60, 'days'],
+        'ADT' => ['Adult', 'adult', 14, 'months'],
+        'MAT' => ['Mature Adult', 'adult', 48, 'months'],
     ];
 
-    /** @return Collection<int, AgeStage> */
+    /** @return Collection<int, AgeStage> youngest first */
     public static function stages(): Collection
     {
         return Tenant::memo('age_stages', function () {
             if (! Tenant::current()) {
-                return collect(self::DEFAULTS)->map(fn ($d, $c) => new AgeStage(['code' => $c, 'label' => $d[0], 'age_group' => $d[1], 'from_months' => $d[2], 'to_months' => $d[3], 'teeth_key' => $d[4]]))->values();
-            }
-            if (! AgeStage::exists()) {
-                $i = 0;
-                foreach (self::DEFAULTS as $c => $d) {
-                    AgeStage::create(['code' => $c, 'label' => $d[0], 'age_group' => $d[1], 'from_months' => $d[2], 'to_months' => $d[3], 'teeth_key' => $d[4], 'sort' => ($i += 10)]);
+                $list = collect(self::DEFAULTS)->map(fn ($d, $c) => new AgeStage(['code' => $c, 'label' => $d[0], 'age_group' => $d[1], 'starts_at' => $d[2], 'starts_unit' => $d[3]]))->values();
+            } else {
+                if (! AgeStage::exists()) {
+                    $i = 0;
+                    foreach (self::DEFAULTS as $c => $d) {
+                        AgeStage::create(['code' => $c, 'label' => $d[0], 'age_group' => $d[1], 'starts_at' => $d[2], 'starts_unit' => $d[3], 'sort' => ($i += 10)]);
+                    }
                 }
+                $list = AgeStage::all();
             }
+            $list = $list->sortBy(fn (AgeStage $s) => $s->startDays())->values();
+            $list->each(fn (AgeStage $s, int $i) => $s->setNext($list[$i + 1] ?? null));
 
-            return AgeStage::orderBy('from_months')->orderBy('sort')->get();
+            return $list;
         });
     }
 
-    /** Age in months with fractions (0.5 month = about 15 days). */
+    /** Age in months with fractions (for estimates and sorting only; stages use calendar dates). */
     public static function months(CarbonInterface $birth, ?CarbonInterface $at = null): float
     {
         return $birth->diffInDays($at ?? now()) / 30.4375;
     }
 
-    public static function forMonths(?float $months): ?AgeStage
+    /** The stage a goat born on $birth is in on $at (today by default): the last stage whose start has been reached. */
+    public static function forBirth(CarbonInterface|string|null $birth, ?CarbonInterface $at = null): ?AgeStage
     {
-        return $months === null ? null : self::stages()->first(fn (AgeStage $s) => $s->contains($months));
+        if (! $birth) {
+            return null;
+        }
+        $birth = Carbon::parse($birth)->startOfDay();
+        $at = ($at ? Carbon::parse($at) : now())->startOfDay();
+        if ($at->lt($birth)) {
+            return null;
+        }
+
+        return self::stages()->filter(fn (AgeStage $s) => $s->startDate($birth)->lte($at))->last();
+    }
+
+    public static function codeFor(CarbonInterface|string|null $birth, ?CarbonInterface $at = null): ?string
+    {
+        return self::forBirth($birth, $at)?->code;
     }
 
     /**
-     * After the stages change, the Kid / Grower / Adult boundaries follow them: Grower starts at the first stage that
-     * counts as Grower, Adult at the first that counts as Adult.
+     * D-229: the combined display code from the two separate facts, age stage and teeth: GRW-T02, ADT-T04, MAT-T08.
+     * Without a teeth examination only the age code is shown (ADT); without a birth date only the teeth (T04).
+     */
+    public static function displayCode(?string $ageCode, ?string $teeth): ?string
+    {
+        return collect([$ageCode, $teeth])->filter()->implode('-') ?: null;
+    }
+
+    /**
+     * After the stages change, the Kid / Grower / Adult boundaries (in whole months) follow them: Grower starts at the
+     * first stage that counts as Grower, Adult at the first that counts as Adult.
      */
     public static function syncGroups(): void
     {
         $s = AgeStage::all();
-        $grower = $s->where('age_group', 'grower')->min('from_months');
-        $adult = $s->where('age_group', 'adult')->min('from_months');
+        $grower = $s->where('age_group', 'grower')->map(fn ($x) => $x->startMonths())->min();
+        $adult = $s->where('age_group', 'adult')->map(fn ($x) => $x->startMonths())->min();
         $org = \App\Models\Organization::find(Tenant::current());
         if ($org && $grower !== null && $adult !== null && $adult > $grower) {
-            $org->update(['grower_from_months' => (int) round($grower), 'adult_from_months' => (int) round($adult)]);
+            $org->update(['grower_from_months' => max(1, (int) round($grower)), 'adult_from_months' => (int) round($adult)]);
             Classification::forgetBoundaries();
         }
     }

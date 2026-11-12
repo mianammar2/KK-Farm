@@ -149,11 +149,17 @@ class GoatController extends Controller
     public function teeth(Request $request, Animal $animal): RedirectResponse
     {
         abort_unless($request->user()->passes('edit_goats'), 403);
-        $data = $request->validate(['teeth' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::options()))]]);
+        $data = $request->validate(['teeth' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::options()))], // D-229: an examination: dental code + condition
+            'dental_condition' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::CONDITIONS))], 'examined_on' => ['nullable', 'date', 'before_or_equal:today']]);
+        $animal->forceFill(['dental_condition' => $data['dental_condition'] ?? $animal->dental_condition, 'teeth_checked_on' => $data['examined_on'] ?? now()->toDateString()]);
         $exact = $animal->birth_date && ! $animal->birth_date_is_estimate && $animal->origin === 'born_on_farm';
         $values = ['origin' => $animal->origin, 'breed_id' => $animal->breed_id, 'tag_id' => $animal->farm_number, 'sex' => $animal->sex, 'pen_id' => $animal->pen_id, 'teeth' => $data['teeth'] ?? null,
             'birth_date' => ! $exact && ! empty($data['teeth']) ? now()->subMonths(\App\Support\Teeth::months()[$data['teeth']])->toDateString() : $animal->birth_date?->toDateString()];
         $changes = GoatRegistration::update($animal, $values, $request->user());
+        if ($animal->isDirty('dental_condition')) { // D-229: same teeth, new condition is still a new check
+            $animal->save();
+            $changes = $changes ?: ['dental_condition'];
+        }
 
         return back()->with('success', $changes ? "{$animal->farm_number}: teeth saved".($exact ? '.' : ', age estimated from them.') : 'Nothing changed.');
     }
@@ -176,7 +182,7 @@ class GoatController extends Controller
                 'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
             ],
             'teethMonths' => \App\Support\Teeth::months(), // D-220
-            'ageStages' => \App\Support\AgeStages::stages()->map(fn ($s) => ['code' => $s->code, 'label' => $s->label, 'group' => $s->age_group, 'from' => $s->from_months, 'to' => $s->to_months, 'teeth' => $s->teeth_key, 'teethLabel' => \App\Support\Teeth::short()[$s->teeth_key] ?? null])->values(), // D-221
+            'ageStages' => \App\Support\AgeStages::stages()->map(fn ($s) => ['code' => $s->code, 'label' => $s->label, 'group' => $s->age_group, 'at' => $s->starts_at, 'unit' => $s->starts_unit, 'range' => $s->rangeText(), 'estimate' => round($s->estimateMonths(), 1)])->values(), // D-229
             'classSex' => GoatRegistration::classSex(),
             'classification' => [
                 'categories' => array_map(fn (array $c) => $c[0], Classification::CATEGORIES),
@@ -231,8 +237,9 @@ class GoatController extends Controller
                 'identity' => $animal->id,
                 'removal' => $animal->removal_requested_at || $animal->status === 'voided' ? ['by' => $animal->removal_requested_by, 'on' => $animal->removal_requested_at?->format('j M Y g:i A'), 'reason' => $animal->removal_reason, 'voidedBy' => $animal->voided_by, 'voidedOn' => $animal->voided_at?->format('j M Y g:i A')] : null, // D-091
                 'teeth' => $animal->teeth ? (\App\Support\Teeth::options()[$animal->teeth] ?? $animal->teeth) : null,
-                'ageStage' => ($st = $animal->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($animal->birth_date, $animal->exit_date)) : null)
-                    ? ['code' => $st->code, 'label' => $st->label, 'teeth' => \App\Support\Teeth::short()[$st->teeth_key] ?? null, 'match' => ! $animal->teeth || ! $st->teeth_key || $animal->teeth === $st->teeth_key] : null, // D-221
+                'ageStage' => ($st = \App\Support\AgeStages::forBirth($animal->birth_date, $animal->exit_date)) ? ['code' => $st->code, 'label' => $st->label, 'range' => $st->rangeText()] : null, // D-229
+                'dental' => ['code' => \App\Support\Teeth::code($animal->teeth), 'condition' => \App\Support\Teeth::CONDITIONS[$animal->dental_condition] ?? null, 'checkedOn' => $animal->teeth_checked_on?->format('j M Y'),
+                    'history' => $animal->dentalExams()->limit(10)->get()->map(fn ($e) => ['on' => $e->examined_on->format('j M Y'), 'code' => \App\Support\Teeth::code($e->dental_code), 'condition' => \App\Support\Teeth::CONDITIONS[$e->condition] ?? null, 'by' => $e->recorded_by, 'source' => $e->source])->all()],
                 'classification' => $animal->classification(),
                 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null),
                 'dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null),
@@ -255,6 +262,7 @@ class GoatController extends Controller
                 ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('j M Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('j M Y')]),
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
+            'dentalOptions' => ['codes' => \App\Support\Teeth::options(), 'conditions' => \App\Support\Teeth::CONDITIONS], // D-229
             'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats'), 'breeding' => $request->user()->canModule('breeding')],
             'pregnancy' => $animal->sex === 'female' ? \App\Support\Checkups::pregnancyThread($animal) : null, // D-100
             'outcomeOptions' => \App\Models\Kidding::formOptions(), // D-161
@@ -351,9 +359,9 @@ class GoatController extends Controller
             if (config('kkfarm.demo')) { // D-228: only the demo install says so; the live farm's export is its real register
                 fputcsv($out, ['Synthetic demonstration data']);
             }
-            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Age stage', 'Pen', 'Status', 'Health', 'Latest weight (KG)']); // D-227: age stage code
+            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Classification code', 'Age stage', 'Teeth', 'Dental condition', 'Pen', 'Status', 'Health', 'Latest weight (KG)']); // D-227: age stage code
             Animal::with(['breed', 'pen', 'latestWeight'])->orderBy('farm_number')->each(function (Animal $a) use ($out): void {
-                fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($a->birth_date, $a->exit_date))?->code : null, $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
+                fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->classCode(), $a->ageStageCode(), \App\Support\Teeth::code($a->teeth), \App\Support\Teeth::CONDITIONS[$a->dental_condition] ?? null, $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
             });
             fclose($out);
         }, 'kk-farm-goat-register-demo.csv', ['Content-Type' => 'text/csv']);

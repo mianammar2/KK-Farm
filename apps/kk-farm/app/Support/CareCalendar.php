@@ -26,7 +26,7 @@ final class CareCalendar
         $out = [];
         foreach (CareProtocol::with('medicine')->where('active', true)->orderBy('kind')->orderBy('name')->get() as $p) {
             $stage = str_starts_with((string) $p->applies_to, 'stage:') ? substr($p->applies_to, 6) : null; // D-228
-            $scope = $goats->filter(fn (Animal $a) => $stage !== null ? ($a->birth_date && AgeStages::forMonths(AgeStages::months($a->birth_date))?->code === $stage) : match ($p->applies_to) {
+            $scope = $goats->filter(fn (Animal $a) => $stage !== null ? ($a->birth_date && AgeStages::codeFor($a->birth_date) === $stage) : match ($p->applies_to) {
                 'kids' => $a->effectiveAge() === 'kid', 'growers' => $a->effectiveAge() === 'grower', 'adults' => $a->effectiveAge() === 'adult',
                 'does' => $a->sex === 'female', 'bucks' => $a->sex === 'male', 'pregnant' => isset($pregnant[$a->id]), default => true,
             });
@@ -44,7 +44,7 @@ final class CareCalendar
                     continue;
                 }
                 $rows[] = [
-                    'id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'stage' => $a->effectiveAge(), 'code' => $a->birth_date ? AgeStages::forMonths(AgeStages::months($a->birth_date))?->code : null, 'breed' => $a->breed?->name, 'pen' => $a->pen?->fullName(),
+                    'id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'stage' => $a->effectiveAge(), 'code' => $a->classCode(), 'breed' => $a->breed?->name, 'pen' => $a->pen?->fullName(),
                     'due' => $dueOn->toDateString(), 'dueLabel' => $dueOn->format('j M'), 'overdue' => $dueOn->lessThan($today), 'last' => $lastOn?->format('j M Y'),
                 ];
             }

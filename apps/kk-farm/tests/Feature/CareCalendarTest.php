@@ -58,6 +58,6 @@ class CareCalendarTest extends TestCase
         ])->assertSessionHasNoErrors();
         $this->assertSame([], collect(CareCalendar::due())->firstWhere('name', 'PPR')['goats']); // next due in a year, outside 30 days
 
-        $this->actingAs($this->user('vet'))->get('/health?tab=calendar')->assertInertia(fn (AssertableInertia $p) => $p->has('calendar', 2)->has('protocols', 2)->has('applies', 15));
+        $this->actingAs($this->user('vet'))->get('/health?tab=calendar')->assertInertia(fn (AssertableInertia $p) => $p->has('calendar', 2)->has('protocols', 2)->has('applies', 12));
     }
 }

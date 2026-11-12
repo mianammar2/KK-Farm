@@ -10,7 +10,7 @@ type Choice = { value: string | number; label: string; next?: string; nextNumber
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
-type AgeStage = { code: string; label: string; group: string; from: number; to: number | null; teeth: string | null; teethLabel: string | null };
+type AgeStage = { code: string; label: string; group: string; at: number; unit: 'days' | 'months'; range: string; estimate: number }; // D-229
 type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; ageStages: AgeStage[]; canAssignTags: boolean; untagged: Option[];
     goat?: { id: string; number: string; values: Record<string, any> } };
 
@@ -62,7 +62,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     const started = Boolean(form.data.origin);
     const teethLabels: Record<string, string> = Object.fromEntries((fields.find((f) => f.key === 'teeth')?.options ?? []).map((o) => [String(o.value), o.label])); // D-221
     const shown = started ? sections : sections.filter((s) => s.fields.some((f) => f.key === 'origin')).map((s) => ({ ...s, fields: s.fields.filter((f) => f.key === 'origin') }));
-    const labelFor = (f: FieldDef) => (f.key === 'teeth' && !farmBorn ? 'Age Stage (Teeth)' : f.key === 'acquired_on' && form.data.origin === 'transferred_in' && f.label === 'Purchase Date' ? 'Arrival Date' : f.label);
+    const labelFor = (f: FieldDef) => (f.key === 'acquired_on' && form.data.origin === 'transferred_in' && f.label === 'Purchase Date' ? 'Arrival Date' : f.label);
 
     // D-046: Female Status only for females, Kid Stage only for kids.
     // D-053: only a farm-born goat must have a birth date.
@@ -98,6 +98,14 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
         form.data.sex === 'female' ? classification.statuses[form.data.repro_status] : null,
     ].filter(Boolean).join(' · ');
     const value = (f: FieldDef) => (f.builtin ? form.data[f.key] : form.data.custom_fields[f.key]) ?? (f.type === 'yes_no' ? false : '');
+    // D-229: picking an age stage (bought goat, age unknown) gives the middle of its range as an estimated birth date.
+    const pickStage = (code: string) => {
+        const st = ageStages.find((x) => x.code === code);
+        if (!st) return;
+        const d = new Date(new Date(`${TODAY}T12:00:00`).getTime() - Math.round(st.estimate * 30.4375) * 86400000);
+        setEstMonths(String(st.estimate));
+        form.setData((data: Record<string, any>) => ({ ...data, birth_date: d.toISOString().slice(0, 10) }));
+    };
     const set = (f: FieldDef, v: any) => {
         if (!f.builtin) {
             return form.setData('custom_fields', { ...form.data.custom_fields, [f.key]: v });
@@ -260,20 +268,6 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             case 'yes_no':
                 return <span className="flex min-h-11 items-center gap-2"><input type="checkbox" className="size-5" checked={Boolean(v)} onChange={(e) => set(f, e.target.checked)} /><span className="text-sm text-ink-soft">Yes</span></span>;
             case 'select': {
-                // D-222: a bought goat's age is chosen from the farm's age stages (Settings → Age Groups). The stage gives
-                // the teeth and the middle of its age range, and from that the estimated birth date.
-                if (f.key === 'teeth' && !farmBorn) {
-                    const current = stageFor(ageStages, form.data.birth_date);
-                    const pick = (code: string) => {
-                        const st = ageStages.find((x) => x.code === code);
-                        if (!st) return form.setData('teeth', '');
-                        const mid = st.to === null ? st.from + 6 : (st.from + st.to) / 2;
-                        const d = new Date(new Date(`${TODAY}T12:00:00`).getTime() - Math.round(mid * 30.4375) * 86400000);
-                        setEstMonths(String(Math.round(mid * 10) / 10));
-                        form.setData((data: Record<string, any>) => ({ ...data, teeth: st.teeth ?? '', birth_date: d.toISOString().slice(0, 10) }));
-                    };
-                    return <StagePicker stages={ageStages} current={current?.code ?? ''} onPick={pick} />;
-                }
                 // Animal Class only offers classes that fit the chosen sex (a male cannot be a Breeding Doe).
                 const sex = form.data.sex;
                 // D-171: a kid born on the farm is created by the Pregnancy Outcome (Maternity), never registered by hand.
@@ -361,13 +355,13 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                                     <Field
                                         label={`${labelFor(f)}${isRequired(f) ? ' *' : ''}`}
                                         error={error(f)}
-                                        hint={f.key === 'teeth' && !farmBorn ? 'Type the ERP code (e.g. ADT-T04, T04, GRW) or choose from the list. Fills in the teeth, estimated age and birth date.' : f.key === 'origin' && !editing ? 'Purchased or transferred goats. Kids born on the farm are added automatically when the kidding is recorded in Maternity; the vet completes them under Newborns to Complete.' : f.key === 'estimated_age' ? 'The birth date is worked out from it and saved as an estimate.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date ? 'Estimated from the age. Change it if you know a better date.' : 'Optional. Enter the estimated age, or a date.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
+                                        hint={f.key === 'teeth' && !farmBorn ? 'Only after checking the mouth. Fills in the estimated age. Leave empty if not examined (UNK).' : f.key === 'origin' && !editing ? 'Purchased or transferred goats. Kids born on the farm are added automatically when the kidding is recorded in Maternity; the vet completes them under Newborns to Complete.' : f.key === 'estimated_age' ? 'The birth date is worked out from it and saved as an estimate.' : f.key === 'birth_date' && form.data.origin && form.data.origin !== 'born_on_farm' ? (form.data.birth_date ? 'Estimated from the age. Change it if you know a better date.' : 'Optional. Enter the estimated age, or a date.') : f.key === 'animal_class' && !form.data.animal_class && suggested ? `Suggested: ${classification.categories[suggested]}` : f.key === 'age_category' && !form.data.age_category && age ? `From the birth date: ${age === 'kid' ? 'Kid' : age === 'grower' ? 'Grower' : 'Adult'}` : f.help ?? undefined}
                                     >{control(f)}</Field>
                                 </div>
                             ))}
                         </div>
                         {!started ? <p className="mt-3 text-sm text-ink-soft">Choose how the goat came to the farm. The rest of the form follows from it.</p> : null}
-                        {section.name === 'Birth' && started ? <AgeStageNote stages={ageStages} birth={form.data.birth_date} teeth={form.data.teeth} teethLabels={teethLabels} /> : null}
+                        {section.name === 'Birth' && started ? <AgeStageNote stages={ageStages} birth={form.data.birth_date} teeth={form.data.teeth} teethLabels={teethLabels} picker={farmBorn ? null : <StagePicker stages={ageStages} current={stageFor(ageStages, form.data.birth_date)?.code ?? ''} onPick={pickStage} />} /> : null}
                         {section.name === 'Classification' ? <GeneratedClassification text={summary} /> : null}
                     </Panel>
                     </Fragment>
@@ -396,9 +390,9 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     );
 }
 
-const stageText = (st: AgeStage) => `${st.code} · ${st.label} · ${st.to === null ? `${st.from}+ months` : `${st.from}–${st.to} months`}${st.teethLabel ? ` · ${st.teethLabel}` : ''}`;
+const stageText = (st: AgeStage) => `${st.code} · ${st.label} · ${st.range}`;
 
-/** D-224: type an ERP code (ADT-T04, t04, grw) or pick from the list. A full match is applied straight away. */
+/** D-224: type an ERP code (ADT, grw) or pick from the list. A full match is applied straight away. */
 function StagePicker({ stages, current, onPick }: { stages: AgeStage[]; current: string; onPick: (code: string) => void }) {
     const cur = stages.find((x) => x.code === current);
     const [text, setText] = useState(cur ? stageText(cur) : '');
@@ -406,41 +400,47 @@ function StagePicker({ stages, current, onPick }: { stages: AgeStage[]; current:
     const find = (raw: string) => {
         const t = raw.trim().toUpperCase();
         if (!t) return undefined;
-        return stages.find((x) => x.code === t || stageText(x).toUpperCase() === t) ?? stages.find((x) => x.code.endsWith(`-${t}`) || x.code.replace(/-/g, '') === t.replace(/-/g, ''));
+        return stages.find((x) => x.code === t || stageText(x).toUpperCase() === t);
     };
     const change = (raw: string) => {
         setText(raw);
         const st = find(raw);
-        if (st) { setText(stageText(st)); onPick(st.code); } else if (!raw.trim()) onPick('');
+        if (st) { setText(stageText(st)); onPick(st.code); }
     };
     const none = text.trim() !== '' && !find(text);
     return (
         <>
-            <input className="field font-mono" list="age-stage-codes" value={text} onChange={(e) => change(e.target.value)} onFocus={(e) => e.target.select()} placeholder="Type a code (ADT-T04) or choose" autoComplete="off" spellCheck={false} />
+            <input className="field font-mono" list="age-stage-codes" value={text} onChange={(e) => change(e.target.value)} onFocus={(e) => e.target.select()} placeholder="Type a code (GRW, ADT) or choose" autoComplete="off" spellCheck={false} />
             <datalist id="age-stage-codes">{stages.map((st) => <option key={st.code} value={stageText(st)} />)}</datalist>
             {none ? <p className="mt-1 text-xs font-semibold text-watch-700">No stage with that code. Codes: {stages.map((x) => x.code).join(', ')}</p> : null}
         </>
     );
 }
 
-/** D-222: the stage a birth date falls in today. */
+/** D-229: the stage a birth date falls in today, by days and calendar months (same rule as App\Support\AgeStages). */
 function stageFor(stages: AgeStage[], birth?: string): AgeStage | undefined {
     if (!birth) return undefined;
-    const months = (Date.now() - new Date(`${birth}T12:00:00`).getTime()) / 86400000 / 30.4375;
-    return stages.find((x) => months >= x.from && (x.to === null || months < x.to));
+    const today = new Date(`${TODAY}T12:00:00`);
+    const started = (st: AgeStage) => {
+        const d = new Date(`${birth}T12:00:00`);
+        if (st.unit === 'months') d.setMonth(d.getMonth() + st.at); else d.setDate(d.getDate() + st.at);
+        return d.getTime() <= today.getTime();
+    };
+    return [...stages].reverse().find(started);
 }
 
-/** D-221: the age stage that follows from the birth date (or the estimate), worked out as the form is filled in. */
-function AgeStageNote({ stages, birth, teeth, teethLabels }: { stages: AgeStage[]; birth?: string; teeth?: string; teethLabels: Record<string, string> }) {
-    if (!birth) return <p className="mt-3 text-sm text-ink-soft">The age stage (ERP code) appears here once the birth date, estimated age or teeth are filled in.</p>;
-    const months = (Date.now() - new Date(`${birth}T12:00:00`).getTime()) / 86400000 / 30.4375;
-    const s = stages.find((x) => months >= x.from && (x.to === null || months < x.to));
-    if (!s) return <p className="mt-3 text-sm text-ink-soft">No age stage covers {Math.floor(months)} months. Add one in Settings → Age Groups.</p>;
-    const off = teeth && s.teeth && teeth !== s.teeth;
+/** D-229: the classification code from age stage and teeth (GRW-T02), worked out as the form is filled in. */
+function AgeStageNote({ stages, birth, teeth, teethLabels, picker }: { stages: AgeStage[]; birth?: string; teeth?: string; teethLabels: Record<string, string>; picker: ReactNode }) {
+    const s = stageFor(stages, birth);
+    const code = [s?.code, teeth].filter(Boolean).join('-');
     return (
-        <div className={`mt-3 rounded-tile px-3 py-2 text-sm ${off ? 'bg-watch-100 text-watch-700' : 'bg-glaze text-cobalt-900'}`}>
-            <strong className="font-mono">{s.code}</strong> · {s.label} · {s.to === null ? `${s.from}+ months` : `${s.from}–${s.to} months`}{s.teethLabel ? ` · ${s.teethLabel}` : ''}
-            {off ? <span className="block text-xs font-semibold">The teeth entered ({teethLabels[teeth] ?? teeth}) do not match this age. Check the teeth or the birth date.</span> : null}
+        <div className="mt-3 space-y-2">
+            {picker ? <Field label="Age stage (ERP code)" hint="Only if the age is not known: picking a stage fills in an estimated birth date. Teeth are recorded separately.">{picker}</Field> : null}
+            {code ? (
+                <div className="rounded-tile bg-glaze px-3 py-2 text-sm text-cobalt-900">
+                    <strong className="font-mono">{code}</strong>{s ? ` · ${s.label} (${s.range})` : ' · age not known'} · {teeth ? (teethLabels[teeth] ?? teeth) : 'teeth not examined (UNK)'}
+                </div>
+            ) : <p className="text-sm text-ink-soft">The classification code (e.g. GRW-T02) appears here once the birth date, estimated age or teeth are filled in.</p>}
         </div>
     );
 }

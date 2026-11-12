@@ -55,7 +55,7 @@ final class FieldCatalog
             ['key' => 'sex', 'label' => 'Gender', 'type' => 'select', 'section' => 'Origin and identity', 'required' => true],
             ['key' => 'source_farm', 'label' => 'Source Farm', 'type' => 'text', 'section' => 'Origin and identity'],
             ['key' => 'purchase_cost_pkr', 'label' => 'Purchase Cost PKR', 'type' => 'number', 'section' => 'Origin and identity'],
-            ['key' => 'teeth', 'label' => 'Teeth (permanent incisors)', 'type' => 'select', 'section' => 'Birth', 'help' => 'Count the big front teeth on the lower jaw. Fills in the estimated age.'], // D-091
+            ['key' => 'teeth', 'label' => 'Teeth (Dental Code)', 'type' => 'select', 'section' => 'Birth', 'help' => 'Only after checking the mouth: count the big front teeth on the lower jaw. Leave empty if not examined (UNK).'], // D-091
             ['key' => 'birth_date', 'label' => 'Birth Date', 'type' => 'date', 'section' => 'Birth', 'required' => true, 'help' => 'Required for farm-born goats. For a bought goat leave it empty if unknown.'],
             ['key' => 'birth_date_is_estimate', 'label' => 'Birth date is an estimate', 'type' => 'yes_no', 'section' => 'Birth'],
             ['key' => 'birth_weight_kg', 'label' => 'Birth Weight (KG)', 'type' => 'number', 'section' => 'Birth'],

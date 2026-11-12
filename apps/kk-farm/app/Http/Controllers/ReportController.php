@@ -23,10 +23,16 @@ class ReportController extends Controller
             // D-227: by the farm's age stages (Settings → Age Groups), in stage order; goats with no birth date last.
             'ages' => (function () {
                 $stages = \App\Support\AgeStages::stages();
-                $counts = Animal::where('status', 'active')->get(['birth_date'])->countBy(fn ($a) => $a->birth_date ? (\App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($a->birth_date))?->code ?? 'none') : 'none');
+                $counts = Animal::where('status', 'active')->get(['birth_date'])->countBy(fn ($a) => \App\Support\AgeStages::codeFor($a->birth_date) ?? 'none');
 
                 return $stages->map(fn ($st) => ['band' => $st->code, 'value' => $counts[$st->code] ?? 0])->filter(fn ($r) => $r['value'] > 0)
                     ->push(['band' => 'No age', 'value' => $counts['none'] ?? 0])->filter(fn ($r) => $r['value'] > 0)->values();
+            })(),
+            // D-229: by teeth (dental code from the latest examination); UNK = never examined.
+            'teeth' => (function () {
+                $counts = Animal::where('status', 'active')->pluck('teeth')->countBy(fn ($t) => \App\Support\Teeth::code($t));
+
+                return \App\Support\Teeth::stages()->map(fn ($t) => ['band' => $t->key, 'value' => $counts[$t->key] ?? 0])->push(['band' => 'UNK', 'value' => $counts['UNK'] ?? 0])->filter(fn ($r) => $r['value'] > 0)->values();
             })(),
             'exits' => Animal::where('status', '!=', 'active')->selectRaw('exit_reason as name, count(*) as value')->groupBy('exit_reason')->get(),
             'breeding' => [

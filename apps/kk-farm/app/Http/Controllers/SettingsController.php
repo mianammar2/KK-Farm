@@ -24,7 +24,7 @@ class SettingsController extends Controller
             'ages' => ['growerFrom' => \App\Support\Classification::boundaries()[0], 'adultFrom' => \App\Support\Classification::boundaries()[1],
                 'groups' => $section !== 'ages' ? [] : collect(\App\Support\Classification::AGE_CATEGORIES)->map(fn ($label, $key) => ['key' => $key, 'label' => $label, 'goats' => Animal::active()->get(['birth_date'])->filter(fn ($a) => \App\Support\Classification::ageCategory($a->birth_date) === $key)->count()])->values()],
             'stages' => $section === 'ages' ? self::stageRows() : [],
-            'teeth' => $section === 'ages' ? \App\Support\Teeth::stages()->map(fn (\App\Models\TeethStage $t) => ['id' => $t->id, 'key' => $t->key, 'label' => $t->label, 'from' => $t->from_months, 'to' => $t->to_months, 'estimate' => $t->estimate_months,
+            'teeth' => $section === 'ages' ? \App\Support\Teeth::stages()->map(fn (\App\Models\TeethStage $t) => ['id' => $t->id, 'key' => $t->key, 'label' => $t->label, 'local' => $t->local_term, 'from' => $t->from_months, 'to' => $t->to_months, 'estimate' => $t->estimate_months,
                 'goats' => Animal::where('teeth', $t->key)->count()])->values() : [],
             'counts' => ['users' => \App\Models\User::where('org_id', $org)->where('active', true)->count(), 'fields' => \App\Models\FieldDefinition::count(),
                 'overrides' => \App\Models\User::where('org_id', $org)->get()->filter(fn ($u) => ! empty($u->module_access) || ! empty($u->gate_access))->count()],
@@ -95,12 +95,10 @@ class SettingsController extends Controller
     /** D-221: the age stages with how many active goats are in each today. */
     private static function stageRows(): array
     {
-        $teeth = \App\Support\Teeth::short();
-        $ages = Animal::active()->whereNotNull('birth_date')->pluck('birth_date')->map(fn ($d) => \App\Support\AgeStages::months(\Illuminate\Support\Carbon::parse($d)));
+        $codes = Animal::active()->whereNotNull('birth_date')->pluck('birth_date')->countBy(fn ($d) => \App\Support\AgeStages::codeFor($d));
 
         return \App\Support\AgeStages::stages()->map(fn (\App\Models\AgeStage $s) => ['id' => $s->id, 'code' => $s->code, 'label' => $s->label, 'group' => $s->age_group,
-            'from' => $s->from_months, 'to' => $s->to_months, 'teeth' => $s->teeth_key, 'teethLabel' => $teeth[$s->teeth_key] ?? null,
-            'goats' => $ages->filter(fn ($m) => $s->contains($m))->count()])->values()->all();
+            'at' => $s->starts_at, 'unit' => $s->starts_unit, 'range' => $s->rangeText(), 'goats' => $codes[$s->code] ?? 0])->values()->all();
     }
 
     /** D-221: add, edit or delete an age stage. Kid / Grower / Adult boundaries follow the stages. */
@@ -108,7 +106,7 @@ class SettingsController extends Controller
     {
         \App\Support\AgeStages::stages();
         $data = $this->stageData($request);
-        \App\Models\AgeStage::create($data + ['sort' => (int) ($data['from_months'] * 10)]);
+        \App\Models\AgeStage::create($data);
         \App\Support\AgeStages::syncGroups();
         Farm::log($request->user(), "Added age stage {$data['code']} {$data['label']}", '/settings/ages');
 
@@ -142,16 +140,14 @@ class SettingsController extends Controller
             'code' => ['required', 'string', 'max:12', 'regex:/^[A-Z0-9-]+$/', \Illuminate\Validation\Rule::unique('age_stages', 'code')->ignore($ignore)],
             'label' => ['required', 'string', 'max:40'],
             'age_group' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Support\Classification::AGE_CATEGORIES))],
-            'from_months' => ['required', 'numeric', 'min:0', 'max:240'],
-            'to_months' => ['nullable', 'numeric', 'gt:from_months', 'max:240'],
-            'teeth_key' => ['nullable', \Illuminate\Validation\Rule::in(array_map('strval', array_keys(\App\Support\Teeth::options())))],
-        ], ['code.regex' => 'Use capital letters, numbers and dashes, e.g. ADT-T04.']);
-        $data['to_months'] ??= null;
-        $data['teeth_key'] ??= null;
-        $overlap = \App\Models\AgeStage::when($ignore, fn ($q) => $q->where('id', '!=', $ignore))->get()
-            ->first(fn ($s) => $data['from_months'] < ($s->to_months ?? INF) && $s->from_months < ($data['to_months'] ?? INF));
-        if ($overlap) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['from_months' => "These months overlap {$overlap->code} ({$overlap->from_months}–".($overlap->to_months ?? '…').').']);
+            'starts_at' => ['required', 'integer', 'min:0', 'max:3650'],
+            'starts_unit' => ['required', \Illuminate\Validation\Rule::in(['days', 'months'])],
+        ], ['code.regex' => 'Use capital letters, numbers and dashes, e.g. ADT.']);
+        // D-229: a stage runs until the next one starts, so two stages cannot start at the same age.
+        $days = $data['starts_unit'] === 'months' ? $data['starts_at'] * 30.4375 : $data['starts_at'];
+        $same = \App\Models\AgeStage::when($ignore, fn ($q) => $q->where('id', '!=', $ignore))->get()->first(fn ($s) => abs($s->startDays() - $days) < 1);
+        if ($same) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['starts_at' => "{$same->code} already starts at {$same->starts_at} {$same->starts_unit}."]);
         }
 
         return $data;
@@ -161,11 +157,8 @@ class SettingsController extends Controller
     public function addTeeth(Request $request): RedirectResponse
     {
         $data = $this->teethData($request);
-        $n = \App\Models\TeethStage::count() + 1; // goats keep the key in an 8-character column: s7, s8 ...
-        while (\App\Models\TeethStage::where('key', "s{$n}")->exists()) {
-            $n++;
-        }
-        $key = "s{$n}";
+        $key = $data['key']; // D-229: the dental code itself (T10 …); it never changes, because goats store it
+        unset($data['key']);
         \App\Support\Teeth::stages(); // a farm with no stages yet gets the defaults first
         \App\Models\TeethStage::create($data + ['key' => $key, 'sort' => $data['from_months'] * 10 + 5]);
         Farm::log($request->user(), "Added teeth stage {$data['label']}", '/settings/ages');
@@ -200,11 +193,17 @@ class SettingsController extends Controller
     {
         $data = $request->validate([
             'label' => ['required', 'string', 'max:60', \Illuminate\Validation\Rule::unique('teeth_stages', 'label')->ignore($ignore)],
+            'local_term' => ['nullable', 'string', 'max:40'],
             'from_months' => ['required', 'integer', 'min:0', 'max:240'],
             'to_months' => ['nullable', 'integer', 'gt:from_months', 'max:240'],
             'estimate_months' => ['required', 'integer', 'gte:from_months', 'max:240'],
         ]);
         $data['to_months'] ??= null;
+        $data['local_term'] ??= null;
+        if ($ignore === null) { // a new dental code: capital letters and numbers, not one in use, not UNK
+            $request->merge(['key' => strtoupper(trim((string) $request->input('key')))]);
+            $data['key'] = $request->validate(['key' => ['required', 'regex:/^[A-Z0-9]{2,8}$/', 'not_in:UNK', \Illuminate\Validation\Rule::unique('teeth_stages', 'key')]], ['key.regex' => 'Use 2 to 8 capital letters or numbers, e.g. T10.'])['key'];
+        }
         if ($data['to_months'] !== null && $data['estimate_months'] > $data['to_months']) {
             throw \Illuminate\Validation\ValidationException::withMessages(['estimate_months' => 'The estimated age must be inside the range.']);
         }
@@ -221,6 +220,11 @@ class SettingsController extends Controller
         ]);
 
         \App\Models\Organization::whereKey($request->user()->org_id)->update($data);
+        // D-229: the age stages decide, so the first Grower and first Adult stage move to the new boundaries.
+        \App\Support\AgeStages::stages();
+        foreach (['grower' => $data['grower_from_months'], 'adult' => $data['adult_from_months']] as $group => $months) {
+            \App\Models\AgeStage::where('age_group', $group)->get()->sortBy(fn ($s) => $s->startDays())->first()?->update(['starts_at' => $months, 'starts_unit' => 'months']);
+        }
         \App\Support\Classification::forgetBoundaries();
         Farm::log($request->user(), "Set age categories: kid under {$data['grower_from_months']} months, adult from {$data['adult_from_months']} months", '/settings');
 

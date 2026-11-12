@@ -74,15 +74,15 @@ class AgeFromWeightTest extends TestCase
 
     public function test_teeth_win_and_breeds_without_a_line_or_farm_born_goats_are_left_alone(): void
     {
-        $withTeeth = $this->register(['teeth' => '4', 'birth_date' => now()->subMonths(21)->toDateString(), 'latest_weight_kg' => 20]);
+        $withTeeth = $this->register(['teeth' => 'T04', 'birth_date' => now()->subMonths(21)->toDateString(), 'latest_weight_kg' => 20]);
         $this->assertSame(now()->subMonths(21)->toDateString(), $withTeeth->fresh()->birth_date->toDateString());
 
         $teddy = Breed::create(['name' => 'Teddy', 'code' => 'TD', 'default_gestation_days' => 150]);
         $noLine = $this->register(['breed_id' => $teddy->id, 'latest_weight_kg' => 12]);
         $this->assertNull($noLine->fresh()->birth_date);
 
-        $this->actingAs($this->user())->post("/goats/{$noLine->id}/teeth", ['teeth' => '2'])->assertSessionHasNoErrors();
-        $this->assertSame(now()->subMonths(16)->toDateString(), $noLine->fresh()->birth_date->toDateString());
+        $this->actingAs($this->user())->post("/goats/{$noLine->id}/teeth", ['teeth' => 'T02'])->assertSessionHasNoErrors();
+        $this->assertSame(now()->subMonths(15)->toDateString(), $noLine->fresh()->birth_date->toDateString());
     }
 
     public function test_the_administrator_sets_each_breeds_light_line_in_settings(): void

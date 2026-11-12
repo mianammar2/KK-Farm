@@ -30,7 +30,10 @@ final class HerdStats
     {
         $stages = AgeStages::stages()->flatMap(fn ($st) => ["stage_{$st->code}" => "{$st->code} · {$st->label}", "stage_{$st->code}_female" => "{$st->code} · {$st->label} · Females", "stage_{$st->code}_male" => "{$st->code} · {$st->label} · Males"])->all(); // D-226
 
-        return self::LABELS + $stages + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
+        $teeth = Teeth::stages()->mapWithKeys(fn ($t) => ["teeth_{$t->key}" => "{$t->key} · {$t->label}", "teeth_{$t->key}_female" => "{$t->key} · {$t->label} · Females", "teeth_{$t->key}_male" => "{$t->key} · {$t->label} · Males"])->all()
+            + ['teeth_UNK' => 'UNK · Teeth not examined', 'teeth_UNK_female' => 'UNK · Teeth not examined · Females', 'teeth_UNK_male' => 'UNK · Teeth not examined · Males']; // D-229
+
+        return self::LABELS + $stages + $teeth + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
     }
 
     public const CATEGORIES = ['breeding_males', 'breeding_females', 'pregnant', 'ready', 'male_kids', 'female_kids', 'growing', 'lactating', 'sick', 'treatment', 'for_sale'];
@@ -82,13 +85,16 @@ final class HerdStats
         $tests[$sex] = true;
         $tests["{$age}_{$sex}"] = true;
         // D-226: the farm's age stage (ERP code) and gender, for the dashboard's Herd by Age.
-        if ($a->birth_date && ($st = AgeStages::forMonths(AgeStages::months($a->birth_date)))) {
+        if ($st = AgeStages::forBirth($a->birth_date)) {
             $tests["stage_{$st->code}"] = true;
             $tests["stage_{$st->code}_{$sex}"] = true;
         } else {
             $tests['no_stage'] = true;
             $tests["no_stage_{$sex}"] = true;
         }
+        // D-229: teeth (dental code), for the dashboard's Herd by Teeth; UNK = never examined.
+        $tests['teeth_'.Teeth::code($a->teeth)] = true;
+        $tests['teeth_'.Teeth::code($a->teeth)."_{$sex}"] = true;
         // D-123: the goat's classification (category), for the dashboard's By Classification view.
         $tests['class_'.($cat ?? 'none')] = true;
 

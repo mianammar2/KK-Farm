@@ -33,18 +33,18 @@ class HerdByAgeTest extends TestCase
 
         $this->actingAs($user)->get('/')->assertInertia(fn ($page) => $page
             ->where('herdAge.total', 6)->where('herdAge.female', 4)->where('herdAge.male', 2)
-            // D-226: one row per age stage with goats (K1 1 month = KID, G1/G2 8 months = GRW, A1/A2 30 months = ADT-T08), then no age.
+            // D-226: one row per age stage with goats (K1 1 month = KID, G1/G2 8 months = GRW, A1/A2 30 months = ADT), then no age.
             ->where('herdAge.rows.0', fn ($r) => $r['key'] === 'stage_KID' && $r['code'] === 'KID' && $r['group'] === 'kid' && $r['female'] === 1 && $r['total'] === 1)
-            ->where('herdAge.rows.1', fn ($r) => $r['key'] === 'stage_GRW' && $r['female'] === 1 && $r['male'] === 1 && $r['range'] === '2 to 14 months · Milk Teeth')
-            ->where('herdAge.rows.2', fn ($r) => $r['key'] === 'stage_ADT-T08' && $r['female'] === 2 && $r['total'] === 2)
+            ->where('herdAge.rows.1', fn ($r) => $r['key'] === 'stage_GRW' && $r['female'] === 1 && $r['male'] === 1 && $r['range'] === '60 days to under 14 months')
+            ->where('herdAge.rows.2', fn ($r) => $r['key'] === 'stage_ADT' && $r['female'] === 2 && $r['total'] === 2)
             ->where('herdAge.rows.3.key', 'no_stage')->where('herdAge.rows.3.male', 1)
             // D-123: by classification; A1 and A2 are adult does, so suggested Breeding Female (Doe).
             ->where('herdAge.classes', fn ($c) => ($row = collect($c)->firstWhere('key', 'class_breeding_female')) && $row['label'] === 'Breeding Female (Doe)' && $row['total'] === 2 && $row['local'] === 'Nasli Bakri'));
         $this->actingAs($user)->get('/goats?show=class_breeding_female')->assertInertia(fn ($page) => $page->where('showLabels.class_breeding_female', 'Breeding Female (Doe)')
             ->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('class_breeding_female', $g['tags'], true))->count() === 2));
 
-        $this->actingAs($user)->get('/goats?show=stage_ADT-T08_female')->assertInertia(fn ($page) => $page->where('showLabels.stage_ADT-T08_female', 'ADT-T08 · Adult · Females')
-            ->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('stage_ADT-T08_female', $g['tags'], true))->count() === 2));
+        $this->actingAs($user)->get('/goats?show=stage_ADT_female')->assertInertia(fn ($page) => $page->where('showLabels.stage_ADT_female', 'ADT · Adult · Females')
+            ->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('stage_ADT_female', $g['tags'], true))->count() === 2));
 
         // The count opens exactly those goats.
         $this->actingAs($user)->get('/goats?show=adult_female')->assertInertia(fn ($page) => $page->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('adult_female', $g['tags'], true))->pluck('number')->sort()->values()->all() === ['A1', 'A2'])

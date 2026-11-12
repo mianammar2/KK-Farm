@@ -8,6 +8,7 @@ import { Button, PageHeader, Panel, pkr, Stat, StatRow } from '../components/ui'
 type Props = {
     breeds: Array<{ name: string; total: number; female: number; male: number; unwell: number }>;
     ages: Array<{ band: string; value: number }>;
+    teeth: Array<{ band: string; value: number }>; // D-229
     exits: Array<{ name: string; value: number }>;
     breeding: { kiddings: number; alive: number; stillborn: number; perKidding: number };
     sires: Array<{ id: string; number: string; name: string | null; offspring: number }>;
@@ -16,7 +17,7 @@ type Props = {
 
 const TITLES: Record<string, string> = { herd: 'Herd by Breed and Sex', age: 'Herd by Age', breeds: 'Breed Summary', sires: 'Most Used Sires', exits: 'Exits from the Herd', spending: 'Spending, Last 12 Months' };
 
-export default function Reports({ breeds, ages, exits, breeding, sires, costs }: Props) {
+export default function Reports({ breeds, ages, teeth, exits, breeding, sires, costs }: Props) {
     // D-215: a menu link opens one report on its own (?section=); /reports without it is the master page with all of them.
     const section = new URLSearchParams(usePage().url.split('?')[1] ?? '').get('section');
     const solo = section && TITLES[section] ? section : null;
@@ -27,6 +28,12 @@ export default function Reports({ breeds, ages, exits, breeding, sires, costs }:
         yAxis: axis.value(),
         series: [{ type: 'bar', barMaxWidth: 46, data: ages.map((a) => a.value), itemStyle: { color: '#0b4f35', borderRadius: [3, 3, 0, 0] } }],
     }), [ages]);
+    const teethChart = useMemo(() => ({
+        tooltip: { trigger: 'axis' },
+        xAxis: axis.category(teeth.map((a) => a.band)),
+        yAxis: axis.value(),
+        series: [{ type: 'bar', barMaxWidth: 46, data: teeth.map((a) => a.value), itemStyle: { color: '#0b4f35', borderRadius: [3, 3, 0, 0] } }],
+    }), [teeth]);
 
     const breedChart = useMemo(() => ({
         tooltip: { trigger: 'axis' },
@@ -53,6 +60,7 @@ export default function Reports({ breeds, ages, exits, breeding, sires, costs }:
             <div className={solo ? 'max-w-3xl' : 'grid gap-4 lg:grid-cols-2'}>
                 {show('herd') ? <Panel id="herd" title="Herd by breed and sex"><Chart option={breedChart} label="Goats by breed and sex" height={250} /></Panel> : null}
                 {show('age') ? <Panel id="age" title="Herd by age"><Chart option={ageChart} label="Goats by age band" height={250} /></Panel> : null}
+                {show('age') && teeth.length ? <Panel id="teeth" title="Herd by teeth" description="Dental code from each goat's latest mouth check. UNK = not examined."><Chart option={teethChart} label="Goats by dental code" height={250} /></Panel> : null}
                 {show('breeds') ? <Panel id="breeds" title="Breed summary" flush>
                     <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Breed</th><th>Goats</th><th>Female</th><th>Male</th><th>Unwell</th></tr></thead><tbody>{breeds.map((b) => <tr key={b.name}><td className="font-semibold">{b.name}</td><td>{b.total}</td><td>{b.female}</td><td>{b.male}</td><td>{b.unwell}</td></tr>)}</tbody></table></div>
                 </Panel> : null}

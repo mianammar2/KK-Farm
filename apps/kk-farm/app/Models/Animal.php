@@ -11,7 +11,7 @@ class Animal extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'monitor_until' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
+    protected $casts = ['birth_date' => 'date', 'exit_date' => 'date', 'monitor_until' => 'date', 'acquired_on' => 'date', 'birth_date_is_estimate' => 'boolean', 'teeth_checked_on' => 'date', 'custom_fields' => 'array', 'birth_weight_kg' => 'float'];
 
     /**
      * Age category, worked out from the birth date today so it moves on by itself as the goat ages (D-067).
@@ -111,7 +111,35 @@ class Animal extends Model
                 $a->health_flag = self::STATUS_TO_FLAG[$a->health_status ?? 'healthy'] ?? 'healthy';
                 $a->health_status ??= 'healthy';
             }
+            if ($a->isDirty(['teeth', 'dental_condition']) && ($a->teeth || $a->getOriginal('teeth'))) {
+                $a->dental_condition = $a->teeth ? ($a->dental_condition ?: 'normal') : null;
+                $a->teeth_checked_on = $a->teeth ? ($a->isDirty('teeth_checked_on') && $a->teeth_checked_on ? $a->teeth_checked_on : now()->toDateString()) : null;
+            }
         });
+        // D-229: every teeth examination, from any screen, is kept as its own row (append-only history).
+        static::saved(function (self $a) {
+            if ($a->wasChanged(['teeth', 'dental_condition']) || ($a->wasRecentlyCreated && $a->teeth)) {
+                DentalExam::create(['animal_id' => $a->id, 'examined_on' => $a->teeth_checked_on ?? now()->toDateString(), 'dental_code' => $a->teeth, 'condition' => $a->dental_condition,
+                    'source' => $a->wasRecentlyCreated ? 'registration' : 'manual', 'recorded_by' => auth()->user()?->name]);
+            }
+        });
+    }
+
+    /** D-229: the goat's age stage code today (YKD, KID, GRW, ADT, MAT), from the birth date. */
+    public function ageStageCode(): ?string
+    {
+        return $this->birth_date ? \App\Support\AgeStages::codeFor($this->birth_date, $this->exit_date) : null;
+    }
+
+    /** D-229: the combined classification code from age and teeth, e.g. GRW-T02 or ADT-T04. */
+    public function classCode(): ?string
+    {
+        return \App\Support\AgeStages::displayCode($this->ageStageCode(), $this->teeth);
+    }
+
+    public function dentalExams()
+    {
+        return $this->hasMany(DentalExam::class)->orderByDesc('examined_on')->orderByDesc('id');
     }
 
     public function scopeActive($query)
@@ -143,7 +171,8 @@ class Animal extends Model
             'age' => $this->ageLabel(),
             'stage' => $this->effectiveAge(), // D-148: kid | grower | adult, for the age symbol
             'teeth' => $this->teeth, // D-106
-            'ageCode' => $this->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($this->birth_date, $this->exit_date))?->code : null, // D-221
+            'ageCode' => $this->classCode(), // D-229: age stage + teeth, e.g. GRW-T02
+            'stageCode' => $this->ageStageCode(),
             'ageMonths' => $this->birth_date ? (int) $this->birth_date->diffInMonths($this->exit_date ?? now()) : null,
             'pen' => $this->pen?->fullName(),
             'penId' => $this->pen_id,
