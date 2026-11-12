@@ -55,7 +55,8 @@ class FeedingController extends Controller
             'meal' => $meal,
             'meals' => Feed::MEALS,
             'mealTimes' => Feed::mealTimes($org),
-            'settings' => ['late' => $org->meal_late_minutes, 'window' => $org->meal_window_minutes, 'tolerance' => $org->feed_tolerance_pct, 'timezone' => $org->timezone, 'tracking' => (bool) $org->feed_tracking,
+            'settings' => ['groupCodes' => \App\Support\AgeStages::stages()->groupBy('age_group')->map(fn ($g) => $g->pluck('code')->implode(', '))->all(), // D-227
+                'late' => $org->meal_late_minutes, 'window' => $org->meal_window_minutes, 'tolerance' => $org->feed_tolerance_pct, 'timezone' => $org->timezone, 'tracking' => (bool) $org->feed_tracking,
                 'intake' => [ // D-069: % of body weight a day, [min, max]; kids null = milk only
                     'kid' => $org->kid_intake_min_pct !== null ? [(float) $org->kid_intake_min_pct, (float) $org->kid_intake_max_pct] : null,
                     'grower' => [(float) $org->grower_intake_min_pct, (float) $org->grower_intake_max_pct],

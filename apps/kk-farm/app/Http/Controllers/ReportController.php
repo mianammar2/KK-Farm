@@ -20,9 +20,14 @@ class ReportController extends Controller
 
         return Inertia::render('Reports', [
             'breeds' => $breedRows,
-            'ages' => DB::table('animals')->where('status', 'active')
-                ->selectRaw("case when birth_date is null then 'Unknown' when birth_date > now() - interval '6 months' then 'Under 6 mo' when birth_date > now() - interval '18 months' then '6 to 18 mo' when birth_date > now() - interval '48 months' then '18 to 48 mo' else 'Over 48 mo' end as band, count(*) as value")
-                ->groupBy('band')->orderByRaw('min(birth_date) desc nulls last')->get(),
+            // D-227: by the farm's age stages (Settings → Age Groups), in stage order; goats with no birth date last.
+            'ages' => (function () {
+                $stages = \App\Support\AgeStages::stages();
+                $counts = Animal::where('status', 'active')->get(['birth_date'])->countBy(fn ($a) => $a->birth_date ? (\App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($a->birth_date))?->code ?? 'none') : 'none');
+
+                return $stages->map(fn ($st) => ['band' => $st->code, 'value' => $counts[$st->code] ?? 0])->filter(fn ($r) => $r['value'] > 0)
+                    ->push(['band' => 'No age', 'value' => $counts['none'] ?? 0])->filter(fn ($r) => $r['value'] > 0)->values();
+            })(),
             'exits' => Animal::where('status', '!=', 'active')->selectRaw('exit_reason as name, count(*) as value')->groupBy('exit_reason')->get(),
             'breeding' => [
                 'kiddings' => Kidding::count(), 'alive' => (int) Kidding::sum('born_alive'), 'stillborn' => (int) Kidding::sum('stillborn'),

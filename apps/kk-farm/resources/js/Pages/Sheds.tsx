@@ -10,7 +10,7 @@ import { useFive } from '../lib/useFive';
 import Sheet from '../components/Sheet';
 import { useConfirm } from '../components/Confirm';
 
-type Goat = { id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null; breed: string | null; stage: string | null };
+type Goat = { code?: string | null; id: string; number: string; name: string | null; coat: string; sex: string; health: Health; repro: string | null; breed: string | null; stage: string | null };
 type Pen = { id: number; name: string; code: string; kind: 'pen' | 'open_area'; purpose: string; capacity: number | null; count: number; goats: Goat[] };
 type Shed = { id: number; farmId: number | null; code: string; name: string; status: string; type: string | null; typeName: string | null; purpose: string | null; pens: Pen[] };
 type UnitType = { code: string; name: string; purpose: string };
@@ -425,7 +425,7 @@ function PenRollCall({ pen }: { pen: Pen }) {
                                     <Link href={`/goats/${g.id}`} className="kk-lift flex items-center gap-2 rounded-md bg-[#f6faf7] p-1.5 pr-2 shadow-[0_1px_0_#dbe6de]">
                                         <EarTag number={g.number} />
                                         <span className="kk-th-goat" aria-hidden><GoatFigure female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={0} flip={false} /></span>
-                                        <GoatBadges breed={g.breed} stage={g.stage} /><span className="min-w-0 truncate text-sm font-semibold text-[#022a1c]">{g.name ?? ''}</span>
+                                        <GoatBadges breed={g.breed} stage={g.stage} code={g.code} /><span className="min-w-0 truncate text-sm font-semibold text-[#022a1c]">{g.name ?? ''}</span>
                                     </Link>
                                 </li>
                             ))}

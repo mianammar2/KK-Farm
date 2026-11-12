@@ -22,7 +22,7 @@ type Movement = { id: number; on: string; item: string; type: string; qty: numbe
 type History = { id: string; on: string; meal: Meal; pen: string; feed: string; headcount: number; planned: number; offered: number; refused: number | null; consumed: number; perHead: number | null; cost: number; by: string; corrected: boolean; off: boolean };
 type Props = {
     today: string; meal: Meal; meals: Record<Meal, string>; mealTimes: Record<Meal, string>;
-    settings: { late: number; window: number; tolerance: number; timezone: string; tracking: boolean; intake: { kid: [number, number] | null; grower: [number, number]; adult: [number, number] }; cp: { kid: number | null; grower: number | null; adult: number | null } };
+    settings: { groupCodes?: Record<string, string>; late: number; window: number; tolerance: number; timezone: string; tracking: boolean; intake: { kid: [number, number] | null; grower: [number, number]; adult: [number, number] }; cp: { kid: number | null; grower: number | null; adult: number | null } };
     board: PenRow[]; groups: Group[]; items: Item[]; movements: Movement[]; history: History[];
     categories: Record<string, string>; movementTypes: Record<string, { label: string; direction: number }>;
     requirement: Requirement; standards: Standard[]; nutritionCategories: Record<string, string>; methods: Record<string, string>; breeds: Array<{ id: number; name: string }>;
@@ -465,7 +465,7 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
     type RangeKey = 'kid' | 'grower' | 'adult';
     const range = (key: RangeKey, label: string, hint?: string) => (
         <div className="grid grid-cols-[7rem_1fr_1fr] items-end gap-2">
-            <div className="pb-2.5 text-sm font-semibold text-cobalt-900">{label}</div>
+            <div className="pb-2.5 text-sm font-semibold text-cobalt-900">{label}{settings.groupCodes?.[key] ? <span className="block font-mono text-[11px] font-normal text-ink-soft">{settings.groupCodes[key]}</span> : null}</div>
             <Field label="From % / day" error={errors[`${key}_min`]} hint={hint}><input className="field" type="number" inputMode="decimal" step="0.1" min={0} value={form.data[`${key}_min`]} onChange={(e) => form.setData(`${key}_min`, e.target.value)} /></Field>
             <Field label="To % / day" error={errors[`${key}_max`]}><input className="field" type="number" inputMode="decimal" step="0.1" min={0} value={form.data[`${key}_max`]} onChange={(e) => form.setData(`${key}_max`, e.target.value)} /></Field>
         </div>

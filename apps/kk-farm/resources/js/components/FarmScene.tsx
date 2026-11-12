@@ -5,10 +5,10 @@ import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import { CountUp, HealthChip, SexIcon } from './ui';
 import type { Health } from '../types';
 
-export type SceneFigure = { female: boolean; stage: string | null; breed: string | null; flag: boolean; id?: number; number?: string; name?: string | null; health?: Health };
+export type SceneFigure = { female: boolean; stage: string | null; code?: string | null; breed: string | null; flag: boolean; id?: number; number?: string; name?: string | null; health?: Health };
 
 /** D-156: the goat under the pointer, shown in the legend area under the sheds. */
-export type HoverGoat = { id?: number | string; number?: string; name?: string | null; breed?: string | null; female: boolean; stage?: string | null; health?: Health; pen?: string };
+export type HoverGoat = { id?: number | string; number?: string; name?: string | null; breed?: string | null; female: boolean; stage?: string | null; code?: string | null; health?: Health; pen?: string };
 let hovered: HoverGoat | null = null;
 const listeners = new Set<() => void>();
 export function hoverGoat(g: HoverGoat | null) { hovered = g; listeners.forEach((l) => l()); }
@@ -147,7 +147,7 @@ export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | u
                     {g.name ? <span className="block text-xs">{g.name}</span> : null}
                 </span>
                 {g.breed ? <BreedBadge breed={g.breed} withName /> : null}
-                <AgeBadge stage={g.stage} withLabel />
+                <AgeBadge stage={g.stage} code={g.code} withLabel />
                 <SexIcon sex={g.female ? 'female' : 'male'} label />
                 {g.health ? <HealthChip health={g.health} /> : null}
                 {g.pen ? <span className="text-xs font-semibold">Pen {g.pen}</span> : null}

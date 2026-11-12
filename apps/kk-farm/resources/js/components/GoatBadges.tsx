@@ -76,21 +76,22 @@ const STAGE: Record<string, { bars: number; color: string; label: string }> = {
     adult: { bars: 3, color: '#12663f', label: 'Adult' },
 };
 
-export function AgeBadge({ stage, withLabel = false }: { stage?: string | null; withLabel?: boolean }) {
+/** D-227: with the farm's age stage code (YKD, GRW, ADT-T04 …) the label is the code; Kid / Grower / Adult stays as the bars. */
+export function AgeBadge({ stage, code, withLabel = false }: { stage?: string | null; code?: string | null; withLabel?: boolean }) {
     const s = stage ? STAGE[stage] : undefined;
     if (!s) return null;
     return (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 align-middle text-[11px] font-bold" style={{ color: s.color, background: `${s.color}1a` }} title={`Age: ${s.label}`}>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 align-middle text-[11px] font-bold" style={{ color: s.color, background: `${s.color}1a` }} title={`Age: ${code ? `${code} · ` : ''}${titleCase(s.label)}`}>
             <svg viewBox="0 0 14 12" width="13" height="11" role="img" aria-label={s.label}>
                 {[0, 1, 2].map((i) => <rect key={i} x={i * 5} y={8 - i * 3.5} width="3.6" height={4 + i * 3.5} rx="1" fill={i < s.bars ? s.color : `${s.color}33`} />)}
             </svg>
-            {withLabel ? titleCase(s.label) : null}
+            {withLabel ? (code ? <span className="font-mono">{code}</span> : titleCase(s.label)) : null}
         </span>
     );
 }
 
 /** Both symbols together, as shown next to a goat's tag ID. */
-export function GoatBadges({ breed, stage }: { breed?: string | null; stage?: string | null }) {
+export function GoatBadges({ breed, stage, code }: { breed?: string | null; stage?: string | null; code?: string | null }) {
     if (!breed && !stage) return null;
-    return <span className="inline-flex shrink-0 items-center gap-1"><BreedBadge breed={breed} /><AgeBadge stage={stage} /></span>;
+    return <span className="inline-flex shrink-0 items-center gap-1"><BreedBadge breed={breed} /><AgeBadge stage={stage} code={code} /></span>;
 }

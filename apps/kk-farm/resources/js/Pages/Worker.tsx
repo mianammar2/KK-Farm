@@ -6,7 +6,7 @@ import { AgeBadge, BreedBadge } from '../components/GoatBadges';
 import { Button, Field } from '../components/ui';
 
 type Job = 'weigh' | 'health' | 'move' | 'lookup';
-type Goat = {
+type Goat = { ageCode?: string | null;
     id: string; number: string; name: string | null; sex: string; breed?: string; stage?: string | null; pen?: string | null; age?: string | null; health: string;
     lastWeight: number | null; lastWeighed: string | null; penId: number | null; withdrawal: { meat: string | null; milk: string | null } | null;
 };
@@ -94,7 +94,7 @@ function GoatJob({ job, goat }: { job: NonNullable<Props['job']>; goat: Goat }) 
                 <span className="kk-worker-goat"><GoatFigure female={goat.sex === 'female'} flag={goat.health !== 'healthy'} delay={0} flip={false} stage={goat.stage} breed={goat.breed} /></span>
                 <span className="min-w-0 flex-1 space-y-1">
                     <span className="flex flex-wrap items-center gap-1.5"><EarTag number={goat.number} />{goat.name ? <span className="font-semibold">{goat.name}</span> : null}</span>
-                    <span className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft"><BreedBadge breed={goat.breed} withName /><AgeBadge stage={goat.stage} withLabel />{goat.pen ? <span className="font-mono text-xs">{goat.pen}</span> : null}</span>
+                    <span className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft"><BreedBadge breed={goat.breed} withName /><AgeBadge stage={goat.stage} code={goat.ageCode} withLabel />{goat.pen ? <span className="font-mono text-xs">{goat.pen}</span> : null}</span>
                 </span>
             </div>
             {blocked ? <p className="rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700">Withdrawal: {goat.withdrawal?.meat ? `no meat until ${goat.withdrawal.meat}` : ''}{goat.withdrawal?.meat && goat.withdrawal?.milk ? ' · ' : ''}{goat.withdrawal?.milk ? `no milk until ${goat.withdrawal.milk}` : ''}</p> : null}
@@ -136,7 +136,7 @@ function GoatJob({ job, goat }: { job: NonNullable<Props['job']>; goat: Goat }) 
 
             {job.job === 'lookup' ? (
                 <div className="space-y-2 text-sm">
-                    <p><span className="font-semibold">Age:</span> {goat.age ?? 'unknown'} · <span className="font-semibold">Last weight:</span> {goat.lastWeight ? `${goat.lastWeight} KG (${goat.lastWeighed})` : 'none'}</p>
+                    <p><span className="font-semibold">Age:</span> {goat.ageCode ? `${goat.ageCode} · ` : ''}{goat.age ?? 'unknown'} · <span className="font-semibold">Last weight:</span> {goat.lastWeight ? `${goat.lastWeight} KG (${goat.lastWeighed})` : 'none'}</p>
                     <Link href={`/goats/${goat.id}`} className="kk-fix min-h-12 w-full">Open Full Profile</Link>
                 </div>
             ) : null}
