@@ -175,6 +175,7 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'sales', no: '12', label: 'Sales', art: 'mod-sales', modules: ['sales', 'value', 'finance'], linked: ['livestock', 'growth', 'accounting'], sections: [
         S('Overview', '/sales', 'All Sales'),
+        S('Operations', '/sales/readiness', 'Sale Readiness & Clearance'), // D-232
         S('Operations', '/sales/orders', 'Sale Orders & Dispatch'),
         S('Operations', '/transport', 'Transport & Delivery'),
         S('Configuration', '/transport?tab=vehicles', 'Approved Vehicles'),

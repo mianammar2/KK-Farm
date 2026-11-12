@@ -40,3 +40,23 @@ Artisan::command('kkfarm:eligibility-round', function () {
 })->purpose('Create breeding approval tasks for goats that have become qualified');
 
 \Illuminate\Support\Facades\Schedule::command('kkfarm:eligibility-round')->dailyAt('05:30')->withoutOverlapping();
+
+/* D-232: every hour the goats' statuses (breeding, lactation, fattening, health, sale, age, teeth, role) are worked
+ * out again and any change is written to the status history with its rule. */
+Artisan::command('kkfarm:status-round', function () {
+    foreach (\Illuminate\Support\Facades\DB::table('organizations')->pluck('id') as $orgId) {
+        \App\Support\Tenant::enter((string) $orgId);
+        \App\Support\Tenant::flush();
+        try {
+            $n = \App\Support\Lifecycle::recordAll();
+            if ($n) {
+                $this->info("{$orgId}: {$n} status changes");
+            }
+        } finally {
+            \App\Support\Tenant::leave();
+            \App\Support\Tenant::flush();
+        }
+    }
+})->purpose('Record changes in each goat\'s statuses with the rule behind them');
+
+\Illuminate\Support\Facades\Schedule::command('kkfarm:status-round')->hourly()->withoutOverlapping();

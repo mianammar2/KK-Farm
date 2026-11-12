@@ -380,6 +380,9 @@ Route::middleware('auth')->group(function (): void {
     });
     Route::middleware('module:sales')->group(function (): void {
         Route::get('/sales', [\App\Http\Controllers\SalesController::class, 'index']);
+        Route::get('/sales/readiness', [\App\Http\Controllers\SaleReadinessController::class, 'index']); // D-232
+        Route::post('/sales/readiness/weights', [\App\Http\Controllers\SaleReadinessController::class, 'weights']);
+        Route::post('/sales/readiness/{animal}', [\App\Http\Controllers\SaleReadinessController::class, 'decide']);
         Route::post('/sales/customers', [\App\Http\Controllers\SalesController::class, 'storeCustomer']);
         Route::post('/sales/customers/{customer}', [\App\Http\Controllers\SalesController::class, 'updateCustomer'])->whereNumber('customer');
         Route::post('/sales/products', [\App\Http\Controllers\SalesController::class, 'product']);

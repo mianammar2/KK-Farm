@@ -35,7 +35,7 @@ authorised person.** (Matches the project rule: the system records and recommend
 3. **Done in D-231. Eligibility engine**: qualification ≠ approval. Per-breed configurable thresholds (minimum age, minimum weight,
    % of mature weight, body condition, health clearance, genetic approval). Meeting thresholds creates an approval
    task; only approval sets "Ready for Breeding". 2 teeth or 35 kg alone raise a Maturity Review alert only.
-4. **Lifecycle statuses and sale readiness**: independent breeding / lactation / fattening / health / sale statuses
+4. **Done in D-232. Lifecycle statuses and sale readiness**: independent breeding / lactation / fattening / health / sale statuses
    with a status history table (previous, current, time, rule). Target weight → "Market Weight Achieved", never
    "Sale Ready" by itself; sale clearance blocked by sickness or withdrawal.
 5. **CEO dashboard KPI groups and UAT**: the framework's KPI groups (population, age, dental, breeding stock,

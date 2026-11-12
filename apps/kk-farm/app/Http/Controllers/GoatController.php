@@ -288,6 +288,9 @@ class GoatController extends Controller
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
             'castration' => $animal->sex === 'male' ? ['on' => $animal->castrated_on?->format('j M Y'), 'methods' => self::CASTRATION_METHODS, 'can' => $request->user()->passes('clinical')] : null, // D-230
+            'statuses' => $animal->status === 'active' ? (function () use ($animal) { \App\Support\Lifecycle::record($animal); return \App\Support\Lifecycle::statuses($animal); })() : null, // D-232
+            'statusHistory' => \App\Models\StatusHistory::where('animal_id', $animal->id)->whereNotNull('from_status')->latest('changed_at')->latest('id')->limit(20)->get()
+                ->map(fn ($h) => ['dimension' => $h->dimension, 'from' => \App\Support\Lifecycle::LABELS[$h->dimension][$h->from_status] ?? $h->from_status, 'to' => \App\Support\Lifecycle::LABELS[$h->dimension][$h->to_status] ?? $h->to_status, 'rule' => $h->rule, 'at' => $h->changed_at->format('j M Y g:i A')]),
             'eligibility' => ($e = \App\Support\Eligibility::check($animal))['status'] === 'not_candidate' ? null : ['status' => $e['status'], 'label' => $e['label'], 'review' => $e['review'], 'recommendation' => $e['recommendation'],
                 'failed' => collect($e['checks'])->filter(fn ($c) => ! $c['ok'])->pluck('label')->values()], // D-231
             'roleLabels' => \App\Support\Designations::labels(\App\Support\Designations::codes($animal)),

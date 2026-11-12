@@ -35,6 +35,8 @@ type Props = {
     can: { edit: boolean; remove: boolean; breeding: boolean };
     dentalOptions: { codes: Record<string, string>; conditions: Record<string, string> };
     roleLabels: Record<string, string>;
+    statuses: Record<string, { code: string; label: string; note?: string | null; blockers?: string[] }> | null;
+    statusHistory: Array<{ dimension: string; from: string; to: string; rule: string; at: string }>;
     eligibility: { status: string; label: string; review: boolean; recommendation: string | null; failed: string[] } | null;
     castration: { on: string | null; methods: Record<string, string>; can: boolean } | null;
     outcomeOptions: OutcomeOptions;
@@ -53,7 +55,7 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility } = props;
+    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
     const [outcome, setOutcome] = useState(false); // D-161
     const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
@@ -134,6 +136,7 @@ export default function GoatShow(props: Props) {
                         <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft sm:text-base">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName size={22} /><span>·</span><AgeBadge stage={goat.stage} code={goat.ageCode} withLabel /><span>{goat.age}</span></p>
                         {goat.classification ? <p className="mt-1 inline-flex rounded-full bg-cobalt-900 px-3 py-1 text-sm font-semibold text-white">{goat.classification}</p> : null}
                         {Object.keys(roleLabels).length ? <p className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Role codes">{Object.entries(roleLabels).map(([c, l], i) => <span key={c} className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${i === 0 ? 'bg-turq-100 text-turq-800' : 'bg-glaze text-cobalt-800 ring-1 ring-rule'}`}><span className="font-mono">{c}</span> · {l}</span>)}</p> : null}
+                        {statuses ? <StatusStrip statuses={statuses} history={statusHistory} /> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}
                             {fact('Recent daily gain', goat.adg !== null ? `${goat.adg} g/day` : '—')}
@@ -557,5 +560,22 @@ function Castration({ goatId, c, onFarm }: { goatId: string; c: { on: string | n
                 </form>
             ) : null}
         </span>
+    );
+}
+
+const DIM_LABEL: Record<string, string> = { breeding: 'Breeding', lactation: 'Milk', fattening: 'Fattening', health: 'Health', sale: 'Sale', age: 'Age stage', teeth: 'Teeth', role: 'Role' };
+
+/** D-232: the goat's independent statuses (several can be true at once) and their recent changes with the rule. */
+function StatusStrip({ statuses, history }: { statuses: Record<string, { code: string; label: string; note?: string | null; blockers?: string[] }>; history: Array<{ dimension: string; from: string; to: string; rule: string; at: string }> }) {
+    const tone = (d: string, c: string) => (['blocked', 'vet_hold', 'treatment', 'critical'].includes(c) ? 'bg-crit-100 text-crit-700' : ['market_weight', 'pregnant', 'sale_ready', 'ready'].includes(c) ? 'bg-ok-100 text-ok-700' : d === 'sale' && c === 'not_for_sale' ? 'bg-glaze text-ink-soft' : 'bg-glaze text-cobalt-800');
+    return (
+        <div className="mt-2">
+            <ul className="flex flex-wrap gap-1.5" aria-label="Statuses">{Object.entries(statuses).map(([d, s]) => (
+                <li key={d} className={`rounded-[4px] px-2 py-1 text-xs ring-1 ring-rule ${tone(d, s.code)}`} title={[s.note, ...(s.blockers ?? [])].filter(Boolean).join(' · ') || undefined}>
+                    <span className="font-semibold">{DIM_LABEL[d] ?? d}:</span> {s.label}{s.note ? <span className="block text-[11px] opacity-80">{s.note}</span> : null}{s.blockers?.length ? <span className="block text-[11px]">{s.blockers.join('; ')}</span> : null}
+                </li>
+            ))}</ul>
+            {history.length ? <details className="mt-1 text-xs text-ink-soft"><summary className="cursor-pointer">Status changes ({history.length})</summary><ul className="mt-1 space-y-0.5">{history.map((h, i) => <li key={i}>{h.at} · {DIM_LABEL[h.dimension] ?? h.dimension}: {h.from} → <span className="font-semibold">{h.to}</span> <span className="font-mono">({h.rule})</span></li>)}</ul></details> : null}
+        </div>
     );
 }
