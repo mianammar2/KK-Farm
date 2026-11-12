@@ -62,7 +62,7 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
     const started = Boolean(form.data.origin);
     const teethLabels: Record<string, string> = Object.fromEntries((fields.find((f) => f.key === 'teeth')?.options ?? []).map((o) => [String(o.value), o.label])); // D-221
     const shown = started ? sections : sections.filter((s) => s.fields.some((f) => f.key === 'origin')).map((s) => ({ ...s, fields: s.fields.filter((f) => f.key === 'origin') }));
-    const labelFor = (f: FieldDef) => (f.key === 'acquired_on' && form.data.origin === 'transferred_in' && f.label === 'Purchase Date' ? 'Arrival Date' : f.label);
+    const labelFor = (f: FieldDef) => (f.key === 'teeth' && !farmBorn ? 'Age Stage (Teeth)' : f.key === 'acquired_on' && form.data.origin === 'transferred_in' && f.label === 'Purchase Date' ? 'Arrival Date' : f.label);
 
     // D-046: Female Status only for females, Kid Stage only for kids.
     // D-053: only a farm-born goat must have a birth date.
@@ -260,6 +260,25 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             case 'yes_no':
                 return <span className="flex min-h-11 items-center gap-2"><input type="checkbox" className="size-5" checked={Boolean(v)} onChange={(e) => set(f, e.target.checked)} /><span className="text-sm text-ink-soft">Yes</span></span>;
             case 'select': {
+                // D-222: a bought goat's age is chosen from the farm's age stages (Settings → Age Groups). The stage gives
+                // the teeth and the middle of its age range, and from that the estimated birth date.
+                if (f.key === 'teeth' && !farmBorn) {
+                    const current = stageFor(ageStages, form.data.birth_date);
+                    const pick = (code: string) => {
+                        const st = ageStages.find((x) => x.code === code);
+                        if (!st) return form.setData('teeth', '');
+                        const mid = st.to === null ? st.from + 6 : (st.from + st.to) / 2;
+                        const d = new Date(new Date(`${TODAY}T12:00:00`).getTime() - Math.round(mid * 30.4375) * 86400000);
+                        setEstMonths(String(Math.round(mid * 10) / 10));
+                        form.setData((data: Record<string, any>) => ({ ...data, teeth: st.teeth ?? '', birth_date: d.toISOString().slice(0, 10) }));
+                    };
+                    return (
+                        <select className="field" value={current?.code ?? ''} onChange={(e) => pick(e.target.value)}>
+                            <option value="">Not set</option>
+                            {ageStages.map((st) => <option key={st.code} value={st.code}>{st.code} · {st.label} · {st.to === null ? `${st.from}+ months` : `${st.from}–${st.to} months`}{st.teethLabel ? ` · ${st.teethLabel}` : ''}</option>)}
+                        </select>
+                    );
+                }
                 // Animal Class only offers classes that fit the chosen sex (a male cannot be a Breeding Doe).
                 const sex = form.data.sex;
                 // D-171: a kid born on the farm is created by the Pregnancy Outcome (Maternity), never registered by hand.
@@ -380,6 +399,13 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             ) : null}
         </>
     );
+}
+
+/** D-222: the stage a birth date falls in today. */
+function stageFor(stages: AgeStage[], birth?: string): AgeStage | undefined {
+    if (!birth) return undefined;
+    const months = (Date.now() - new Date(`${birth}T12:00:00`).getTime()) / 86400000 / 30.4375;
+    return stages.find((x) => months >= x.from && (x.to === null || months < x.to));
 }
 
 /** D-221: the age stage that follows from the birth date (or the estimate), worked out as the form is filled in. */
