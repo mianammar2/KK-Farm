@@ -14,7 +14,7 @@ const PAGES = [
     { href: '/settings/users', title: 'Users', note: (p: Props) => `${p.counts.users} people can sign in. Add people, set role and department, and tick what each person may open or do.` },
     { href: '/settings/access', title: 'Access Rights by Role', note: (p: Props) => `What each role opens and may do. ${p.counts.overrides ? `${p.counts.overrides} people have their own ticks on top.` : 'Nobody has their own ticks yet.'}` },
     { href: '/settings/breeds', title: 'Breeds', note: (p: Props) => `${p.breeds.length} breeds, their tag codes and light weight lines.` },
-    { href: '/settings/ages', title: 'Age Groups', note: (p: Props) => `Kid under ${p.ages.growerFrom} months, adult from ${p.ages.adultFrom} months, and the teeth stages.` },
+    { href: '/settings/ages', title: 'Age Groups', note: (p: Props) => `Kid under ${p.ages.growerFrom} months, adult from ${p.ages.adultFrom} months, with each stage's code and teeth.` },
     { href: '/settings/fields', title: 'Register Fields', note: (p: Props) => `${p.counts.fields} custom fields on the goat register.` },
     { href: '/settings/system', title: 'System', note: () => 'Versions of this installation.' },
 ];
@@ -22,7 +22,7 @@ const PAGES = [
 export default function Settings(p: Props) {
     const back = <Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>;
     if (p.section === 'breeds') return <><Head title="Breeds" /><PageHeader title="Breeds" description="Breed names, the code each tag starts with, and the light weight line used to estimate age." actions={back} /><div className="max-w-2xl"><Breeds breeds={p.breeds} /></div></>;
-    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="Each goat's age stage (ERP code) is worked out from its birth date as it grows, and shown when registering. Teeth give a bought goat's estimated birth date." actions={back} /><div className="max-w-5xl space-y-4"><AgeStagesPanel stages={p.stages} teeth={p.teeth} /><TeethStages teeth={p.teeth} ages={p.ages} /></div></>;
+    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="Each goat's age stage (ERP code) is worked out from its birth date as it grows, and shown when registering. Picking a stage when registering a bought goat sets its teeth and estimated birth date." actions={back} /><div className="max-w-5xl space-y-4"><AgeStagesPanel stages={p.stages} teeth={p.teeth} /></div></>;
     if (p.section === 'system') return <><Head title="System" /><PageHeader title="System" actions={back} /><Panel className="max-w-xl"><dl className="space-y-1 text-sm">{Object.entries(p.environment).map(([k, v]) => <div key={k} className="flex justify-between gap-2"><dt className="text-ink-soft capitalize">{k}</dt><dd className="font-medium">{v}</dd></div>)}</dl></Panel></>;
     return (
         <>
@@ -90,11 +90,8 @@ function BreedRow({ b }: { b: Breed }) {
     );
 }
 
-const rowCls = 'flex flex-wrap items-center justify-between gap-2 px-4 py-2';
 const editBtn = 'inline-flex min-h-9 items-center gap-1 rounded-tile px-2 text-xs font-semibold text-cobalt-800 hover:bg-glaze';
 const delBtn = 'inline-flex min-h-9 items-center gap-1 rounded-tile px-2 text-xs font-semibold text-crit-700 hover:bg-crit-100 disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-transparent';
-const range = (from: number, to: number | null) => (to === null ? `${from} months and older` : `${from}–${to} months`);
-const groupOf = (months: number, a: Props['ages']) => (months < a.growerFrom ? 'Kid' : months < a.adultFrom ? 'Grower' : 'Adult');
 
 const GROUP_LABEL: Record<string, string> = { kid: 'Kid', grower: 'Grower', adult: 'Adult' };
 type StageForm = { data: { code: string; label: string; age_group: string; from_months: string; to_months: string; teeth_key: string }; errors: Partial<Record<string, string>>; setData: (k: 'code' | 'label' | 'age_group' | 'from_months' | 'to_months' | 'teeth_key', v: string) => void };
@@ -158,65 +155,6 @@ function StageRow({ st, teeth }: { st: Stage; teeth: Tooth[] }) {
                 <button type="button" className={delBtn} onClick={() => { if (window.confirm(`Delete the age stage ${st.code}?`)) router.delete(`/settings/stages/${st.id}`, { preserveScroll: true }); }}><Trash2 size={14} aria-hidden /> Delete</button>
             </td>
         </tr>
-    );
-}
-
-/** D-220: teeth stages, like Breeds: add, edit, delete when no goat has it. */
-function TeethStages({ teeth, ages }: { teeth: Tooth[]; ages: Props['ages'] }) {
-    const add = useForm({ label: '', from_months: '', to_months: '', estimate_months: '' });
-    return (
-        <Panel flush title="Teeth" description="Count the big front teeth on the lower jaw. Picking a stage on a bought goat sets its estimated birth date from the age used.">
-            <ul className="divide-y divide-rule text-sm">{teeth.map((t) => <ToothRow key={t.id} t={t} ages={ages} />)}</ul>
-            <form onSubmit={(e) => { e.preventDefault(); add.transform((d) => ({ ...d, to_months: d.to_months === '' ? null : d.to_months })); add.post('/settings/teeth', { preserveScroll: true, onSuccess: () => add.reset() }); }} className="flex flex-wrap items-end gap-2 border-t border-rule p-4">
-                <ToothFields form={add} />
-                <Button type="submit" disabled={add.processing}>Add</Button>
-            </form>
-        </Panel>
-    );
-}
-
-type ToothForm = { data: { label: string; from_months: string; to_months: string; estimate_months: string }; errors: Partial<Record<string, string>>; setData: (k: 'label' | 'from_months' | 'to_months' | 'estimate_months', v: string) => void };
-function ToothFields({ form, autoFocus = false }: { form: ToothForm; autoFocus?: boolean }) {
-    const n = (k: 'from_months' | 'to_months' | 'estimate_months', label: string, placeholder?: string) => (
-        <div className="w-24"><Field label={label} error={form.errors[k]}><input className="field" type="number" min={0} max={240} inputMode="numeric" placeholder={placeholder} value={form.data[k]} onChange={(e) => form.setData(k, e.target.value)} /></Field></div>
-    );
-    return (
-        <>
-            <div className="min-w-44 flex-1"><Field label="Teeth stage" error={form.errors.label}><input className="field" value={form.data.label} onChange={(e) => form.setData('label', e.target.value)} placeholder="e.g. 2 teeth" autoFocus={autoFocus} /></Field></div>
-            {n('from_months', 'From (months)')}{n('to_months', 'To (months)', 'Older')}{n('estimate_months', 'Age used')}
-        </>
-    );
-}
-
-function ToothRow({ t, ages }: { t: Tooth; ages: Props['ages'] }) {
-    const [editing, setEditing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const form = useForm({ label: t.label, from_months: String(t.from), to_months: t.to === null ? '' : String(t.to), estimate_months: String(t.estimate) });
-    const remove = () => {
-        if (!window.confirm(`Delete the teeth stage ${t.label}?`)) return;
-        router.delete(`/settings/teeth/${t.id}`, { preserveScroll: true, onError: (e) => setError(e.teeth ?? 'Could not delete.') });
-    };
-    if (editing) {
-        return (
-            <li className="px-4 py-3">
-                <form onSubmit={(e) => { e.preventDefault(); form.transform((d) => ({ ...d, to_months: d.to_months === '' ? null : d.to_months })); form.post(`/settings/teeth/${t.id}`, { preserveScroll: true, onSuccess: () => setEditing(false) }); }} className="flex flex-wrap items-end gap-2">
-                    <ToothFields form={form} autoFocus />
-                    <Button type="submit" disabled={form.processing || !form.isDirty}>Save</Button>
-                    <Button type="button" variant="secondary" onClick={() => { form.reset(); form.clearErrors(); setEditing(false); }}>Cancel</Button>
-                </form>
-            </li>
-        );
-    }
-    return (
-        <li className={rowCls}>
-            <span className="font-medium">{t.label}</span>
-            <span className="ml-auto text-right text-ink-soft">{range(t.from, t.to)} · age used {t.estimate} months ({groupOf(t.estimate, ages)}) · {t.goats} goats</span>
-            <span className="flex gap-1">
-                <button type="button" className={editBtn} onClick={() => setEditing(true)}><Pencil size={14} aria-hidden /> Edit</button>
-                <button type="button" className={delBtn} disabled={t.goats > 0} title={t.goats > 0 ? `${t.goats} goats have this stage, so it stays` : undefined} onClick={remove}><Trash2 size={14} aria-hidden /> Delete</button>
-            </span>
-            {error ? <p className="w-full text-xs font-semibold text-crit-700">{error}</p> : null}
-        </li>
     );
 }
 
