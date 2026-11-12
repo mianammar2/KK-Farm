@@ -98,7 +98,7 @@ class HealthController extends Controller
                 'id' => $p->id, 'name' => $p->name, 'kind' => $p->kind, 'medicineId' => $p->medicine_id, 'medicine' => $p->medicine?->name, 'dose' => $p->dose_per_goat,
                 'appliesTo' => $p->applies_to, 'firstAge' => $p->first_age_days, 'interval' => $p->interval_days, 'notes' => $p->notes, 'active' => $p->active,
             ]),
-            'applies' => \App\Models\CareProtocol::APPLIES,
+            'applies' => \App\Models\CareProtocol::applies(),
             // D-174: disease master and mortality register
             'diseases' => \App\Models\Disease::orderByDesc('active')->orderBy('name')->get(['id', 'name', 'category', 'zoonotic', 'notifiable', 'contagious', 'notes', 'active']),
             'diseaseCategories' => \App\Models\Disease::CATEGORIES,
@@ -276,7 +276,7 @@ class HealthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'], 'kind' => ['required', Rule::in(array_keys(self::CARE_TYPES))],
             'medicine_id' => ['nullable', 'exists:medicines,id'], 'dose_per_goat' => ['nullable', 'numeric', 'gt:0', 'max:1000'],
-            'applies_to' => ['required', Rule::in(array_keys(\App\Models\CareProtocol::APPLIES))],
+            'applies_to' => ['required', Rule::in(array_keys(\App\Models\CareProtocol::applies()))],
             'first_age_days' => ['nullable', 'integer', 'between:0,3650'], 'interval_days' => ['nullable', 'integer', 'between:1,3650'],
             'notes' => ['nullable', 'string', 'max:500'], 'active' => ['boolean'],
         ], [], ['first_age_days' => 'first age', 'interval_days' => 'repeat every']);

@@ -348,7 +348,9 @@ class GoatController extends Controller
     {
         return response()->streamDownload(function (): void {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Synthetic demonstration data']);
+            if (config('kkfarm.demo')) { // D-228: only the demo install says so; the live farm's export is its real register
+                fputcsv($out, ['Synthetic demonstration data']);
+            }
             fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Age stage', 'Pen', 'Status', 'Health', 'Latest weight (KG)']); // D-227: age stage code
             Animal::with(['breed', 'pen', 'latestWeight'])->orderBy('farm_number')->each(function (Animal $a) use ($out): void {
                 fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->birth_date ? \App\Support\AgeStages::forMonths(\App\Support\AgeStages::months($a->birth_date, $a->exit_date))?->code : null, $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);

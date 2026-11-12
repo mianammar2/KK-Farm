@@ -42,6 +42,13 @@ class AgeStagesTest extends TestCase
         $this->actingAs($owner)->post("/settings/stages/{$kid->id}", ['code' => 'KID', 'label' => 'Kid', 'age_group' => 'kid', 'from_months' => 0.5, 'to_months' => 3, 'teeth_key' => 'milk'])->assertSessionHasErrors('from_months');
         $this->actingAs($owner)->post("/settings/stages/{$grw->id}", ['code' => 'GRW', 'label' => 'Grower', 'age_group' => 'grower', 'from_months' => 3, 'to_months' => 14, 'teeth_key' => 'milk'])->assertSessionHasNoErrors();
         $this->actingAs($owner)->post("/settings/stages/{$kid->id}", ['code' => 'KID', 'label' => 'Kid', 'age_group' => 'kid', 'from_months' => 0.5, 'to_months' => 3, 'teeth_key' => 'milk'])->assertSessionHasNoErrors();
+        // D-228: care protocols can target one age stage; the calendar picks only those goats.
+        $this->assertArrayHasKey('stage:ADT-T04', \App\Models\CareProtocol::applies());
+        \App\Models\CareProtocol::create(['name' => 'T04 booster', 'kind' => 'vaccination', 'applies_to' => 'stage:ADT-T04', 'active' => true, 'interval_days' => 365, 'created_by' => 'Owner']);
+        Tenant::flush();
+        $due = collect(\App\Support\CareCalendar::due())->firstWhere('name', 'T04 booster');
+        $this->assertSame(['D'], collect($due['goats'])->pluck('number')->all());
+        $this->assertStringStartsWith('ADT-T04 · Adult', $due['appliesTo']);
         Tenant::flush();
         Classification::forgetBoundaries();
         $this->assertSame([3, 14], Classification::boundaries());
