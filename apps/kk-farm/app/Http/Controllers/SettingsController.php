@@ -21,7 +21,10 @@ class SettingsController extends Controller
         return Inertia::render('Settings', [
             'section' => $section,
             'breeds' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'next' => $b->nextTagId(), 'gestation' => $b->default_gestation_days, 'lightBelow' => $b->young_below_kg !== null ? (float) $b->young_below_kg : null, 'goats' => Animal::active()->where('breed_id', $b->id)->count(), 'used' => self::breedUses($b)]),
-            'ages' => ['growerFrom' => \App\Support\Classification::boundaries()[0], 'adultFrom' => \App\Support\Classification::boundaries()[1]],
+            'ages' => ['growerFrom' => \App\Support\Classification::boundaries()[0], 'adultFrom' => \App\Support\Classification::boundaries()[1],
+                'groups' => $section !== 'ages' ? [] : collect(\App\Support\Classification::AGE_CATEGORIES)->map(fn ($label, $key) => ['key' => $key, 'label' => $label, 'goats' => Animal::active()->get(['birth_date'])->filter(fn ($a) => \App\Support\Classification::ageCategory($a->birth_date) === $key)->count()])->values()],
+            'teeth' => $section === 'ages' ? \App\Support\Teeth::stages()->map(fn (\App\Models\TeethStage $t) => ['id' => $t->id, 'key' => $t->key, 'label' => $t->label, 'from' => $t->from_months, 'to' => $t->to_months, 'estimate' => $t->estimate_months,
+                'goats' => Animal::where('teeth', $t->key)->count()])->values() : [],
             'counts' => ['users' => \App\Models\User::where('org_id', $org)->where('active', true)->count(), 'fields' => \App\Models\FieldDefinition::count(),
                 'overrides' => \App\Models\User::where('org_id', $org)->get()->filter(fn ($u) => ! empty($u->module_access) || ! empty($u->gate_access))->count()],
             'environment' => ['php' => PHP_VERSION, 'laravel' => app()->version(), 'database' => 'PostgreSQL '.explode(' ', \Illuminate\Support\Facades\DB::selectOne('show server_version')->server_version)[0]],
@@ -86,6 +89,61 @@ class SettingsController extends Controller
         $tables = \App\Support\Tenant::memo('breed_id_tables', fn () => collect(\Illuminate\Support\Facades\DB::select("select table_name from information_schema.columns where table_schema = current_schema() and column_name = 'breed_id' and table_name <> 'breeds'"))->pluck('table_name')->all());
 
         return collect($tables)->sum(fn ($t) => \Illuminate\Support\Facades\DB::table($t)->where('breed_id', $breed->id)->count());
+    }
+
+    /** D-220: add a teeth stage. Its short key never changes, because goats store it; the name can change freely. */
+    public function addTeeth(Request $request): RedirectResponse
+    {
+        $data = $this->teethData($request);
+        $n = \App\Models\TeethStage::count() + 1; // goats keep the key in an 8-character column: s7, s8 ...
+        while (\App\Models\TeethStage::where('key', "s{$n}")->exists()) {
+            $n++;
+        }
+        $key = "s{$n}";
+        \App\Support\Teeth::stages(); // a farm with no stages yet gets the defaults first
+        \App\Models\TeethStage::create($data + ['key' => $key, 'sort' => $data['from_months'] * 10 + 5]);
+        Farm::log($request->user(), "Added teeth stage {$data['label']}", '/settings/ages');
+
+        return back()->with('success', "{$data['label']} added.");
+    }
+
+    public function editTeeth(Request $request, \App\Models\TeethStage $stage): RedirectResponse
+    {
+        $data = $this->teethData($request, $stage->id);
+        $stage->update($data);
+        Farm::log($request->user(), "Changed teeth stage {$stage->label}", '/settings/ages');
+
+        return back()->with('success', "{$stage->label} saved. Goats already aged keep their birth date; new teeth entries use {$stage->estimate_months} months.");
+    }
+
+    /** A teeth stage that any goat (in any status) has stays, so its record keeps its meaning. */
+    public function deleteTeeth(Request $request, \App\Models\TeethStage $stage): RedirectResponse
+    {
+        $used = Animal::where('teeth', $stage->key)->count();
+        if ($used) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['teeth' => "{$stage->label} cannot be deleted: {$used} goats have it."]);
+        }
+        $stage->delete();
+        Farm::log($request->user(), "Deleted teeth stage {$stage->label}", '/settings/ages');
+
+        return back()->with('success', "{$stage->label} deleted.");
+    }
+
+    /** @return array{label: string, from_months: int, to_months: ?int, estimate_months: int} */
+    private function teethData(Request $request, ?int $ignore = null): array
+    {
+        $data = $request->validate([
+            'label' => ['required', 'string', 'max:60', \Illuminate\Validation\Rule::unique('teeth_stages', 'label')->ignore($ignore)],
+            'from_months' => ['required', 'integer', 'min:0', 'max:240'],
+            'to_months' => ['nullable', 'integer', 'gt:from_months', 'max:240'],
+            'estimate_months' => ['required', 'integer', 'gte:from_months', 'max:240'],
+        ]);
+        $data['to_months'] ??= null;
+        if ($data['to_months'] !== null && $data['estimate_months'] > $data['to_months']) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['estimate_months' => 'The estimated age must be inside the range.']);
+        }
+
+        return $data;
     }
 
     /** Age category boundaries for this farm (D-047): Kid below the first, Adult from the second, Grower between. */

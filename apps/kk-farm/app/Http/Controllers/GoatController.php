@@ -36,7 +36,7 @@ class GoatController extends Controller
         return Inertia::render('Goats/Index', [
             'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]]),
             'showLabels' => \App\Support\HerdStats::labels(),
-            'teethOptions' => \App\Support\Classification::TEETH, 'canEdit' => request()->user()->passes('edit_goats'), 'canTag' => request()->user()->passes('assign_tags'), // D-106, D-144
+            'teethOptions' => \App\Support\Teeth::options(), 'teethShort' => \App\Support\Teeth::short(), 'canEdit' => request()->user()->passes('edit_goats'), 'canTag' => request()->user()->passes('assign_tags'), // D-106, D-144
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
@@ -149,10 +149,10 @@ class GoatController extends Controller
     public function teeth(Request $request, Animal $animal): RedirectResponse
     {
         abort_unless($request->user()->passes('edit_goats'), 403);
-        $data = $request->validate(['teeth' => ['nullable', Rule::in(array_keys(\App\Support\Classification::TEETH))]]);
+        $data = $request->validate(['teeth' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::options()))]]);
         $exact = $animal->birth_date && ! $animal->birth_date_is_estimate && $animal->origin === 'born_on_farm';
         $values = ['origin' => $animal->origin, 'breed_id' => $animal->breed_id, 'tag_id' => $animal->farm_number, 'sex' => $animal->sex, 'pen_id' => $animal->pen_id, 'teeth' => $data['teeth'] ?? null,
-            'birth_date' => ! $exact && ! empty($data['teeth']) ? now()->subMonths(\App\Support\Classification::TEETH_MONTHS[$data['teeth']])->toDateString() : $animal->birth_date?->toDateString()];
+            'birth_date' => ! $exact && ! empty($data['teeth']) ? now()->subMonths(\App\Support\Teeth::months()[$data['teeth']])->toDateString() : $animal->birth_date?->toDateString()];
         $changes = GoatRegistration::update($animal, $values, $request->user());
 
         return back()->with('success', $changes ? "{$animal->farm_number}: teeth saved".($exact ? '.' : ', age estimated from them.') : 'Nothing changed.');
@@ -164,7 +164,8 @@ class GoatController extends Controller
         return [
             'fields' => FieldCatalog::forAnimal()->map(fn (FieldDefinition $f) => [
                 'key' => $f->key, 'label' => $f->label, 'type' => $f->type, 'section' => $f->section, 'help' => $f->help, 'builtin' => $f->builtin,
-                'required' => $f->required || in_array($f->key, FieldCatalog::STRUCTURAL, true), 'options' => $f->type === 'select' ? $f->options : null,
+                'required' => $f->required || in_array($f->key, FieldCatalog::STRUCTURAL, true),
+                'options' => $f->type !== 'select' ? null : ($f->key === 'teeth' ? collect($f->optionMap())->map(fn ($label, $value) => ['value' => (string) $value, 'label' => $label])->values() : $f->options), // D-220
             ])->values(),
             'lookups' => [
                 'breed_id' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['value' => $b->id, 'label' => $b->name, 'next' => $b->nextTagId(), 'code' => $b->code, 'nextNumber' => $b->last_number + 1]),
@@ -174,6 +175,7 @@ class GoatController extends Controller
                 'sire_id' => Animal::where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
                 'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
             ],
+            'teethMonths' => \App\Support\Teeth::months(), // D-220
             'classSex' => GoatRegistration::classSex(),
             'classification' => [
                 'categories' => array_map(fn (array $c) => $c[0], Classification::CATEGORIES),
@@ -227,7 +229,7 @@ class GoatController extends Controller
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
                 'identity' => $animal->id,
                 'removal' => $animal->removal_requested_at || $animal->status === 'voided' ? ['by' => $animal->removal_requested_by, 'on' => $animal->removal_requested_at?->format('j M Y g:i A'), 'reason' => $animal->removal_reason, 'voidedBy' => $animal->voided_by, 'voidedOn' => $animal->voided_at?->format('j M Y g:i A')] : null, // D-091
-                'teeth' => $animal->teeth ? (\App\Support\Classification::TEETH[$animal->teeth] ?? $animal->teeth) : null,
+                'teeth' => $animal->teeth ? (\App\Support\Teeth::options()[$animal->teeth] ?? $animal->teeth) : null,
                 'classification' => $animal->classification(),
                 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null),
                 'dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null),

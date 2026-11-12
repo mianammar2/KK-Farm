@@ -10,20 +10,18 @@ type Choice = { value: string | number; label: string; next?: string; nextNumber
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
-type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; canAssignTags: boolean; untagged: Option[];
+type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; canAssignTags: boolean; untagged: Option[];
     goat?: { id: string; number: string; values: Record<string, any> } };
 
 /** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
 const REGISTER_ONLY = ['rfid_epc', 'latest_weight_kg', 'height_in', 'body_score', 'temperature_f', 'pregnant_at_arrival', 'pregnancy_days', 'milking_at_arrival', 'days_in_milk', 'lifecycle_status'];
-/** D-091: aging by teeth; same as Classification::TEETH_MONTHS. */
-const TEETH_MONTHS: Record<string, number> = { milk: 8, '2': 15, '4': 21, '6': 32, '8': 42, worn: 66 };
 /** D-093: goat body temperature in °F; same as GoatRegistration::TEMP_NORMAL_F. */
 const TEMP_LOW = 101.3;
 const TEMP_HIGH = 103.5;
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
-export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, canAssignTags, untagged, goat }: Props) {
+export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, canAssignTags, untagged, goat }: Props) {
     const editing = Boolean(goat);
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
     const [estMonths, setEstMonths] = useState('');
@@ -113,8 +111,8 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             return form.setData((d: Record<string, any>) => ({ ...d, ...kidDefaults(d, v) }));
         }
         // D-091: the teeth give the estimated age of a bought goat, and from it the estimated birth date.
-        if (f.key === 'teeth' && !farmBorn && TEETH_MONTHS[v]) {
-            const months = TEETH_MONTHS[v];
+        if (f.key === 'teeth' && !farmBorn && teethMonths[v]) { // D-220: months per stage from Settings → Age Groups
+            const months = teethMonths[v];
             setEstMonths(String(months));
             const d = new Date(`${TODAY}T12:00:00`);
             d.setMonth(d.getMonth() - months);

@@ -472,6 +472,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/settings/breeds/{breed}/edit', [SettingsController::class, 'editBreed']); // D-219
         Route::delete('/settings/breeds/{breed}', [SettingsController::class, 'deleteBreed']); // D-219
         Route::post('/settings/ages', [SettingsController::class, 'updateAges']);
+        Route::post('/settings/teeth', [SettingsController::class, 'addTeeth']); // D-220
+        Route::post('/settings/teeth/{stage}', [SettingsController::class, 'editTeeth']);
+        Route::delete('/settings/teeth/{stage}', [SettingsController::class, 'deleteTeeth']);
         Route::get('/settings/users', [UserController::class, 'index']);
         Route::post('/settings/users', [UserController::class, 'store']);
         Route::post('/settings/users/{id}', [UserController::class, 'update'])->whereNumber('id');

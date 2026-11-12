@@ -34,7 +34,7 @@ final class FieldCatalog
             'lifecycle_status' => ['active' => 'Active', 'sold' => 'Sold', 'dead' => 'Dead', 'culled' => 'Culled', 'transferred' => 'Transferred'],
             'health_flag' => ['healthy' => 'Healthy', 'monitor' => 'Monitor', 'sick' => 'Sick', 'quarantine' => 'Quarantine', 'recovering' => 'Recovering'],
             // D-091
-            'teeth' => \App\Support\Classification::TEETH,
+            'teeth' => Classification::TEETH, // stored defaults; the forms read the farm's stages (D-220)
             'body_score' => ['1' => '1 · Very thin', '2' => '2 · Thin', '3' => '3 · Good', '4' => '4 · Fat', '5' => '5 · Very fat'],
             'pregnant_at_arrival' => ['yes' => 'Yes, pregnant', 'no' => 'Not pregnant', 'unknown' => 'Not known'],
             'milking_at_arrival' => ['yes' => 'Yes, in milk', 'no' => 'Not in milk'], // D-117

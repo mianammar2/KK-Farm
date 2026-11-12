@@ -17,6 +17,9 @@ class FieldDefinition extends Model
     /** @return array<string, string> value => label, for select fields */
     public function optionMap(): array
     {
+        if ($this->key === 'teeth' && $this->entity === 'animal') {
+            return \App\Support\Teeth::options(); // D-220: the farm's teeth stages from Settings → Age Groups
+        }
         return collect($this->options ?? [])->mapWithKeys(fn (array $o) => [$o['value'] => $o['label']])->all();
     }
 }
