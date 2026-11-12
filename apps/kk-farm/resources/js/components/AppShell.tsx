@@ -78,7 +78,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                 <Link href="/apps" onClick={onNavigate} className="mb-3 flex min-h-10 items-center gap-2 rounded-tile px-2.5 text-sm font-semibold text-cobalt-200 hover:bg-cobalt-800 hover:text-white">
                     <LayoutGrid size={17} aria-hidden /> All Apps
                 </Link>
-                <Link href={masterHref(app.key)} onClick={onNavigate} aria-current={url.startsWith(masterHref(app.key)) ? 'page' : undefined} className={cx('mb-2 flex items-center gap-2.5 rounded-tile px-2.5 py-2.5', url.startsWith(masterHref(app.key)) ? 'bg-white/20 ring-1 ring-white/40' : 'bg-white/10 hover:bg-white/15')}>
+                <Link href={masterHref(app.key)} onClick={onNavigate} className="mb-2 flex items-center gap-2.5 rounded-tile bg-white/10 px-2.5 py-2.5 hover:bg-white/15">
                     <ArtIcon name={app.art} size={38} />
                     <span className="min-w-0 text-base leading-tight font-bold text-white">{app.label}</span>
                 </Link>

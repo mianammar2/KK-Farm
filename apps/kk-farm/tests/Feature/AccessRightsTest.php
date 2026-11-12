@@ -73,7 +73,7 @@ class AccessRightsTest extends TestCase
         $this->actingAs($owner)->post('/settings/access', ['modules' => $modules, 'gates' => []])->assertSessionHasNoErrors();
         Tenant::flush();
         $this->actingAs($owner->fresh())->get('/settings')->assertOk();
-        foreach (['/settings/breeds', '/settings/ages', '/settings/system', '/settings/users', '/apps/settings', '/reports?section=herd'] as $url) {
+        foreach (['/settings/breeds', '/settings/ages', '/settings/system', '/settings/users', '/reports?section=herd'] as $url) {
             $this->actingAs($owner->fresh())->get($url)->assertOk();
         }
     }

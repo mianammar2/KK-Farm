@@ -37,7 +37,7 @@ export default function Apps() {
                             const b = badge(a.key);
                             return (
                                 <li key={a.key} className="kk-app-tile" style={{ animationDelay: `${Math.min(i, 24) * 25}ms` }}>
-                                    <Link href={a.key === 'worker' ? a.sections[0].href : masterHref(a.key)} prefetch onClick={() => rememberApp(a.key)} className="group flex flex-col items-center gap-2 rounded-2xl p-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-turq-400">
+                                    <Link href={masterHref(a.key)} prefetch onClick={() => rememberApp(a.key)} className="group flex flex-col items-center gap-2 rounded-2xl p-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-turq-400">
                                         <span className="kk-app-icon relative">
                                             <ArtIcon name={a.art} size={68} className="kk-app-art !rounded-[22%] !shadow-none !ring-0" />
                                             {b ? <span className={`absolute -top-1.5 -right-1.5 grid min-w-6 place-items-center rounded-full px-1.5 text-xs font-bold leading-6 text-white shadow ${b.urgent ? 'bg-crit-700' : 'bg-watch-700'}`}>{b.n}</span> : null}

@@ -307,8 +307,8 @@ export const APPS: ErpApp[] = [
 /** D-215: a menu link to a ?tab= section opens it as its own page (no other tabs); see Tabs in ui.tsx. */
 export const menuHref = (href: string) => (href.includes('tab=') ? `${href}${href.includes('?') ? '&' : '?'}solo=1` : href);
 
-/** D-215: every app's master page lists all its pages. */
-export const masterHref = (key: string) => `/apps/${key}`;
+/** D-218: opening an app goes straight to its first page; the left menu lists the rest (no master page). */
+export const masterHref = (key: string) => { const a = APPS.find((x) => x.key === key); return a ? menuHref(a.sections[0].href) : '/apps'; };
 
 export const visibleApps = (modules: string[]) => APPS.filter((a) => a.modules.some((m) => modules.includes(m)));
 
@@ -339,8 +339,6 @@ export function currentApp(url: string, modules: string[]): ErpApp | null {
     const path = url.split('#')[0].split('?')[0];
     if (path === '/apps') return null;
     const apps = visibleApps(modules);
-    const hub = path.match(/^\/apps\/([a-z]+)$/); // D-215: an app's master page
-    if (hub) return apps.find((a) => a.key === hub[1]) ?? null;
     let last: string | null = null;
     try { last = sessionStorage.getItem(LAST); } catch { /* private mode */ }
     const base = (h: string) => h.split('#')[0].split('?')[0];

@@ -195,18 +195,14 @@ export function Note({ children }: { children: ReactNode }) {
 export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; label: string; count?: number }>; value: string; onChange: (id: string) => void }) {
     const group = useId();
     const { url } = usePage();
-    // D-215: opened from an app menu (?solo=1), a section is its own page: no other tabs, a link back to the master page.
-    const [path, query = ''] = url.split('?');
+    // D-215: opened from an app menu (?solo=1), a section is its own page with no other tabs (D-218: no master page link).
+    const query = url.split('?')[1] ?? '';
     const params = new URLSearchParams(query);
     if (params.get('solo') && tabs.some((t) => t.id === value)) {
         const current = tabs.find((t) => t.id === value)!;
-        params.delete('solo');
-        params.delete('tab');
-        const master = path + (params.toString() ? `?${params}` : '');
         return (
             <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-2">
                 <h2 className="text-lg font-bold text-cobalt-900">{titleCase(current.label)}{current.count !== undefined ? <span className="ml-1.5 text-base font-semibold text-ink-faint">{current.count}</span> : null}</h2>
-                <Link href={master} className="ml-auto text-sm font-semibold text-cobalt-800 hover:underline">Master page: all sections →</Link>
             </div>
         );
     }

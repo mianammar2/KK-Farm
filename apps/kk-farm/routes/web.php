@@ -42,7 +42,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->middleware('module:dashboard');
     // D-168: the app launcher (Odoo-style home): every module the user may open, as icon tiles. Login lands here.
     Route::get('/apps', fn () => \Inertia\Inertia::render('Apps'));
-    Route::get('/apps/{key}', fn (string $key) => \Inertia\Inertia::render('AppHub', ['appKey' => $key]))->where('key', '[a-z]+'); // D-215: an app's master page
+    Route::get('/apps/{key}', fn () => redirect('/apps'))->where('key', '[a-z]+'); // D-218: master pages removed; old links go to All Apps
     // D-187: App 18 Fattening & Meat Production
     Route::middleware('module:fodder')->group(function (): void { // D-202: App 22 Fodder & Pasture
         $fc = \App\Http\Controllers\FodderController::class;
