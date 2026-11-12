@@ -142,15 +142,15 @@ class GoatEditTest extends TestCase
 
         $this->actingAs($vet)->post("/goats/{$bought->id}/teeth", ['teeth' => 'T04'])->assertSessionHasNoErrors();
         $bought->refresh();
-        $this->assertSame(['T04', now()->subMonths(24)->toDateString(), true], [$bought->teeth, $bought->birth_date->toDateString(), $bought->birth_date_is_estimate]);
-        $this->assertSame('24 mo (est.)', $bought->ageLabel());
+        $this->assertSame(['T04', now()->subMonths(21)->toDateString(), true], [$bought->teeth, $bought->birth_date->toDateString(), $bought->birth_date_is_estimate]);
+        $this->assertSame('21 mo (est.)', $bought->ageLabel());
         $this->assertStringContainsString('Teeth (Dental Code): empty → T04', $bought->events()->where('type', 'edit')->sole()->summary);
 
         $this->actingAs($vet)->post("/goats/{$born->id}/teeth", ['teeth' => 'T02'])->assertSessionHasNoErrors();
         $this->assertSame(['T02', now()->subMonths(10)->toDateString()], [$born->fresh()->teeth, $born->fresh()->birth_date->toDateString()], 'a real birth date is kept');
 
-        $this->actingAs($this->user('ceo'))->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p->where('canEdit', true)->where('teethOptions.T04', 'T04 · 4 Permanent Incisors (Choga / Char Dant) · about 18–30 months')
-            ->where('goats', fn ($g) => collect($g)->firstWhere('number', 'TD141026-04')['teeth'] === 'T04' && collect($g)->firstWhere('number', 'TD141026-04')['ageMonths'] === 24));
+        $this->actingAs($this->user('ceo'))->get('/goats')->assertInertia(fn (AssertableInertia $p) => $p->where('canEdit', true)->where('teethOptions.T04', 'T04 · 4 Permanent Incisors (Choga / Char Dant) · about 18–24 months')
+            ->where('goats', fn ($g) => collect($g)->firstWhere('number', 'TD141026-04')['teeth'] === 'T04' && collect($g)->firstWhere('number', 'TD141026-04')['ageMonths'] === 21));
         $this->actingAs($this->user('caretaker'))->post("/goats/{$bought->id}/teeth", ['teeth' => 'T06'])->assertForbidden();
     }
 }

@@ -82,7 +82,7 @@ class AgeFromWeightTest extends TestCase
         $this->assertNull($noLine->fresh()->birth_date);
 
         $this->actingAs($this->user())->post("/goats/{$noLine->id}/teeth", ['teeth' => 'T02'])->assertSessionHasNoErrors();
-        $this->assertSame(now()->subMonths(15)->toDateString(), $noLine->fresh()->birth_date->toDateString());
+        $this->assertSame(now()->subMonths(16)->toDateString(), $noLine->fresh()->birth_date->toDateString());
     }
 
     public function test_the_administrator_sets_each_breeds_light_line_in_settings(): void

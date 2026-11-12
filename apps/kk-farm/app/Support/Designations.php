@@ -31,6 +31,25 @@ final class Designations
         'DD' => ['Dairy Doe', 'female', 'Milk-producing role', false],
     ];
 
+    /**
+     * D-235: picking a role code in the registry's Gender field fills the rest:
+     * code => [gender, purpose, goat category]. PS / PD are declared for bought proven breeders; DD sets milk.
+     */
+    public const PICK = [
+        'BK' => ['male', null, 'male_kid'], 'GB' => ['male', null, 'growing_male'], 'RB' => ['male', 'replacement', 'replacement_male'],
+        'BB' => ['male', 'breeding', 'breeding_male'], 'PS' => ['male', 'breeding', 'breeding_male'], 'FM' => ['male', 'fattening', 'fattening_male'],
+        'WTH' => ['male', 'fattening', 'wether'], 'CM' => ['male', 'sale', 'cull'],
+        'DK' => ['female', null, 'female_kid'], 'GD' => ['female', null, 'growing_female'], 'RD' => ['female', 'replacement', 'replacement_female'],
+        'BD' => ['female', 'breeding', 'breeding_female'], 'PD' => ['female', 'breeding', 'breeding_female'], 'DD' => ['female', 'milk', 'breeding_female'],
+        'FF' => ['female', 'fattening', 'growing_female'], 'CF' => ['female', 'sale', 'cull'],
+    ];
+
+    /** @return array<string, array{value: string, label: string, sex: string, group: string}> options for the Gender field */
+    public static function pickOptions(): array
+    {
+        return collect(self::PICK)->map(fn ($p, $c) => ['value' => $c, 'label' => "{$c} · ".self::CODES[$c][0], 'sex' => $p[0], 'group' => $p[0] === 'male' ? 'Male' : 'Female', 'purpose' => $p[1], 'class' => $p[2]])->all();
+    }
+
     /** Goat category (D-046) => main role, per sex */
     private const FROM_CATEGORY = [
         'male_kid' => 'BK', 'female_kid' => 'DK', 'growing_male' => 'GB', 'growing_female' => 'GD',
@@ -69,10 +88,10 @@ final class Designations
     {
         $codes = array_filter([self::main($a)]);
         $proven = self::proven();
-        if ($a->sex === 'male' && ! self::castrated($a) && isset($proven['sires'][$a->id])) {
+        if ($a->sex === 'male' && ! self::castrated($a) && (isset($proven['sires'][$a->id]) || $a->registered_role === 'PS')) {
             $codes[] = 'PS';
         }
-        if ($a->sex === 'female' && isset($proven['dams'][$a->id])) {
+        if ($a->sex === 'female' && (isset($proven['dams'][$a->id]) || $a->registered_role === 'PD')) {
             $codes[] = 'PD';
         }
         if ($a->sex === 'female' && ($a->animal_purpose === 'milk' || isset($proven['milking'][$a->id]))) {

@@ -61,6 +61,24 @@ class GoatRegistrationTest extends TestCase
         return Animal::create(['farm_number' => $number, 'sex' => $sex, 'breed_id' => $this->breed->id, 'birth_date' => now()->subYears(2), 'origin' => 'purchased', 'pen_id' => $this->pen->id])->refresh();
     }
 
+    /** D-235: the Gender field picks a role code; gender, purpose and category follow, and the code shows everywhere. */
+    public function test_the_gender_field_picks_a_role_code_that_fills_the_rest(): void
+    {
+        $owner = $this->user('ceo');
+        $this->actingAs($owner)->get('/goats/register')->assertInertia(fn ($p) => $p->has('roleOptions', 16)->where('roleOptions.0.value', 'BK'));
+        $this->actingAs($owner)->post('/goats', $this->payload(['tag_id' => 'R-PD', 'sex' => 'female', 'role_code' => 'PD', 'birth_date' => now()->subMonths(30)->toDateString()]))->assertSessionHasNoErrors();
+        $pd = Animal::where('farm_number', 'R-PD')->sole();
+        $this->assertSame(['female', 'breeding', 'breeding_female', ['BD', 'PD']], [$pd->sex, $pd->animal_purpose, $pd->animal_class, \App\Support\Designations::codes($pd)]);
+        $this->actingAs($owner)->post('/goats', $this->payload(['tag_id' => 'R-FM', 'sex' => 'male', 'role_code' => 'FM', 'birth_date' => now()->subMonths(8)->toDateString()]))->assertSessionHasNoErrors();
+        $fm = Animal::where('farm_number', 'R-FM')->sole();
+        $this->assertSame(['male', 'fattening', ['FM'], 'GRW-MLT'], [$fm->sex, $fm->animal_purpose, \App\Support\Designations::codes($fm), $fm->classCode()]);
+        $this->actingAs($owner)->post('/goats', $this->payload(['tag_id' => 'R-X', 'role_code' => 'ZZ']))->assertSessionHasErrors('role_code');
+        // Editing shows the code and changing it changes the goat.
+        $this->actingAs($owner)->get("/goats/{$fm->id}/edit")->assertInertia(fn ($p) => $p->where('goat.values.role_code', 'FM'));
+        $this->actingAs($owner)->post("/goats/{$fm->id}/edit", ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'male', 'role_code' => 'RB', 'tag_id' => 'R-FM', 'pen_id' => $this->pen->id])->assertSessionHasNoErrors();
+        $this->assertSame(['replacement', 'replacement_male', ['RB']], [$fm->fresh()->animal_purpose, $fm->fresh()->animal_class, \App\Support\Designations::codes($fm->fresh())]);
+    }
+
     public function test_scanning_a_tag_the_farm_has_never_seen_starts_the_goat_register(): void
     {
         $this->actingAs($this->user('caretaker'))->get('/scan?tag='.strtolower(self::EPC))

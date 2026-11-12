@@ -25,13 +25,19 @@ class Animal extends Model
     /** Goat category: chosen by hand, or suggested from gender, age today and purpose (D-047). */
     public function effectiveCategory(): ?string
     {
-        return $this->animal_class ?: \App\Support\Classification::suggestCategory($this->sex, $this->effectiveAge(), $this->animal_purpose);
+        if ($this->animal_class) {
+            return $this->animal_class;
+        }
+        // D-234: from the farm's automation rules (gender × age stage × purpose), else the built-in suggestion
+        $rule = \App\Support\AutoRules::for($this->sex, $this->ageStageCode(), $this->animal_purpose);
+
+        return $rule?->animal_class ?? \App\Support\Classification::suggestCategory($this->sex, $this->effectiveAge(), $this->animal_purpose);
     }
 
     /** "Breeding Female (Doe) · Makhi Cheeni (Beetal Variety) · Breeding · Pregnant" (D-046) */
     public function classification(): string
     {
-        return \App\Support\Classification::summary($this->effectiveCategory(), $this->breed?->name, $this->animal_purpose, $this->repro_status, $this->kid_stage, $this->sex);
+        return \App\Support\Classification::summary($this->effectiveCategory(), $this->breed?->name, $this->animal_purpose, $this->repro_status, $this->effectiveKidStage(), $this->sex);
     }
 
     public function breed()
@@ -137,7 +143,23 @@ class Animal extends Model
     /** D-229: the combined classification code from age and teeth, e.g. GRW-T02 or ADT-T04. */
     public function classCode(): ?string
     {
-        return \App\Support\AgeStages::displayCode($this->ageStageCode(), $this->teeth);
+        return \App\Support\AgeStages::displayCode($this->ageStageCode(), $this->teethCode());
+    }
+
+    /** D-234: the teeth from the latest check, else the teeth expected at the goat's age (owner's age & teeth table). */
+    public function teethCode(): ?string
+    {
+        return $this->teeth ?: ($this->birth_date ? \App\Support\Teeth::forMonths(\App\Support\AgeStages::months($this->birth_date, $this->exit_date)) : null);
+    }
+
+    /** D-234: kid stage set by hand for special cases (selected for breeding or sale, orphan), else from age. */
+    public function effectiveKidStage(): ?string
+    {
+        if (in_array($this->kid_stage, ['breeding_selected', 'sale_selected', 'orphan'], true) || $this->effectiveAge() !== 'kid') {
+            return $this->effectiveAge() === 'kid' ? $this->kid_stage : null;
+        }
+
+        return \App\Support\AutoRules::kidStage($this->birth_date);
     }
 
     public function dentalExams()
@@ -173,7 +195,8 @@ class Animal extends Model
             'breed' => $this->breed?->name,
             'age' => $this->ageLabel(),
             'stage' => $this->effectiveAge(), // D-148: kid | grower | adult, for the age symbol
-            'teeth' => $this->teeth, // D-106
+            'teeth' => $this->teeth, // D-106: from a check
+            'teethCode' => $this->teethCode(), // D-234: checked, or expected for the age
             'ageCode' => $this->classCode(), // D-229: age stage + teeth, e.g. GRW-T02
             'stageCode' => $this->ageStageCode(),
             'roles' => \App\Support\Designations::codes($this), // D-230: BD, PD, DD …

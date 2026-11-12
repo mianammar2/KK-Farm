@@ -41,7 +41,7 @@ class AgeStagesTest extends TestCase
         $this->assertSame('grower', Classification::ageCategory(now()->subDays(60)));
 
         // UC-01: female, 8 months: Grower, whatever the weight. UC-02: 16 months with 2 teeth: ADT-T02.
-        $this->assertSame('GRW', $goat('UC01', now()->subMonths(8))->card()['ageCode']);
+        $this->assertSame('GRW-MLT', $goat('UC01', now()->subMonths(8))->card()['ageCode'], 'D-234: teeth follow age when not checked');
         $this->assertSame('ADT-T02', $goat('UC02', now()->subMonths(16), ['teeth' => 'T02'])->card()['ageCode']);
         // 13 months with 2 permanent teeth stays a Grower: GRW-T02, never forced to Adult.
         $grw = $goat('G13', now()->subMonths(13), ['teeth' => 'T02']);
@@ -50,8 +50,8 @@ class AgeStagesTest extends TestCase
         $mat = $goat('UC12', now()->subMonths(49), ['teeth' => 'T08']);
         $this->assertSame('MAT-T08', $mat->card()['ageCode']);
         $this->assertNotSame('cull', $mat->effectiveCategory());
-        // No teeth examination: age code only; the teeth count as UNK.
-        $this->assertSame('ADT', $goat('NOEX', now()->subMonths(20))->card()['ageCode']);
+        // No teeth check: the teeth for the age (D-234, owner's table).
+        $this->assertSame('ADT-T04', $goat('NOEX', now()->subMonths(20))->card()['ageCode']);
 
         $this->actingAs($owner)->get('/settings/ages')->assertOk()->assertInertia(fn ($p) => $p->has('stages', 5)->where('stages.2.range', '60 days to under 14 months')->where('stages.4.range', '48 months and above'));
         $this->actingAs($owner)->get('/goats/register')->assertOk()->assertInertia(fn ($p) => $p->has('ageStages', 5));

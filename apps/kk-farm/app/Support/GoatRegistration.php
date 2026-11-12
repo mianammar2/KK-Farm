@@ -80,7 +80,24 @@ final class GoatRegistration
             $rules['days_in_milk'] = ['nullable', 'required_if:milking_at_arrival,yes', ...array_slice($rules['days_in_milk'], 1)];
         }
 
+        // D-235: the Gender field picks a role code (BB, BD, FM …); gender, purpose and category follow from it.
+        $rules['role_code'] = ['nullable', Rule::in(array_keys(Designations::PICK))];
+
         return $rules;
+    }
+
+    /** D-235: a picked role code sets gender, purpose and goat category (the code wins over the separate fields). */
+    public static function applyRole(array $data): array
+    {
+        if (! empty($data['role_code']) && ($p = Designations::PICK[$data['role_code']] ?? null)) {
+            $data['sex'] = $p[0];
+            $data['animal_purpose'] = $p[1] ?? ($data['animal_purpose'] ?? null);
+            $data['animal_class'] = $p[2];
+            $data['registered_role'] = $data['role_code'];
+        }
+        unset($data['role_code']);
+
+        return $data;
     }
 
     /** D-093: goat body temperature in °F. Normal 101.3–103.5 (38.5–39.7 °C). */
@@ -127,6 +144,7 @@ final class GoatRegistration
      */
     public static function register(array $data, User $user, string $via = 'manual'): Animal
     {
+        $data = self::applyRole($data);
         $epc = self::normaliseCode($data['rfid_epc'] ?? null);
 
         // D-043: a typed parent tag that belongs to a registered goat becomes a real link; otherwise it is kept as text.
@@ -178,6 +196,7 @@ final class GoatRegistration
                 'acquired_on' => $data['acquired_on'] ?? null,
                 'source_farm' => $data['source_farm'] ?? null,
                 'animal_class' => $data['animal_class'] ?? null,
+                'registered_role' => $data['registered_role'] ?? null,
                 'age_category' => empty($data['birth_date']) ? ($data['age_category'] ?? null) : null, // D-067: automatic from the birth date
                 'animal_purpose' => $data['animal_purpose'] ?? null,
                 'kid_stage' => $data['kid_stage'] ?? null,
@@ -294,7 +313,7 @@ final class GoatRegistration
     /** Fields a person may change after registering (D-091). Measurements (weight, temperature) are new records instead. */
     public const EDITABLE = [
         'origin', 'breed_id', 'acquired_on', 'tag_id', 'sex', 'name', 'source_farm', 'purchase_cost_pkr', 'teeth', 'birth_date', 'birth_weight_kg',
-        'sire_id', 'dam_id', 'breed_purity', 'cross_breeds', 'age_category', 'animal_purpose', 'animal_class', 'repro_status', 'kid_stage',
+        'sire_id', 'dam_id', 'breed_purity', 'cross_breeds', 'age_category', 'animal_purpose', 'animal_class', 'registered_role', 'repro_status', 'kid_stage',
         'health_flag', 'pen_id', 'ownership', 'notes', 'lifecycle_status',
     ];
 
@@ -306,6 +325,7 @@ final class GoatRegistration
      */
     public static function update(Animal $animal, array $data, User $user): array
     {
+        $data = self::applyRole($data);
         $labels = FieldCatalog::forAnimal(true)->pluck('label', 'key');
         $map = [
             'tag_id' => 'farm_number', 'purchase_cost_pkr' => 'purchase_cost_minor',

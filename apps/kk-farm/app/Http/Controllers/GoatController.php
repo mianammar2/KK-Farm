@@ -62,7 +62,7 @@ class GoatController extends Controller
             'id' => $animal->id, 'number' => $animal->farm_number,
             'values' => [
                 'origin' => $animal->origin, 'breed_id' => (string) $animal->breed_id, 'acquired_on' => $animal->acquired_on?->format('Y-m-d'), 'tag_id' => $animal->farm_number,
-                'sex' => $animal->sex, 'name' => $animal->name, 'source_farm' => $animal->source_farm, 'purchase_cost_pkr' => $animal->purchase_cost_minor !== null ? $animal->purchase_cost_minor / 100 : null,
+                'sex' => $animal->sex, 'role_code' => $animal->registered_role ?? \App\Support\Designations::main($animal), 'name' => $animal->name, 'source_farm' => $animal->source_farm, 'purchase_cost_pkr' => $animal->purchase_cost_minor !== null ? $animal->purchase_cost_minor / 100 : null,
                 'teeth' => $animal->teeth, 'birth_date' => $animal->birth_date?->format('Y-m-d'), 'birth_weight_kg' => $animal->birth_weight_kg,
                 'sire_id' => $animal->sire_id, 'dam_id' => $animal->dam_id, 'sire_tag' => $animal->sire_tag, 'dam_tag' => $animal->dam_tag,
                 'breed_purity' => $animal->breed_purity, 'cross_breeds' => $animal->cross_breeds, 'age_category' => $animal->age_category, 'animal_purpose' => $animal->animal_purpose,
@@ -209,6 +209,7 @@ class GoatController extends Controller
             'teethMonths' => \App\Support\Teeth::months(), // D-220
             'ageStages' => \App\Support\AgeStages::stages()->map(fn ($s) => ['code' => $s->code, 'label' => $s->label, 'group' => $s->age_group, 'at' => $s->starts_at, 'unit' => $s->starts_unit, 'range' => $s->rangeText(), 'estimate' => round($s->estimateMonths(), 1)])->values(), // D-229
             'classSex' => GoatRegistration::classSex(),
+            'roleOptions' => array_values(\App\Support\Designations::pickOptions()), // D-235: the Gender field
             'classification' => [
                 'categories' => array_map(fn (array $c) => $c[0], Classification::CATEGORIES),
                 'statuses' => Classification::FEMALE_STATUSES, 'purposes' => Classification::PURPOSES, 'kidStages' => Classification::KID_STAGES,

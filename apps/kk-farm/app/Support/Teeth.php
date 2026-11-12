@@ -14,11 +14,12 @@ final class Teeth
 {
     /** code => [classification, Pakistan farm term, from months, to months, months used to estimate the birth date] */
     public const DEFAULTS = [
-        'MLT' => ['Milk Teeth', 'Kheeri', 0, 12, 8],
-        'T02' => ['2 Permanent Incisors', 'Donda', 12, 18, 15],
-        'T04' => ['4 Permanent Incisors', 'Choga / Char Dant', 18, 30, 24],
-        'T06' => ['6 Permanent Incisors', 'Chhay Dant', 24, 42, 33],
-        'T08' => ['8 Permanent Incisors', 'Aath Dant / Full Mouth', 36, null, 42],
+        // D-234: back-to-back ages (owner's table), so the teeth follow the age when no check is recorded
+        'MLT' => ['Milk Teeth', 'Kheeri', 0, 14, 8],
+        'T02' => ['2 Permanent Incisors', 'Donda', 14, 18, 16],
+        'T04' => ['4 Permanent Incisors', 'Choga / Char Dant', 18, 24, 21],
+        'T06' => ['6 Permanent Incisors', 'Chhay Dant', 24, 30, 27],
+        'T08' => ['8 Permanent Incisors', 'Aath Dant / Full Mouth', 30, null, 39],
     ];
 
     public const UNKNOWN = 'UNK';
@@ -60,6 +61,12 @@ final class Teeth
     public static function months(): array
     {
         return self::stages()->mapWithKeys(fn (TeethStage $s) => [$s->key => $s->estimate_months])->all();
+    }
+
+    /** D-234: the teeth expected at this age (the dental code whose age range holds it), when no check is recorded. */
+    public static function forMonths(?float $months): ?string
+    {
+        return $months === null ? null : self::stages()->first(fn (TeethStage $s) => $months >= $s->from_months && ($s->to_months === null || $months < $s->to_months))?->key;
     }
 
     /** "T02", or "UNK" when the teeth were never examined. */

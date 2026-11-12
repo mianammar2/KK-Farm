@@ -11,7 +11,8 @@ type DamMating = { sireId: string | null; sire: string | null; sireBreed: number
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
 type AgeStage = { code: string; label: string; group: string; at: number; unit: 'days' | 'months'; range: string; estimate: number }; // D-229
-type Props = { epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; ageStages: AgeStage[]; canAssignTags: boolean; untagged: Option[];
+type RoleOption = { value: string; label: string; sex: string; group: string; purpose: string | null; class: string };
+type Props = { roleOptions: RoleOption[]; epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; ageStages: AgeStage[]; canAssignTags: boolean; untagged: Option[];
     goat?: { id: string; number: string; values: Record<string, any> } };
 
 /** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
@@ -22,7 +23,7 @@ const TEMP_HIGH = 103.5;
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
-export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, ageStages, canAssignTags, untagged, goat }: Props) {
+export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, ageStages, canAssignTags, untagged, goat, roleOptions }: Props) {
     const editing = Boolean(goat);
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
     const [estMonths, setEstMonths] = useState('');
@@ -111,10 +112,11 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             return form.setData('custom_fields', { ...form.data.custom_fields, [f.key]: v });
         }
         if (f.key === 'sex') {
+            // D-235: the Gender field picks a role code (BB, BD, FM …): gender, purpose and category follow from it.
+            const r = roleOptions.find((o) => o.value === v);
             return form.setData((d: Record<string, any>) => ({
-                ...d, sex: v,
-                animal_class: classSex[d.animal_class] && classSex[d.animal_class] !== v ? '' : d.animal_class,
-                repro_status: v === 'female' ? d.repro_status : '',
+                ...d, sex: r?.sex ?? '', role_code: v, animal_purpose: r?.purpose ?? d.animal_purpose, animal_class: r?.class ?? '',
+                repro_status: r?.sex === 'female' ? d.repro_status : '',
             }));
         }
         if (f.key === 'dam_id') {
@@ -268,6 +270,14 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
             case 'yes_no':
                 return <span className="flex min-h-11 items-center gap-2"><input type="checkbox" className="size-5" checked={Boolean(v)} onChange={(e) => set(f, e.target.checked)} /><span className="text-sm text-ink-soft">Yes</span></span>;
             case 'select': {
+                if (f.key === 'sex') { // D-235: gender with the framework's role codes, grouped Male / Female
+                    return (
+                        <select className="field" value={form.data.role_code ?? ''} onChange={(e) => set(f, e.target.value)}>
+                            <option value="">Choose…</option>
+                            {['Male', 'Female'].map((g) => <optgroup key={g} label={g}>{roleOptions.filter((o) => o.group === g).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</optgroup>)}
+                        </select>
+                    );
+                }
                 // Animal Class only offers classes that fit the chosen sex (a male cannot be a Breeding Doe).
                 const sex = form.data.sex;
                 // D-171: a kid born on the farm is created by the Pregnancy Outcome (Maternity), never registered by hand.
