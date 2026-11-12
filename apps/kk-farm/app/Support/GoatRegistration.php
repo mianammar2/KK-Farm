@@ -145,6 +145,11 @@ final class GoatRegistration
     public static function register(array $data, User $user, string $via = 'manual'): Animal
     {
         $data = self::applyRole($data);
+        // D-237: a bought goat with a gender code and no age gets the estimated age the code means (BK → kid …)
+        if (empty($data['birth_date']) && ! empty($data['registered_role']) && ($data['origin'] ?? null) !== 'born_on_farm'
+            && ($st = AgeStages::stages()->firstWhere('code', Designations::stageFor($data['registered_role'])))) {
+            $data['birth_date'] = now()->subDays((int) round($st->estimateMonths() * 30.4375))->toDateString();
+        }
         $epc = self::normaliseCode($data['rfid_epc'] ?? null);
 
         // D-043: a typed parent tag that belongs to a registered goat becomes a real link; otherwise it is kept as text.

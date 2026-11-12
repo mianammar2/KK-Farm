@@ -47,7 +47,16 @@ final class Designations
     /** @return array<string, array{value: string, label: string, sex: string, group: string}> options for the Gender field */
     public static function pickOptions(): array
     {
-        return collect(self::PICK)->map(fn ($p, $c) => ['value' => $c, 'label' => "{$c} · ".self::CODES[$c][0], 'sex' => $p[0], 'group' => $p[0] === 'male' ? 'Male' : 'Female', 'purpose' => $p[1], 'class' => $p[2]])->all();
+        return collect(self::PICK)->map(fn ($p, $c) => ['value' => $c, 'label' => "{$c} · ".self::CODES[$c][0], 'sex' => $p[0], 'group' => $p[0] === 'male' ? 'Male' : 'Female', 'purpose' => $p[1], 'class' => $p[2], 'stage' => self::stageFor($c)])->all();
+    }
+
+    /** D-237: the age a code means when the age is not known yet: kids → first kid stage after newborn, growers → GRW, the rest → first adult stage. */
+    public static function stageFor(string $code): ?string
+    {
+        $group = match ($code) { 'BK', 'DK' => 'kid', 'GB', 'GD', 'RB', 'RD', 'FM', 'FF', 'WTH' => 'grower', default => 'adult' };
+        $stages = AgeStages::stages()->where('age_group', $group)->values();
+
+        return ($group === 'kid' ? ($stages->get(1) ?? $stages->first()) : $stages->first())?->code;
     }
 
     /** Goat category (D-046) => main role, per sex */

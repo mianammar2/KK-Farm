@@ -207,6 +207,7 @@ class GoatController extends Controller
                 'dam_id' => Animal::where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number', 'name', 'breed_id'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->farm_number.($a->name ? " · {$a->name}" : ''), 'breed' => $a->breed_id, 'code' => $a->farm_number]),
             ],
             'teethMonths' => \App\Support\Teeth::months(), // D-220
+            'teethRanges' => \App\Support\Teeth::stages()->map(fn ($t) => ['code' => $t->key, 'label' => $t->label, 'from' => $t->from_months, 'to' => $t->to_months])->values(), // D-237: teeth follow age on the form
             'ageStages' => \App\Support\AgeStages::stages()->map(fn ($s) => ['code' => $s->code, 'label' => $s->label, 'group' => $s->age_group, 'at' => $s->starts_at, 'unit' => $s->starts_unit, 'range' => $s->rangeText(), 'estimate' => round($s->estimateMonths(), 1)])->values(), // D-229
             'classSex' => GoatRegistration::classSex(),
             'roleOptions' => array_values(\App\Support\Designations::pickOptions()), // D-235: the Gender field

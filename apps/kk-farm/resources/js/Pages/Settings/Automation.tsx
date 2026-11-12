@@ -5,7 +5,7 @@ import { Button, Field, PageHeader, Panel } from '../../components/ui';
 type RuleRow = { id: number; sex: string; stage: string; purpose: string; class: string; status: string | null; goats: number; role: string | null; fixed: boolean };
 type Props = {
     rules: RuleRow[]; stages: Array<{ code: string; label: string; range: string; group: string }>; teeth: Array<{ code: string; label: string; age: string }>;
-    picks: Array<{ value: string; label: string; sex: string; purpose: string | null; class: string }>; categories: Record<string, string>; categorySex: Record<string, string>;
+    picks: Array<{ value: string; label: string; sex: string; purpose: string | null; class: string; stage: string | null }>; categories: Record<string, string>; categorySex: Record<string, string>;
     statuses: Record<string, string>; purposes: Record<string, string>; kid: { newbornDays: number; weaningDays: number };
     breeding: { min_age_months: number; min_weight_kg: number; min_bcs: number | null }; market: { male: number; female: number };
 };
@@ -21,9 +21,9 @@ export default function Automation(p: Props) {
             <PageHeader title="Automation Rules" description="The registry asks for origin, breed, gender code, age (birth date, age stage or teeth), purpose, weight and pen. Everything below is filled in by itself from these rules, for every goat at once."
                 actions={<Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>} />
             <div className="space-y-4">
-                <Panel flush title="1. Gender code fills in" description="Picking a code in the Gender field sets these at once.">
-                    <div className="overflow-x-auto"><table className="data-table min-w-[560px]"><thead><tr><th>Code</th><th>Gender</th><th>Purpose</th><th>Category</th></tr></thead>
-                        <tbody>{p.picks.map((r) => <tr key={r.value}><td className="font-semibold">{r.label}</td><td>{r.sex === 'female' ? 'Female' : 'Male'}</td><td>{r.purpose ? p.purposes[r.purpose] ?? r.purpose : '—'}</td><td>{p.categories[r.class] ?? r.class}</td></tr>)}</tbody></table></div>
+                <Panel flush title="1. Gender code fills in" description="Picking a code in the Gender field sets these at once. For a bought goat with no age yet it also fills in the age stage (and so the teeth and an estimated birth date).">
+                    <div className="overflow-x-auto"><table className="data-table min-w-[560px]"><thead><tr><th>Code</th><th>Gender</th><th>Purpose</th><th>Category</th><th>Age if not known</th></tr></thead>
+                        <tbody>{p.picks.map((r) => <tr key={r.value}><td className="font-semibold">{r.label}</td><td>{r.sex === 'female' ? 'Female' : 'Male'}</td><td>{r.purpose ? p.purposes[r.purpose] ?? r.purpose : '—'}</td><td>{p.categories[r.class] ?? r.class}</td><td className="font-mono">{r.stage ?? '—'}</td></tr>)}</tbody></table></div>
                 </Panel>
 
                 <Panel flush title="2. Age and teeth" description="From the birth date (or the age stage or teeth picked for a bought goat). Change them in Age Groups." actions={<Link href="/settings/ages" className="text-sm font-semibold text-cobalt-800 hover:underline">Edit in Age Groups</Link>}>
