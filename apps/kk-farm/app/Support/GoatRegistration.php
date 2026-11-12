@@ -177,6 +177,9 @@ final class GoatRegistration
             $lifecycle = $data['lifecycle_status'] ?? 'active';
             [$status, $exitReason] = self::LIFECYCLE[$lifecycle] ?? ['active', null];
             $repro = $data['repro_status'] ?? null;
+            if (! $repro && ($data['sex'] ?? null) === 'female') { // D-236: the starting female status from Automation Rules
+                $repro = AutoRules::for('female', AgeStages::codeFor($data['birth_date'] ?? null), $data['animal_purpose'] ?? null)?->female_status;
+            }
 
             $animal = Animal::create([
                 // D-041: a blank Tag ID is generated from the breed (BT-0001 ...). A typed one is kept as entered.

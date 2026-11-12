@@ -26,21 +26,21 @@ class TeethStagesTest extends TestCase
 
         $this->actingAs($owner)->get('/settings/ages')->assertOk()->assertInertia(fn ($p) => $p->has('teeth', 5)->where('teeth.1.key', 'T02')->where('teeth.1.local', 'Donda'));
 
-        $this->actingAs($owner)->post('/settings/teeth', ['key' => 'mlt2', 'label' => 'Milk, first pair loose', 'from_months' => 10, 'to_months' => 13, 'estimate_months' => 11])->assertSessionHasNoErrors();
-        $new = TeethStage::where('key', 'MLT2')->firstOrFail();
-        $this->actingAs($owner)->post('/settings/teeth', ['key' => 'UNK', 'label' => 'Bad code', 'from_months' => 1, 'estimate_months' => 2])->assertSessionHasErrors('key');
-        $this->actingAs($owner)->post('/settings/teeth', ['key' => 'X9', 'label' => 'Bad', 'from_months' => 10, 'to_months' => 12, 'estimate_months' => 20])->assertSessionHasErrors('estimate_months');
-
-        // The new code is offered on the goat and sets the estimated age from its months.
-        $this->actingAs($owner)->post("/goats/{$goat->id}/teeth", ['teeth' => 'MLT2'])->assertSessionHasNoErrors();
-        $this->assertSame(11, (int) round($goat->fresh()->birth_date->diffInMonths(now())));
-
-        $two = TeethStage::where('key', 'T02')->firstOrFail();
-        $this->actingAs($owner)->post("/settings/teeth/{$two->id}", ['label' => '2 Permanent Incisors', 'local_term' => 'Donda', 'from_months' => 12, 'to_months' => 18, 'estimate_months' => 14])->assertSessionHasNoErrors();
+        // Teeth follow age, so a new code needs months of its own: overlapping is refused.
+        $this->actingAs($owner)->post('/settings/teeth', ['key' => 'X9', 'label' => 'Overlap', 'from_months' => 10, 'to_months' => 13, 'estimate_months' => 11])->assertSessionHasErrors('from_months');
+        $this->actingAs($owner)->post('/settings/teeth', ['key' => 'UNK', 'label' => 'Bad code', 'from_months' => 60, 'estimate_months' => 62])->assertSessionHasErrors('key');
+        $t08 = TeethStage::where('key', 'T08')->firstOrFail();
+        $this->actingAs($owner)->post("/settings/teeth/{$t08->id}", ['label' => '8 Permanent Incisors', 'local_term' => 'Aath Dant', 'from_months' => 30, 'to_months' => 48, 'estimate_months' => 39])->assertSessionHasNoErrors();
+        $this->actingAs($owner)->post('/settings/teeth', ['key' => 'wbt', 'label' => 'Worn / Broken Mouth', 'from_months' => 48, 'estimate_months' => 54])->assertSessionHasNoErrors();
         Tenant::flush();
-        $this->assertSame(14, Teeth::months()['T02']);
+        $this->assertSame('WBT', Teeth::forMonths(60));
 
+        // A code is offered on the goat and sets the estimated age from its months.
+        $this->actingAs($owner)->post("/goats/{$goat->id}/teeth", ['teeth' => 'WBT'])->assertSessionHasNoErrors();
+        $this->assertSame(54, (int) round($goat->fresh()->birth_date->diffInMonths(now())));
+        $new = TeethStage::where('key', 'WBT')->firstOrFail();
         $this->actingAs($owner)->delete("/settings/teeth/{$new->id}")->assertSessionHasErrors('teeth'); // a goat has it
+        $two = TeethStage::where('key', 'T02')->firstOrFail();
         $this->actingAs($owner)->delete("/settings/teeth/{$two->id}")->assertSessionHasNoErrors();
         $this->assertNull($two->fresh());
     }

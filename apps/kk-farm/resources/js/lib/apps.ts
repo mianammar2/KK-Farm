@@ -51,6 +51,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports?section=exits', 'Exits & Mortality'),
         S('Configuration', '/settings/breeds', 'Breed Master'),
         S('Configuration', '/settings/ages', 'Age Groups'),
+        S('Configuration', '/settings/automation', 'Automation Rules'), // D-236
         S('Configuration', '/settings/fields', 'Register Fields'),
     ] },
     { key: 'breeding', no: '03', label: 'Breeding', art: 'mod-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [

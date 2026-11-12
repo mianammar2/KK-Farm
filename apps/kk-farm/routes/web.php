@@ -481,6 +481,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/settings/breeds/{breed}/edit', [SettingsController::class, 'editBreed']); // D-219
         Route::delete('/settings/breeds/{breed}', [SettingsController::class, 'deleteBreed']); // D-219
         Route::post('/settings/ages', [SettingsController::class, 'updateAges']);
+        Route::get('/settings/automation', [\App\Http\Controllers\AutomationController::class, 'index']); // D-236
+        Route::post('/settings/automation/rules', [\App\Http\Controllers\AutomationController::class, 'save']);
+        Route::delete('/settings/automation/rules/{rule}', [\App\Http\Controllers\AutomationController::class, 'delete']);
         Route::post('/settings/stages', [SettingsController::class, 'addStage']); // D-221
         Route::post('/settings/stages/{stage}', [SettingsController::class, 'editStage']);
         Route::delete('/settings/stages/{stage}', [SettingsController::class, 'deleteStage']);

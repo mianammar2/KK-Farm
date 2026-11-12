@@ -51,6 +51,8 @@ final class Designations
     }
 
     /** Goat category (D-046) => main role, per sex */
+    public const FROM_CATEGORY_PUBLIC = self::FROM_CATEGORY + ['cull' => 'CM/CF'];
+
     private const FROM_CATEGORY = [
         'male_kid' => 'BK', 'female_kid' => 'DK', 'growing_male' => 'GB', 'growing_female' => 'GD',
         'replacement_male' => 'RB', 'replacement_female' => 'RD', 'breeding_male' => 'BB', 'breeding_female' => 'BD',

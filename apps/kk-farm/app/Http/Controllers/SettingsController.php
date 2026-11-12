@@ -204,6 +204,12 @@ class SettingsController extends Controller
             $request->merge(['key' => strtoupper(trim((string) $request->input('key')))]);
             $data['key'] = $request->validate(['key' => ['required', 'regex:/^[A-Z0-9]{2,8}$/', 'not_in:UNK', \Illuminate\Validation\Rule::unique('teeth_stages', 'key')]], ['key.regex' => 'Use 2 to 8 capital letters or numbers, e.g. T10.'])['key'];
         }
+        // D-236: teeth follow age from these ranges, so two codes cannot cover the same months.
+        $clash = \App\Models\TeethStage::when($ignore, fn ($q) => $q->where('id', '!=', $ignore))->get()
+            ->first(fn ($t) => $data['from_months'] < ($t->to_months ?? INF) && $t->from_months < ($data['to_months'] ?? INF));
+        if ($clash) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['from_months' => "These months overlap {$clash->key} ({$clash->ageText()}). Teeth follow age, so each month belongs to one code."]);
+        }
         if ($data['to_months'] !== null && $data['estimate_months'] > $data['to_months']) {
             throw \Illuminate\Validation\ValidationException::withMessages(['estimate_months' => 'The estimated age must be inside the range.']);
         }

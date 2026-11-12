@@ -15,6 +15,7 @@ const PAGES = [
     { href: '/settings/access', title: 'Access Rights by Role', note: (p: Props) => `What each role opens and may do. ${p.counts.overrides ? `${p.counts.overrides} people have their own ticks on top.` : 'Nobody has their own ticks yet.'}` },
     { href: '/settings/breeds', title: 'Breeds', note: (p: Props) => `${p.breeds.length} breeds, their tag codes and light weight lines.` },
     { href: '/settings/ages', title: 'Age Groups', note: (p: Props) => `Kid under ${p.ages.growerFrom} months, adult from ${p.ages.adultFrom} months, with each stage's code and teeth.` },
+    { href: '/settings/automation', title: 'Automation Rules', note: () => 'What the registry fills in by itself: gender codes, category by age and purpose, female status, kid stages, teeth by age.' },
     { href: '/settings/fields', title: 'Register Fields', note: (p: Props) => `${p.counts.fields} custom fields on the goat register.` },
     { href: '/settings/system', title: 'System', note: () => 'Versions of this installation.' },
 ];
@@ -22,7 +23,7 @@ const PAGES = [
 export default function Settings(p: Props) {
     const back = <Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>;
     if (p.section === 'breeds') return <><Head title="Breeds" /><PageHeader title="Breeds" description="Breed names, the code each tag starts with, and the light weight line used to estimate age." actions={back} /><div className="max-w-2xl"><Breeds breeds={p.breeds} /></div></>;
-    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="Age and teeth are two separate facts. The age stage moves on by itself from the birth date; the teeth come from a mouth check. Together they give each goat's code, e.g. GRW-T02 or ADT-T04." actions={back} /><div className="max-w-5xl space-y-4"><AgeStagesPanel stages={p.stages} /><DentalCodesPanel teeth={p.teeth} /></div></>;
+    if (p.section === 'ages') return <><Head title="Age Groups" /><PageHeader title="Age Groups" description="The age stage moves on by itself from the birth date, and the teeth follow the age (from the Dental Codes' ages) unless the vet records a teeth check. Together they give each goat's code, e.g. GRW-MLT or ADT-T04." actions={back} /><div className="max-w-5xl space-y-4"><AgeStagesPanel stages={p.stages} /><DentalCodesPanel teeth={p.teeth} /></div></>;
     if (p.section === 'system') return <><Head title="System" /><PageHeader title="System" actions={back} /><Panel className="max-w-xl"><dl className="space-y-1 text-sm">{Object.entries(p.environment).map(([k, v]) => <div key={k} className="flex justify-between gap-2"><dt className="text-ink-soft capitalize">{k}</dt><dd className="font-medium">{v}</dd></div>)}</dl></Panel></>;
     return (
         <>
@@ -159,7 +160,7 @@ function StageRow({ st }: { st: Stage }) {
 function DentalCodesPanel({ teeth }: { teeth: Tooth[] }) {
     const add = useForm({ key: '', label: '', local_term: '', from_months: '', to_months: '', estimate_months: '' });
     return (
-        <Panel flush title="Dental Codes" description="Recorded from a mouth check (permanent lower incisors). The ages are only a guide: they estimate a bought goat's birth date. Goats never checked show UNK. Worn, broken or missing teeth are recorded as the condition on each check.">
+        <Panel flush title="Dental Codes" description="Each code's ages decide the teeth a goat shows for its age, and the estimate for a bought goat's birth date. A teeth check by the vet wins over the age. Worn, broken or missing teeth are recorded as the condition on each check.">
             <div className="overflow-x-auto"><table className="data-table min-w-[640px]">
                 <thead><tr><th>Code</th><th>Classification</th><th>Farm Term</th><th>About</th><th className="text-right">Estimate</th><th className="text-right">Goats</th><th /></tr></thead>
                 <tbody>{teeth.map((t) => <ToothRow key={t.id} t={t} />)}</tbody>
