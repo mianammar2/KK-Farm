@@ -9,9 +9,7 @@ import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, Rep
 import type { GoatCard } from '../../types';
 
 type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
-/** D-106: short labels for the teeth column */
-const TEETH_SHORT: Record<string, string> = { milk: 'Milk', '2': '2', '4': '4', '6': '6', '8': '8 (full)', worn: 'Worn' };
-type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen' | 'teeth';
+type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen';
 type Goat = Props['goats'][number];
 
 /**
@@ -37,8 +35,7 @@ const PAGE = LITE ? 25 : 60; // rows drawn at once; the gun draws fewer (D-089)
 /** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
 const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
 
-export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptions, teethShort = {}, canEdit, canTag = false }: Props) {
-    const short = (k: string) => TEETH_SHORT[k] ?? teethShort[k] ?? k; // D-220: the farm's own stages from Settings → Age Groups
+export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, canTag = false }: Props) {
     const [tagging, setTagging] = useState<Goat | null>(null); // D-144
     const url = usePage().url;
     const params = new URLSearchParams(url.split('?')[1] ?? '');
@@ -70,7 +67,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
             (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || g.health === health) &&
             (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone),
         );
-        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : sort.key === 'teeth' ? Object.keys(teethOptions).indexOf(g.teeth ?? '') : (g[sort.key] ?? '') as string);
+        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : (g[sort.key] ?? '') as string);
         return [...list].sort((a, b) => {
             const [x, y] = [value(a), value(b)];
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
@@ -170,7 +167,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                 ) : view === 'table' ? (
                     <div className="max-h-[70vh] overflow-auto">
                         <table className="data-table min-w-[900px]">
-                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><Th id="teeth" label="Teeth" /><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current Tag</th></tr></thead>
+                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
@@ -182,16 +179,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                             </td>
                                             <td><BreedBadge breed={g.breed} withName /></td>
                                             <td><SexIcon sex={g.sex} label /></td>
-                                            <td>
-                                                {canEdit && g.status === 'active' ? (
-                                                    <select aria-label={`Teeth of ${g.number}`} className="field h-9 w-auto min-w-24 py-0 text-sm" value={g.teeth ?? ''}
-                                                        onChange={(e) => router.post(`/goats/${g.id}/teeth`, { teeth: e.target.value || null }, { preserveScroll: true, preserveState: true })}>
-                                                        <option value="">—</option>
-                                                        {Object.entries(teethOptions).map(([k, v]) => <option key={k} value={k} title={v}>{short(k)}</option>)}
-                                                    </select>
-                                                ) : <span className="text-sm">{g.teeth ? short(g.teeth) : '—'}</span>}
-                                            </td>
-                                            <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} withLabel />{g.age ?? <span className="text-ink-faint">Unknown</span>}</span></td>
+                                            <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5">{g.ageCode ? <><AgeBadge stage={g.stage} /><span className="rounded-[4px] bg-cobalt-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-cobalt-800">{g.ageCode}</span></> : <AgeBadge stage={g.stage} withLabel />}{g.age ?? <span className="text-ink-faint">Unknown</span>}</span></td>
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} /></div></td>
@@ -214,7 +202,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, teethOptio
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5"><span className="shrink-0 font-mono font-semibold text-cobalt-900">{g.number}</span><GoatBadges breed={g.breed} stage={g.stage} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
-                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.ageCode ? `${g.ageCode} · ` : g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)} · ` : ''}{g.age ?? 'age unknown'}{g.teeth ? ` · ${short(g.teeth)} teeth` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
+                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.ageCode ? `${g.ageCode} · ` : g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)} · ` : ''}{g.age ?? 'age unknown'}{g.weight ? ` · ${g.weight} KG` : ''}</div>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>
