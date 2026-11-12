@@ -26,3 +26,17 @@ Artisan::command('kkfarm:maternity-round', function () {
 })->purpose('Move does near kidding to the Pre-Kidding Unit and does after an outcome (with kids) into the Maternity Unit');
 
 \Illuminate\Support\Facades\Schedule::command('kkfarm:maternity-round')->hourly()->withoutOverlapping();
+
+/* D-231: breeding eligibility moves on with age: each day, newly qualified goats get their approval task. */
+Artisan::command('kkfarm:eligibility-round', function () {
+    foreach (\Illuminate\Support\Facades\DB::table('organizations')->pluck('id') as $orgId) {
+        \App\Support\Tenant::enter((string) $orgId);
+        try {
+            \App\Support\Eligibility::sync();
+        } finally {
+            \App\Support\Tenant::leave();
+        }
+    }
+})->purpose('Create breeding approval tasks for goats that have become qualified');
+
+\Illuminate\Support\Facades\Schedule::command('kkfarm:eligibility-round')->dailyAt('05:30')->withoutOverlapping();

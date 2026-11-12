@@ -32,7 +32,7 @@ authorised person.** (Matches the project rule: the system records and recommend
 2. **Done in D-230. Production purpose and sex-wise labels**: BK, GB, RB, BB, PS, FM, WTH, CM / DK, GD, RD, BD, PD, DD, FF, CF as
    generated designations (several can apply, e.g. Breeding Doe + Proven Dam + Dairy Doe). Castration event →
    wether, blocks natural breeding.
-3. **Eligibility engine**: qualification ≠ approval. Per-breed configurable thresholds (minimum age, minimum weight,
+3. **Done in D-231. Eligibility engine**: qualification ≠ approval. Per-breed configurable thresholds (minimum age, minimum weight,
    % of mature weight, body condition, health clearance, genetic approval). Meeting thresholds creates an approval
    task; only approval sets "Ready for Breeding". 2 teeth or 35 kg alone raise a Maturity Review alert only.
 4. **Lifecycle statuses and sale readiness**: independent breeding / lactation / fattening / health / sale statuses

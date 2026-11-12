@@ -264,6 +264,10 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware('module:breeding')->group(function (): void {
         Route::get('/breeding', [BreedingController::class, 'index']);
         Route::post('/breeding/matings', [BreedingController::class, 'store']);
+        Route::get('/breeding/eligibility', [\App\Http\Controllers\EligibilityController::class, 'index']); // D-231
+        Route::post('/breeding/eligibility/rules', [\App\Http\Controllers\EligibilityController::class, 'saveRule']);
+        Route::delete('/breeding/eligibility/rules/{rule}', [\App\Http\Controllers\EligibilityController::class, 'deleteRule']);
+        Route::post('/breeding/eligibility/{animal}', [\App\Http\Controllers\EligibilityController::class, 'decide']);
         Route::get('/repro-loss', [\App\Http\Controllers\ReproLossController::class, 'index']); // D-206
         Route::post('/repro-loss/{case}/contain', [\App\Http\Controllers\ReproLossController::class, 'contain']);
         Route::post('/repro-loss/{case}/material', [\App\Http\Controllers\ReproLossController::class, 'material']);

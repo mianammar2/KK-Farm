@@ -77,6 +77,7 @@ return [
         'manage_market' => ['ceo', 'finance'], // D-113: market rates, batch purchase rates, feed price
         'record_milk' => ['ceo', 'manager', 'vet', 'caretaker'], // D-117: milk per session
         'manage_milking' => ['ceo', 'manager', 'vet'], // D-117: dry off, start a lactation by hand, milking settings
+        'approve_breeding' => ['ceo', 'manager', 'vet'], // D-231: approve or reject a goat for breeding
         'open_cases' => ['vet', 'ceo'], // D-095: the vet, and the administrator, open health cases (treatments stay with the vet)
     ],
 

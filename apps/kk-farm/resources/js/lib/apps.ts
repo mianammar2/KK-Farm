@@ -60,11 +60,13 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/genetics?tab=progeny', 'Sire & Dam Progeny Performance'),
         S('Operations', '/genetics?tab=mating', 'Inbreeding Check'),
         S('Operations', '/growth?tab=selection', 'Replacement Breeder Selection'),
+        S('Operations', '/breeding/eligibility', 'Breeding Eligibility & Approval'), // D-231
         S('Records', '/breeding?tab=pedigree', 'Genetics & Family Tree'),
         S('Records', '/goats?show=pregnant', 'Pregnant Does'),
         S('Reporting', '/breeding?tab=performance', 'Doe Performance'),
         S('Reporting', '/reports?section=sires', 'Buck Performance'),
         S('Configuration', '/breeding?tab=settings', 'Gestation & Check Days'),
+        S('Configuration', '/breeding/eligibility#rules', 'Breeding Eligibility Rules'),
     ] },
     { key: 'maternity', no: '04', label: 'Maternity', art: 'ic-kidding', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
         S('Overview', '/breeding?tab=calendar', 'Upcoming Deliveries'),

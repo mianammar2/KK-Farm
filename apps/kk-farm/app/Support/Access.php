@@ -30,7 +30,7 @@ class Access
         'manage_sheds' => 'Add sheds and pens', 'manage_feed_store' => 'Feed store items and stock', 'plan_rations' => 'Draft rations', 'manage_general_store' => 'General store',
         'manage_purchase' => 'Suppliers and purchase orders', 'manage_sales' => 'Customers and sales', 'manage_medicine_store' => 'Medicine store', 'manage_devices' => 'Devices and keys',
         'edit_goats' => 'Edit goat details', 'remove_goats' => 'Remove or restore goat entries', 'health_checkup' => 'Routine health checkups', 'manage_market' => 'Market rates',
-        'record_milk' => 'Record milk', 'manage_milking' => 'Milking settings', 'open_cases' => 'Open health cases',
+        'record_milk' => 'Record milk', 'manage_milking' => 'Milking settings', 'open_cases' => 'Open health cases', 'approve_breeding' => 'Approve goats for breeding',
     ];
 
     /** The farm business's saved role settings, cached for the request (Tenant::memo is cleared per request). */

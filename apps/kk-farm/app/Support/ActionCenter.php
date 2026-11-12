@@ -39,6 +39,13 @@ final class ActionCenter
         };
         $goat = fn (?Animal $a, ?string $sub = null) => ['text' => $a?->farm_number ?? '?', 'sub' => $sub, 'url' => $a ? "/goats/{$a->id}" : null];
 
+        // D-231: goats that passed every breeding check and wait for an authorised approval.
+        if ($user->passes('approve_breeding')) {
+            $waiting = \App\Models\Task::with('animal')->where('title', 'like', Eligibility::TASK_PREFIX.'%')->whereIn('status', \App\Models\Task::OPEN)->orderBy('due_on')->get();
+            $add('breeding', 'breeding_approval', 'Breeding approval pending', 'warning', 'Confirm the reproductive exam and genetics, then approve or reject.', '/breeding/eligibility',
+                $waiting->map(fn ($t) => $goat($t->animal, 'qualified · due '.$t->due_on?->format('j M'))));
+        }
+
         // ---- Health ----
         // The latest dose of each active case; overdue when its next-dose date has passed.
         $dosesOverdue = Treatment::with(['animal', 'healthCase'])->whereIn('id', Treatment::whereHas('healthCase', fn ($q) => $q->whereIn('status', HealthCase::ACTIVE))

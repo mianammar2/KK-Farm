@@ -288,6 +288,8 @@ class GoatController extends Controller
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
             'castration' => $animal->sex === 'male' ? ['on' => $animal->castrated_on?->format('j M Y'), 'methods' => self::CASTRATION_METHODS, 'can' => $request->user()->passes('clinical')] : null, // D-230
+            'eligibility' => ($e = \App\Support\Eligibility::check($animal))['status'] === 'not_candidate' ? null : ['status' => $e['status'], 'label' => $e['label'], 'review' => $e['review'], 'recommendation' => $e['recommendation'],
+                'failed' => collect($e['checks'])->filter(fn ($c) => ! $c['ok'])->pluck('label')->values()], // D-231
             'roleLabels' => \App\Support\Designations::labels(\App\Support\Designations::codes($animal)),
             'dentalOptions' => ['codes' => \App\Support\Teeth::options(), 'conditions' => \App\Support\Teeth::CONDITIONS], // D-229
             'can' => ['edit' => $request->user()->passes('edit_goats'), 'remove' => $request->user()->passes('remove_goats'), 'breeding' => $request->user()->canModule('breeding')],

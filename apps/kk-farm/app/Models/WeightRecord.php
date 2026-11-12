@@ -23,6 +23,8 @@ class WeightRecord extends Model
         });
         // D-110: a goat's first weighing estimates its age when nothing else tells it.
         static::created(fn (self $record) => $record->review_status === 'held' ? null : \App\Support\AgeFromWeight::fromRecord($record));
+        // D-231: a weighing can make a goat qualified for breeding: it gets its approval task straight away.
+        static::created(fn (self $record) => $record->review_status === 'held' ? null : \App\Support\Eligibility::syncOne($record->animal));
     }
 
     public function animal()
