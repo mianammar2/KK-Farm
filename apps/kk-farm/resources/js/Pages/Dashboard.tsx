@@ -99,7 +99,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
     return (
         <>
             <Head title="Dashboard" />
-            <div className="max-sm:hidden"><PageHeader title="Dashboard" description={`Signed in as ${auth?.roleLabel}. Updates by itself every ${LIVE_MS / 1000} seconds.`} /></div>
+            <div className="max-sm:hidden"><PageHeader title="Dashboard" description={`Signed in as ${auth?.roleLabel}. Updates by itself every ${LIVE_MS / 1000} seconds.`} actions={<Link href="/dashboard/scorecard" className="rounded-tile bg-cobalt-800 px-3 py-2 text-sm font-semibold text-white hover:bg-cobalt-900">CEO Scorecard</Link>} /></div>
 
             {/* D-121: actions are in the notification bell; health + buttons on Veterinary & Health. */}
 

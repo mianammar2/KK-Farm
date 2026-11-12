@@ -28,6 +28,7 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'dashboard', no: '01', label: 'Dashboard', art: 'mod-dashboard', modules: ['dashboard'], linked: ['livestock', 'breeding', 'veterinary', 'feeding', 'reports'], sections: [
         S('Overview', '/', 'Executive Dashboard'),
+        S('Overview', '/dashboard/scorecard', 'CEO Scorecard'), // D-233
         S('Operations', '/actions', 'Alerts & Action Center'),
         S('Records', '/activity', 'Activity Log'),
         S('Reporting', '/dashboard/weight-change', 'Weight Gain & Loss'),

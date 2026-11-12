@@ -226,6 +226,7 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
+    Route::get('/dashboard/scorecard', \App\Http\Controllers\ScorecardController::class)->middleware('module:dashboard'); // D-233
     Route::get('/dashboard/weight-change', \App\Http\Controllers\WeightChangeController::class)->middleware('module:dashboard'); // D-216
     Route::get('/activity', \App\Http\Controllers\ActivityController::class)->middleware('module:dashboard'); // D-122
     // D-121: the notification bell loads what needs action in the background, after the page has opened.

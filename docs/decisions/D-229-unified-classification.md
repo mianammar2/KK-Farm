@@ -38,6 +38,6 @@ authorised person.** (Matches the project rule: the system records and recommend
 4. **Done in D-232. Lifecycle statuses and sale readiness**: independent breeding / lactation / fattening / health / sale statuses
    with a status history table (previous, current, time, rule). Target weight → "Market Weight Achieved", never
    "Sale Ready" by itself; sale clearance blocked by sickness or withdrawal.
-5. **CEO dashboard KPI groups and UAT**: the framework's KPI groups (population, age, dental, breeding stock,
+5. **Done in D-233 (UAT UC-01 … UC-15 automated across D-229 … D-232). CEO dashboard KPI groups and UAT**: the framework's KPI groups (population, age, dental, breeding stock,
    eligibility, reproduction, dairy, fattening, commercial, health, productivity, profitability), overlapping
    statuses counted separately from the herd total; UC-01 … UC-15 as automated tests (UC-01, 02, 12, 13 done).

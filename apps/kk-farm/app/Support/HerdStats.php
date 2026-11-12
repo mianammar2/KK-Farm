@@ -33,9 +33,10 @@ final class HerdStats
         $teeth = Teeth::stages()->mapWithKeys(fn ($t) => ["teeth_{$t->key}" => "{$t->key} · {$t->label}", "teeth_{$t->key}_female" => "{$t->key} · {$t->label} · Females", "teeth_{$t->key}_male" => "{$t->key} · {$t->label} · Males"])->all()
             + ['teeth_UNK' => 'UNK · Teeth not examined', 'teeth_UNK_female' => 'UNK · Teeth not examined · Females', 'teeth_UNK_male' => 'UNK · Teeth not examined · Males']; // D-229
 
+        $life = collect(Lifecycle::LABELS)->flatMap(fn ($codes, $dim) => collect($codes)->mapWithKeys(fn ($l, $c) => ["life_{$dim}_{$c}" => ucfirst($dim === 'lactation' ? 'milk' : $dim).": {$l}"]))->all(); // D-233
         $roles = collect(Designations::CODES)->mapWithKeys(fn ($r, $c) => ["role_{$c}" => "{$c} · {$r[0]}", "role_{$c}_{$r[1]}" => "{$c} · {$r[0]}"])->all(); // D-230
 
-        return self::LABELS + $stages + $teeth + $roles + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
+        return self::LABELS + $stages + $teeth + $roles + $life + collect(Classification::CATEGORIES)->mapWithKeys(fn ($c, $k) => ['class_'.$k => $c[0]])->all() + ['class_none' => 'Not Classified'];
     }
 
     public const CATEGORIES = ['breeding_males', 'breeding_females', 'pregnant', 'ready', 'male_kids', 'female_kids', 'growing', 'lactating', 'sick', 'treatment', 'for_sale'];
@@ -97,6 +98,10 @@ final class HerdStats
         // D-229: teeth (dental code), for the dashboard's Herd by Teeth; UNK = never examined.
         $tests['teeth_'.Teeth::code($a->teeth)] = true;
         $tests['teeth_'.Teeth::code($a->teeth)."_{$sex}"] = true;
+        // D-233: the lifecycle statuses as last recorded (status history), so the scorecard's numbers open their goats.
+        foreach (self::lifecycle()[$a->id] ?? [] as $dim => $code) {
+            $tests["life_{$dim}_{$code}"] = true;
+        }
         // D-230: main role and added designations (BD, PD, DD …), for the dashboard and filters.
         foreach (Designations::codes($a) as $code) {
             $tests["role_{$code}"] = true;
@@ -106,6 +111,19 @@ final class HerdStats
         $tests['class_'.($cat ?? 'none')] = true;
 
         return array_keys(array_filter($tests));
+    }
+
+    /** D-233: goat id => [dimension => latest status] from the status history (one query per request). */
+    public static function lifecycle(): array
+    {
+        return Tenant::memo('lifecycle_latest', function () {
+            $out = [];
+            foreach (\App\Models\StatusHistory::whereIn('id', \App\Models\StatusHistory::selectRaw('max(id)')->whereIn('dimension', array_keys(Lifecycle::LABELS))->groupBy('animal_id', 'dimension'))->get(['animal_id', 'dimension', 'to_status']) as $h) {
+                $out[$h->animal_id][$h->dimension] = $h->to_status;
+            }
+
+            return $out;
+        });
     }
 
     /** @return Collection<string, list<string>> tags by goat id, for goats on the farm */
