@@ -211,14 +211,15 @@ class ShedController extends Controller
 
     public function transfer(Request $request): RedirectResponse
     {
-        $data = $request->validate(['animal_id' => ['required', 'exists:animals,id'], 'pen_id' => ['required', 'exists:pens,id'], 'capacity_override' => ['nullable', 'string', 'max:200']]);
+        $data = $request->validate(['animal_id' => ['required', 'exists:animals,id'], 'pen_id' => ['required', 'exists:pens,id'], 'capacity_override' => ['nullable', 'string', 'max:200'],
+            'reason' => ['required', 'string', 'max:120']], ['reason.required' => 'Say why the goat is moved.']); // D-252: every move has a reason
         $animal = Animal::with('pen.shed')->findOrFail($data['animal_id']);
         $pen = Pen::with('shed')->findOrFail($data['pen_id']);
-        $movement = \App\Support\Movements::transfer($animal, $pen, $request->user(), ['capacity_override' => $data['capacity_override'] ?? null]); // D-076, D-207
+        $movement = \App\Support\Movements::transfer($animal, $pen, $request->user(), ['capacity_override' => $data['capacity_override'] ?? null, 'reason' => $data['reason']]); // D-076, D-207
         if (! $movement) {
             return back()->with('success', "{$animal->farm_number} is already in {$pen->fullName()}.");
         }
-        Farm::log($request->user(), "Moved {$animal->farm_number} to {$pen->fullName()}", "/goats/{$animal->id}");
+        Farm::log($request->user(), "Moved {$animal->farm_number} to {$pen->fullName()}: {$data['reason']}", "/goats/{$animal->id}");
 
         return back()->with('success', "{$animal->farm_number} moved to {$pen->fullName()}.");
     }

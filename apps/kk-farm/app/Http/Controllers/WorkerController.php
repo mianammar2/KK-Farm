@@ -47,7 +47,7 @@ class WorkerController extends Controller
         $pens = Pen::with('shed')->where('kind', 'pen')->orderBy('name')->get()->sortBy(fn (Pen $p) => $p->fullName())->values();
 
         return Inertia::render('Worker', [
-            'jobs' => collect(self::JOBS)->filter(fn ($j) => $user->canModule($j[1]))->map(fn ($j) => $j[0]),
+            'jobs' => collect(self::JOBS)->filter(fn ($j, $k) => $user->canModule($j[1]) && ($k !== 'weigh' || $user->passes('record_weights')) && ($k !== 'health' || $user->passes('report_concern')))->map(fn ($j) => $j[0]), // D-252
             'job' => $job ? ['job' => $job['job'], 'label' => self::JOBS[$job['job']][0], 'penId' => $job['pen'] ?? null, 'pen' => isset($job['pen']) ? Pen::with('shed')->find($job['pen'])?->fullName() : null, 'done' => $job['done'] ?? 0] : null,
             'goat' => $goat ? $goat->card() + [
                 'lastWeight' => $goat->latestWeight?->weight_kg, 'lastWeighed' => $goat->latestWeight?->measured_on?->format('j M Y'), 'penId' => $goat->pen_id,
@@ -63,7 +63,7 @@ class WorkerController extends Controller
     public function start(Request $request): RedirectResponse
     {
         $data = $request->validate(['job' => ['required', Rule::in(array_keys(self::JOBS))], 'pen_id' => ['nullable', 'required_if:job,move', 'integer', 'exists:pens,id']], [], ['pen_id' => 'pen']);
-        abort_unless($request->user()->canModule(self::JOBS[$data['job']][1]) && ($data['job'] !== 'weigh' || $request->user()->passes('record_weights')), 403); // D-241
+        abort_unless($request->user()->canModule(self::JOBS[$data['job']][1]) && ($data['job'] !== 'weigh' || $request->user()->passes('record_weights')) && ($data['job'] !== 'health' || $request->user()->passes('report_concern')), 403); // D-241, D-252
         $request->session()->put(self::SESSION, ['job' => $data['job'], 'pen' => $data['pen_id'] ?? null, 'at' => now()->timestamp, 'done' => 0]);
 
         return redirect('/worker')->with('success', self::JOBS[$data['job']][0].': now scan the first goat.');
@@ -113,7 +113,7 @@ class WorkerController extends Controller
     /** Health check on a round: looks fine (noted on its lifecycle), or a concern for the vet (the same as Report a Concern). */
     public function health(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->canModule('health'), 403);
+        abort_unless($request->user()->canModule('health') && $request->user()->passes('report_concern'), 403); // D-252
         $animal = $this->goat($request);
         $data = $request->validate(['fine' => ['required', 'boolean'], 'title' => ['nullable', 'required_if:fine,false', 'string', 'max:120'], 'severity' => ['nullable', 'required_if:fine,false', Rule::in(['low', 'medium', 'high'])], 'notes' => ['nullable', 'string', 'max:500']], [], ['title' => 'what you noticed']);
         if ($data['fine']) {

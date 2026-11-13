@@ -118,7 +118,7 @@ class HealthCaseTest extends TestCase
 
     public function test_a_reported_concern_becomes_a_case_and_leaves_the_reports_list(): void
     {
-        $this->actingAs($this->user('caretaker'))->post('/health/observations', ['animal_id' => $this->goat->id, 'title' => 'Coughing', 'severity' => 'medium'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post('/health/observations', ['animal_id' => $this->goat->id, 'title' => 'Coughing', 'severity' => 'medium'])->assertSessionHasNoErrors(); // D-252
         $report = HealthRecord::sole();
         $this->assertSame('monitor', $this->goat->fresh()->health_flag);
 

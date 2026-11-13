@@ -189,7 +189,7 @@ class HealthController extends Controller
     /** D-099: correct a checkup: the vet who did it, or the administrator. */
     public function updateCheckup(Request $request, \App\Models\HealthCheckup $checkup): RedirectResponse
     {
-        abort_unless($request->user()->passes('health_checkup') && \App\Support\Revisions::canCorrect($request->user(), $checkup->examiner), 403, 'Only the person who did this checkup, or the administrator, can correct it.');
+        abort_unless(($request->user()->passes('health_checkup') || $request->user()->role === 'ceo') && \App\Support\Revisions::canCorrect($request->user(), $checkup->examiner), 403, 'Only the person who did this checkup, or the administrator, can correct it.');
         $data = $request->validate([
             'checked_on' => ['required', 'date', 'before_or_equal:today'], 'temperature_f' => ['nullable', 'numeric', 'between:93,110'],
             'body_score' => ['nullable', 'integer', 'between:1,5'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
@@ -446,6 +446,7 @@ class HealthController extends Controller
 
     public function observe(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->passes('report_concern'), 403, 'Reporting a concern is not part of your role.'); // D-252
         $data = $request->validate(['animal_id' => ['required', 'exists:animals,id'], 'title' => ['required', 'string', 'max:120'], 'severity' => ['required', Rule::in(['low', 'medium', 'high'])], 'notes' => ['nullable', 'string', 'max:500']]);
 
         $animal = Animal::findOrFail($data['animal_id']);

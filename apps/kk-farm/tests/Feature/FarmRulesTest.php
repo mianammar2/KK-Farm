@@ -173,6 +173,10 @@ class FarmRulesTest extends TestCase
         $goat = $this->goat('T-0001');
         $caretaker = $this->user('caretaker');
 
+        $this->actingAs($caretaker)->post('/health/observations', ['animal_id' => $goat->id, 'title' => 'Limping', 'severity' => 'low'])->assertForbidden(); // D-252: the vet's by default
+        $caretaker->forceFill(['gate_access' => ['report_concern' => true]])->save(); // the administrator gives it to this caretaker
+        \App\Support\Tenant::flush();
+        $caretaker = $caretaker->fresh();
         $this->actingAs($caretaker)->post('/health/observations', ['animal_id' => $goat->id, 'title' => 'Limping', 'severity' => 'low'])->assertRedirect();
         $this->assertSame('watch', $goat->fresh()->health_status);
 

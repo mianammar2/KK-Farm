@@ -81,7 +81,7 @@ class AgeFromWeightTest extends TestCase
         $noLine = $this->register(['breed_id' => $teddy->id, 'latest_weight_kg' => 12]);
         $this->assertNull($noLine->fresh()->birth_date);
 
-        $this->actingAs($this->user())->post("/goats/{$noLine->id}/teeth", ['teeth' => 'T02'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post("/goats/{$noLine->id}/teeth", ['teeth' => 'T02'])->assertSessionHasNoErrors();
         $this->assertSame(now()->subMonths(16)->toDateString(), $noLine->fresh()->birth_date->toDateString());
     }
 

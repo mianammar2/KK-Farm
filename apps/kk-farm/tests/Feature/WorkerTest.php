@@ -36,6 +36,12 @@ class WorkerTest extends TestCase
 
         // Without a job, a scan opens the Scan page as before.
         $this->actingAs($care)->get('/scan?tag=E280000000000001')->assertInertia(fn (AssertableInertia $p) => $p->component('Scan'));
+        // D-252: the health round is the vet's unless the administrator gives it to a person
+        $this->actingAs($care)->get('/worker')->assertInertia(fn (AssertableInertia $p) => $p->component('Worker')->missing('jobs.health'));
+        $this->actingAs($care)->post('/worker/start', ['job' => 'health'])->assertForbidden();
+        $care->forceFill(['gate_access' => ['report_concern' => true]])->save();
+        Tenant::flush();
+        $care = $care->fresh();
         $this->actingAs($care)->get('/worker')->assertInertia(fn (AssertableInertia $p) => $p->component('Worker')->where('job', null)->has('jobs.weigh')->has('jobs.health')->has('jobs.move'));
 
         // Weigh: the scan goes straight to the goat; saving counts it and waits for the next scan.

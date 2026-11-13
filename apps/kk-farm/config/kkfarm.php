@@ -65,7 +65,10 @@ return [
         'clinical' => ['vet'], // 🔒 diagnose and treat
         'open_cases' => ['vet'], // 🔒 open health cases (caretakers report a sick goat instead)
         'approve_breeding' => ['vet'], // 🔒 approve goats for breeding
-        'health_checkup' => ['ceo', 'manager', 'vet', 'caretaker'],
+        // D-252: the health buttons on a goat are the vet's unless the administrator ticks a role or a person
+        'health_checkup' => ['vet'],
+        'health_entry' => ['vet'], // New health entry
+        'report_concern' => ['vet'], // Report concern (and the health round on the RFID gun)
         'manage_medicine_store' => ['ceo', 'vet'],
         'approve_feeding_plan' => ['ceo', 'manager'],
         'plan_rations' => ['ceo', 'manager', 'feeding'],
@@ -73,8 +76,8 @@ return [
         'manage_general_store' => ['ceo', 'manager', 'caretaker', 'cleaning'],
         'assign_tags' => ['ceo', 'manager', 'vet', 'caretaker'],
         'manage_sheds' => ['ceo', 'manager'],
-        'edit_goats' => ['ceo', 'manager', 'vet'],
-        'remove_goats' => ['ceo', 'manager'],
+        'edit_goats' => ['ceo'], // D-252: only the Administrator edits a goat's details unless a role or person is ticked
+        'remove_goats' => ['ceo'], // D-252: only the Administrator removes or restores a goat entry unless a role or person is ticked
         'exit_animal' => ['ceo', 'manager', 'finance'],
         'record_milk' => ['ceo', 'manager', 'caretaker'],
         'manage_milking' => ['ceo', 'manager'],

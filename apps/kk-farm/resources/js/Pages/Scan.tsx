@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ClipboardPlus, FileText, MoveRight, Radio, Scale, ScanLine, Stethoscope, TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
@@ -6,7 +6,7 @@ import { useScannerDevice } from '../lib/scanner';
 import { haptic } from '../lib/native';
 import GoatPortrait from '../components/GoatPortrait';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
-import type { GoatCard, Option } from '../types';
+import type { GoatCard, Option, SharedProps } from '../types';
 import { AttachPrompt } from '../components/RfidAttach';
 import { AgeBadge, BreedBadge } from '../components/GoatBadges';
 
@@ -99,6 +99,7 @@ function Idle({ scanning }: { scanning?: boolean }) {
 }
 
 function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Result }) {
+    const gates = usePage<SharedProps>().props.auth?.gates ?? []; // D-252
     useEffect(() => haptic(40), [result.code]);
     const remove = useForm({ animal_id: goat.id, reason: 'lost' });
     // Releasing a tag cannot be undone from here, so it takes two deliberate taps.
@@ -125,8 +126,8 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                         {[
                             goat.can?.check ? { href: 'checkup', label: 'Health checkup', icon: <Stethoscope size={18} aria-hidden />, primary: true } : null,
                             goat.can?.check && goat.sex === 'female' ? { href: 'pregnancy', label: 'Pregnancy check', icon: <Stethoscope size={18} aria-hidden /> } : null,
-                            goat.can?.health ? { href: 'entry', label: 'New health entry', icon: <ClipboardPlus size={18} aria-hidden /> } : null,
-                            goat.can?.health ? { href: 'concern', label: 'Report concern', icon: <TriangleAlert size={18} aria-hidden /> } : null,
+                            goat.can?.health && gates.includes('health_entry') ? { href: 'entry', label: 'New health entry', icon: <ClipboardPlus size={18} aria-hidden /> } : null,
+                            goat.can?.health && gates.includes('report_concern') ? { href: 'concern', label: 'Report concern', icon: <TriangleAlert size={18} aria-hidden /> } : null,
                             goat.can?.weigh ? { href: 'weight', label: 'Add weight', icon: <Scale size={18} aria-hidden /> } : null,
                             goat.can?.move ? { href: 'move', label: 'Move pen', icon: <MoveRight size={18} aria-hidden /> } : null,
                             { href: '', label: 'Open record', icon: <FileText size={18} aria-hidden /> },

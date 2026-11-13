@@ -194,6 +194,7 @@ class Animal extends Model
             'coat' => $this->coat,
             'breed' => $this->breed?->name,
             'age' => $this->ageLabel(),
+            'ageExact' => $this->birth_date !== null && ! $this->birth_date_is_estimate, // D-252: the list shows months only when the birth date is known
             'stage' => $this->effectiveAge(), // D-148: kid | grower | adult, for the age symbol
             'teeth' => $this->teeth, // D-106: from a check
             'teethCode' => $this->teethCode(), // D-234: checked, or expected for the age

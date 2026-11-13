@@ -89,7 +89,8 @@ class GoatEditTest extends TestCase
     {
         $doe = $this->registerDoe(['pregnant_at_arrival' => 'no', 'temperature_f' => '', 'body_score' => '']);
         $taken = Animal::create(['farm_number' => 'TD-TAKEN', 'sex' => 'female', 'breed_id' => $this->breed->id, 'origin' => 'purchased', 'pen_id' => $this->pen->id]);
-        $vet = $this->user('vet');
+        $this->actingAs($this->user('vet'))->get("/goats/{$doe->id}/edit")->assertForbidden(); // D-252: only the Administrator edits a goat by default
+        $vet = $this->user('ceo');
 
         $this->actingAs($vet)->get("/goats/{$doe->id}/edit")->assertOk()->assertInertia(fn (AssertableInertia $p) => $p->component('Goats/Register')->where('goat.values.teeth', 'T04'));
         $this->actingAs($vet)->post("/goats/{$doe->id}/edit", ['origin' => 'purchased', 'breed_id' => $this->breed->id, 'sex' => 'female', 'tag_id' => 'TD-TAKEN', 'pen_id' => $this->pen->id])
@@ -116,7 +117,8 @@ class GoatEditTest extends TestCase
         Farm::assignTag($goat, RfidTag::create(['tag_code' => 'E200DUP', 'status' => 'in_stock']), 'initial', $this->user('manager'));
 
         $this->actingAs($this->user('caretaker'))->post("/goats/{$goat->id}/removal", ['reason' => 'Registered twice'])->assertForbidden();
-        $this->actingAs($this->user('vet'))->post("/goats/{$goat->id}/removal", ['reason' => 'Registered twice by mistake'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post("/goats/{$goat->id}/removal", ['reason' => 'Registered twice by mistake'])->assertForbidden(); // D-252
+        $this->actingAs($this->user('ceo'))->post("/goats/{$goat->id}/removal", ['reason' => 'Registered twice by mistake'])->assertSessionHasNoErrors();
         $this->assertSame('active', $goat->fresh()->status, 'asking does not remove');
         $this->assertSame(['TD-DUP'], array_column(collect(ActionCenter::items($this->user('ceo')))->firstWhere('key', 'removal_requests')['items'], 'text'));
         $this->actingAs($this->user('vet'))->post("/goats/{$goat->id}/removal/decide", ['decision' => 'confirm'])->assertForbidden();
@@ -126,7 +128,7 @@ class GoatEditTest extends TestCase
         $this->assertSame(['voided', 'Test ceo'], [$goat->status, $goat->voided_by]);
         $this->assertFalse(Animal::active()->whereKey($goat->id)->exists(), 'out of every count and list');
         $this->assertNull($goat->openAssignment()->first(), 'its tag is free again');
-        $this->assertStringContainsString('Asked by Test vet, confirmed by Test ceo: Registered twice by mistake', $goat->events()->where('summary', 'like', 'Removed%')->sole()->summary);
+        $this->assertStringContainsString('Asked by Test ceo, confirmed by Test ceo: Registered twice by mistake', $goat->events()->where('summary', 'like', 'Removed%')->sole()->summary);
         $this->assertDatabaseHas('animals', ['id' => $goat->id]); // never deleted
 
         $this->actingAs($this->user('ceo'))->post("/goats/{$goat->id}/restore")->assertRedirect();

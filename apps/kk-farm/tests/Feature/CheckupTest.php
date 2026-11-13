@@ -69,7 +69,8 @@ class CheckupTest extends TestCase
 
     public function test_readings_outside_normal_are_flagged_and_a_finding_opens_a_case(): void
     {
-        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertForbidden(); // D-252: checkups are the vet's by default
+        $this->actingAs($this->user('vet'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertSessionHasNoErrors();
         $this->assertSame(['Temperature 105.1 °F (high)'], HealthCheckup::sole()->flags());
         $this->assertSame(['open', 'monitor'], [HealthRecord::sole()->status, $this->buck->fresh()->health_flag]);
 
@@ -78,7 +79,7 @@ class CheckupTest extends TestCase
         $case = HealthCase::sole();
         $this->assertSame(['Pneumonia', 'high', 'sick'], [$case->condition, $case->severity, $this->doe->fresh()->health_flag]);
         $this->assertSame($case->id, HealthCheckup::where('animal_id', $this->doe->id)->sole()->health_case_id);
-        $this->actingAs($this->user('caretaker'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'healthy'])->assertSessionHasNoErrors(); // D-241: caretakers do routine checkups
+        $this->actingAs($this->user('caretaker'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'healthy'])->assertForbidden(); // D-252: not without the checkup right
         $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'sick', 'open_case' => true, 'condition' => 'X'])->assertForbidden(); // vet-locked
         $this->actingAs($this->user('manager'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'sick', 'open_case' => true, 'condition' => 'X'])->assertForbidden();
     }

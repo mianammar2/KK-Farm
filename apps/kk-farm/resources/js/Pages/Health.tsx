@@ -69,8 +69,8 @@ export default function Health(props: Props) {
             <PageHeader title="Veterinary & health" description={isVet ? 'Checkups, cases, treatments and withdrawal. Every record carries your name.' : canCase ? 'Checkups and cases. Treatments and withdrawal dates are set by a veterinarian.' : 'Report a concern. A veterinarian decides what it is.'} />
             <div className="mb-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                 {props.checkups.canCheck ? action('Checkup', <Stethoscope size={16} aria-hidden />, () => setTab('checkups'), true) : null}
-                {canCase || props.checkups.canCheck ? action('New health entry', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('entry'); }) : null}
-                {action('Report concern', <AlertTriangle size={16} aria-hidden />, () => setSheet('report'))}
+                {props.checkups.canEntry ? action('New health entry', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('entry'); }) : null}
+                {auth?.gates.includes('report_concern') ? action('Report concern', <AlertTriangle size={16} aria-hidden />, () => setSheet('report')) : null}
                 {isVet ? action('Preventive care', <Syringe size={16} aria-hidden />, () => setSheet('care')) : null}
             </div>
             {/* D-119: a number that is zero is not shown. */}

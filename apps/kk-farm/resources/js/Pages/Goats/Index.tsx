@@ -9,7 +9,7 @@ import { AgeBadge, BreedBadge, GoatBadges } from '../../components/GoatBadges';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
-type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
+type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; roleNames?: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
 type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen';
 type Goat = Props['goats'][number];
 
@@ -36,7 +36,7 @@ const PAGE = LITE ? 25 : 60; // rows drawn at once; the gun draws fewer (D-089)
 /** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
 const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
 
-export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, canTag = false }: Props) {
+export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, canTag = false, roleNames = {} }: Props) {
     const [tagging, setTagging] = useState<Goat | null>(null); // D-144
     const url = usePage().url;
     const params = new URLSearchParams(url.split('?')[1] ?? '');
@@ -183,7 +183,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 ) : view === 'table' ? (
                     <div className="max-h-[70vh] overflow-auto">
                         <table className="data-table min-w-[900px]">
-                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current Tag</th></tr></thead>
+                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
@@ -194,8 +194,9 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                                 <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
                                             </td>
                                             <td><BreedBadge breed={g.breed} withName /></td>
-                                            <td><SexIcon sex={g.sex} label />{g.roles?.length ? <div className="font-mono text-xs font-semibold text-cobalt-800" title="Role codes">{g.roles.join(' · ')}</div> : null}</td>
-                                            <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} code={g.ageCode} withLabel />{g.age ?? <span className="text-ink-faint">Unknown</span>}</span></td>
+                                            <td><SexIcon sex={g.sex} label /></td>
+                                            <td>{g.roles?.length ? <div className="flex flex-col gap-0.5">{g.roles.map((r) => <span key={r} className="whitespace-nowrap text-xs"><b className="font-mono text-cobalt-800">{r}</b> <span className="text-ink-soft">{roleNames[r] ?? ''}</span></span>)}</div> : <span className="text-ink-faint">—</span>}</td>
+                                            <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} code={g.ageCode} withLabel />{g.ageExact ? g.age : !g.ageCode ? <span className="text-ink-faint">Unknown</span> : null}</span></td>
                                             <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} /></div></td>
@@ -218,7 +219,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5"><span className="shrink-0 font-mono font-semibold text-cobalt-900">{g.number}</span><GoatBadges breed={g.breed} stage={g.stage} code={g.ageCode} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
-                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.ageCode ? `${g.ageCode} · ` : g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)} · ` : ''}{g.age ?? 'age unknown'}{g.weight ? ` · ${g.weight} KG` : ''}</div>
+                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.ageCode ? `${g.ageCode}${g.ageExact && g.age ? ` · ${g.age}` : ''}` : g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)}` : 'age unknown'}{g.roles?.length ? ` · ${g.roles.join(' ')}` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} />{g.pen ? <span className="font-mono text-[11px] text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>

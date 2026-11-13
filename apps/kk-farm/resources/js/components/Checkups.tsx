@@ -8,6 +8,7 @@ type Goat = { id: string; number: string; name: string | null; sex: 'male' | 'fe
 type Recent = { id: number; on: string; goat: string; goatId: string; outcome: string; temp: number | null; score: number | null; weight: number | null; ultrasound: string | null; fetuses: number | null; flags: string[]; findings: string | null; caseId: number | null; by: string;
     dateIso: string; days: number | null; matedOn: string | null; followUp: string | null; followUpNote: string | null; sex: 'male' | 'female'; canEdit: boolean; edits: number };
 export type CheckupData = {
+    canEntry?: boolean; // D-252: New health entry
     goats: Goat[]; recent: Recent[]; interval: number; normal: Record<'temperature_f', [number, number]>;
     sires: Array<{ id: string; number: string }>; canCheck: boolean; canOpenCase: boolean; gestation: number; conditions?: string[];
     ultrasound?: Record<string, string>; viability?: Record<string, string>; // D-167

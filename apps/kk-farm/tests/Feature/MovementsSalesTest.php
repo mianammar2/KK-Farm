@@ -86,7 +86,9 @@ class MovementsSalesTest extends TestCase
         $this->assertSame(2, AnimalMovement::where('type', 'transfer')->where('from_pen_id', $this->a->id)->where('to_pen_id', $this->b->id)->count());
 
         // The Sheds page move goes through the same service.
-        $this->actingAs($this->user('caretaker'))->post('/sheds/transfer', ['animal_id' => $g1->id, 'pen_id' => $this->a->id])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('caretaker'))->post('/sheds/transfer', ['animal_id' => $g1->id, 'pen_id' => $this->a->id])->assertSessionHasErrors(['reason' => 'Say why the goat is moved.']); // D-252
+        $this->actingAs($this->user('caretaker'))->post('/sheds/transfer', ['animal_id' => $g1->id, 'pen_id' => $this->a->id, 'reason' => 'Weaning'])->assertSessionHasNoErrors();
+        $this->assertSame('Weaning', \App\Models\AnimalMovement::where('animal_id', $g1->id)->latest('id')->value('reason'));
         $this->assertSame(3, AnimalMovement::count());
     }
 

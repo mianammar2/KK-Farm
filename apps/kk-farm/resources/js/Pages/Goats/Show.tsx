@@ -131,7 +131,6 @@ export default function GoatShow(props: Props) {
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="sm:hidden">{profile ? <img src={`/media/${profile.id}`} alt="" className="size-14 rounded-tile object-cover" /> : <GoatPortrait number={goat.number} sex={goat.sex} stage={goat.stage} repro={goat.repro} size={56} />}</span>
                             <h1 className="font-mono text-xl font-bold tracking-tight text-cobalt-900 sm:text-2xl">{goat.number}</h1>
-                            {goat.animalId ? <span className="rounded-[4px] bg-glaze px-1.5 py-0.5 font-mono text-xs font-semibold text-ink-soft ring-1 ring-rule" title="Permanent Animal ID: never changes, even when the tag does">{goat.animalId}</span> : null}
                             <SexIcon sex={goat.sex} />
                             {onFarm ? <HealthChip health={goat.health} /> : removed ? <Chip className="bg-glaze text-ink-soft">Removed (wrong entry)</Chip> : <Chip className="bg-cobalt-100 text-cobalt-800">Left the farm: {goat.exitReason}</Chip>}
                             <ReproChip repro={goat.repro} until={goat.monitorUntil} />
@@ -152,16 +151,16 @@ export default function GoatShow(props: Props) {
                                 {onFarm && scanMating ? <ActionTile icon={<LibIcon name="app-reports" size={26} />} label="Ultrasound" onClick={() => setScan(true)} /> : null}
                                 {onFarm && pregnancy && can.breeding ? <ActionTile icon={<LibIcon name="ic-pregnant" size={26} />} label="Pregnancy" primary onClick={() => setOutcome(true)} /> : null}
                                 {onFarm && healthEntry?.canCheck ? <ActionTile icon={<LibIcon name="app-veterinary" size={26} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
-                                {onFarm && healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
-                                {onFarm ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
+                                {onFarm && healthEntry?.canEntry ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
+                                {onFarm && auth?.gates.includes('record_weights') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
-                                {onFarm ? <ActionTile icon={<LibIcon name="ic-sick" size={26} />} label="Concern" active={panel === 'concern'} onClick={() => setPanel(panel === 'concern' ? null : 'concern')} /> : null}
+                                {onFarm && auth?.gates.includes('report_concern') ? <ActionTile icon={<LibIcon name="ic-sick" size={26} />} label="Concern" active={panel === 'concern'} onClick={() => setPanel(panel === 'concern' ? null : 'concern')} /> : null}
                                 {onFarm ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
                                 {!removed && can.edit ? <ActionTile icon={<LibIcon name="app-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
                             </div>
                         ) : null}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm sm:hidden">
-                            {onFarm && ['ceo', 'manager'].includes(auth?.role ?? '') ? <button type="button" className="font-semibold text-cobalt-800" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}>Correct Birth Date</button> : null}
+                            {onFarm && auth?.gates.includes('edit_goats') ? <button type="button" className="font-semibold text-cobalt-800" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}>Correct Birth Date</button> : null}
                             {onFarm && auth?.gates.includes('exit_animal') ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}>Record Exit</button> : null}
                             {!removed && can.edit && !goat.removal ? <button type="button" className="font-semibold text-ink-soft" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}>Remove (Wrong Entry)</button> : null}
                         </div>
@@ -176,12 +175,12 @@ export default function GoatShow(props: Props) {
                                 {scanMating ? <Button variant="secondary" onClick={() => setScan(true)}><LibIcon name="app-reports" size={18} /> Ultrasound</Button> : null}
                                 {pregnancy && can.breeding ? <Button onClick={() => setOutcome(true)}><LibIcon name="ic-pregnant" size={18} /> Pregnancy Outcome</Button> : null}
                                 {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="app-veterinary" size={18} /> Health checkup</Button> : null}
-                                {healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button>
+                                {healthEntry?.canEntry ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
+                                {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><LibIcon name="ic-sick" size={18} /> Report concern</Button>
+                                {auth?.gates.includes('report_concern') ? <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><LibIcon name="ic-sick" size={18} /> Report concern</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button>
-                                {['ceo', 'manager'].includes(auth?.role ?? '') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
+                                {auth?.gates.includes('edit_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
                                 {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
                             </div>
                         ) : null}
@@ -237,7 +236,7 @@ export default function GoatShow(props: Props) {
                                 {goat.ageStage ? fact('Age stage', `${goat.ageStage.code} · ${goat.ageStage.label} (${goat.ageStage.range})${goat.estimated ? ', age estimated' : ''}`) : null}
                                 {eligibility && eligibility.status !== 'breeder' ? fact('Breeding eligibility', <span><Link href="/breeding/eligibility" className="font-semibold text-cobalt-800 hover:underline">{eligibility.label}</Link>{eligibility.review ? <span className="block text-xs font-semibold text-watch-700">Maturity review: look at this goat (not an approval)</span> : null}{eligibility.recommendation ? <span className="block text-xs text-watch-700">{eligibility.recommendation}</span> : null}{eligibility.failed.length ? <span className="block text-xs text-ink-soft">Not yet: {eligibility.failed.join('; ')}</span> : null}</span>) : null}
                                 {castration ? fact('Castration', <Castration goatId={goat.id} c={castration} onFarm={onFarm} />) : null}
-                                {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit} options={dentalOptions} />) : null}
+                                {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit || !!auth?.gates.includes('health_checkup')} options={dentalOptions} />) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
                                 {fact('Sire', parentLink(goat.sire))}
@@ -370,9 +369,10 @@ export default function GoatShow(props: Props) {
 }
 
 function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pens: Props['pens']; close: () => void }) {
-    const weight = useForm({ animal_id: goat.id, weight_kg: '' });
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const weight = useForm({ animal_id: goat.id, weight_kg: '', measured_on: today }); // D-252: the day it was weighed
     const concern = useForm({ animal_id: goat.id, title: '', severity: 'low', notes: '' });
-    const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? ''), capacity_override: '' });
+    const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? ''), capacity_override: '', reason: '' });
     const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
     const [ask, confirmBox] = useConfirm(); // D-133
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
@@ -407,6 +407,7 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
         return (
             <form onSubmit={(e) => { e.preventDefault(); weight.post('/weights', options); }} className="flex flex-wrap items-end gap-2">
                 <div className="w-44"><Field label="Weight (KG)" error={weight.errors.weight_kg}><input inputMode="decimal" autoFocus className="field" value={weight.data.weight_kg} onChange={(e) => weight.setData('weight_kg', e.target.value)} /></Field></div>
+                <div className="w-44"><Field label="Weighed on" error={weight.errors.measured_on}><input type="date" className="field" max={today} value={weight.data.measured_on} onChange={(e) => weight.setData('measured_on', e.target.value)} /></Field></div>
                 <Button type="submit" disabled={weight.processing}>Save weight</Button>
             </form>
         );
@@ -424,6 +425,8 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
         return (
             <form onSubmit={(e) => { e.preventDefault(); move.post('/sheds/transfer', options); }} className="flex flex-wrap items-end gap-2">
                 <div className="w-64"><Field label="Move to" error={(move.errors as Record<string, string>).to_pen_id}><select className="field" value={move.data.pen_id} onChange={(e) => move.setData('pen_id', e.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</select></Field></div>
+                <div className="w-64"><Field label="Reason" error={move.errors.reason}><input className="field" list="move-reasons" required value={move.data.reason} onChange={(e) => move.setData('reason', e.target.value)} placeholder="Why is it moved?" /></Field>
+                    <datalist id="move-reasons">{['Weaning', 'Breeding group', 'Pregnant does group', 'Kidding / maternity', 'Sick: isolation', 'Back from isolation', 'Feeding group change', 'Fattening batch', 'Sale preparation', 'Pen cleaning or repair', 'Overcrowding'].map((r) => <option key={r} value={r} />)}</datalist></div>
                 {(move.errors as Record<string, string>).to_pen_id?.includes(' is full') || move.data.capacity_override ? <div className="w-64"><Field label="Over-capacity reason (owner or manager)"><input className="field" value={move.data.capacity_override} onChange={(e) => move.setData('capacity_override', e.target.value)} /></Field></div> : null}
                 <Button type="submit" disabled={move.processing}>Move goat</Button>
             </form>

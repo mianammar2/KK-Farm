@@ -36,6 +36,7 @@ class GoatController extends Controller
         return Inertia::render('Goats/Index', [
             'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]]),
             'showLabels' => \App\Support\HerdStats::labels(),
+            'roleNames' => collect(\App\Support\Designations::allCodes())->keys()->mapWithKeys(fn ($c) => [$c => \App\Support\Designations::labels([$c])[$c] ?? $c]), // D-252: the Role column
             'teethOptions' => \App\Support\Teeth::options(), 'teethShort' => \App\Support\Teeth::short(), 'canEdit' => request()->user()->passes('edit_goats'), 'canTag' => request()->user()->passes('assign_tags'), // D-106, D-144
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
@@ -173,7 +174,7 @@ class GoatController extends Controller
 
     public function teeth(Request $request, Animal $animal): RedirectResponse
     {
-        abort_unless($request->user()->passes('edit_goats'), 403);
+        abort_unless($request->user()->passes('edit_goats') || $request->user()->passes('health_checkup'), 403); // D-252: a teeth check is an examination
         $data = $request->validate(['teeth' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::options()))], // D-229: an examination: dental code + condition
             'dental_condition' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::CONDITIONS))], 'examined_on' => ['nullable', 'date', 'before_or_equal:today']]);
         $animal->forceFill(['dental_condition' => $data['dental_condition'] ?? $animal->dental_condition, 'teeth_checked_on' => $data['examined_on'] ?? now()->toDateString()]);
@@ -443,7 +444,7 @@ class GoatController extends Controller
      */
     public function correctBirth(Request $request, Animal $animal): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager'], true), 403);
+        abort_unless($request->user()->passes('edit_goats'), 403); // D-252: a correction of the goat's details
         $data = $request->validate([
             'birth_date' => ['nullable', 'required_without:age_months', 'date', 'before_or_equal:today'], 'age_months' => ['nullable', 'integer', 'between:0,240'],
             'estimated' => ['boolean'], 'reason' => ['required', 'string', 'max:200'],

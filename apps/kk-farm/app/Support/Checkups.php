@@ -108,6 +108,7 @@ final class Checkups
             'conditions' => \App\Models\Disease::names(), 'severities' => HealthCase::SEVERITIES,
             'ultrasound' => PregnancyCheck::STATUSES, 'viability' => PregnancyCheck::VIABILITY, // D-167
             'canCheck' => $user->passes('health_checkup'), 'canOpenCase' => $user->passes('open_cases'),
+            'canEntry' => $user->passes('health_entry'), // D-252: New health entry
         ];
     }
 

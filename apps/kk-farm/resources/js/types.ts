@@ -3,6 +3,7 @@ export type Health = 'healthy' | 'watch' | 'treatment' | 'critical';
 export type GoatCard = {
     id: string;
     animalId?: string | null; // D-208: permanent Animal ID
+    ageExact?: boolean; // D-252: the birth date is known, not estimated
     number: string;
     name: string | null;
     sex: 'male' | 'female';
