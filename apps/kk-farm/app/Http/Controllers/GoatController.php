@@ -257,7 +257,7 @@ class GoatController extends Controller
     {
         $days = [];
         $day = function &(string $on) use (&$days) {
-            $days[$on] ??= ['on' => $on, 'weight' => null, 'change' => null, 'adg' => null, 'bcs' => null, 'height' => null, 'temp' => null, 'tempFlag' => false,
+            $days[$on] ??= ['on' => $on, 'weight' => null, 'change' => null, 'pct' => null, 'days' => null, 'adg' => null, 'bcs' => null, 'height' => null, 'temp' => null, 'tempFlag' => false,
                 'heart' => null, 'breaths' => null, 'teeth' => null, 'ultrasound' => null, 'care' => [], 'treatments' => [], 'result' => null, 'by' => []];
 
             return $days[$on];
@@ -271,8 +271,10 @@ class GoatController extends Controller
             $r['height'] = $w->height_cm !== null ? round((float) $w->height_cm / 2.54, 1) : $r['height'];
             if ($prev) {
                 $r['change'] = round((float) $w->weight_kg - (float) $prev->weight_kg, 1);
-                $gap = max(1, $prev->measured_on->diffInDays($w->measured_on));
+                $gap = max(1, (int) $prev->measured_on->diffInDays($w->measured_on));
                 $r['adg'] = (int) round($r['change'] * 1000 / $gap);
+                $r['days'] = $gap; // D-254: over how many days
+                $r['pct'] = (float) $prev->weight_kg > 0 ? round(($w->weight_kg - $prev->weight_kg) / $prev->weight_kg * 100, 1) : null;
             }
             $r['by'][] = $w->measured_by;
             unset($r);

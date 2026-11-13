@@ -87,6 +87,14 @@ export default function GoatShow(props: Props) {
         const days = Math.max(1, Math.round((new Date(`${b.on}T12:00:00`).getTime() - new Date(`${a.on}T12:00:00`).getTime()) / 86400000));
         return { kg: Math.round((b.kg - a.kg) * 10) / 10, days };
     })() : null;
+    // D-254: the latest change, stock style: ▲/▼ KG and %, over how many days, and per day
+    const last = weights.length > 1 ? (() => {
+        const a = weights[weights.length - 2];
+        const b = weights[weights.length - 1];
+        const days = Math.max(1, Math.round((new Date(`${b.on}T12:00:00`).getTime() - new Date(`${a.on}T12:00:00`).getTime()) / 86400000));
+        const kg = Math.round((b.kg - a.kg) * 10) / 10;
+        return { kg, pct: a.kg ? Math.round(((b.kg - a.kg) / a.kg) * 1000) / 10 : 0, days, perDay: Math.round(((b.kg - a.kg) * 1000) / days) };
+    })() : null;
 
     const fact = (label: string, value: React.ReactNode) => (
         <div className="min-w-0"><dt className="text-sm text-ink-soft">{label}</dt><dd className="truncate font-semibold text-cobalt-900">{value ?? '—'}</dd></div>
@@ -141,7 +149,7 @@ export default function GoatShow(props: Props) {
                         {statuses ? <StatusStrip statuses={statuses} history={statusHistory} /> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}
-                            {fact('Recent daily gain', goat.adg !== null ? `${goat.adg} g/day` : '—')}
+                            {fact('Latest gain', last ? <Ticker kg={last.kg} pct={last.pct} days={last.days} perDay={last.perDay} /> : '—')}
                             {fact('Pen', goat.pen ?? '—')}
                             {fact('RFID tag', tags.find((t) => !t.to)?.code ?? 'No open tag')}
                         </dl>
@@ -220,7 +228,7 @@ export default function GoatShow(props: Props) {
 
             {tab === 'overview' ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                    <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg >= 0 ? '+' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
+                    <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg > 0 ? '▲ +' : gain.kg < 0 ? '▼ ' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
                         {recovery ? <RecoveryNote r={recovery} /> : null}
                         {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={240} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
                         <RecordsTable rows={records} />
@@ -607,13 +615,14 @@ function StatusStrip({ statuses, history }: { statuses: Record<string, { code: s
 /** D-249: one goat's measurements and care, one row per day, newest first. */
 export type GoatRecord = {
     on: string; weight: number | null; change: number | null; adg: number | null; bcs: number | null; height: number | null;
+    pct: number | null; days: number | null; // D-254: change in % and the days since the weighing before
     temp: number | null; tempFlag: boolean; heart: number | null; breaths: number | null; teeth: string | null; ultrasound: string | null;
     care: string[]; treatments: string[]; result: string | null; by: string[];
 };
 const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean; cell: (r: GoatRecord) => ReactNode; num?: boolean }> = [
     { key: 'weight', label: 'Weight', num: true, has: (r) => r.weight !== null, cell: (r) => (r.weight !== null ? `${r.weight} KG` : '') },
-    { key: 'change', label: 'Change', num: true, has: (r) => r.change !== null, cell: (r) => (r.change === null ? '' : <span className={r.change < 0 ? 'text-crit-700' : r.change > 0 ? 'text-ok-700' : ''}>{r.change > 0 ? '+' : ''}{r.change} KG</span>) },
-    { key: 'adg', label: 'Daily gain', num: true, has: (r) => r.adg !== null, cell: (r) => (r.adg === null ? '' : <span className={r.adg < 0 ? 'text-crit-700' : ''}>{r.adg} g</span>) },
+    { key: 'change', label: 'Change', num: true, has: (r) => r.change !== null, cell: (r) => (r.change === null ? '' : <Ticker kg={r.change} pct={r.pct} days={r.days} small />) },
+    { key: 'adg', label: 'Daily gain', num: true, has: (r) => r.adg !== null, cell: (r) => (r.adg === null ? '' : <span className={r.adg < 0 ? 'text-crit-700' : r.adg > 0 ? 'text-ok-700' : ''}>{r.adg > 0 ? '+' : ''}{r.adg} g</span>) },
     { key: 'bcs', label: 'Body score', num: true, has: (r) => r.bcs !== null, cell: (r) => r.bcs ?? '' },
     { key: 'height', label: 'Height', num: true, has: (r) => r.height !== null, cell: (r) => (r.height !== null ? `${r.height} in` : '') },
     { key: 'temp', label: 'Temp °F', num: true, has: (r) => r.temp !== null, cell: (r) => (r.temp === null ? '' : <span className={r.tempFlag ? 'rounded bg-crit-100 px-1 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span>) },
@@ -662,5 +671,21 @@ function RecoveryNote({ r }: { r: NonNullable<Props['recovery']> }) {
         <p className={`mb-3 rounded-tile border-l-4 px-3 py-2 text-sm ${tone}`}>
             <b>On Watch since {r.since}: {head}.</b> {r.title}.{weight}{temp}{goal}{r.state === 'no_recheck' ? ' Weigh it or check its temperature to see if it is getting better.' : ''}
         </p>
+    );
+}
+
+/** D-254: a weight change shown like a share price: ▲ green up, ▼ red down, KG and %, over how many days. */
+function Ticker({ kg, pct, days, perDay, small }: { kg: number; pct?: number | null; days?: number | null; perDay?: number; small?: boolean }) {
+    const up = kg > 0, down = kg < 0;
+    const tone = up ? 'text-ok-700' : down ? 'text-crit-700' : 'text-ink-soft';
+    return (
+        <span className={`inline-flex flex-col ${small ? 'items-end' : ''}`}>
+            <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${tone}`}>
+                <span aria-hidden className={small ? 'text-[10px]' : 'text-xs'}>{up ? '▲' : down ? '▼' : '■'}</span>
+                {up ? '+' : ''}{kg} KG{pct !== null && pct !== undefined ? <span className={`rounded px-1 ${small ? 'text-[11px]' : 'text-xs'} ${up ? 'bg-ok-100' : down ? 'bg-crit-100' : 'bg-glaze'}`}>{pct > 0 ? '+' : ''}{pct}%</span> : null}
+            </span>
+            {days ? <span className={`font-normal text-ink-soft ${small ? 'text-[11px]' : 'text-xs'}`}>in {days} {days === 1 ? 'day' : 'days'}{perDay !== undefined ? ` · ${perDay > 0 ? '+' : ''}${perDay} g/day` : ''}</span> : null}
+            <span className="sr-only">{up ? 'gained' : down ? 'lost' : 'no change'}</span>
+        </span>
     );
 }
