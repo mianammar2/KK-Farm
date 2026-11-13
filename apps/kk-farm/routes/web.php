@@ -206,6 +206,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/worker', [\App\Http\Controllers\WorkerController::class, 'index']);
     Route::post('/worker/start', [\App\Http\Controllers\WorkerController::class, 'start']);
     Route::post('/worker/stop', [\App\Http\Controllers\WorkerController::class, 'stop']);
+    Route::post('/worker/done', [\App\Http\Controllers\WorkerController::class, 'done']); // D-255
     Route::post('/worker/weigh', [\App\Http\Controllers\WorkerController::class, 'weigh']);
     Route::post('/worker/health', [\App\Http\Controllers\WorkerController::class, 'health']);
     Route::post('/worker/move', [\App\Http\Controllers\WorkerController::class, 'move']);

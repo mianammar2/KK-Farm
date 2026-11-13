@@ -19,7 +19,7 @@ class Access
     public const PROTECTED_GATES = ['clinical', 'open_cases', 'approve_breeding'];
 
     public const MODULE_LABELS = [
-        'dashboard' => 'Dashboard', 'goats' => 'Livestock (goat register)', 'scan' => 'Fieldwork & RFID scan', 'breeding' => 'Breeding & Maternity', 'health' => 'Veterinary',
+        'dashboard' => 'Dashboard', 'goats' => 'Livestock (goat register)', 'scan' => 'Tasks & RFID scan', 'breeding' => 'Breeding & Maternity', 'health' => 'Veterinary',
         'weights' => 'Growth & weights', 'feeding' => 'Feeding', 'sheds' => 'Housing & pens', 'tasks' => 'Operations & tasks', 'employees' => 'Employees', 'finance' => 'Accounting & finance',
         'value' => 'Herd value', 'milking' => 'Dairy', 'reports' => 'Reports', 'settings' => 'Settings', 'sensors' => 'Sensors & devices', 'inventory' => 'Inventory',
         'purchase' => 'Purchase', 'sales' => 'Sales', 'welfare' => 'Welfare', 'fattening' => 'Fattening', 'environment' => 'Environment (water & climate)', 'quality' => 'Quality',
@@ -33,6 +33,7 @@ class Access
         'edit_goats' => 'Edit goat details', 'remove_goats' => 'Remove or restore goat entries', 'health_checkup' => 'Routine health checkups', 'manage_market' => 'Market rates',
         'record_milk' => 'Record milk', 'manage_milking' => 'Milking settings', 'open_cases' => 'Open health cases', 'approve_breeding' => 'Approve goats for breeding',
         'health_entry' => 'New health entry', 'report_concern' => 'Report concern',
+        'record_heat' => 'Record heat', 'record_mating' => 'Record mating', 'give_care' => 'Give vaccines and deworming', 'move_goats' => 'Move goats between pens',
     ];
 
     /** The farm business's saved role settings, cached for the request (Tenant::memo is cleared per request). */

@@ -26,8 +26,26 @@ class WorkerController extends Controller
 
     public const HOURS = 8; // a job stays chosen for a working shift
 
-    /** job => [label, module needed] */
-    public const JOBS = ['weigh' => ['Weigh Goats', 'weights'], 'health' => ['Health Check', 'health'], 'move' => ['Move to a Pen', 'sheds'], 'lookup' => ['Look Up Goats', 'goats']];
+    /** job => [label, module needed, right needed (D-255: each job is a tick box in the access screens)] */
+    public const JOBS = [
+        'weigh' => ['Weigh Goats', 'weights', 'record_weights'],
+        'temp' => ['Temp Check', 'health', 'health_checkup'],
+        'health' => ['Health Round', 'health', 'report_concern'],
+        'heat' => ['Heat Detection', 'breeding', 'record_heat'],
+        'mating' => ['Record Mating', 'breeding', 'record_mating'],
+        'milk' => ['Milk Recording', 'milking', 'record_milk'],
+        'care' => ['Vaccinate / Deworm', 'health', 'give_care'],
+        'move' => ['Move to a Pen', 'sheds', 'move_goats'],
+        'lookup' => ['Look Up Goats', 'goats', null],
+    ];
+
+    /** May this person do this job? (its app and its right) */
+    public static function allowed(\App\Models\User $u, string $job): bool
+    {
+        [$label, $module, $gate] = self::JOBS[$job];
+
+        return $u->canModule($module) && ($gate === null || $u->passes($gate));
+    }
 
     public static function job(Request $request): ?array
     {
@@ -47,8 +65,16 @@ class WorkerController extends Controller
         $pens = Pen::with('shed')->where('kind', 'pen')->orderBy('name')->get()->sortBy(fn (Pen $p) => $p->fullName())->values();
 
         return Inertia::render('Worker', [
-            'jobs' => collect(self::JOBS)->filter(fn ($j, $k) => $user->canModule($j[1]) && ($k !== 'weigh' || $user->passes('record_weights')) && ($k !== 'health' || $user->passes('report_concern')))->map(fn ($j) => $j[0]), // D-252
-            'job' => $job ? ['job' => $job['job'], 'label' => self::JOBS[$job['job']][0], 'penId' => $job['pen'] ?? null, 'pen' => isset($job['pen']) ? Pen::with('shed')->find($job['pen'])?->fullName() : null, 'done' => $job['done'] ?? 0] : null,
+            'jobs' => collect(self::JOBS)->filter(fn ($j, $k) => self::allowed($user, $k))->map(fn ($j) => $j[0]), // D-252, D-255
+            'job' => $job ? ['job' => $job['job'], 'label' => self::JOBS[$job['job']][0], 'penId' => $job['pen'] ?? null, 'pen' => isset($job['pen']) ? Pen::with('shed')->find($job['pen'])?->fullName() : null, 'done' => $job['done'] ?? 0,
+                'opts' => ($job['opts'] ?? []) + ['sire' => ! empty($job['opts']['sire_id']) ? Animal::find($job['opts']['sire_id'])?->farm_number : null, 'medicine' => ! empty($job['opts']['medicine_id']) ? \App\Models\Medicine::find($job['opts']['medicine_id'])?->name : null]] : null,
+            // D-255: what the new jobs need to be set up
+            'options' => [
+                'bucks' => Animal::where('status', 'active')->where('sex', 'male')->whereNull('castrated_on')->orderBy('farm_number')->get(['id', 'farm_number', 'name'])->map(fn ($a) => ['id' => $a->id, 'name' => $a->farm_number.($a->name ? " · {$a->name}" : '')]),
+                'methods' => \App\Models\Mating::METHODS, 'sessions' => \App\Models\MilkRecord::SESSIONS, 'careKinds' => HealthController::CARE_TYPES,
+                'medicines' => \App\Models\Medicine::where('active', true)->orderBy('name')->get(['id', 'name', 'unit'])->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'unit' => $m->unit]),
+                'intensity' => \App\Models\HeatRecord::INTENSITY, 'signs' => \App\Models\HeatRecord::SIGNS,
+            ],
             'goat' => $goat ? $goat->card() + [
                 'lastWeight' => $goat->latestWeight?->weight_kg, 'lastWeighed' => $goat->latestWeight?->measured_on?->format('j M Y'), 'penId' => $goat->pen_id,
                 'withdrawal' => \App\Support\Withdrawal::summary($goat),
@@ -62,11 +88,34 @@ class WorkerController extends Controller
 
     public function start(Request $request): RedirectResponse
     {
-        $data = $request->validate(['job' => ['required', Rule::in(array_keys(self::JOBS))], 'pen_id' => ['nullable', 'required_if:job,move', 'integer', 'exists:pens,id']], [], ['pen_id' => 'pen']);
-        abort_unless($request->user()->canModule(self::JOBS[$data['job']][1]) && ($data['job'] !== 'weigh' || $request->user()->passes('record_weights')) && ($data['job'] !== 'health' || $request->user()->passes('report_concern')), 403); // D-241, D-252
-        $request->session()->put(self::SESSION, ['job' => $data['job'], 'pen' => $data['pen_id'] ?? null, 'at' => now()->timestamp, 'done' => 0]);
+        $data = $request->validate([
+            'job' => ['required', Rule::in(array_keys(self::JOBS))], 'pen_id' => ['nullable', 'required_if:job,move', 'integer', 'exists:pens,id'],
+            // D-255: what the job needs, chosen once for the whole round
+            'reason' => ['nullable', 'required_if:job,move', 'string', 'max:120'],
+            'sire_id' => ['nullable', 'exists:animals,id'], 'method' => ['nullable', 'required_if:job,mating', Rule::in(array_keys(\App\Models\Mating::METHODS))],
+            'session' => ['nullable', 'required_if:job,milk', Rule::in(array_keys(\App\Models\MilkRecord::SESSIONS))],
+            'care_kind' => ['nullable', 'required_if:job,care', Rule::in(array_keys(HealthController::CARE_TYPES))],
+            'medicine_id' => ['nullable', 'exists:medicines,id'], 'qty_per_goat' => ['nullable', 'required_with:medicine_id', 'numeric', 'gt:0', 'max:1000'],
+            'care_title' => ['nullable', 'string', 'max:120'],
+            'on' => ['nullable', 'date', 'before_or_equal:today'], // D-255: the day the round's records are for
+        ], ['reason.required_if' => 'Say why the goats are moved.', 'session.required_if' => 'Choose the milking session.', 'care_kind.required_if' => 'Choose what is given.'], ['pen_id' => 'pen']);
+        abort_unless(self::allowed($request->user(), $data['job']), 403); // D-241, D-252, D-255
+        if ($data['job'] === 'care' && empty($data['medicine_id']) && empty($data['care_title'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['care_title' => 'Choose the medicine from the store, or type what is given.']);
+        }
+        $opts = array_filter(\Illuminate\Support\Arr::only($data, ['reason', 'sire_id', 'method', 'session', 'care_kind', 'medicine_id', 'qty_per_goat', 'care_title', 'on']), fn ($v) => $v !== null && $v !== '');
+        $request->session()->put(self::SESSION, ['job' => $data['job'], 'pen' => $data['pen_id'] ?? null, 'opts' => $opts, 'at' => now()->timestamp, 'done' => 0]);
 
         return redirect('/worker')->with('success', self::JOBS[$data['job']][0].': now scan the first goat.');
+    }
+
+    /** D-255: a goat finished in a job that saves through the app's own form (temp, heat, mating, milk, care): count it, next goat. */
+    public function done(Request $request): RedirectResponse
+    {
+        abort_unless(self::job($request), 422, 'No job is running.');
+        self::tick($request);
+
+        return redirect('/worker')->with('success', 'Saved. Scan the next goat.');
     }
 
     public function stop(Request $request): RedirectResponse
@@ -102,8 +151,9 @@ class WorkerController extends Controller
         $animal = $this->goat($request);
         \App\Support\WelfareCare::assertRoutineAllowed($animal); // D-199
         $data = $request->validate(['weight_kg' => ['required', 'numeric', 'min:0.5', 'max:200'], 'body_score' => ['nullable', 'integer', 'between:1,5']], [], ['weight_kg' => 'weight']);
-        $w = WeightRecord::create(['animal_id' => $animal->id, 'weight_kg' => $data['weight_kg'], 'measured_on' => now()->toDateString(), 'measured_by' => $request->user()->name, 'body_score' => $data['body_score'] ?? null]);
-        Farm::event($animal, 'weight', "Weighed {$data['weight_kg']} KG".(! empty($data['body_score']) ? ", body score {$data['body_score']}" : '').' (RFID gun)', $request->user()->name);
+        $on = self::job($request)['opts']['on'] ?? now()->toDateString(); // D-255: the round's date
+        $w = WeightRecord::create(['animal_id' => $animal->id, 'weight_kg' => $data['weight_kg'], 'measured_on' => $on, 'measured_by' => $request->user()->name, 'body_score' => $data['body_score'] ?? null]);
+        Farm::event($animal, 'weight', "Weighed {$data['weight_kg']} KG".(! empty($data['body_score']) ? ", body score {$data['body_score']}" : '').' (RFID gun)', $request->user()->name, \Illuminate\Support\Carbon::parse($on));
         Farm::log($request->user(), "Weighed {$animal->farm_number} at {$data['weight_kg']} KG", "/goats/{$animal->id}");
         self::tick($request);
 
@@ -123,7 +173,7 @@ class WorkerController extends Controller
             return redirect('/worker')->with('success', "{$animal->farm_number} looks fine. Scan the next goat.");
         }
         DB::transaction(function () use ($animal, $data, $request) {
-            HealthRecord::create(['animal_id' => $animal->id, 'title' => $data['title'], 'severity' => $data['severity'], 'notes' => $data['notes'] ?? null, 'kind' => 'observation', 'occurred_on' => now(), 'recorded_by' => $request->user()->name, 'recorded_role' => $request->user()->roleLabel(), 'status' => 'open']);
+            HealthRecord::create(['animal_id' => $animal->id, 'title' => $data['title'], 'severity' => $data['severity'], 'notes' => $data['notes'] ?? null, 'kind' => 'observation', 'occurred_on' => self::job($request)['opts']['on'] ?? now(), 'recorded_by' => $request->user()->name, 'recorded_role' => $request->user()->roleLabel(), 'status' => 'open']);
             if ($animal->health_status === 'healthy') {
                 $animal->update(['health_status' => 'watch']);
             }
@@ -138,12 +188,12 @@ class WorkerController extends Controller
     /** Move: the goat goes to the pen chosen for the job (the same pen transfer as Movements). */
     public function move(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->canModule('sheds'), 403);
+        abort_unless($request->user()->canModule('sheds') && $request->user()->passes('move_goats'), 403); // D-255
         $animal = Animal::with('pen.shed')->findOrFail($this->goat($request)->id);
         \App\Support\WelfareCare::assertRoutineAllowed($animal); // D-199
         $job = self::job($request);
         $pen = Pen::with('shed')->findOrFail($request->validate(['pen_id' => ['nullable', 'integer', 'exists:pens,id']])['pen_id'] ?? $job['pen'] ?? 0);
-        $moved = \App\Support\Movements::transfer($animal, $pen, $request->user());
+        $moved = \App\Support\Movements::transfer($animal, $pen, $request->user(), ['reason' => $job['opts']['reason'] ?? null, 'moved_on' => $job['opts']['on'] ?? null]); // D-252, D-255: the round's reason and date
         if ($moved) {
             Farm::log($request->user(), "Moved {$animal->farm_number} to {$pen->fullName()}", "/goats/{$animal->id}");
             self::tick($request);

@@ -71,7 +71,7 @@ export default function Health(props: Props) {
                 {props.checkups.canCheck ? action('Checkup', <Stethoscope size={16} aria-hidden />, () => setTab('checkups'), true) : null}
                 {props.checkups.canEntry ? action('New health entry', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('entry'); }) : null}
                 {auth?.gates.includes('report_concern') ? action('Report concern', <AlertTriangle size={16} aria-hidden />, () => setSheet('report')) : null}
-                {isVet ? action('Preventive care', <Syringe size={16} aria-hidden />, () => setSheet('care')) : null}
+                {auth?.gates.includes('give_care') ? action('Preventive care', <Syringe size={16} aria-hidden />, () => setSheet('care')) : null}
             </div>
             {/* D-119: a number that is zero is not shown. */}
             {counts.active || counts.emergency || counts.doses || counts.withdrawal || counts.overdue ? (
@@ -101,7 +101,7 @@ export default function Health(props: Props) {
                     {tab === 'store' ? <MedicineStore {...props} /> : null}
                     {tab === 'mortality' && props.mortality ? <Mortality data={props.mortality} causes={props.diseases.filter((d) => d.active).map((d) => d.name)} isVet={isVet} /> : null}
                     {tab === 'diseases' ? <DiseaseMaster diseases={props.diseases} categories={props.diseaseCategories} canEdit={isVet || auth?.role === 'ceo'} /> : null}
-                    {tab === 'calendar' ? <CareCalendar calendar={props.calendar} isVet={isVet} /> : null}
+                    {tab === 'calendar' ? <CareCalendar calendar={props.calendar} isVet={!!auth?.gates.includes('give_care')} /> : null}
                     {tab === 'protocols' ? <Protocols protocols={props.protocols} careTypes={props.careTypes} applies={props.applies} medicines={props.medicines} canEdit={isVet || auth?.role === 'ceo'} /> : null}
                     {tab === 'checkups' ? <Checkups data={props.checkups} /> : null}
                     {tab === 'cases' ? (

@@ -1,4 +1,5 @@
-import { Link, useForm } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
+import type { SharedProps } from '../types';
 import { useState } from 'react';
 import { BreedBadge } from './GoatBadges';
 import { Button, Chip, Empty, Field, LibIcon, Panel } from './ui';
@@ -34,6 +35,7 @@ export function HeatDetection({ rows, options, onMate }: { rows: HeatRow[]; opti
 }
 
 function HeatList({ title, description, rows, onRecord, onMate, empty }: { title: string; description: string; rows: HeatRow[]; onRecord: (r: HeatRow) => void; onMate: (id: string) => void; empty: string }) {
+    const gates = usePage<SharedProps>().props.auth?.gates ?? []; // D-255
     const [shown, more] = useFive(rows);
     if (!rows.length && !empty) return null;
     return (
@@ -47,8 +49,8 @@ function HeatList({ title, description, rows, onRecord, onMate, empty }: { title
                             <Chip className={STATUS[r.status].cls}>{STATUS[r.status].label}</Chip>
                             <span className="text-ink-soft">{r.last ? `Last heat ${r.last}` : 'No heat recorded'}{r.next ? ` · next about ${r.next}` : ''}{r.pen ? ` · ${r.pen}` : ''}</span>
                             <span className="ml-auto flex gap-1.5">
-                                <Button variant="secondary" onClick={() => onRecord(r)}><LibIcon name="ic-in-heat" size={16} /> Record Heat</Button>
-                                {r.status === 'in_heat' ? <Button onClick={() => onMate(r.id)}><LibIcon name="ic-mated" size={16} /> Record Mating</Button> : null}
+                                {gates.includes('record_heat') ? <Button variant="secondary" onClick={() => onRecord(r)}><LibIcon name="ic-in-heat" size={16} /> Record Heat</Button> : null}
+                                {r.status === 'in_heat' && gates.includes('record_mating') ? <Button onClick={() => onMate(r.id)}><LibIcon name="ic-mated" size={16} /> Record Mating</Button> : null}
                             </span>
                         </li>
                     ))}

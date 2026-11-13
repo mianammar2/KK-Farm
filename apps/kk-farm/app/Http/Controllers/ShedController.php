@@ -211,6 +211,7 @@ class ShedController extends Controller
 
     public function transfer(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->passes('move_goats'), 403, 'Moving goats is not part of your role.'); // D-255
         $data = $request->validate(['animal_id' => ['required', 'exists:animals,id'], 'pen_id' => ['required', 'exists:pens,id'], 'capacity_override' => ['nullable', 'string', 'max:200'],
             'reason' => ['required', 'string', 'max:120']], ['reason.required' => 'Say why the goat is moved.']); // D-252: every move has a reason
         $animal = Animal::with('pen.shed')->findOrFail($data['animal_id']);

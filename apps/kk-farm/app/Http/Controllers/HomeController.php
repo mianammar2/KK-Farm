@@ -23,7 +23,7 @@ class HomeController extends Controller
             ['/health?tab=cases', 'Medical Cases'], ['/disease?tab=triage', 'Triage Reported Symptoms'], ['/health?tab=checkups', 'Daily Health & Checkups'],
             ['/health?tab=calendar', 'Vaccination & Deworming Due'], ['/breeding/eligibility', 'Breeding Eligibility & Approval'], ['/health?tab=store', 'Medicines & Vaccines']]],
         'caretaker' => [['tasks_overdue', 'open_cases', 'checkups_due', 'kidding_imminent', 'kidding_soon', 'dry_off_due', 'feeding_missed'], [
-            ['/worker', 'Fieldwork: Choose a Job'], ['/tasks?tab=mine', 'My Tasks'], ['/weights', 'Record Weights'], ['/milking', 'Log Milk'],
+            ['/worker', 'Tasks: Choose a Job'], ['/tasks?tab=mine', 'My Tasks'], ['/weights', 'Record Weights'], ['/milking', 'Log Milk'],
             ['/breeding?tab=calendar', 'Kidding Watch'], ['/health?tab=reports', 'Report a Sick Goat']]],
         'feeding' => [['tasks_overdue', 'feeding_missed', 'feed_over', 'feed_low', 'ration_low_cp'], [
             ['/feeding?tab=now', 'Daily Feeding'], ['/feeding?tab=rations', 'Feeding Plans & Rations'], ['/feeding?tab=store', 'Feed Store'],

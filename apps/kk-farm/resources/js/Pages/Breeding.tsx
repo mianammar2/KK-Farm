@@ -76,7 +76,7 @@ export default function Breeding(props: Props) {
     return (
         <>
             <Head title="Breeding & Pedigree" />
-            <PageHeader title="Breeding & pedigree" description={`Gestation ${settings.gestation} days · pregnancy check ${settings.check} days after mating · weaning at ${settings.weaning} days. Your vet confirms these.`} actions={<AddButton label="Record a mating" onClick={() => setAdding(true)} />} />
+            <PageHeader title="Breeding & pedigree" description={`Gestation ${settings.gestation} days · pregnancy check ${settings.check} days after mating · weaning at ${settings.weaning} days. Your vet confirms these.`} actions={auth?.gates.includes('record_mating') ? <AddButton label="Record a mating" onClick={() => setAdding(true)} /> : undefined} />
             {adding ? <Sheet onClose={() => { setAdding(false); setPresetDam(null); }}><MatingForm {...props} presetDam={presetDam} onDone={() => { setAdding(false); setPresetDam(null); }} /></Sheet> : null}
             <StatRow>
                 <Stat label="Confirmed pregnant" value={active.filter((m) => m.status === 'pregnant').length} />

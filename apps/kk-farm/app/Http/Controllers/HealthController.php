@@ -295,7 +295,7 @@ class HealthController extends Controller
 
     public function preventive(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->passes('clinical'), 403, 'Preventive care is recorded by a veterinarian.');
+        abort_unless($request->user()->passes('give_care'), 403, 'Giving preventive care is not part of your role.'); // D-255: the vet by default
         $data = $request->validate([
             'animal_ids' => ['required', 'array', 'min:1', 'max:1000'], 'animal_ids.*' => ['uuid', 'distinct', 'exists:animals,id'],
             'kind' => ['required', Rule::in(array_keys(self::CARE_TYPES))], 'title' => ['nullable', 'required_without:medicine_id', 'string', 'max:120'],

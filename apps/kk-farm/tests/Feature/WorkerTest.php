@@ -62,9 +62,12 @@ class WorkerTest extends TestCase
 
         // Move: the pen is chosen once; each scanned goat moves there.
         $this->actingAs($care)->post('/worker/start', ['job' => 'move'])->assertSessionHasErrors('pen_id');
-        $this->actingAs($care)->post('/worker/start', ['job' => 'move', 'pen_id' => $p2->id]);
+        $this->actingAs($care)->post('/worker/start', ['job' => 'move', 'pen_id' => $p2->id])->assertSessionHasErrors(['reason' => 'Say why the goats are moved.']); // D-255
+        $this->actingAs($care)->post('/worker/start', ['job' => 'move', 'pen_id' => $p2->id, 'reason' => 'Weaning', 'on' => now()->subDay()->toDateString()]);
         $this->actingAs($care)->post('/worker/move', ['animal_id' => $goat->id])->assertRedirect('/worker');
         $this->assertSame($p2->id, $goat->fresh()->pen_id);
+        $m = \App\Models\AnimalMovement::where('animal_id', $goat->id)->latest('id')->first();
+        $this->assertSame(['Weaning', now()->subDay()->toDateString()], [$m->reason, $m->moved_on->toDateString()], 'the round\'s reason and date');
 
         // D-242: the goat's number typed in the box finds the goat too (any case); an unknown number says so.
         $this->actingAs($care)->get('/scan?tag='.strtolower($goat->farm_number))->assertRedirect('/worker?goat='.$goat->id);
@@ -77,5 +80,38 @@ class WorkerTest extends TestCase
         // A role without Weight & Growth cannot weigh.
         $feeder = User::create(['name' => 'Feeder', 'email' => 'f@gun.test', 'password' => 'x', 'role' => 'feeding', 'org_id' => Tenant::current()]);
         $this->actingAs($feeder)->post('/worker/start', ['job' => 'weigh'])->assertForbidden();
+    }
+
+    /** D-255: the new field jobs: each needs its right, asks its date first, saves through the app's own records and counts the goat. */
+    public function test_new_field_jobs_follow_their_rights_and_the_rounds_date(): void
+    {
+        $this->withoutVite();
+        Tenant::set(Organization::create(['name' => 'Jobs Farm', 'slug' => 'jobs-farm'])->id);
+        $breed = Breed::create(['name' => 'Beetal']);
+        $pen = Pen::create(['shed_id' => Shed::create(['code' => 'S1', 'name' => 'S1'])->id, 'name' => 'P01', 'purpose' => 'Does']);
+        $doe = Animal::create(['farm_number' => 'D-1', 'sex' => 'female', 'breed_id' => $breed->id, 'birth_date' => now()->subYears(2), 'origin' => 'purchased', 'pen_id' => $pen->id])->fresh();
+        $buck = Animal::create(['farm_number' => 'B-1', 'sex' => 'male', 'breed_id' => $breed->id, 'birth_date' => now()->subYears(3), 'origin' => 'purchased', 'pen_id' => $pen->id])->fresh();
+        $mk = fn ($role) => User::create(['name' => "T $role", 'email' => "$role@jobs.test", 'password' => 'x', 'role' => $role, 'org_id' => Tenant::current()]);
+        [$care, $vet] = [$mk('caretaker'), $mk('vet')];
+
+        $jobs = fn ($u) => array_keys($this->actingAs($u)->get('/worker')->viewData('page')['props']['jobs']);
+        $this->assertEqualsCanonicalizing(['weigh', 'heat', 'mating', 'milk', 'move', 'lookup'], $jobs($care));
+        $this->assertEqualsCanonicalizing(['temp', 'health', 'heat', 'mating', 'care', 'move', 'lookup'], $jobs($vet));
+        $this->actingAs($care)->post('/worker/start', ['job' => 'care', 'care_kind' => 'vaccination', 'care_title' => 'PPR'])->assertForbidden();
+        $this->actingAs($care)->post('/breeding/heat', ['dam_id' => $doe->id, 'observed_on' => now()->toDateString(), 'intensity' => 'strong'])->assertSessionHasNoErrors();
+
+        // the vet's mating round, yesterday, with this buck
+        $day = now()->subDay()->toDateString();
+        $this->actingAs($vet)->post('/worker/start', ['job' => 'mating', 'method' => 'natural', 'sire_id' => $buck->id, 'on' => $day])->assertRedirect('/worker');
+        $this->actingAs($vet)->get('/worker')->assertInertia(fn ($p) => $p->where('job.opts.sire', 'B-1')->where('job.opts.on', $day));
+        $this->actingAs($vet)->post('/breeding/matings', ['dam_id' => $doe->id, 'sire_id' => $buck->id, 'mated_on' => $day, 'method' => 'natural'])->assertSessionHasNoErrors();
+        $this->actingAs($vet)->post('/worker/done')->assertRedirect('/worker');
+        $this->actingAs($vet)->get('/worker')->assertInertia(fn ($p) => $p->where('job.done', 1));
+        $this->assertSame($day, \App\Models\Mating::where('dam_id', $doe->id)->value('mated_on')->toDateString());
+
+        // a temp check round: the vet only
+        $this->actingAs($vet)->post('/worker/start', ['job' => 'temp', 'on' => now()->toDateString()])->assertRedirect('/worker');
+        $this->actingAs($care)->post('/worker/start', ['job' => 'temp'])->assertForbidden();
+        $this->actingAs($vet)->post('/worker/start', ['job' => 'weigh', 'on' => now()->addDay()->toDateString()])->assertSessionHasErrors('on'); // not in the future
     }
 }

@@ -123,6 +123,7 @@ class BreedingController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->passes('record_mating'), 403, 'Recording a mating is not part of your role.'); // D-255
         $data = $request->validate([
             'dam_id' => ['required', 'exists:animals,id'], 'sire_id' => ['nullable', 'exists:animals,id', 'different:dam_id', \App\Support\Designations::sireRule()],
             'mated_on' => ['required', 'date', 'before_or_equal:today'], 'method' => ['required', Rule::in(array_keys(Mating::METHODS))],
@@ -241,6 +242,7 @@ class BreedingController extends Controller
     /** D-175: a heat (oestrus) observation. Anyone working in Breeding records it; the doe shows as ready for mating. */
     public function heat(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->passes('record_heat'), 403, 'Recording heat is not part of your role.'); // D-255
         $data = $request->validate([
             'dam_id' => ['required', 'exists:animals,id'], 'observed_on' => ['required', 'date', 'before_or_equal:today'],
             'intensity' => ['required', Rule::in(array_keys(\App\Models\HeatRecord::INTENSITY))], 'signs' => ['nullable', 'array'], 'signs.*' => ['string', 'max:40'],

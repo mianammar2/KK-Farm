@@ -163,7 +163,7 @@ export default function GoatShow(props: Props) {
                                 {onFarm && auth?.gates.includes('record_weights') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
                                 {onFarm && auth?.gates.includes('health_checkup') ? <ActionTile icon={<Thermometer size={20} aria-hidden />} label="Temp check" active={panel === 'temp'} onClick={() => setPanel(panel === 'temp' ? null : 'temp')} /> : null}
-                                {onFarm ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
+                                {onFarm && auth?.gates.includes('move_goats') ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
                                 {!removed && can.edit ? <ActionTile icon={<LibIcon name="app-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
                             </div>
                         ) : null}
@@ -187,7 +187,7 @@ export default function GoatShow(props: Props) {
                                 {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                 {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Temp check</Button> : null}
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button>
+                                {auth?.gates.includes('move_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button> : null}
                                 {auth?.gates.includes('edit_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
                                 {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
                             </div>

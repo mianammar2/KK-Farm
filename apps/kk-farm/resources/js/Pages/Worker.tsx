@@ -1,40 +1,56 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeftRight, ClipboardCheck, HeartPulse, Radio, ScanSearch, Scale, Square, Wheat } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCheck, Flame, HeartPulse, Milk, Radio, ScanSearch, Scale, Square, Syringe, Thermometer, Venus, Wheat } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { EarTag, GoatFigure } from '../components/FarmScene';
 import { AgeBadge, BreedBadge } from '../components/GoatBadges';
 import { Button, Field } from '../components/ui';
 
-type Job = 'weigh' | 'health' | 'move' | 'lookup';
+type Job = 'weigh' | 'temp' | 'health' | 'heat' | 'mating' | 'milk' | 'care' | 'move' | 'lookup';
+type Opts = { on?: string; reason?: string; sire_id?: string; sire?: string | null; method?: string; session?: string; care_kind?: string; care_title?: string; medicine_id?: string; medicine?: string | null; qty_per_goat?: string };
+type Options = { bucks: Array<{ id: string; name: string }>; methods: Record<string, string>; sessions: Record<string, string>; careKinds: Record<string, string>; medicines: Array<{ id: number; name: string; unit: string }>; intensity: Record<string, string>; signs: string[] };
 type Goat = { ageCode?: string | null; roles?: string[];
     id: string; number: string; name: string | null; sex: string; breed?: string; stage?: string | null; pen?: string | null; age?: string | null; health: string;
     lastWeight: number | null; lastWeighed: string | null; penId: number | null; withdrawal: { meat: string | null; milk: string | null } | null;
 };
 type Props = {
-    jobs: Partial<Record<Job, string>>; job: { job: Job; label: string; penId: number | null; pen: string | null; done: number } | null; goat: Goat | null; unknown: string | null;
-    pens: Array<{ id: number; name: string }>; can: { feed: boolean; tasks: boolean }; myTasks: number;
+    jobs: Partial<Record<Job, string>>; job: { job: Job; label: string; penId: number | null; pen: string | null; done: number; opts: Opts } | null; goat: Goat | null; unknown: string | null;
+    pens: Array<{ id: number; name: string }>; can: { feed: boolean; tasks: boolean }; myTasks: number; options: Options;
 };
 
-const ICON: Record<Job, ReactNode> = { weigh: <Scale size={30} />, health: <HeartPulse size={30} />, move: <ArrowLeftRight size={30} />, lookup: <ScanSearch size={30} /> };
-const HINT: Record<Job, string> = { weigh: 'Scan, enter the weight, next goat', health: 'Scan, mark fine or report a concern', move: 'Choose a pen, then scan each goat', lookup: 'Scan to see a goat' };
+const ICON: Record<Job, ReactNode> = { weigh: <Scale size={30} />, temp: <Thermometer size={30} />, health: <HeartPulse size={30} />, heat: <Flame size={30} />, mating: <Venus size={30} />, milk: <Milk size={30} />, care: <Syringe size={30} />, move: <ArrowLeftRight size={30} />, lookup: <ScanSearch size={30} /> };
+const HINT: Record<Job, string> = {
+    weigh: 'Scan, enter the weight, next goat', temp: 'Scan, enter the temperature, next goat', health: 'Scan, mark fine or report a concern', heat: 'Scan a doe in heat, mark the signs',
+    mating: 'Choose the buck, then scan each doe', milk: 'Choose the session, then scan each doe', care: 'Choose the vaccine or dewormer, then scan each goat',
+    move: 'Choose a pen, then scan each goat', lookup: 'Scan to see a goat',
+};
+/** D-255: jobs that need something chosen once for the whole round */
+const SETUP: Job[] = ['weigh', 'temp', 'health', 'heat', 'mating', 'milk', 'care', 'move']; // every job but Look Up asks its date first (D-255)
 const CONCERNS = ['Not eating', 'Limping', 'Coughing', 'Diarrhoea', 'Fever / hot', 'Weak / dull', 'Wound', 'Nasal discharge', 'Swollen udder', 'Other'];
 
 /**
  * D-179: the worker app for the RFID gun: big buttons, one job at a time. Pick a job, then scan goat after goat;
  * each scan opens that goat straight in the job's quick form. Typing a tag works too (or a gun set to type tags).
  */
-export default function Worker({ jobs, job, goat, unknown, pens, can, myTasks }: Props) {
+export default function Worker({ jobs, job, goat, unknown, pens, can, myTasks, options }: Props) {
     const [picking, setPicking] = useState<Job | null>(null);
-    const [pen, setPen] = useState(String(pens[0]?.id ?? ''));
 
+    if (!job && picking) { // D-255: the job's setup takes the screen, so it is in view on the gun
+        return (
+            <div className="mx-auto max-w-xl space-y-4">
+                <Head title={jobs[picking] ?? 'Tasks'} />
+                <h1 className="flex items-center gap-3 text-2xl font-extrabold text-cobalt-900"><span className="kk-icon-tile size-12!" aria-hidden>{ICON[picking]}</span>{jobs[picking]}</h1>
+                <Setup job={picking} pens={pens} options={options} onBack={() => setPicking(null)} />
+            </div>
+        );
+    }
     if (!job) {
         return (
             <div className="mx-auto max-w-xl space-y-4">
-                <Head title="Worker" />
+                <Head title="Tasks" />
                 <h1 className="text-2xl font-extrabold text-cobalt-900">What are you doing now?</h1>
                 <div className="grid grid-cols-2 gap-3">
                     {(Object.keys(jobs) as Job[]).map((j) => (
-                        <button key={j} type="button" onClick={() => (j === 'move' ? setPicking('move') : router.post('/worker/start', { job: j }))}
+                        <button key={j} type="button" onClick={() => (SETUP.includes(j) ? setPicking(j) : router.post('/worker/start', { job: j }))}
                             className="kk-sign kk-lift min-h-32 flex-col items-start! p-4! text-left">
                             <span className="kk-icon-tile size-14!" aria-hidden>{ICON[j]}</span>
                             <span className="block text-lg font-extrabold text-cobalt-900">{jobs[j]}</span>
@@ -44,12 +60,6 @@ export default function Worker({ jobs, job, goat, unknown, pens, can, myTasks }:
                     {can.feed ? <Link href="/feeding?tab=now" className="kk-sign kk-lift min-h-32 flex-col items-start! p-4!"><span className="kk-icon-tile size-14!" aria-hidden><Wheat size={30} /></span><span className="block text-lg font-extrabold text-cobalt-900">Feed Pens</span><span className="block text-sm text-ink-soft">Record feed given and leftover</span></Link> : null}
                     {can.tasks ? <Link href="/tasks?tab=mine" className="kk-sign kk-lift min-h-32 flex-col items-start! p-4!"><span className="kk-icon-tile size-14!" aria-hidden><ClipboardCheck size={30} /></span><span className="block text-lg font-extrabold text-cobalt-900">My Tasks{myTasks ? ` · ${myTasks}` : ''}</span><span className="block text-sm text-ink-soft">Due today or overdue</span></Link> : null}
                 </div>
-                {picking === 'move' ? (
-                    <div className="space-y-3 rounded-tile border border-rule bg-tile p-4 shadow-tile">
-                        <Field label="Move goats to which pen?"><select className="field min-h-12 text-base" value={pen} onChange={(e) => setPen(e.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
-                        <div className="flex gap-2"><Button type="button" className="min-h-12 flex-1" onClick={() => router.post('/worker/start', { job: 'move', pen_id: Number(pen) })}>Start Moving</Button><Button type="button" variant="secondary" className="min-h-12" onClick={() => setPicking(null)}>Back</Button></div>
-                    </div>
-                ) : null}
             </div>
         );
     }
@@ -59,11 +69,11 @@ export default function Worker({ jobs, job, goat, unknown, pens, can, myTasks }:
             <Head title={job.label} />
             <div className="flex items-center gap-3 rounded-tile bg-cobalt-800 px-4 py-3 text-white shadow-tile">
                 <span className="grid size-12 place-items-center rounded-xl bg-white/15" aria-hidden>{ICON[job.job]}</span>
-                <span className="min-w-0 flex-1"><span className="block text-lg font-extrabold">{job.label}{job.pen ? ` → ${job.pen}` : ''}</span><span className="block text-sm text-white/80">{job.done} goat{job.done === 1 ? '' : 's'} done</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-lg font-extrabold">{job.label}{job.pen ? ` → ${job.pen}` : ''}</span>{summary(job, options) ? <span className="block text-sm text-white/80">{summary(job, options)}</span> : null}<span className="block text-sm text-white/80">{job.done} goat{job.done === 1 ? '' : 's'} done</span></span>
                 <button type="button" onClick={() => router.post('/worker/stop')} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-4 text-sm font-bold hover:bg-white/25"><Square size={14} aria-hidden />Finish</button>
             </div>
             {unknown ? <p className="rounded-tile bg-watch-100 px-3 py-2 font-semibold text-watch-700" role="alert">No goat found for {unknown}. Check the goat number, or if it is a chip, link it in Goat Registry → Link RFID, then scan again.</p> : null}
-            {goat ? <GoatJob job={job} goat={goat} /> : <ScanPrompt />}
+            {goat ? <GoatJob job={job} goat={goat} options={options} /> : <ScanPrompt />}
         </div>
     );
 }
@@ -84,7 +94,53 @@ function ScanPrompt() {
     );
 }
 
-function GoatJob({ job, goat }: { job: NonNullable<Props['job']>; goat: Goat }) {
+/** D-255: the job's own choice, shown in the header while scanning */
+function summary(job: NonNullable<Props['job']>, o: Options): string {
+    const x = job.opts ?? {};
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const date = x.on && x.on !== today ? `For ${new Date(`${x.on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ` : '';
+    return date + body(job, o, x);
+}
+function body(job: NonNullable<Props['job']>, o: Options, x: Opts): string {
+    if (job.job === 'move') return x.reason ? `Reason: ${x.reason}` : '';
+    if (job.job === 'mating') return `${o.methods[x.method ?? ''] ?? ''}${x.sire ? ` with ${x.sire}` : ''}`;
+    if (job.job === 'milk') return `${o.sessions[x.session ?? ''] ?? ''} milking`;
+    if (job.job === 'care') return `${o.careKinds[x.care_kind ?? ''] ?? ''}: ${x.medicine ?? x.care_title ?? ''}${x.qty_per_goat ? ` · ${x.qty_per_goat} per goat` : ''}`;
+    return '';
+}
+
+/** D-255: what a job needs before scanning starts (pen and reason, buck and method, session, vaccine or dewormer). */
+function Setup({ job, pens, options, onBack }: { job: Job; pens: Props['pens']; options: Options; onBack: () => void }) {
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const f = useForm({ job, on: today, pen_id: String(pens[0]?.id ?? ''), reason: '', sire_id: '', method: 'natural', session: 'morning', care_kind: 'vaccination', medicine_id: '', qty_per_goat: '', care_title: '' });
+    const e = f.errors as Record<string, string>;
+    const big = 'field min-h-12 text-base';
+    return (
+        <form onSubmit={(ev) => { ev.preventDefault(); f.post('/worker/start'); }} className="space-y-3 rounded-tile border border-rule bg-tile p-4 shadow-tile">
+            <Field label="Date" error={e.on} hint="Today unless you are entering an earlier round"><input type="date" className={big} max={today} value={f.data.on} onChange={(x) => f.setData('on', x.target.value)} /></Field>
+            {job === 'move' ? <>
+                <Field label="Move goats to which pen?" error={e.pen_id}><select className={big} value={f.data.pen_id} onChange={(x) => f.setData('pen_id', x.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                <Field label="Reason" error={e.reason}><input className={big} list="w-reasons" required value={f.data.reason} onChange={(x) => f.setData('reason', x.target.value)} placeholder="Why are they moved?" /><datalist id="w-reasons">{['Weaning', 'Breeding group', 'Pregnant does group', 'Kidding / maternity', 'Sick: isolation', 'Back from isolation', 'Feeding group change', 'Fattening batch', 'Sale preparation', 'Pen cleaning or repair', 'Overcrowding'].map((r) => <option key={r} value={r} />)}</datalist></Field>
+            </> : null}
+            {job === 'mating' ? <>
+                <Field label="Buck" error={e.sire_id} hint="Leave empty if the buck is not known (pasture)"><select className={big} value={f.data.sire_id} onChange={(x) => f.setData('sire_id', x.target.value)}><option value="">Not known</option>{options.bucks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
+                <Field label="Method" error={e.method}><select className={big} value={f.data.method} onChange={(x) => f.setData('method', x.target.value)}>{Object.entries(options.methods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            </> : null}
+            {job === 'milk' ? (
+                <Field label="Session" error={e.session}><div className="grid grid-cols-3 gap-2">{Object.entries(options.sessions).map(([k, v]) => <button key={k} type="button" onClick={() => f.setData('session', k)} className={`min-h-12 rounded-tile border font-bold ${f.data.session === k ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile'}`}>{v}</button>)}</div></Field>
+            ) : null}
+            {job === 'care' ? <>
+                <Field label="What is given" error={e.care_kind}><select className={big} value={f.data.care_kind} onChange={(x) => f.setData('care_kind', x.target.value)}>{Object.entries(options.careKinds).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                <Field label="From the medicine store" error={e.medicine_id}><select className={big} value={f.data.medicine_id} onChange={(x) => f.setData('medicine_id', x.target.value)}><option value="">Not from the store</option>{options.medicines.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>
+                {f.data.medicine_id ? <Field label={`Dose per goat (${options.medicines.find((m) => String(m.id) === f.data.medicine_id)?.unit ?? ''})`} error={e.qty_per_goat}><input className={big} inputMode="decimal" required value={f.data.qty_per_goat} onChange={(x) => f.setData('qty_per_goat', x.target.value.replace(/[^0-9.]/g, ''))} /></Field>
+                    : <Field label="Name (e.g. PPR vaccine)" error={e.care_title}><input className={big} value={f.data.care_title} onChange={(x) => f.setData('care_title', x.target.value)} /></Field>}
+            </> : null}
+            <div className="flex gap-2"><Button type="submit" className="min-h-12 flex-1" disabled={f.processing}>Start</Button><Button type="button" variant="secondary" className="min-h-12" onClick={onBack}>Back</Button></div>
+        </form>
+    );
+}
+
+function GoatJob({ job, goat, options }: { job: NonNullable<Props['job']>; goat: Goat; options: Options }) {
     const form = useForm({ animal_id: goat.id, weight_kg: '', body_score: '', fine: true, title: '', severity: 'low', notes: '', pen_id: job.penId ? String(job.penId) : '' });
     const e = form.errors as Record<string, string>;
     const blocked = goat.withdrawal && (goat.withdrawal.meat || goat.withdrawal.milk);
@@ -134,6 +190,8 @@ function GoatJob({ job, goat }: { job: NonNullable<Props['job']>; goat: Goat }) 
                 </div>
             ) : null}
 
+            {['temp', 'heat', 'mating', 'milk', 'care'].includes(job.job) ? <QuickJob job={job} goat={goat} options={options} /> : null}
+
             {job.job === 'lookup' ? (
                 <div className="space-y-2 text-sm">
                     <p><span className="font-semibold">Age:</span> {goat.ageCode ? `${goat.ageCode} · ` : ''}{goat.age ?? 'unknown'} · <span className="font-semibold">Last weight:</span> {goat.lastWeight ? `${goat.lastWeight} KG (${goat.lastWeighed})` : 'none'}</p>
@@ -142,5 +200,49 @@ function GoatJob({ job, goat }: { job: NonNullable<Props['job']>; goat: Goat }) 
             ) : null}
             <button type="button" onClick={() => router.visit('/worker')} className="w-full text-center text-sm font-semibold text-turq-800 hover:underline">Skip this goat</button>
         </div>
+    );
+}
+
+/**
+ * D-255: the new field jobs save through the app's own records (a checkup, a heat record, a mating, a milk record,
+ * preventive care), so everything stays the same as when it is entered on its page; then the goat counts and the next is scanned.
+ */
+function QuickJob({ job, goat, options }: { job: NonNullable<Props['job']>; goat: Goat; options: Options }) {
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const o = job.opts ?? {};
+    const day = o.on ?? today; // D-255: the round's date
+    const f = useForm({ temperature_f: '', outcome: 'healthy', intensity: 'moderate', signs: [] as string[], litres: '' });
+    const e = f.errors as Record<string, string>;
+    const female = goat.sex === 'female';
+    const next = { preserveScroll: true, onSuccess: () => router.post('/worker/done') };
+    const save = () => {
+        if (job.job === 'temp') { f.transform((d) => ({ animal_id: goat.id, checked_on: day, temperature_f: d.temperature_f, outcome: d.outcome })); f.post('/health/checkups', next); }
+        if (job.job === 'heat') { f.transform((d) => ({ dam_id: goat.id, observed_on: day, intensity: d.intensity, signs: d.signs })); f.post('/breeding/heat', next); }
+        if (job.job === 'mating') { f.transform(() => ({ dam_id: goat.id, sire_id: o.sire_id || null, mated_on: day, method: o.method ?? 'natural' })); f.post('/breeding/matings', next); }
+        if (job.job === 'milk') { f.transform((d) => ({ milked_on: day, session: o.session, rows: [{ id: crypto.randomUUID(), animal_id: goat.id, litres: d.litres }] })); f.post('/milking/records', next); }
+        if (job.job === 'care') { f.transform(() => ({ animal_ids: [goat.id], kind: o.care_kind, title: o.care_title || null, medicine_id: o.medicine_id || null, qty_per_goat: o.qty_per_goat || null, given_on: day, care_status: 'administered' })); f.post('/health/preventive', next); }
+    };
+    if (['heat', 'mating', 'milk'].includes(job.job) && !female) return <p className="rounded-tile bg-watch-100 px-3 py-2 font-semibold text-watch-700">This job is for does. Skip this goat.</p>;
+    const t = Number(f.data.temperature_f);
+    const errs = Object.values(e);
+    return (
+        <form onSubmit={(ev) => { ev.preventDefault(); save(); }} className="space-y-3">
+            {job.job === 'temp' ? <>
+                <Field label="Temperature °F (normal 101.3–103.5)"><input className="field min-h-14 text-2xl font-bold" inputMode="decimal" autoFocus required value={f.data.temperature_f}
+                    onChange={(x) => { const v = x.target.value.replace(/[^0-9.]/g, ''); const n = Number(v); f.setData({ ...f.data, temperature_f: v, outcome: v && (n < 101.3 || n > 103.5) ? 'monitor' : 'healthy' }); }} /></Field>
+                {f.data.temperature_f ? <p className={`text-sm font-bold ${t >= 101.3 && t <= 103.5 ? 'text-ok-700' : 'text-crit-700'}`}>{t >= 101.3 && t <= 103.5 ? 'Normal' : 'Outside normal: the goat goes on Watch and the vet is told'}</p> : null}
+            </> : null}
+            {job.job === 'heat' ? <>
+                <div className="grid grid-cols-3 gap-2" role="group" aria-label="How strong">{Object.entries(options.intensity).map(([k, v]) => <button key={k} type="button" onClick={() => f.setData('intensity', k)} className={`min-h-12 rounded-tile border font-bold ${f.data.intensity === k ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile'}`}>{v}</button>)}</div>
+                <div className="grid grid-cols-2 gap-2">{options.signs.map((sg) => <button key={sg} type="button" onClick={() => f.setData('signs', f.data.signs.includes(sg) ? f.data.signs.filter((x) => x !== sg) : [...f.data.signs, sg])} className={`min-h-11 rounded-tile border px-2 text-sm font-semibold ${f.data.signs.includes(sg) ? 'border-crit-700 bg-crit-100 text-crit-700' : 'border-rule bg-tile'}`}>{sg}</button>)}</div>
+            </> : null}
+            {job.job === 'mating' ? <p className="text-base font-semibold">Mated today: <b>{options.methods[o.method ?? ''] ?? ''}</b>{o.sire ? <> with <b>{o.sire}</b></> : ' (buck not known)'}</p> : null}
+            {job.job === 'milk' ? <Field label={`Litres (${options.sessions[o.session ?? ''] ?? ''})`}><input className="field min-h-14 text-2xl font-bold" inputMode="decimal" autoFocus required value={f.data.litres} onChange={(x) => f.setData('litres', x.target.value.replace(/[^0-9.]/g, ''))} /></Field> : null}
+            {job.job === 'care' ? <p className="text-base font-semibold">Give: <b>{options.careKinds[o.care_kind ?? '']}</b> · {o.medicine ?? o.care_title}{o.qty_per_goat ? ` · ${o.qty_per_goat} per goat` : ''}</p> : null}
+            {errs.length ? <p className="rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700" role="alert">{errs.join(' ')}</p> : null}
+            <Button type="submit" className="min-h-14 w-full text-lg" disabled={f.processing || (job.job === 'temp' && !f.data.temperature_f) || (job.job === 'milk' && !f.data.litres)}>
+                {job.job === 'temp' ? 'Save Temperature' : job.job === 'heat' ? 'Save Heat' : job.job === 'mating' ? 'Save Mating' : job.job === 'milk' ? 'Save Milk' : 'Mark as Given'}
+            </Button>
+        </form>
     );
 }

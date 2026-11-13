@@ -69,6 +69,11 @@ return [
         'health_checkup' => ['vet'],
         'health_entry' => ['vet'], // New health entry
         'report_concern' => ['vet'], // Report concern (and the health round on the RFID gun)
+        // D-255: field jobs, on the RFID gun and in the app
+        'record_heat' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'record_mating' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'give_care' => ['vet'], // vaccination, deworming and other preventive care given
+        'move_goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
         'manage_medicine_store' => ['ceo', 'vet'],
         'approve_feeding_plan' => ['ceo', 'manager'],
         'plan_rations' => ['ceo', 'manager', 'feeding'],
