@@ -81,7 +81,7 @@ class HerdValueTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/value')->assertInertia(fn ($page) => $page->where('total.value', 22000)->where('total.gain', null));
 
         $this->actingAs($this->user('manager'))->get('/value')->assertOk();
-        $this->actingAs($this->user('manager'))->post('/value/rates', ['rate_on' => '2026-11-10', 'rate' => 5])->assertForbidden();
+        $this->actingAs($this->user('caretaker'))->post('/value/rates', ['rate_on' => '2026-11-10', 'rate' => 5])->assertForbidden(); // D-241: market rates are ADM, MGR, FIN
         $this->actingAs($this->user('vet'))->get('/value')->assertForbidden();
         $this->actingAs($this->user('ceo'))->post('/value/rates', ['rate_on' => '2026-12-01', 'rate' => 1000])->assertSessionHasErrors('rate_on');
         $this->assertSame(1, MarketRate::count(), 'rates are only added, never changed');

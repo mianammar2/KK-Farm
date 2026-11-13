@@ -52,7 +52,7 @@ class FarmRulesTest extends TestCase
 
     private function user(string $role): User
     {
-        return User::create(['name' => "Test $role", 'email' => "$role@test.local", 'password' => 'unused', 'role' => $role, 'org_id' => Tenant::current()]);
+        return User::firstOrCreate(['email' => "$role@test.local"], ['name' => "Test $role", 'password' => 'unused', 'role' => $role, 'org_id' => Tenant::current()]);
     }
 
     private function goat(string $number, string $sex = 'female'): Animal
@@ -135,7 +135,7 @@ class FarmRulesTest extends TestCase
 
     public function test_employees_without_finance_access_are_refused(): void
     {
-        foreach (['manager', 'vet', 'caretaker', 'feeding', 'cleaning'] as $role) {
+        foreach (['vet', 'caretaker', 'feeding', 'cleaning'] as $role) { // D-241: the manager views accounting (RBAC §4)
             $user = $this->user($role);
             $this->actingAs($user)->get('/finance')->assertForbidden();
             $this->actingAs($user)->post('/finance/entries', ['direction' => 'out', 'category' => 'Feed', 'amount' => 100, 'occurred_on' => now()->toDateString()])->assertForbidden();
@@ -148,8 +148,9 @@ class FarmRulesTest extends TestCase
 
     public function test_dashboard_sends_no_finance_figures_to_other_roles(): void
     {
-        $this->actingAs($this->user('caretaker'))->get('/')
-            ->assertInertia(fn (AssertableInertia $page) => $page->component('Dashboard')->where('finance', null));
+        $this->actingAs($this->user('caretaker'))->get('/')->assertRedirect('/home'); // D-241: not the Executive Dashboard
+        $this->actingAs($this->user('caretaker'))->get('/home')->assertInertia(fn (AssertableInertia $page) => $page->component('Home')->missing('finance'));
+        $this->actingAs($this->user('manager'))->get('/')->assertInertia(fn (AssertableInertia $page) => $page->component('Dashboard'));
     }
 
     public function test_only_a_veterinarian_can_record_clinical_actions(): void

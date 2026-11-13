@@ -98,7 +98,7 @@ class NutritionStandardTest extends TestCase
         $this->actingAs($this->user('ceo'))->post('/feeding/settings', ['morning' => '07:00', 'midday' => '12:00', 'evening' => '17:00', 'late' => 60, 'window' => 180, 'tolerance' => 10,
             'grower_min' => 3, 'grower_max' => 3, 'adult_min' => 2, 'adult_max' => 3])->assertSessionHasNoErrors();
         // A Makhi Cheeni growing male of 20–35 KG on 14% (preferred over the any-breed 12–14% standard).
-        $this->actingAs($this->user('vet'))->post('/feeding/standards', ['name' => 'Growing Male (Makhi Cheeni)', 'category' => 'growing_male', 'breed_id' => $this->mc->id,
+        $this->actingAs($this->user('manager'))->post('/feeding/standards', ['name' => 'Growing Male (Makhi Cheeni)', 'category' => 'growing_male', 'breed_id' => $this->mc->id,
             'min_weight_kg' => 20, 'max_weight_kg' => 35, 'cp_min_pct' => 14, 'cp_max_pct' => 14, 'tdn_min_pct' => 65, 'tdn_max_pct' => 70, 'feeding_method' => 'tmr', 'meals_per_day' => 3,
             'feed_formula' => 'TMR-GR-01', 'reviewed_on' => '2026-11-09', 'active' => true])->assertSessionHasNoErrors();
         $g = $this->goat('G-1', 'male', 8, [], 30);
@@ -111,7 +111,7 @@ class NutritionStandardTest extends TestCase
 
         $this->actingAs($this->user('ceo'))->get('/feeding?tab=nutrition')->assertInertia(fn ($page) => $page
             ->where('standards', fn ($all) => ($s = collect($all)->firstWhere('name', 'Growing Male (Makhi Cheeni)')) && $s['goats'] === 1 && $s['formula'] === 'TMR-GR-01'
-                && $s['reviewedBy'] === 'Test vet' && $s['pens'] === ['KKF-GDU-01-P01' => 1]));
+                && $s['reviewedBy'] === 'Test manager' && $s['pens'] === ['KKF-GDU-01-P01' => 1]));
         $this->actingAs($this->user('caretaker'))->post('/feeding/standards', ['name' => 'X', 'cp_min_pct' => 10, 'cp_max_pct' => 12])->assertForbidden();
     }
 
@@ -119,12 +119,12 @@ class NutritionStandardTest extends TestCase
     {
         $doe = $this->goat('MC181026-02', 'female', 30, ['repro_status' => 'lactating'], 40);
         $high = NutritionStandard::where('name', 'High-Producing Lactating Female')->first();
-        $this->actingAs($this->user('vet'))->post('/feeding/standards/assign', ['standard_id' => $high->id, 'tags' => 'mc181026-02'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/feeding/standards/assign', ['standard_id' => $high->id, 'tags' => 'mc181026-02'])->assertSessionHasNoErrors();
         Tenant::flush();
         $this->assertSame('High-Producing Lactating Female', Feed::standardFor($doe->fresh(), 40)->name);
-        $this->actingAs($this->user('vet'))->post('/feeding/standards/assign', ['standard_id' => $high->id, 'tags' => 'MC181026-02, NOPE-1'])->assertSessionHasErrors(['tags' => 'Not found: NOPE-1']);
+        $this->actingAs($this->user('manager'))->post('/feeding/standards/assign', ['standard_id' => $high->id, 'tags' => 'MC181026-02, NOPE-1'])->assertSessionHasErrors(['tags' => 'Not found: NOPE-1']);
 
-        $this->actingAs($this->user('vet'))->post('/feeding/standards/assign', ['standard_id' => null, 'tags' => 'MC181026-02'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/feeding/standards/assign', ['standard_id' => null, 'tags' => 'MC181026-02'])->assertSessionHasNoErrors();
         Tenant::flush();
         $this->assertSame('Lactating Female', Feed::standardFor($doe->fresh(), 40)->name);
     }

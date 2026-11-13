@@ -21,7 +21,9 @@ class HandleInertiaRequests extends Middleware
                 'roleLabel' => $user->roleLabel(),
                 'modules' => array_values(array_filter(array_keys(config('kkfarm.modules')), fn ($m) => $user->canModule($m))),
                 'gates' => array_values(array_filter(array_keys(config('kkfarm.gates')), fn ($g) => $user->passes($g))), // D-215
+                'pages' => \App\Support\Pages::forUser($user), // D-241: page rules, so menus match the server
             ] : null,
+            'home' => $user ? \App\Support\Pages::home($user) : '/',
             'roles' => config('kkfarm.roles'),
             'demo' => (bool) config('kkfarm.demo'),
             'demoLogin' => \App\Http\Controllers\AuthController::demoLogin(),

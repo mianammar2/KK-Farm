@@ -25,7 +25,7 @@ class ActivityLogTest extends TestCase
         $ceo = $make('ceo');
 
         $this->actingAs($ceo)->get('/activity')->assertInertia(fn ($p) => $p->component('Activity')->has('activity', 3)->where('people', ['imran_ali', 'vet_ali'])->where('more', false));
-        $this->actingAs($make('caretaker'))->get('/activity')->assertInertia(fn ($p) => $p->has('activity', 2));
+        $this->actingAs($make('caretaker'))->get('/activity')->assertForbidden(); // D-241: the activity log is for the owner and manager
         $this->actingAs($ceo)->get('/activity?q=TD141026')->assertInertia(fn ($p) => $p->has('activity', 1)->where('activity.0.actor', 'imran_ali'));
         $this->actingAs($ceo)->get('/activity?who=vet_ali')->assertInertia(fn ($p) => $p->has('activity', 1));
         $this->actingAs($ceo)->get('/')->assertInertia(fn ($p) => $p->missing('activity'));

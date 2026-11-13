@@ -63,7 +63,7 @@ class WorkerController extends Controller
     public function start(Request $request): RedirectResponse
     {
         $data = $request->validate(['job' => ['required', Rule::in(array_keys(self::JOBS))], 'pen_id' => ['nullable', 'required_if:job,move', 'integer', 'exists:pens,id']], [], ['pen_id' => 'pen']);
-        abort_unless($request->user()->canModule(self::JOBS[$data['job']][1]), 403);
+        abort_unless($request->user()->canModule(self::JOBS[$data['job']][1]) && ($data['job'] !== 'weigh' || $request->user()->passes('record_weights')), 403); // D-241
         $request->session()->put(self::SESSION, ['job' => $data['job'], 'pen' => $data['pen_id'] ?? null, 'at' => now()->timestamp, 'done' => 0]);
 
         return redirect('/worker')->with('success', self::JOBS[$data['job']][0].': now scan the first goat.');
@@ -98,7 +98,7 @@ class WorkerController extends Controller
     /** Weigh: the same weight record as Weight & Growth. */
     public function weigh(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->canModule('weights'), 403);
+        abort_unless($request->user()->passes('record_weights'), 403); // D-241
         $animal = $this->goat($request);
         \App\Support\WelfareCare::assertRoutineAllowed($animal); // D-199
         $data = $request->validate(['weight_kg' => ['required', 'numeric', 'min:0.5', 'max:200'], 'body_score' => ['nullable', 'integer', 'between:1,5']], [], ['weight_kg' => 'weight']);

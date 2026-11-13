@@ -85,7 +85,7 @@ class GoatRegistrationTest extends TestCase
 
     public function test_scanning_a_tag_the_farm_has_never_seen_starts_the_goat_register(): void
     {
-        $this->actingAs($this->user('caretaker'))->get('/scan?tag='.strtolower(self::EPC))
+        $this->actingAs($this->user('manager'))->get('/scan?tag='.strtolower(self::EPC))
             ->assertRedirect('/goats/register?epc='.self::EPC);
     }
 
@@ -93,7 +93,7 @@ class GoatRegistrationTest extends TestCase
     {
         RfidTag::create(['tag_code' => 'NEW-1', 'status' => 'in_stock']);
 
-        $this->actingAs($this->user('caretaker'))->get('/scan?tag=NEW-1')->assertRedirect('/goats/register?epc=NEW-1');
+        $this->actingAs($this->user('manager'))->get('/scan?tag=NEW-1')->assertRedirect('/goats/register?epc=NEW-1');
     }
 
     public function test_scanning_a_tag_on_a_goat_shows_that_goat_even_when_typed_in_lower_case(): void
@@ -119,7 +119,7 @@ class GoatRegistrationTest extends TestCase
 
     public function test_the_register_form_has_the_workbook_fields_in_order_with_their_dropdown_options(): void
     {
-        $this->actingAs($this->user('caretaker'))->get('/goats/register?epc='.self::EPC)->assertOk()
+        $this->actingAs($this->user('manager'))->get('/goats/register?epc='.self::EPC)->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page->component('Goats/Register')->where('epc', self::EPC)->has('fields', 33) // D-066: Lifecycle Status and Ownership are off by default
                 // D-058: Origin Type, Breed, Purchase Date, then the Tag ID from the breed.
                 ->where('fields.0.key', 'origin')->where('fields.1.key', 'breed_id')->where('fields.2.key', 'acquired_on')->where('fields.2.label', 'Purchase Date')->where('fields.3.key', 'tag_id')
@@ -149,7 +149,7 @@ class GoatRegistrationTest extends TestCase
         $dam = $this->goat('DAM-1', 'female');
         $sire = $this->goat('SIRE-1', 'male');
 
-        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload([
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload([
             'rfid_epc' => strtolower(self::EPC), 'from_scan' => true, 'tag_id' => 'KK-501', 'name' => 'Noor', 'animal_class' => 'replacement_female',
             'repro_status' => 'pregnant', 'temperature_f' => 102.5, 'health_flag' => 'monitor', 'ownership' => 'partner', 'source_farm' => 'Cholistan Farm', 'acquired_on' => now()->subMonth()->toDateString(),
             'sire_id' => $sire->id, 'dam_id' => $dam->id, 'birth_weight_kg' => 3.2, 'latest_weight_kg' => 31.5, 'purchase_cost_pkr' => 18500, 'notes' => 'Calm.',
@@ -216,7 +216,7 @@ class GoatRegistrationTest extends TestCase
 
     public function test_the_register_page_shows_the_tag_id_each_breed_will_give(): void
     {
-        $this->actingAs($this->user('caretaker'))->get('/goats/register')
+        $this->actingAs($this->user('manager'))->get('/goats/register')
             ->assertInertia(fn (AssertableInertia $page) => $page->where('lookups.breed_id.0.label', 'Beetal')->where('lookups.breed_id.0.next', 'BT-'.now('Asia/Karachi')->format('dmy').'-01')->where('lookups.breed_id.0.nextNumber', 1));
     }
 
@@ -241,18 +241,22 @@ class GoatRegistrationTest extends TestCase
 
     public function test_only_roles_that_may_assign_tags_can_register_with_a_tag(): void
     {
-        $this->actingAs($this->user('vet'))->post('/goats', $this->payload(['rfid_epc' => self::EPC]))->assertSessionHasErrors(['rfid_epc']);
+        // D-241 (RBAC §8.3): registering a purchased goat is for the owner and manager only.
+        foreach (['vet', 'caretaker', 'feeding', 'finance'] as $role) {
+            $this->actingAs($this->user($role))->post('/goats', $this->payload(['rfid_epc' => self::EPC]))->assertForbidden();
+            $this->actingAs($this->user($role))->get('/goats/register')->assertForbidden();
+        }
         $this->assertSame(0, Animal::count());
         $this->assertSame(0, RfidTag::count());
 
-        $this->actingAs($this->user('vet'))->post('/goats', $this->payload())->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['rfid_epc' => self::EPC]))->assertSessionHasNoErrors();
         $this->assertSame(1, Animal::count());
     }
 
     public function test_required_fields_dropdown_values_and_parent_sex_are_checked(): void
     {
         $doe = $this->goat('DOE-1', 'female');
-        $caretaker = $this->user('caretaker');
+        $caretaker = $this->user('manager');
 
         $this->actingAs($caretaker)->post('/goats', [])->assertSessionHasErrors(['sex', 'breed_id', 'pen_id', 'origin']);
         $this->actingAs($caretaker)->post('/goats', $this->payload(['animal_class' => 'banana']))->assertSessionHasErrors(['animal_class']);
@@ -263,7 +267,7 @@ class GoatRegistrationTest extends TestCase
 
     public function test_the_animal_class_must_fit_the_sex(): void
     {
-        $caretaker = $this->user('caretaker');
+        $caretaker = $this->user('manager');
 
         foreach ([['male', 'breeding_female'], ['male', 'replacement_female'], ['male', 'female_kid'], ['female', 'wether'], ['female', 'breeding_male'], ['female', 'fattening_male']] as [$sex, $class]) {
             $this->actingAs($caretaker)->post('/goats', $this->payload(['sex' => $sex, 'animal_class' => $class]))->assertSessionHasErrors(['animal_class']);
@@ -285,7 +289,7 @@ class GoatRegistrationTest extends TestCase
 
     public function test_a_farm_born_kid_gets_its_sire_from_the_dams_mating_and_records_the_kidding(): void
     {
-        $caretaker = $this->user('caretaker');
+        $caretaker = $this->user('manager');
         $dam = $this->goat('DAM-1', 'female');
         $sire = $this->goat('SIRE-1', 'male');
         $mating = $this->mating($dam, $sire, 150);
@@ -309,7 +313,7 @@ class GoatRegistrationTest extends TestCase
         $dam = $this->goat('DAM-1', 'female');
         $this->mating($dam, $this->goat('SIRE-1', 'male'), 40); // far too recent to be this kid's father
 
-        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'birth_date' => now()->toDateString()]))->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'birth_date' => now()->toDateString()]))->assertSessionHasNoErrors();
 
         $kid = Animal::where('dam_id', $dam->id)->sole();
         $this->assertNull($kid->sire_id);
@@ -323,7 +327,7 @@ class GoatRegistrationTest extends TestCase
         $this->mating($dam, $this->goat('SIRE-1', 'male'), 150);
         $other = $this->goat('SIRE-2', 'male');
 
-        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'sire_id' => $other->id, 'birth_date' => now()->toDateString()]))->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['origin' => 'born_on_farm', 'dam_id' => $dam->id, 'sire_id' => $other->id, 'birth_date' => now()->toDateString()]))->assertSessionHasNoErrors();
 
         $kid = Animal::where('dam_id', $dam->id)->sole();
         $this->assertSame($other->id, $kid->sire_id);
@@ -336,7 +340,7 @@ class GoatRegistrationTest extends TestCase
         $sire = $this->goat('SIRE-1', 'male');
         $this->mating($dam, $sire, 100);
 
-        $this->actingAs($this->user('caretaker'))->get('/goats/register')
+        $this->actingAs($this->user('manager'))->get('/goats/register')
             ->assertInertia(fn (AssertableInertia $page) => $page->where("damMatings.{$dam->id}.sireId", $sire->id)->where("damMatings.{$dam->id}.sire", 'SIRE-1')->where("damMatings.{$dam->id}.status", 'pregnant'));
     }
 
@@ -344,12 +348,12 @@ class GoatRegistrationTest extends TestCase
     {
         Storage::fake();
 
-        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['photo' => UploadedFile::fake()->image('goat.jpg', 800, 600)]))->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['photo' => UploadedFile::fake()->image('goat.jpg', 800, 600)]))->assertSessionHasNoErrors();
 
         $photo = AnimalPhoto::sole();
         $this->assertTrue($photo->is_profile);
         Storage::assertExists($photo->path);
-        $this->actingAs($this->user('caretaker'))->post('/goats', $this->payload(['photo' => UploadedFile::fake()->create('notes.pdf', 20, 'application/pdf')]))->assertSessionHasErrors(['photo']);
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['photo' => UploadedFile::fake()->create('notes.pdf', 20, 'application/pdf')]))->assertSessionHasErrors(['photo']);
     }
 
     public function test_an_unregistered_parent_is_kept_by_tag_and_linked_when_it_is_registered(): void
@@ -568,7 +572,7 @@ class GoatRegistrationTest extends TestCase
 
     public function test_a_bought_goat_may_have_no_birth_date_but_a_farm_born_goat_must(): void
     {
-        $caretaker = $this->user('caretaker');
+        $caretaker = $this->user('manager');
 
         $this->actingAs($caretaker)->post('/goats', $this->payload(['birth_date' => '', 'origin' => 'born_on_farm']))->assertSessionHasErrors(['birth_date']);
         $this->assertSame(0, Animal::count());

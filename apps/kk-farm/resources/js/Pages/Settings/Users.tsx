@@ -8,7 +8,7 @@ import AddButton from '../../components/AddButton';
 import Sheet from '../../components/Sheet';
 
 type D = { id: number; name: string; users: number };
-type U = { id: number; name: string; login: string; role: string; active: boolean; department: number | null; mustChange: boolean; lastLogin: string | null; me: boolean; own: number };
+type U = { id: number; name: string; login: string; role: string; active: boolean; department: number | null; mustChange: boolean; lastLogin: string | null; me: boolean; own: number; diffs: Record<string, { gain: string[]; lose: string[] }> };
 
 /** The owner decides who can sign in and with which role (D-044). */
 export default function Users({ users, departments }: { users: U[]; departments: D[] }) {
@@ -104,6 +104,9 @@ function UserRow({ user, roles, departments }: { user: U; roles: Record<string, 
                 <Button variant="secondary" disabled={form.processing || !form.isDirty} onClick={save}>Save</Button>
                 <Link href={`/settings/users/${user.id}`} className="min-h-11 content-center text-sm font-semibold text-cobalt-800 hover:underline">Access rights{user.own ? ` (${user.own} own)` : ''} →</Link>
             </div>
+            {form.data.role !== user.role && user.diffs[form.data.role] ? ( // D-241 (RBAC §11): what the new role changes, before saving
+                <div className="mt-2"><Note>As {roles[form.data.role]}, {user.name} will {user.diffs[form.data.role].gain.length ? <>gain <b>{user.diffs[form.data.role].gain.join(', ')}</b></> : 'gain nothing'} and {user.diffs[form.data.role].lose.length ? <>lose <b>{user.diffs[form.data.role].lose.join(', ')}</b></> : 'lose nothing'}. Their own ticks stay.</Note></div>
+            ) : null}
             {reset ? <div className="mt-2"><Note>Give this temporary password to {user.name}. They must choose a new one when they sign in.</Note></div> : null}
         </li>
     );

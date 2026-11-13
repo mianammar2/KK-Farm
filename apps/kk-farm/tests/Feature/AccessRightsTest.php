@@ -64,7 +64,10 @@ class AccessRightsTest extends TestCase
         $this->actingAs($owner)->post("/settings/users/{$ali->id}/access", ['gates' => ['clinical' => true, 'exit_animal' => true]])->assertSessionHasNoErrors();
         Tenant::flush();
         $ali = $ali->fresh();
-        $this->assertFalse($ali->passes('clinical')); // protected
+        $this->assertTrue($ali->passes('clinical'), 'D-241: the administrator may grant a vet-locked action to one person');
+        $this->actingAs($owner)->post('/settings/access', ['modules' => Access::roleModules(Tenant::current()), 'gates' => ['clinical' => ['caretaker']]]);
+        Tenant::flush();
+        $this->assertFalse($this->user('caretaker', 'ali2')->passes('clinical'), 'the role screen never hands out a vet-locked action');
         $this->assertTrue($ali->passes('exit_animal'));
 
         $this->actingAs($owner)->post("/settings/users/{$owner->id}/access", ['modules' => ['settings' => false]])->assertSessionHasNoErrors();

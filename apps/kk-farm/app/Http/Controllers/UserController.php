@@ -27,6 +27,7 @@ class UserController extends Controller
                 'id' => $u->id, 'name' => $u->name, 'login' => $u->email, 'role' => $u->role, 'active' => $u->active, 'department' => $u->department_id,
                 'mustChange' => $u->must_change_password, 'lastLogin' => $u->last_login_at?->format('j M Y, H:i'), 'me' => $u->is($request->user()),
                 'own' => count($u->module_access ?? []) + count($u->gate_access ?? []), // D-215
+                'diffs' => collect(array_keys(config('kkfarm.roles')))->reject(fn ($r) => $r === $u->role)->mapWithKeys(fn ($r) => [$r => \App\Support\Access::roleDiff($u, $r)]), // D-241: shown before a role change is saved
             ]),
             'departments' => Department::withCount(['users' => fn ($q) => $q->where('active', true)])->orderBy('name')->get()->map(fn (Department $d) => ['id' => $d->id, 'name' => $d->name, 'users' => $d->users_count]),
         ]);
@@ -83,6 +84,16 @@ class UserController extends Controller
 
         if ($user->is($request->user()) && ((isset($data['active']) && ! $data['active']) || (isset($data['role']) && $data['role'] !== 'ceo'))) {
             throw ValidationException::withMessages(['role' => 'You cannot disable your own account or remove your own owner role.']);
+        }
+
+        // D-241 (RBAC §11): the last active Administrator can never be demoted or switched off
+        $demotes = $user->role === 'ceo' && ((isset($data['role']) && $data['role'] !== 'ceo') || (isset($data['active']) && ! $data['active']));
+        if ($demotes && $this->scope($request)->where('role', 'ceo')->where('active', true)->whereKeyNot($user->id)->doesntExist()) {
+            throw ValidationException::withMessages(['role' => 'At least one active Administrator must remain.']);
+        }
+        if (isset($data['role']) && $data['role'] !== $user->role) {
+            $diff = \App\Support\Access::roleDiff($user, $data['role']);
+            Farm::log($request->user(), "Changed the role of {$user->name} to ".config("kkfarm.roles.{$data['role']}").($diff['gain'] ? '; gains '.implode(', ', $diff['gain']) : '').($diff['lose'] ? '; loses '.implode(', ', $diff['lose']) : ''), '/settings/users', 'security');
         }
 
         $changes = array_intersect_key($data, array_flip(['role', 'active', 'department_id']));

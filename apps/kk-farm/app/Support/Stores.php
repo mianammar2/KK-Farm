@@ -33,6 +33,17 @@ final class Stores
     }
 
     /** Every item in every store with what is on hand, its value and whether to reorder. */
+    /** D-241 (RBAC §4 Inventory): which stores (feed, medicine, store) a person sees. Finance sees all, as valuation. */
+    public static function visibleTo(\App\Models\User $u): array
+    {
+        return match ($u->role) {
+            'vet' => ['medicine'],
+            'feeding' => ['feed'],
+            'caretaker', 'cleaning' => ['store'],
+            default => ['feed', 'medicine', 'store'],
+        };
+    }
+
     public static function overview(): array
     {
         $feedQty = Feed::stock();

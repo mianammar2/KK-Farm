@@ -56,6 +56,9 @@ class HealthController extends Controller
 
         $revisions = \App\Support\Revisions::counts('checkup', \App\Models\HealthCheckup::orderByDesc('checked_on')->orderByDesc('id')->limit(60)->pluck('id'));
 
+        // D-241 (RBAC §7, §8.3): only the data of the tabs this person may open is sent, so a hidden tab leaks nothing
+        $tab = fn (string $t) => \App\Support\Pages::allows($request->user(), '/health', ['tab' => $t]);
+
         return Inertia::render('Health', [
             'checkups' => [
                 'goats' => $checkupGoats, 'interval' => $interval,
@@ -73,7 +76,7 @@ class HealthController extends Controller
                 'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number]),
                 'canCheck' => $request->user()->passes('health_checkup'), 'canOpenCase' => $request->user()->passes('open_cases'), 'gestation' => (int) (\App\Support\Tenant::org()?->gestation_days ?: 150), 'conditions' => \App\Models\Disease::names(),
             ],
-            'cases' => $cases->map(fn (HealthCase $c) => $this->caseRow($c, $withdrawal[$c->animal_id] ?? null)),
+            'cases' => ! $tab('cases') ? [] : $cases->map(fn (HealthCase $c) => $this->caseRow($c, $withdrawal[$c->animal_id] ?? null)),
             // Concerns reported by staff (and older records) that no case covers yet.
             'reports' => HealthRecord::with('animal')->where('status', 'open')->whereNotIn('id', HealthCase::whereNotNull('report_id')->pluck('report_id'))
                 ->orderByDesc('occurred_on')->get()->map($row),
@@ -94,7 +97,7 @@ class HealthController extends Controller
             'careTypes' => self::CARE_TYPES,
             // D-173: vaccination calendar and the vet's protocols
             'calendar' => \App\Support\CareCalendar::due(),
-            'protocols' => \App\Models\CareProtocol::with('medicine')->orderByDesc('active')->orderBy('kind')->orderBy('name')->get()->map(fn ($p) => [
+            'protocols' => ! $tab('protocols') ? [] : \App\Models\CareProtocol::with('medicine')->orderByDesc('active')->orderBy('kind')->orderBy('name')->get()->map(fn ($p) => [
                 'id' => $p->id, 'name' => $p->name, 'kind' => $p->kind, 'medicineId' => $p->medicine_id, 'medicine' => $p->medicine?->name, 'dose' => $p->dose_per_goat,
                 'appliesTo' => $p->applies_to, 'firstAge' => $p->first_age_days, 'interval' => $p->interval_days, 'notes' => $p->notes, 'active' => $p->active,
             ]),
@@ -102,7 +105,7 @@ class HealthController extends Controller
             // D-174: disease master and mortality register
             'diseases' => \App\Models\Disease::orderByDesc('active')->orderBy('name')->get(['id', 'name', 'category', 'zoonotic', 'notifiable', 'contagious', 'notes', 'active']),
             'diseaseCategories' => \App\Models\Disease::CATEGORIES,
-            'mortality' => $this->mortality(),
+            'mortality' => $tab('mortality') ? $this->mortality() : null,
             'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
         ] + $this->medicineStore());
     }

@@ -64,11 +64,11 @@ class IncidentToCapaTest extends TestCase
 
         // Root cause → CAPA → independent verification → SOP revised → close: the incidents close with the learning and v2.
         $this->actingAs($manager)->post("/quality/cases/{$case->id}/investigate", ['root_cause' => 'Gate latch broken; night check skipped', 'evidence' => 'Latch photo, check sheet blank'])->assertSessionHasNoErrors();
-        $this->actingAs($manager)->post("/quality/cases/{$case->id}/capa", ['kind' => 'preventive', 'action' => 'Replace latch; add 11 PM fence round', 'owner_id' => $care->id, 'due_on' => now()->addDays(3)->toDateString()])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/quality/cases/{$case->id}/capa", ['kind' => 'preventive', 'action' => 'Replace latch; add 11 PM fence round', 'owner_id' => $u('ceo')->id, 'due_on' => now()->addDays(3)->toDateString()])->assertSessionHasNoErrors();
         $capa = QualityCapa::sole();
         $this->actingAs($manager)->post("/quality/capas/{$capa->id}/approve")->assertForbidden(); // the planner
         $this->actingAs($vet)->post("/quality/capas/{$capa->id}/approve")->assertSessionHasNoErrors();
-        $this->actingAs($care)->post("/quality/capas/{$capa->id}/execute", ['notes' => 'Latch replaced'])->assertSessionHasNoErrors();
+        $this->actingAs($u('ceo'))->post("/quality/capas/{$capa->id}/execute", ['notes' => 'Latch replaced'])->assertSessionHasNoErrors();
         $this->actingAs($manager)->post("/quality/capas/{$capa->id}/verify", ['pass' => true, 'notes' => 'Latch holds; round signed 3 nights'])->assertSessionHasNoErrors();
         $this->actingAs($manager)->post("/quality/sops/{$sop->id}/revise", ['body' => 'Check the gate at 9 PM and 11 PM; test the latch.', 'change_note' => 'After the dog attacks', 'case_id' => $case->id])->assertSessionHasNoErrors();
         $this->actingAs($vet)->post('/quality/sop-revisions/'.SopRevision::where('version', 2)->value('id').'/approve')->assertSessionHasNoErrors();

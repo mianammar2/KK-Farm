@@ -231,6 +231,7 @@ class GoatController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless(\App\Support\Pages::allows($request->user(), '/goats/register'), 403, 'Your role cannot register goats.'); // D-241 (RBAC §8.3)
         // Tag IDs are stored upper-case, the same as generated ones (BT-0001), so duplicates are caught either way.
         if ($request->filled('tag_id')) {
             $request->merge(['tag_id' => strtoupper(trim((string) $request->input('tag_id')))]);
@@ -252,6 +253,8 @@ class GoatController extends Controller
         $weights = $animal->weights()->get();
         $offspring = Animal::with(['breed', 'pen', 'latestWeight', 'photos'])->where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->orderBy('birth_date')->get();
         $canFinance = $request->user()->canModule('finance');
+        // D-241 (RBAC §7): health history, diagnoses and treatments for the vet, owner and manager; others see the status flag only
+        $seeHealth = in_array($request->user()->role, ['ceo', 'manager', 'vet'], true) || ($request->user()->module_access['health'] ?? false) === true;
         $weightDays = $weights->count() > 1 ? max(1, $weights->first()->measured_on->diffInDays($weights->last()->measured_on)) : null;
 
         return Inertia::render('Goats/Show', [
@@ -277,12 +280,12 @@ class GoatController extends Controller
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
             'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => $e->summary, 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('j M Y')]),
             // D-073: health cases with their treatment doses
-            'cases' => \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->orderByDesc('onset_on')->get()->map(fn ($c) => [
+            'cases' => ! $seeHealth ? [] : \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->orderByDesc('onset_on')->get()->map(fn ($c) => [
                 'id' => $c->id, 'label' => $c->label(), 'condition' => $c->condition, 'status' => \App\Models\HealthCase::STATUSES[$c->status], 'active' => in_array($c->status, \App\Models\HealthCase::ACTIVE, true),
                 'severity' => \App\Models\HealthCase::SEVERITIES[$c->severity], 'onset' => $c->onset_on->format('j M Y'), 'resolved' => $c->resolved_on?->format('j M Y'), 'diagnosis' => $c->diagnosis,
                 'treatments' => $c->treatments->map(fn ($t) => ['id' => $t->id, 'on' => $t->given_on->format('j M'), 'text' => "{$t->product} {$t->dose}", 'meat' => $t->meat_clear_on?->format('j M Y'), 'milk' => $t->milk_clear_on?->format('j M Y'), 'by' => $t->recorded_by])->values(),
             ]),
-            'health' => $animal->healthRecords()->limit(40)->get()->map(fn ($h) => ['id' => $h->id, 'kind' => $h->kind, 'title' => $h->title, 'notes' => $h->notes, 'severity' => $h->severity, 'by' => $h->recorded_by, 'role' => $h->recorded_role, 'on' => $h->occurred_on->format('j M Y'), 'next' => $h->next_due_on?->format('j M Y'), 'status' => $h->status]),
+            'health' => ! $seeHealth ? [] : $animal->healthRecords()->limit(40)->get()->map(fn ($h) => ['id' => $h->id, 'kind' => $h->kind, 'title' => $h->title, 'notes' => $h->notes, 'severity' => $h->severity, 'by' => $h->recorded_by, 'role' => $h->recorded_role, 'on' => $h->occurred_on->format('j M Y'), 'next' => $h->next_due_on?->format('j M Y'), 'status' => $h->status]),
             'pedigree' => Farm::pedigree($animal),
             'offspring' => $offspring->map(fn (Animal $a) => $a->card()),
             'matings' => Mating::with(['sire', 'dam'])->where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->orderByDesc('mated_on')->limit(12)->get()

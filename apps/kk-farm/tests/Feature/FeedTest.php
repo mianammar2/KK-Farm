@@ -85,7 +85,7 @@ class FeedTest extends TestCase
             'lines' => [['feed_item_id' => $straw->id, 'kg_per_head' => 1.5], ['feed_item_id' => $conc->id, 'kg_per_head' => 0.5]],
         ])->assertSessionHasNoErrors();
         $plan = RationPlan::latest('id')->firstOrFail();
-        $this->actingAs($this->user('vet'))->post("/feeding/plans/{$plan->id}/approve")->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post("/feeding/plans/{$plan->id}/approve")->assertSessionHasNoErrors();
 
         return $plan->fresh();
     }
@@ -198,8 +198,8 @@ class FeedTest extends TestCase
         $this->actingAs($this->user('manager'))->post('/feeding/plans', ['split_evening' => 50] + $payload)->assertSessionHasNoErrors();
         $plan = RationPlan::sole();
 
-        $this->actingAs($this->user('manager'))->post("/feeding/plans/{$plan->id}/approve")->assertForbidden();
-        $this->actingAs($this->user('vet'))->post("/feeding/plans/{$plan->id}/approve")->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post("/feeding/plans/{$plan->id}/approve")->assertForbidden(); // D-241: vets view feeding plans
+        $this->actingAs($this->user('manager'))->post("/feeding/plans/{$plan->id}/approve")->assertSessionHasNoErrors();
         $this->assertSame('approved', $plan->fresh()->status);
     }
 
@@ -221,7 +221,7 @@ class FeedTest extends TestCase
         $this->approvedDoeRation($straw, $conc);
         $kids = $this->group('kids');
         $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $kids->id, 'effective_from' => now()->toDateString(), 'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => $conc->id, 'kg_per_head' => 0.2]]]);
-        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::where('status', 'draft')->value('id').'/approve');
+        $this->actingAs($this->user('manager'))->post('/feeding/plans/'.RationPlan::where('status', 'draft')->value('id').'/approve');
         $org = Feed::org();
 
         $this->feed($this->penA, [['id' => (string) Str::uuid(), 'feed_item_id' => $straw->id, 'offered_kg' => 1.2]]); // 07:30, on time
@@ -285,7 +285,7 @@ class FeedTest extends TestCase
             'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50,
             'lines' => [['feed_item_id' => $straw->id, 'share_pct' => 75], ['feed_item_id' => $conc->id, 'share_pct' => 25]],
         ])->assertSessionHasNoErrors();
-        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
+        $this->actingAs($this->user('manager'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
 
         $pen = Feed::plannedByPen('morning', now())[$this->penA->id];
         // D-069: grower 20 kg × 3–4% = 0.6–0.8 kg/day, adult 40 kg × 2–3% = 0.8–1.2 kg/day, planned at the middle (0.7 + 1.0 = 1.7).
@@ -309,7 +309,7 @@ class FeedTest extends TestCase
         \App\Models\WeightRecord::create(['animal_id' => $d1->id, 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']);
         $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
             'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => $straw->id, 'share_pct' => 100]]])->assertSessionHasNoErrors();
-        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
+        $this->actingAs($this->user('manager'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
 
         $req = Feed::perGoat(Animal::active()->get(), now());
         $this->assertSame(['planned', 1.0, 0.8, 1.2], [$req[$d1->id]['state'], $req[$d1->id]['kgDay'], $req[$d1->id]['min'], $req[$d1->id]['max']], '40 kg adult × 2–3%, planned at 2.5%');
@@ -368,7 +368,7 @@ class FeedTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page->where('feeding.overPens', 1)->where('feeding.pens.0.meals.morning.balance', 'over')
             ->where('requirement.sheds.0.pens.0.kgDay', 1.3));
         $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('requirement.sheds.0.pens.0.givenToday', 1));
-        $over = collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'feed_over');
+        $over = collect(\App\Support\ActionCenter::items($this->user('manager')))->firstWhere('key', 'feed_over'); // D-241: feeding alerts go to manager and staff
         $this->assertSame(['Shed 1-Pen A'], array_column($over['items'], 'text'));
         $this->assertSame(['ok', 'short'], [Feed::balance(1, 0.8, 1.2, 1.1, 10)['state'], Feed::balance(1, 0.8, 1.2, 0.5, 10)['state']]);
     }
@@ -491,16 +491,16 @@ class FeedTest extends TestCase
         $this->actingAs($this->user('manager'))->post('/feeding/items', ['code' => 'WS', 'name' => 'Wheat straw', 'category' => 'concentrate', 'cost_per_kg' => 30, 'cp_pct' => 4])->assertSessionHasNoErrors();
         // The farm raises its adult doe standard to 14–16% CP; 25% CP 32 + 75% CP 4 = 11% is then too low for breeding does.
         $std = \App\Models\NutritionStandard::where('category', 'adult_female')->first();
-        $this->actingAs($this->user('vet'))->post("/feeding/standards/{$std->id}", ['name' => 'Adult Breeding Female', 'category' => 'adult_female', 'cp_min_pct' => 14, 'cp_max_pct' => 16, 'active' => true])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post("/feeding/standards/{$std->id}", ['name' => 'Adult Breeding Female', 'category' => 'adult_female', 'cp_min_pct' => 14, 'cp_max_pct' => 16, 'active' => true])->assertSessionHasNoErrors();
         \App\Support\Tenant::flush();
         $this->actingAs($this->user('manager'))->post('/feeding/plans', ['feeding_group_id' => $this->group('breeding_does')->id, 'effective_from' => now()->toDateString(), 'basis' => 'body_weight',
             'split_morning' => 50, 'split_midday' => 0, 'split_evening' => 50, 'lines' => [['feed_item_id' => FeedItem::where('code', 'C32')->value('id'), 'share_pct' => 25], ['feed_item_id' => FeedItem::where('code', 'WS')->value('id'), 'share_pct' => 75]]])->assertSessionHasNoErrors();
         $this->assertCount(0, Feed::lowCpRations(), 'a draft is not in use yet');
-        $this->actingAs($this->user('vet'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
+        $this->actingAs($this->user('manager'))->post('/feeding/plans/'.RationPlan::sole()->id.'/approve');
         \App\Support\Tenant::flush();
 
         $this->assertSame([['group' => 'Breeding Does', 'mix' => 11.0, 'target' => 14.0, 'head' => 2, 'standard' => 'Adult Breeding Female']], Feed::lowCpRations()->all());
-        $item = collect(\App\Support\ActionCenter::items($this->user('ceo')))->firstWhere('key', 'ration_low_cp');
+        $item = collect(\App\Support\ActionCenter::items($this->user('manager')))->firstWhere('key', 'ration_low_cp');
         $this->assertSame('Mix CP 11%, target 14% for Adult Breeding Female (short 3%) · 2 goats', $item['items'][0]['sub']);
         $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page->where('groups', fn ($groups) => collect($groups)->firstWhere('name', 'Breeding Does')['cpTarget'] == 14 && collect($groups)->firstWhere('name', 'Breeding Does')['cpStandard'] === 'Adult Breeding Female'));
     }

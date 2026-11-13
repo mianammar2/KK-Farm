@@ -20,7 +20,7 @@ class TaskController extends Controller
         $me = $request->user();
         $today = now()->startOfDay();
         // D-078: every unfinished task (whatever its date) plus what was finished or cancelled in the last 7 days.
-        $tasks = Task::with(['employee', 'pen.shed', 'department', 'user', 'animal'])
+        $tasks = Task::with(['employee', 'pen.shed', 'department', 'user', 'animal'])->visibleTo($me) // D-241: own and department tasks only
             ->where(fn ($q) => $q->whereIn('status', Task::OPEN)->orWhere('updated_at', '>=', now()->subDays(7)))
             ->orderByRaw("case priority when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end")->orderBy('due_on')->orderBy('id')->get();
 
@@ -46,7 +46,10 @@ class TaskController extends Controller
     /** D-052/D-078: a task goes to a department or a user, with a due date, optional goat or pen, type and priority. */
     public function store(Request $request): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 403, 'Your role cannot assign tasks.');
+        $me = $request->user();
+        if (! in_array($me->role, ['ceo', 'manager'], true)) { // D-241 (RBAC §9.3): others may only make tasks for themselves
+            $request->merge(['user_id' => $me->id, 'department_id' => $me->department_id ?? \App\Models\Department::forRole($me->role)]);
+        }
         $data = $request->validate([
             'title' => ['required', 'string', 'max:120'],
             'type' => ['required', Rule::in(array_keys(Task::TYPES))],
@@ -82,6 +85,7 @@ class TaskController extends Controller
 
     private function setStatus(Request $request, Task $task, string $status): RedirectResponse
     {
+        abort_unless(Task::whereKey($task->id)->visibleTo($request->user())->exists(), 403); // D-241: only own and department tasks
         $closed = in_array($status, ['completed', 'cancelled'], true);
         $task->update(['status' => $status, 'completed_at' => $closed ? now() : null, 'completed_by' => $closed ? $request->user()->name : null]);
         Farm::log($request->user(), Task::STATUSES[$status].": {$task->title}", '/tasks');

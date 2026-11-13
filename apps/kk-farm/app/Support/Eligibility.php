@@ -129,7 +129,7 @@ final class Eligibility
     {
         if (! Task::where('animal_id', $g->id)->where('title', 'like', self::TASK_PREFIX.'%')->whereIn('status', Task::OPEN)->exists()) {
             Task::create(['title' => self::TASK_PREFIX.$g->farm_number, 'type' => 'breeding', 'priority' => 'medium', 'status' => 'open', 'due_on' => now()->addDays(3)->toDateString(),
-                'animal_id' => $g->id, 'pen_id' => $g->pen_id, 'notes' => 'All breeding checks passed. Confirm the reproductive exam and genetics, then approve or reject in Breeding → Breeding Eligibility.']);
+                'animal_id' => $g->id, 'pen_id' => $g->pen_id, 'department_id' => \App\Models\Department::forRole('vet'), 'notes' => 'All breeding checks passed. Confirm the reproductive exam and genetics, then approve or reject in Breeding → Breeding Eligibility.']);
         }
     }
 }

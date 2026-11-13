@@ -17,7 +17,8 @@ class ActivityController extends Controller
         $user = $request->user();
         $q = trim((string) $request->query('q', ''));
         $who = (string) $request->query('who', '');
-        $base = Activity::query()->when(! $user->canModule('finance'), fn ($x) => $x->where('audience', 'farm'));
+        $base = Activity::query()->when(! $user->canModule('finance'), fn ($x) => $x->where('audience', 'farm'))
+            ->when($user->role !== 'ceo', fn ($x) => $x->where('audience', '!=', 'security')); // D-241: refused-access entries are the administrator's
         $rows = (clone $base)
             ->when($q !== '', fn ($x) => $x->where('action', 'ilike', '%'.str_replace(['%', '_'], ['\%', '\_'], $q).'%'))
             ->when($who !== '', fn ($x) => $x->where('actor', $who))

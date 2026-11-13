@@ -61,9 +61,9 @@ class QualityTest extends TestCase
 
     public function test_a_milk_risk_is_held_investigated_capa_verified_independently_released_and_closed(): void
     {
-        $this->as('caretaker')->post('/quality/cases', ['source' => 'milk', 'title' => 'Sour smell in tank', 'subject' => 'milk_lot', 'milk_lot_id' => $this->lot->id, 'severity' => 'high', 'immediate_risk' => true])
+        $this->as('ceo')->post('/quality/cases', ['source' => 'milk', 'title' => 'Sour smell in tank', 'subject' => 'milk_lot', 'milk_lot_id' => $this->lot->id, 'severity' => 'high', 'immediate_risk' => true])
             ->assertSessionHasErrors('containment');
-        $this->as('caretaker')->post('/quality/cases', ['source' => 'milk', 'title' => 'Sour smell in tank', 'subject' => 'milk_lot', 'milk_lot_id' => $this->lot->id, 'severity' => 'high', 'immediate_risk' => true, 'containment' => 'hold'])
+        $this->as('ceo')->post('/quality/cases', ['source' => 'milk', 'title' => 'Sour smell in tank', 'subject' => 'milk_lot', 'milk_lot_id' => $this->lot->id, 'severity' => 'high', 'immediate_risk' => true, 'containment' => 'hold'])
             ->assertSessionHasNoErrors();
         $case = QualityCase::sole();
         $this->assertSame(['QC-0001', 'contained'], [$case->label(), $case->status]);
@@ -77,12 +77,12 @@ class QualityTest extends TestCase
         $this->as('manager')->post("/quality/cases/{$case->id}/capa", ['kind' => 'corrective', 'action' => 'x', 'owner_id' => $this->user('caretaker')->id, 'due_on' => now()->addDays(3)->toDateString()])
             ->assertSessionHasErrors('action'); // root cause first
         $this->as('manager')->post("/quality/cases/{$case->id}/investigate", ['root_cause' => 'Chiller off for 3 hours', 'evidence' => 'Temperature log 14 °C'])->assertSessionHasNoErrors();
-        $this->as('manager')->post("/quality/cases/{$case->id}/capa", ['kind' => 'corrective', 'action' => 'Service the chiller', 'owner_id' => $this->user('caretaker')->id, 'due_on' => now()->addDays(3)->toDateString()])->assertSessionHasNoErrors();
+        $this->as('manager')->post("/quality/cases/{$case->id}/capa", ['kind' => 'corrective', 'action' => 'Service the chiller', 'owner_id' => $this->user('ceo')->id, 'due_on' => now()->addDays(3)->toDateString()])->assertSessionHasNoErrors();
         $capa = QualityCapa::sole();
 
         $this->as('manager')->post("/quality/capas/{$capa->id}/approve")->assertForbidden(); // the planner does not approve (BR-027)
         $this->as('vet')->post("/quality/capas/{$capa->id}/approve")->assertSessionHasNoErrors();
-        $this->as('caretaker')->post("/quality/capas/{$capa->id}/execute", ['notes' => 'Compressor relay replaced'])->assertSessionHasNoErrors();
+        $this->as('ceo')->post("/quality/capas/{$capa->id}/execute", ['notes' => 'Compressor relay replaced'])->assertSessionHasNoErrors();
         $this->assertSame('verifying', $case->fresh()->status);
 
         // Fail → reopen / escalate → replan.
@@ -159,6 +159,7 @@ class QualityTest extends TestCase
         $this->assertSame(now()->addMonths(6)->toDateString(), $drill->next_due_on->toDateString());
 
         $this->as('manager')->post('/quality/register', ['kind' => 'licence', 'name' => 'Dairy licence', 'expires_on' => now()->addDays(10)->toDateString()])->assertSessionHasNoErrors();
-        $this->as('caretaker')->get('/quality')->assertInertia(fn (AssertableInertia $p) => $p->where('kpi.registerDue', 1)->where('isLead', false));
+        $this->as('caretaker')->get('/quality')->assertForbidden(); // D-241: Quality is ADM, MGR, VET
+        $this->as('manager')->get('/quality')->assertInertia(fn (AssertableInertia $p) => $p->where('kpi.registerDue', 1));
     }
 }

@@ -27,58 +27,62 @@ return [
         'finance' => 'Finance Employee',
     ],
 
+    // D-241: module defaults from KK_FARMS_RBAC.md §4 (● or ◐ = the module opens; pages and actions narrow it down).
     'modules' => [
-        'dashboard' => $all,
-        'goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'finance'],
-        'scan' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'], // D-179: every farm worker can scan
+        'dashboard' => $all, // non-owners get their own role home (§6)
+        'goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
+        'scan' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
         'breeding' => ['ceo', 'manager', 'vet', 'caretaker'],
         'health' => ['ceo', 'manager', 'vet', 'caretaker'],
-        'weights' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'weights' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
         'feeding' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
-        'sheds' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning'],
-        'employees' => ['ceo', 'manager'],
+        'sheds' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'cleaning'],
         'tasks' => $all,
-        'finance' => ['ceo', 'finance'],
-        'value' => ['ceo', 'manager', 'finance'], // D-113: Herd Value
-        'milking' => ['ceo', 'manager', 'vet', 'caretaker', 'finance'], // D-117; finance for milk dispatch (D-188)
-        'reports' => ['ceo', 'manager', 'finance'],
+        'employees' => ['ceo', 'manager', 'finance'],
+        'finance' => ['ceo', 'manager', 'finance'],
+        'value' => ['ceo', 'manager', 'finance'],
+        'milking' => ['ceo', 'manager', 'vet', 'caretaker', 'finance'],
+        'reports' => ['ceo', 'manager', 'vet', 'feeding', 'finance'],
         'settings' => ['ceo'],
-        'sensors' => ['ceo', 'manager', 'vet'], // D-087: devices, readings, sensor alerts
-        'inventory' => ['ceo', 'manager', 'vet', 'feeding', 'finance'], // D-178
-        'purchase' => ['ceo', 'manager', 'finance'], // D-178
-        'sales' => ['ceo', 'manager', 'finance'], // D-178
-        'welfare' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning'], // D-185: App 19 Animal Welfare
-        'fattening' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'finance'], // D-187: App 18 Fattening & Meat
-        'environment' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning', 'feeding'], // D-186: App 20 Water, Climate & Environment
-        'quality' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'finance'], // D-189: App 21 Quality & Compliance (anyone raises a quality alarm; the lead decides)
-        'animal_purchase' => ['ceo', 'manager', 'vet', 'finance'], // D-190: journey A goat purchase lots (request, approve, receive into quarantine)
-        'feed_cost' => ['ceo', 'manager', 'vet', 'feeding', 'finance'], // D-192: journey C Feed-to-True-Cost
-        'fodder' => ['ceo', 'manager', 'vet', 'feeding', 'finance'], // D-202: App 22 Fodder & Pasture (optional; off until the owner turns it on)
-        'maintenance' => $all, // D-182: anyone reports a breakdown; owner and manager keep the asset register
+        'sensors' => ['ceo', 'manager'],
+        'inventory' => $all,
+        'purchase' => ['ceo', 'manager', 'vet', 'feeding', 'finance'],
+        'sales' => ['ceo', 'manager', 'finance'],
+        'welfare' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'fattening' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
+        'environment' => ['ceo', 'manager', 'vet', 'caretaker', 'cleaning'],
+        'quality' => ['ceo', 'manager', 'vet'],
+        'animal_purchase' => ['ceo', 'manager', 'vet', 'finance'],
+        'feed_cost' => ['ceo', 'manager', 'feeding', 'finance'], // feeding: stock count only (RBAC §8.3 row wins over §4; pages narrow it)
+        'fodder' => ['ceo', 'manager', 'caretaker', 'feeding'],
+        'maintenance' => ['ceo', 'manager', 'caretaker', 'feeding', 'cleaning'],
     ],
 
     // Hard gates from SECURITY_AND_RBAC.md: these never come from a configurable override.
     'gates' => [
-        'clinical' => ['vet'],
-        'approve_feeding_plan' => ['vet'],
-        'exit_animal' => ['ceo', 'manager'],
-        'assign_tags' => ['ceo', 'manager', 'caretaker'],
-        'manage_sheds' => ['ceo', 'manager'], // D-051: add and rename sheds and pens
-        'manage_feed_store' => ['ceo', 'manager', 'feeding'], // D-054: feed items and stock
-        'plan_rations' => ['ceo', 'manager', 'vet'], // D-054: draft a ration; approve_feeding_plan approves it
-        'manage_general_store' => ['ceo', 'manager', 'feeding'], // D-178: general store items and moves
-        'manage_purchase' => ['ceo', 'manager', 'finance'], // D-178: suppliers and purchase orders
-        'manage_sales' => ['ceo', 'manager', 'finance'], // D-178: customers and sales
-        'manage_medicine_store' => ['ceo', 'manager', 'vet'], // D-074: medicines, receipts, disposals
-        'manage_devices' => ['ceo', 'manager'], // D-087: add devices, issue their keys
-        'edit_goats' => ['ceo', 'manager', 'vet'], // D-091: change a goat's details; ask to remove a wrong entry
-        'remove_goats' => ['ceo', 'manager'], // D-091: confirm (or cancel) removing a wrong entry; restore
-        'health_checkup' => ['ceo', 'manager', 'vet'], // D-095: routine checkups
-        'manage_market' => ['ceo', 'finance'], // D-113: market rates, batch purchase rates, feed price
-        'record_milk' => ['ceo', 'manager', 'vet', 'caretaker'], // D-117: milk per session
-        'manage_milking' => ['ceo', 'manager', 'vet'], // D-117: dry off, start a lactation by hand, milking settings
-        'approve_breeding' => ['ceo', 'manager', 'vet'], // D-231: approve or reject a goat for breeding
-        'open_cases' => ['vet', 'ceo'], // D-095: the vet, and the administrator, open health cases (treatments stay with the vet)
+        // D-241: action defaults from KK_FARMS_RBAC.md §5. 🔒 vet-locked: only the vet, or a person the administrator
+        // ticks on their own page; the role screen cannot change them (the system records, vets decide).
+        'clinical' => ['vet'], // 🔒 diagnose and treat
+        'open_cases' => ['vet'], // 🔒 open health cases (caretakers report a sick goat instead)
+        'approve_breeding' => ['vet'], // 🔒 approve goats for breeding
+        'health_checkup' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'manage_medicine_store' => ['ceo', 'vet'],
+        'approve_feeding_plan' => ['ceo', 'manager'],
+        'plan_rations' => ['ceo', 'manager', 'feeding'],
+        'manage_feed_store' => ['ceo', 'manager', 'feeding'],
+        'manage_general_store' => ['ceo', 'manager', 'caretaker', 'cleaning'],
+        'assign_tags' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'manage_sheds' => ['ceo', 'manager'],
+        'edit_goats' => ['ceo', 'manager', 'vet'],
+        'remove_goats' => ['ceo', 'manager'],
+        'exit_animal' => ['ceo', 'manager', 'finance'],
+        'record_milk' => ['ceo', 'manager', 'caretaker'],
+        'manage_milking' => ['ceo', 'manager'],
+        'manage_purchase' => ['ceo', 'manager', 'finance'],
+        'manage_sales' => ['ceo', 'manager', 'finance'],
+        'manage_market' => ['ceo', 'manager', 'finance'],
+        'manage_devices' => ['ceo'],
+        'record_weights' => ['ceo', 'manager', 'caretaker'], // RBAC §4/§8.3: vet and feeding staff view weights only (a vet's checkup still records its own weight)
     ],
 
     // Demonstration assumption (Q-PB-2): the real value is confirmed by the veterinarians.

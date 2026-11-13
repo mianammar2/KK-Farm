@@ -62,7 +62,7 @@ class TmrTest extends TestCase
     {
         $maize = $this->feedItem('MZ', 9, 80, 100);
         $soy = $this->feedItem('SB', 44, 200, 30);
-        $vet = $this->user('vet');
+        $vet = $this->user('feeding'); // D-241: TMR formulas are drafted by feeding staff, owner and manager
 
         // Shares must add up to 100 %, and a TMR cannot be an ingredient.
         $this->actingAs($vet)->post('/feeding/tmr', ['name' => 'Grower TMR', 'code' => 'tmr-gr', 'lines' => [['feed_item_id' => $maize->id, 'pct' => 70], ['feed_item_id' => $soy->id, 'pct' => 20]]])->assertSessionHasErrors('lines');

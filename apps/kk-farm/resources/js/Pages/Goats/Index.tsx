@@ -1,3 +1,4 @@
+import { canOpen } from '../../lib/apps';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Download, LayoutGrid, List, Plus, Search } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
@@ -98,7 +99,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 actions={
                     <>
                         <a href="/goats/export" className="max-sm:hidden"><Button variant="secondary"><Download size={16} aria-hidden /> Export CSV</Button></a>
-                        <Button onClick={() => router.visit('/goats/register')}><Plus size={16} aria-hidden /> Register goat</Button>
+                        {canOpen('/goats/register') ? <Button onClick={() => router.visit('/goats/register')}><Plus size={16} aria-hidden /> Register goat</Button> : null}
                     </>
                 }
             />

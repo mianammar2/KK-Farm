@@ -25,6 +25,30 @@ use Illuminate\Support\Facades\DB;
 final class ActionCenter
 {
     /** @return list<array{key: string, label: string, severity: string, count: int, action: string, url: string, items: list<array{text: string, sub: ?string, url: ?string}>}> */
+    /** D-241 (RBAC §10): notification type => roles that receive it (always also needing the module and the page). */
+    public const ROUTES = [
+        // sick / on-watch goat, new health case
+        'dose_overdue' => ['ceo', 'manager', 'vet'], 'open_cases' => ['ceo', 'manager', 'vet', 'caretaker'], 'concerns' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'withdrawal' => ['ceo', 'manager', 'vet'],
+        // vaccination / checkup due
+        'care_overdue' => ['manager', 'vet', 'caretaker'], 'checkups_due' => ['manager', 'vet', 'caretaker'],
+        // medicine stock low / expiry
+        'medicine' => ['ceo', 'manager', 'vet'],
+        // pregnancy / kidding due, heat; breeding approval stays with the vet
+        'check_overdue' => ['ceo', 'manager', 'vet', 'caretaker'], 'edd_passed' => ['ceo', 'manager', 'vet', 'caretaker'], 'kidding_imminent' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'kidding_soon' => ['ceo', 'manager', 'vet', 'caretaker'], 'weaning' => ['ceo', 'manager', 'vet', 'caretaker'], 'breeding_approval' => ['ceo', 'manager', 'vet'],
+        // feeding due / ration changed; feed stock low
+        'feeding_missed' => ['manager', 'caretaker', 'feeding'], 'feed_over' => ['manager', 'caretaker', 'feeding'], 'ration_low_cp' => ['manager', 'feeding'],
+        'feed_low' => ['ceo', 'manager', 'feeding'],
+        // milking due / anomaly
+        'dry_off_due' => ['manager', 'vet', 'caretaker'],
+        // records, housing, devices, money
+        'removal_requests' => ['ceo', 'manager'], 'missing' => ['ceo', 'manager'], 'out_too_long' => ['ceo', 'manager', 'caretaker'],
+        'sensor_alerts' => ['ceo', 'manager'], 'devices_offline' => ['ceo'], 'unpaid' => ['ceo', 'manager', 'finance'],
+        // own / department tasks (the list itself is scoped)
+        'tasks_overdue' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'cleaning', 'finance'],
+    ];
+
     public static function items(User $user): array
     {
         $org = Tenant::org() ?? abort(404);
@@ -32,7 +56,10 @@ final class ActionCenter
         $todayIso = $today->toDateString();
         $out = [];
         $add = function (string $module, string $key, string $label, string $severity, string $action, string $url, Collection $rows) use (&$out, $user) {
-            if ($rows->isEmpty() || ! $user->canModule($module)) {
+            // D-241 (RBAC §10): only the roles the notification is for, with the module, and only when the link opens for them
+            [$path, $qs] = array_pad(explode('?', $url, 2), 2, '');
+            parse_str($qs, $query);
+            if ($rows->isEmpty() || ! $user->canModule($module) || ! in_array($user->role, self::ROUTES[$key] ?? ['ceo', 'manager'], true) || ! Pages::allows($user, $path, $query)) {
                 return;
             }
             $out[] = ['key' => $key, 'label' => $label, 'severity' => $severity, 'count' => $rows->count(), 'action' => $action, 'url' => $url, 'items' => $rows->take(5)->values()->all()];
@@ -180,7 +207,7 @@ final class ActionCenter
             $unpaid->map(fn ($e) => ['text' => $e->counterparty ?? $e->category, 'sub' => $e->category.' · PKR '.number_format((float) $e->amount).' · '.$e->occurred_on->format('j M').($e->payment_status === 'partial' ? ' · partly paid' : ''), 'url' => '/finance']));
 
         // ---- Tasks ----
-        $tasks = Task::whereIn('status', Task::OPEN)->where('due_on', '<', $todayIso)->orderBy('due_on')->get();
+        $tasks = Task::visibleTo($user)->whereIn('status', Task::OPEN)->where('due_on', '<', $todayIso)->orderBy('due_on')->get(); // D-241: own and department tasks only
         $add('tasks', 'tasks_overdue', 'Tasks overdue', 'warning', 'Finish or reassign the task.', '/tasks',
             $tasks->map(fn (Task $t) => ['text' => $t->title, 'sub' => 'due '.$t->due_on->format('j M'), 'url' => '/tasks']));
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { SharedProps } from '../../types';
 
-type Row = { key: string; label: string; role: boolean; own: boolean | null; effective: boolean; locked: boolean };
+type Row = { key: string; label: string; role: boolean; own: boolean | null; effective: boolean; locked: boolean; vetLocked?: boolean };
 type Props = {
     user: { id: number; name: string; login: string; role: string; active: boolean; department: number | null; me: boolean; lastLogin: string | null };
     modules: Row[]; gates: Row[]; departments: Array<{ id: number; name: string }>; canEdit: boolean;
@@ -32,8 +32,8 @@ export default function UserAccess(p: Props) {
             return (
                 <li key={r.key} className="flex items-center gap-2 border-b border-rule py-2 text-sm">
                     <input type="checkbox" className="size-4.5 accent-cobalt-800" disabled={!p.canEdit || r.locked || (u.me && r.key === 'settings')} checked={on} onChange={() => tick(kind, r)} aria-label={r.label} />
-                    <span className="flex-1">{r.label}</span>
-                    {r.locked ? <Lock size={13} className="text-ink-faint" aria-label="Locked" /> : own === null || own === undefined ? <span className="text-xs text-ink-faint">from role</span> : <Chip className={own ? 'bg-ok-100 text-ok-700' : 'bg-crit-100 text-crit-700'}>{own ? 'Given' : 'Refused'}</Chip>}
+                    <span className="flex-1">{r.label}{r.vetLocked ? <span className="ml-1.5 text-xs text-watch-700">vet-locked: tick only to give this one person the vet's right</span> : null}</span>
+                    {r.locked ? <Lock size={13} className="text-ink-faint" aria-label="Locked" /> : own === null || own === undefined ? <span className="text-xs text-ink-faint">from role</span> : <Chip className={own ? 'bg-ok-100 text-ok-700' : 'bg-crit-100 text-crit-700'}>Custom: {own ? 'given' : 'refused'}</Chip>}
                 </li>
             );
         })}</ul>
@@ -56,7 +56,7 @@ export default function UserAccess(p: Props) {
                     <p className="mt-2 text-xs text-ink-soft">Changing the role changes every box marked "from role" below.</p>
                 </Panel>
                 <Panel title="Apps" description="Tick to give, untick to take away. 'From role' follows Access Rights by Role.">{list('modules', p.modules)}</Panel>
-                <Panel title="Actions" description="Locked actions stay with the vet whatever is ticked.">{list('gates', p.gates)}</Panel>
+                <Panel title="Actions" description="Vet-locked actions follow the vet role; the administrator may give one to a single person here.">{list('gates', p.gates)}</Panel>
             </div>
             {p.canEdit ? (
                 <div className="sticky bottom-4 mt-4 flex justify-end gap-2">

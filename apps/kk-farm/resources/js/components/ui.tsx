@@ -1,3 +1,4 @@
+import { canOpen } from '../lib/apps';
 import { Link, usePage } from '@inertiajs/react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -196,8 +197,9 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; labe
     const group = useId();
     const { url } = usePage();
     // D-215: opened from an app menu (?solo=1), a section is its own page with no other tabs (D-218: no master page link).
-    const query = url.split('?')[1] ?? '';
+    const [path, query = ''] = url.split('?');
     const params = new URLSearchParams(query);
+    tabs = tabs.filter((t) => t.id === value || canOpen(`${path}?tab=${t.id}`)); // D-241: only tabs this person may open
     if (params.get('solo') && tabs.some((t) => t.id === value)) {
         const current = tabs.find((t) => t.id === value)!;
         return (

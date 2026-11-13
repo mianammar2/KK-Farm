@@ -30,7 +30,7 @@ type Props = {
     medicines: Medicine[]; medicineMoves: MedMove[]; medicineCategories: Record<string, string>; medicineUnits: Record<string, string>;
     medicineTypes: Record<string, { label: string; direction: number }>; medicineAlerts: number; canMedicine: boolean;
     calendar: CalendarRow[]; protocols: Protocol[]; applies: Record<string, string>; careTypes: Record<string, string>; // D-173
-    diseases: DiseaseRow[]; diseaseCategories: Record<string, string>; mortality: MortalityData; // D-174
+    diseases: DiseaseRow[]; diseaseCategories: Record<string, string>; mortality: MortalityData | null; // D-174; null when the tab is closed to this person (D-241)
 };
 
 const MED_STATUS: Record<Medicine['status'], { label: string; className: string }> = {
@@ -94,12 +94,12 @@ export default function Health(props: Props) {
                         { id: 'calendar', label: 'Vaccination Calendar', count: props.calendar.reduce((n, p) => n + p.goats.length, 0) || undefined },
                         { id: 'care', label: 'Preventive care', count: care.length },
                         { id: 'protocols', label: 'Protocols', count: props.protocols.length || undefined },
-                        { id: 'mortality', label: 'Mortality', count: props.mortality.rows.length || undefined },
+                        { id: 'mortality', label: 'Mortality', count: props.mortality?.rows.length || undefined },
                         { id: 'diseases', label: 'Disease Master' },
                         { id: 'store', label: 'Medicine store', count: props.medicineAlerts || undefined },
                     ]} />
                     {tab === 'store' ? <MedicineStore {...props} /> : null}
-                    {tab === 'mortality' ? <Mortality data={props.mortality} causes={props.diseases.filter((d) => d.active).map((d) => d.name)} isVet={isVet} /> : null}
+                    {tab === 'mortality' && props.mortality ? <Mortality data={props.mortality} causes={props.diseases.filter((d) => d.active).map((d) => d.name)} isVet={isVet} /> : null}
                     {tab === 'diseases' ? <DiseaseMaster diseases={props.diseases} categories={props.diseaseCategories} canEdit={isVet || auth?.role === 'ceo'} /> : null}
                     {tab === 'calendar' ? <CareCalendar calendar={props.calendar} isVet={isVet} /> : null}
                     {tab === 'protocols' ? <Protocols protocols={props.protocols} careTypes={props.careTypes} applies={props.applies} medicines={props.medicines} canEdit={isVet || auth?.role === 'ceo'} /> : null}

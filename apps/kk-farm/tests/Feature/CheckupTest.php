@@ -73,12 +73,13 @@ class CheckupTest extends TestCase
         $this->assertSame(['Temperature 105.1 °F (high)'], HealthCheckup::sole()->flags());
         $this->assertSame(['open', 'monitor'], [HealthRecord::sole()->status, $this->buck->fresh()->health_flag]);
 
-        // The administrator can open a case from a checkup, as the vet can; a caretaker cannot record checkups.
-        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 104.8, 'outcome' => 'sick', 'open_case' => true, 'condition' => 'Pneumonia', 'severity' => 'high'])->assertSessionHasNoErrors();
+        // D-241: opening a case is vet-locked.
+        $this->actingAs($this->user('vet'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 104.8, 'outcome' => 'sick', 'open_case' => true, 'condition' => 'Pneumonia', 'severity' => 'high'])->assertSessionHasNoErrors();
         $case = HealthCase::sole();
         $this->assertSame(['Pneumonia', 'high', 'sick'], [$case->condition, $case->severity, $this->doe->fresh()->health_flag]);
         $this->assertSame($case->id, HealthCheckup::where('animal_id', $this->doe->id)->sole()->health_case_id);
-        $this->actingAs($this->user('caretaker'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'healthy'])->assertForbidden();
+        $this->actingAs($this->user('caretaker'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'healthy'])->assertSessionHasNoErrors(); // D-241: caretakers do routine checkups
+        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'sick', 'open_case' => true, 'condition' => 'X'])->assertForbidden(); // vet-locked
         $this->actingAs($this->user('manager'))->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->toDateString(), 'outcome' => 'sick', 'open_case' => true, 'condition' => 'X'])->assertForbidden();
     }
 
@@ -128,10 +129,11 @@ class CheckupTest extends TestCase
         $this->actingAs($vet)->post('/health/checkups', ['animal_id' => $this->doe->id, 'checked_on' => now()->subDays(7)->toDateString(), 'ultrasound' => 'pregnant', 'days_pregnant' => 35, 'outcome' => 'healthy'])->assertSessionHasNoErrors();
 
         $this->actingAs($vet)->get('/scan?tag=E200SCAN01')->assertInertia(fn (AssertableInertia $p) => $p
-            ->where('result.goat.number', 'TD141026-01')->where('result.goat.pregnancyDay', 42)->where('result.goat.can.check', true)->where('result.goat.can.weigh', true));
+            ->where('result.goat.number', 'TD141026-01')->where('result.goat.pregnancyDay', 42)->where('result.goat.can.check', true)->where('result.goat.can.weigh', false)); // D-241: vets view weights only
         $this->actingAs($vet)->get("/goats/{$this->doe->id}?do=checkup")->assertInertia(fn (AssertableInertia $p) => $p
             ->where('healthEntry.goats.0.id', $this->doe->id)->where('healthEntry.canCheck', true)->where('healthEntry.goats.0.matedOn', now()->subDays(42)->toDateString()));
-        $this->actingAs($this->user('finance'))->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('healthEntry', null));
+        $this->actingAs($this->user('feeding'))->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('healthEntry', null));
+        $this->actingAs($this->user('finance'))->get("/goats/{$this->doe->id}")->assertForbidden(); // D-241: no goat register for finance
     }
 
     /** D-103: the kidding alert starts 10 days before (gestation 150), urgent in the last 3; a preparation task is made by itself. */

@@ -53,7 +53,11 @@ class StoresPurchaseSalesTest extends TestCase
         $this->assertSame('low', $row['status']); // 4 bales left, reorder at 5
 
         $this->actingAs($manager)->get('/inventory')->assertInertia(fn (AssertableInertia $p) => $p->has('overview', 1)->where('items.0.qty', 4));
-        $this->actingAs($this->user('caretaker'))->get('/inventory')->assertForbidden();
+        // D-241: each role sees its own store only
+        $this->actingAs($this->user('caretaker'))->get('/inventory')->assertInertia(fn (AssertableInertia $p) => $p->where('stores', ['store'])->has('items', 1));
+        $this->actingAs($this->user('vet'))->get('/inventory')->assertInertia(fn (AssertableInertia $p) => $p->where('stores', ['medicine'])->has('items', 0)->where('overview', fn ($o) => collect($o)->every(fn ($r) => $r['kind'] === 'medicine')));
+        $this->actingAs($this->user('caretaker'))->post('/inventory/moves', ['store_item_id' => $item->id, 'type' => 'issue', 'qty' => 1, 'moved_on' => now()->toDateString()])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('feeding'))->post('/inventory/moves', ['store_item_id' => $item->id, 'type' => 'issue', 'qty' => 1, 'moved_on' => now()->toDateString()])->assertForbidden();
     }
 
     public function test_a_received_purchase_order_puts_goods_in_every_store_and_is_owed_to_the_supplier(): void

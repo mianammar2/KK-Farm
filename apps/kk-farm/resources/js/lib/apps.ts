@@ -28,6 +28,7 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'dashboard', no: '01', label: 'Dashboard', art: 'mod-dashboard', modules: ['dashboard'], linked: ['livestock', 'breeding', 'veterinary', 'feeding', 'reports'], sections: [
         S('Overview', '/', 'Executive Dashboard'),
+        S('Overview', '/home', 'My Home'), // D-241: each role's own home
         S('Overview', '/dashboard/scorecard', 'CEO Scorecard'), // D-233
         S('Operations', '/actions', 'Alerts & Action Center'),
         S('Records', '/activity', 'Activity Log'),
@@ -309,13 +310,48 @@ export const APPS: ErpApp[] = [
     ] },
 ];
 
+/** D-241: the person's page rules (shared by the server), so a menu only lists pages the server will open. */
+type Rule = [string, Record<string, string> | null, boolean];
+let RULES: Rule[] = [];
+export const setPageRules = (rules: Rule[] | undefined) => { RULES = rules ?? []; };
+
+/** Same matching as App\Support\Pages::rule: exact path with the most matching query values, else the nearest parent path. */
+export function canOpen(href: string): boolean {
+    if (!RULES.length) return true;
+    const [main] = href.split('#');
+    const [rawPath, qs = ''] = main.split('?');
+    const path = `/${rawPath.replace(/^\/+|\/+$/g, '')}`;
+    const query = Object.fromEntries(new URLSearchParams(qs));
+    let best: Rule | null = null;
+    let score = -1;
+    for (const r of RULES) {
+        if (r[0] !== path) continue;
+        const q = r[1] ?? {};
+        if (Object.entries(q).every(([k, v]) => query[k] === v) && Object.keys(q).length > score) { best = r; score = Object.keys(q).length; }
+    }
+    if (best) return best[2];
+    if (path === '/') return true;
+    const parts = path.replace(/^\//, '').split('/');
+    while (parts.length > 1) {
+        parts.pop();
+        const parent = `/${parts.join('/')}`;
+        const r = RULES.find((x) => x[0] === parent && !x[1]);
+        if (r) return r[2];
+    }
+    return true;
+}
+
+/** An app's menu entries this person may open. */
+export const sectionsFor = (a: ErpApp) => a.sections.filter((s) => canOpen(s.href));
+
 /** D-215: a menu link to a ?tab= section opens it as its own page (no other tabs); see Tabs in ui.tsx. */
 export const menuHref = (href: string) => (href.includes('tab=') ? `${href}${href.includes('?') ? '&' : '?'}solo=1` : href);
 
 /** D-218: opening an app goes straight to its first page; the left menu lists the rest (no master page). */
-export const masterHref = (key: string) => { const a = APPS.find((x) => x.key === key); return a ? menuHref(a.sections[0].href) : '/apps'; };
+export const masterHref = (key: string) => { const a = APPS.find((x) => x.key === key); const first = a ? sectionsFor(a)[0] : undefined; return first ? menuHref(first.href) : '/apps'; };
 
-export const visibleApps = (modules: string[]) => APPS.filter((a) => a.modules.some((m) => modules.includes(m)));
+/** D-241: an app shows only when the person holds one of its modules and may open at least one of its pages (RBAC §8.1). */
+export const visibleApps = (modules: string[]) => APPS.filter((a) => a.modules.some((m) => modules.includes(m)) && sectionsFor(a).length > 0);
 
 /** Does this menu link point at the page being shown? Same path, and the same ?tab / ?show when the link has one. */
 export function isHere(href: string, url: string): boolean {
@@ -347,8 +383,8 @@ export function currentApp(url: string, modules: string[]): ErpApp | null {
     let last: string | null = null;
     try { last = sessionStorage.getItem(LAST); } catch { /* private mode */ }
     const base = (h: string) => h.split('#')[0].split('?')[0];
-    const owns = (a: ErpApp) => a.sections.some((x) => base(x.href) === path || (path.startsWith(`${base(x.href)}/`) && base(x.href) !== '/'));
+    const owns = (a: ErpApp) => sectionsFor(a).some((x) => base(x.href) === path || (path.startsWith(`${base(x.href)}/`) && base(x.href) !== '/'));
     const remembered = apps.find((a) => a.key === last);
     if (remembered && owns(remembered)) return remembered;
-    return apps.find((a) => a.sections.some((x) => isHere(x.href, url))) ?? apps.find(owns) ?? null;
+    return apps.find((a) => sectionsFor(a).some((x) => isHere(x.href, url))) ?? apps.find(owns) ?? null;
 }

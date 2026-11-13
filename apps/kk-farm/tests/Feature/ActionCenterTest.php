@@ -83,7 +83,7 @@ class ActionCenterTest extends TestCase
         $items = $this->items('ceo');
         $this->assertSame(['SICK-1'], array_column($items['dose_overdue']['items'], 'text'));
         $this->assertSame('critical', $items['open_cases']['severity'], 'a high-severity case is urgent');
-        $this->assertSame(['VAC-1'], array_column($items['care_overdue']['items'], 'text'), 'a vaccine redone since is not overdue');
+        $this->assertSame(['VAC-1'], array_column($this->items('manager')['care_overdue']['items'], 'text'), 'a vaccine redone since is not overdue (D-241: vaccination due goes to the manager, vet and caretaker)');
         $this->assertSame(['SICK-1'], array_column($items['withdrawal']['items'], 'text'));
         $this->assertSame(['DOE-1'], array_column($items['check_overdue']['items'], 'text'));
         $this->assertSame(['DOE-2'], array_column($items['edd_passed']['items'], 'text'));
@@ -100,10 +100,13 @@ class ActionCenterTest extends TestCase
         $sick = $this->goat('SICK-1');
         HealthCase::create(['case_no' => 1, 'animal_id' => $sick->id, 'onset_on' => now(), 'condition' => 'X', 'severity' => 'low', 'recorded_by' => 'x']);
         Task::create(['title' => 'Late task', 'type' => 'other', 'due_on' => now()->subDay(), 'priority' => 'medium', 'status' => 'open']);
+        $this->assertArrayNotHasKey('tasks_overdue', $this->items('finance'), 'D-241: finance never gets other departments\' tasks');
+        $fin = \App\Models\Department::firstOrCreate(['name' => 'Finance']);
+        Task::create(['title' => 'Pay the feed bill', 'type' => 'other', 'department_id' => $fin->id, 'due_on' => now()->subDay(), 'priority' => 'medium', 'status' => 'open']);
 
         $finance = $this->items('finance');
         $this->assertArrayNotHasKey('open_cases', $finance);
-        $this->assertArrayHasKey('tasks_overdue', $finance);
+        $this->assertSame(['Pay the feed bill'], array_column($finance['tasks_overdue']['items'], 'text'));
         $this->assertArrayHasKey('open_cases', $this->items('vet'));
     }
 

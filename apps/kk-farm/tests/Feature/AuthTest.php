@@ -33,7 +33,7 @@ class AuthTest extends TestCase
     {
         $user = $this->account('ali');
 
-        $this->post('/login', ['login' => 'ALI', 'password' => 'correct-horse'])->assertRedirect('/apps'); // D-168: login lands on the app launcher
+        $this->post('/login', ['login' => 'ALI', 'password' => 'correct-horse'])->assertRedirect('/home'); // D-241: login lands on the role's home; was D-168: login lands on the app launcher
         $this->assertAuthenticatedAs($user);
         $this->assertNotNull($user->fresh()->last_login_at);
     }
@@ -65,7 +65,8 @@ class AuthTest extends TestCase
         $this->post('/login', ['login' => 'ali', 'password' => 'correct-horse'])->assertSessionHasErrors('login');
 
         $user->forceFill(['active' => true])->save();
-        $this->actingAs($user)->get('/')->assertOk();
+        $this->actingAs($user)->get('/')->assertRedirect('/home'); // D-241: a caretaker lands on their own home
+        $this->actingAs($user)->get('/home')->assertOk();
         $user->forceFill(['active' => false])->save();
         $this->actingAs($user->fresh())->get('/')->assertRedirect('/login');
     }
@@ -78,7 +79,7 @@ class AuthTest extends TestCase
         $this->assertGuest();
 
         config(['kkfarm.demo_login' => true]); // allowed only because the environment is "testing"
-        $this->post('/login', ['role' => 'ceo'])->assertRedirect('/apps');
+        $this->post('/login', ['role' => 'ceo'])->assertRedirect('/');
         $this->assertAuthenticated();
     }
 
@@ -93,7 +94,7 @@ class AuthTest extends TestCase
         $this->post('/login', ['login' => 'dr.sana', 'password' => 'temporary1'])->assertRedirect('/account/password');
         $this->get('/health')->assertRedirect('/account/password');
 
-        $this->post('/account/password', ['current_password' => 'temporary1', 'password' => 'my-own-pass', 'password_confirmation' => 'my-own-pass'])->assertRedirect('/apps');
+        $this->post('/account/password', ['current_password' => 'temporary1', 'password' => 'my-own-pass', 'password_confirmation' => 'my-own-pass'])->assertRedirect('/home');
         $this->assertFalse($vet->fresh()->must_change_password);
         $this->assertTrue(Hash::check('my-own-pass', $vet->fresh()->password));
         $this->get('/health')->assertOk();

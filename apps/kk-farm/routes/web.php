@@ -89,7 +89,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/environment/issues/{issue}/health-check', [\App\Http\Controllers\EnvironmentController::class, 'healthCheck']);
     });
     // D-194: journey E Sale-to-Cash & Exit
-    Route::middleware('module:goats')->group(function (): void { // D-203: sales plans, vet / caretakers check fitness, the crew checks on the road
+    Route::middleware('module:goats,sales')->group(function (): void { // D-203: sales plans, vet / caretakers check fitness, the crew checks on the road; D-241: finance plans trips without the goat register
         Route::get('/transport', [\App\Http\Controllers\TransportController::class, 'index']); // D-203
         Route::post('/transport/vehicles', [\App\Http\Controllers\TransportController::class, 'vehicle']);
         Route::post('/transport/vehicles/{vehicle}', [\App\Http\Controllers\TransportController::class, 'vehicle']);
@@ -227,6 +227,7 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/actions', \App\Http\Controllers\ActionCenterController::class)->middleware('module:dashboard'); // D-077
     Route::delete('/masters/{type}/{id}', [\App\Http\Controllers\MasterController::class, 'destroy'])->where('type', '[a-z-]+'); // D-240: delete on every master list
+    Route::get('/home', \App\Http\Controllers\HomeController::class); // D-241: each role's own home
     Route::get('/dashboard/scorecard', \App\Http\Controllers\ScorecardController::class)->middleware('module:dashboard'); // D-233
     Route::get('/dashboard/weight-change', \App\Http\Controllers\WeightChangeController::class)->middleware('module:dashboard'); // D-216
     Route::get('/activity', \App\Http\Controllers\ActivityController::class)->middleware('module:dashboard'); // D-122

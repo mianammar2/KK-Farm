@@ -25,8 +25,11 @@ export type GoatCard = {
     tag?: string | null;
 };
 
+/** D-241: [path, query or null, may open] */
+export type PageRule = [string, Record<string, string> | null, boolean];
 export type SharedProps = {
-    auth: { name: string; role: string; roleLabel: string; modules: string[]; gates: string[] } | null;
+    auth: { name: string; role: string; roleLabel: string; modules: string[]; gates: string[]; pages: PageRule[] } | null;
+    home: string;
     roles: Record<string, string>;
     demo: boolean;
     demoLogin: boolean;

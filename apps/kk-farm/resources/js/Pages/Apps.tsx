@@ -1,7 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { ArtIcon } from '../components/ArtIcon';
-import { masterHref, rememberApp, visibleApps } from '../lib/apps';
+import { masterHref, rememberApp, setPageRules, visibleApps } from '../lib/apps';
 import type { SharedProps } from '../types';
 
 /** Notes from the Action Center feed (same as the bell). */
@@ -23,6 +23,7 @@ export default function Apps() {
     }, []);
 
     // D-170: the 16 KK Farms apps (and Settings for administrators); search also finds an app by its menu items.
+    setPageRules(auth?.pages);
     const apps = useMemo(() => visibleApps(auth?.modules ?? []), [auth]);
     const badge = (key: string) => (key === 'dashboard' && notes?.length ? { n: notes.length, urgent: notes.some((x) => x.severity === 'critical') } : null);
 

@@ -25,7 +25,9 @@ class EligibilityTest extends TestCase
     {
         $this->withoutVite();
         Tenant::set(Organization::create(['name' => 'Elig Farm', 'slug' => 'elig-farm'])->id);
-        $manager = User::create(['email' => 'm@elig.test', 'name' => 'Manager', 'password' => 'x', 'role' => 'manager', 'org_id' => Tenant::current(), 'active' => true]);
+        // D-241: approving goats for breeding (and its rules) is vet-locked; the manager only views
+        $manager = User::create(['email' => 'm@elig.test', 'name' => 'Vet', 'password' => 'x', 'role' => 'vet', 'org_id' => Tenant::current(), 'active' => true]);
+        $realManager = User::create(['email' => 'mm@elig.test', 'name' => 'Manager', 'password' => 'x', 'role' => 'manager', 'org_id' => Tenant::current(), 'active' => true]);
         $caretaker = User::create(['email' => 'c@elig.test', 'name' => 'Care', 'password' => 'x', 'role' => 'caretaker', 'org_id' => Tenant::current(), 'active' => true]);
         $mc = Breed::create(['name' => 'Makhi Cheeni']);
         $goat = function (string $tag, string $sex, int $months, ?float $kg, array $more = []) use ($mc) {
@@ -62,6 +64,8 @@ class EligibilityTest extends TestCase
 
         // Only an authorised person approves, and only after confirming the exam and the line.
         $this->actingAs($caretaker)->post("/breeding/eligibility/{$uc03->id}", ['decision' => 'approved', 'repro_exam_passed' => true, 'genetics_approved' => true])->assertForbidden();
+        $this->actingAs($realManager)->post("/breeding/eligibility/{$uc03->id}", ['decision' => 'approved', 'repro_exam_passed' => true, 'genetics_approved' => true])->assertForbidden();
+        $this->actingAs($realManager)->get('/breeding/eligibility')->assertOk();
         $this->actingAs($manager)->post("/breeding/eligibility/{$uc03->id}", ['decision' => 'approved'])->assertSessionHasErrors('repro_exam_passed');
         $this->actingAs($manager)->post("/breeding/eligibility/{$uc03->id}", ['decision' => 'approved', 'repro_exam_passed' => true, 'genetics_approved' => true])->assertSessionHasNoErrors();
         $uc03->refresh();

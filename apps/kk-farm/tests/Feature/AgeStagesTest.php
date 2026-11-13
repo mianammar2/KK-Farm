@@ -93,6 +93,6 @@ class AgeStagesTest extends TestCase
         $this->actingAs($vet)->post("/goats/{$goat->id}/teeth", ['teeth' => 'T08', 'dental_condition' => 'broken'])->assertSessionHasNoErrors();
         $this->assertSame([['T08', 'broken'], ['T08', 'worn'], ['T08', 'broken'], ['T04', 'normal']], $goat->fresh()->dentalExams->map(fn ($e) => [$e->dental_code, $e->condition])->all());
         $this->actingAs($vet)->get("/goats/{$goat->id}")->assertInertia(fn ($p) => $p->where('goat.dental.code', 'T08')->where('goat.dental.condition', 'Broken')->has('goat.dental.history', 4));
-        $this->actingAs($vet)->get('/')->assertInertia(fn ($p) => $p->where('herdAge.teeth', fn ($t) => collect($t)->firstWhere('code', 'T08')['total'] === 1));
+        $this->actingAs(User::create(['email' => 'o@exam.test', 'name' => 'Owner', 'password' => 'x', 'role' => 'ceo', 'org_id' => Tenant::current(), 'active' => true]))->get('/')->assertInertia(fn ($p) => $p->where('herdAge.teeth', fn ($t) => collect($t)->firstWhere('code', 'T08')['total'] === 1));
     }
 }

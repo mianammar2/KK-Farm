@@ -20,11 +20,15 @@ class InventoryController extends Controller
     public function index(Request $request): Response
     {
         $qty = Stores::generalQty();
+        // D-241 (RBAC §4): inventory is scoped by store: vet → medicine, feeding → feed, caretaker and cleaning → general store
+        $stores = Stores::visibleTo($request->user());
+        $general = in_array('store', $stores, true);
 
         return Inertia::render('Inventory', [
-            'overview' => Stores::overview(),
-            'moves' => Stores::recentMoves(),
-            'items' => StoreItem::orderByDesc('active')->orderBy('name')->get()->map(fn (StoreItem $i) => [
+            'overview' => collect(Stores::overview())->whereIn('kind', $stores)->values(),
+            'moves' => collect(Stores::recentMoves())->whereIn('kind', $stores)->values(),
+            'stores' => $stores,
+            'items' => ! $general ? [] : StoreItem::orderByDesc('active')->orderBy('name')->get()->map(fn (StoreItem $i) => [
                 'id' => $i->id, 'code' => $i->code, 'name' => $i->name, 'category' => $i->category, 'unit' => $i->unit, 'reorder' => $i->reorder_level, 'cost' => $i->cost_per_unit_minor / 100,
                 'active' => $i->active, 'notes' => $i->notes, 'qty' => (float) ($qty[$i->id] ?? 0), 'status' => Stores::status((float) ($qty[$i->id] ?? 0), $i->reorder_level),
             ]),

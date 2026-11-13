@@ -54,7 +54,7 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now()])->save();
 
-        return $user->must_change_password ? redirect('/account/password') : redirect()->intended('/apps');
+        return $user->must_change_password ? redirect('/account/password') : redirect()->intended(\App\Support\Pages::home($user)); // D-241: each role's home (RBAC §6)
     }
 
     private function demo(Request $request): RedirectResponse
@@ -68,7 +68,7 @@ class AuthController extends Controller
             ->firstOrFail());
         $request->session()->regenerate();
 
-        return redirect('/apps'); // D-168
+        return redirect(\App\Support\Pages::home(Auth::user())); // D-241: each role's home (RBAC §6)
     }
 
     public function logout(Request $request): RedirectResponse
@@ -95,6 +95,6 @@ class AuthController extends Controller
         $request->user()->forceFill(['password' => Hash::make($data['password']), 'must_change_password' => false])->save();
         $request->session()->regenerate();
 
-        return redirect('/apps')->with('success', 'Password changed.');
+        return redirect(\App\Support\Pages::home($request->user()))->with('success', 'Password changed.');
     }
 }

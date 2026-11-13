@@ -15,7 +15,8 @@ use App\Models\User;
  */
 class Access
 {
-    public const PROTECTED_GATES = ['clinical', 'approve_feeding_plan'];
+    /** D-241: vet-locked (RBAC §5 🔒): fixed for roles; only a per-person grant by the administrator adds someone. */
+    public const PROTECTED_GATES = ['clinical', 'open_cases', 'approve_breeding'];
 
     public const MODULE_LABELS = [
         'dashboard' => 'Dashboard', 'goats' => 'Livestock (goat register)', 'scan' => 'Fieldwork & RFID scan', 'breeding' => 'Breeding & Maternity', 'health' => 'Veterinary',
@@ -26,7 +27,7 @@ class Access
     ];
 
     public const GATE_LABELS = [
-        'clinical' => 'Diagnose and treat', 'approve_feeding_plan' => 'Approve feeding plans', 'exit_animal' => 'Record goats leaving the farm', 'assign_tags' => 'Assign RFID tags',
+        'clinical' => 'Diagnose and treat', 'approve_feeding_plan' => 'Approve feeding plans', 'exit_animal' => 'Record goats leaving the farm', 'record_weights' => 'Record weights', 'assign_tags' => 'Assign RFID tags',
         'manage_sheds' => 'Add sheds and pens', 'manage_feed_store' => 'Feed store items and stock', 'plan_rations' => 'Draft rations', 'manage_general_store' => 'General store',
         'manage_purchase' => 'Suppliers and purchase orders', 'manage_sales' => 'Customers and sales', 'manage_medicine_store' => 'Medicine store', 'manage_devices' => 'Devices and keys',
         'edit_goats' => 'Edit goat details', 'remove_goats' => 'Remove or restore goat entries', 'health_checkup' => 'Routine health checkups', 'manage_market' => 'Market rates',
@@ -81,14 +82,25 @@ class Access
 
     public static function gate(User $u, string $gate): bool
     {
-        if (in_array($gate, self::PROTECTED_GATES, true)) {
-            return in_array($u->role, config("kkfarm.gates.$gate", []), true);
-        }
         $own = $u->gate_access[$gate] ?? null;
+        if (in_array($gate, self::PROTECTED_GATES, true)) {
+            return $own !== null ? (bool) $own : in_array($u->role, config("kkfarm.gates.$gate", []), true);
+        }
         if ($own !== null) {
             return (bool) $own;
         }
 
         return in_array($u->role, self::roleGates($u->org_id)[$gate] ?? [], true);
+    }
+
+    /** D-241 (RBAC §11): which apps a person gains and loses when their role changes (their own ticks stay). */
+    public static function roleDiff(\App\Models\User $u, string $to): array
+    {
+        $mods = self::roleModules($u->org_id);
+        $has = fn (string $role) => collect($mods)->filter(fn ($roles, $m) => ($u->module_access[$m] ?? null) ?? in_array($role, $roles, true))->keys();
+        [$before, $after] = [$has($u->role), $has($to)];
+        $label = fn ($m) => self::MODULE_LABELS[$m] ?? $m;
+
+        return ['gain' => $after->diff($before)->map($label)->values()->all(), 'lose' => $before->diff($after)->map($label)->values()->all()];
     }
 }

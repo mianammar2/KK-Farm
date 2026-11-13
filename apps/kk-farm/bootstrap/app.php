@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [EnsureActiveAccount::class, SetTenant::class, HandleInertiaRequests::class]);
+        $middleware->web(append: [EnsureActiveAccount::class, SetTenant::class, HandleInertiaRequests::class, \App\Http\Middleware\EnsurePage::class]); // D-241: page access
         // The tenant must be bound before route-model binding resolves {animal} etc. (D-037).
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: SetTenant::class);
         $middleware->alias(['module' => EnsureModule::class]);
@@ -29,6 +29,14 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
         $exceptions->respond(function ($response, $e, Request $request) {
+            // D-241 (RBAC §5, §13.10): every refused request is written to the activity log for the administrator
+            if ($response->getStatusCode() === 403 && ($u = $request->user())) {
+                try {
+                    \App\Support\Farm::log($u, "Access refused: {$request->method()} {$request->getRequestUri()}", null, 'security');
+                } catch (\Throwable) {
+                    // never let the audit entry hide the 403
+                }
+            }
             if (in_array($response->getStatusCode(), [403, 404], true) && ! $request->expectsJson()) {
                 return Inertia::render('Error', ['status' => $response->getStatusCode()])
                     ->toResponse($request)->setStatusCode($response->getStatusCode());

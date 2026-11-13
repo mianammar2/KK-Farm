@@ -1,7 +1,7 @@
 import BrandMark from './BrandMark';
 import NotificationBell from './NotificationBell';
 import { ArtIcon, NavIcon } from './ArtIcon';
-import { APPS, currentApp, GROUPS, isHere, masterHref, menuHref, rememberApp, type ErpApp } from '../lib/apps';
+import { canOpen, currentApp, GROUPS, isHere, masterHref, menuHref, rememberApp, sectionsFor, setPageRules } from '../lib/apps';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
@@ -69,10 +69,11 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
     // D-170: inside an app, only that app's sections and the apps its records link to (Odoo style).
     const app = currentApp(url, modules);
     if (app) {
-        const here = app.sections.findIndex((x) => isHere(x.href, url));
-        const samePath = app.sections.findIndex((x) => x.href.split('#')[0].split('?')[0] === path);
+        const here = sectionsFor(app).findIndex((x) => isHere(x.href, url));
+        const samePath = sectionsFor(app).findIndex((x) => x.href.split('#')[0].split('?')[0] === path);
         const active = here >= 0 ? here : samePath;
-        const linked = app.linked.map((k) => APPS.find((x) => x.key === k)).filter((x): x is ErpApp => !!x && x.modules.some((m) => modules.includes(m)));
+        // D-241: RBAC §8.1: no Linked Apps; other apps are reached from All Apps only. Only pages this person may open.
+        const sections = sectionsFor(app);
         return (
             <nav aria-label={`${app.label} menu`} className="mt-4 flex-1 overflow-y-auto px-2 pb-4">
                 <Link href="/apps" onClick={onNavigate} className="mb-3 flex min-h-10 items-center gap-2 rounded-tile px-2.5 text-sm font-semibold text-cobalt-200 hover:bg-cobalt-800 hover:text-white">
@@ -83,7 +84,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                     <span className="min-w-0 text-base leading-tight font-bold text-white">{app.label}</span>
                 </Link>
                 {GROUPS.map((g) => {
-                    const items = app.sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
+                    const items = sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
                     if (!items.length) return null;
                     return (
                         <div key={g} className="mt-3 first:mt-1">
@@ -102,28 +103,13 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                         </div>
                     );
                 })}
-                {linked.length ? (
-                    <div className="mt-5 border-t border-white/10 pt-3">
-                        <div className="px-2.5 pb-1.5 text-[11px] font-semibold tracking-wide text-cobalt-200/80 uppercase">Linked Apps</div>
-                        <ul className="space-y-0.5">
-                            {linked.map((l) => (
-                                <li key={l.key}>
-                                    <Link href={masterHref(l.key)} prefetch onClick={() => { rememberApp(l.key); onNavigate?.(); }} className="flex min-h-10 items-center gap-2.5 rounded-tile px-2.5 py-1.5 text-sm font-medium text-cobalt-100 hover:bg-cobalt-800">
-                                        <ArtIcon name={l.art} size={26} />
-                                        {l.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                ) : null}
             </nav>
         );
     }
     return (
         <nav aria-label="Main" className="mt-5 flex-1 space-y-5 overflow-y-auto px-2 pb-4">
             {NAV.map((group) => {
-                const items = group.items.filter((item) => modules.includes(item.module));
+                const items = group.items.filter((item) => modules.includes(item.module) && canOpen(item.href)); // D-241
                 if (!items.length) {
                     return null;
                 }
@@ -205,6 +191,7 @@ function RoleSwitcher({ auth, roles, compact }: { auth: NonNullable<SharedProps[
 export default function AppShell({ children }: { children: ReactNode }) {
     const page = usePage<SharedProps>();
     const { auth, roles, flash } = page.props;
+    setPageRules(auth?.pages); // D-241: menus follow the same page rules as the server
     const [drawer, setDrawer] = useState(false);
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState<string | null>(null);
@@ -277,7 +264,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     <LayoutGrid size={20} />
                 </Link>
                 {home ? <Link href="/apps" className="shrink-0"><BrandMark size={40} /></Link> : null}
-                {home ? null : ( // the home screen keeps only its app search
+                {home || !auth?.modules.includes('goats') ? null : ( // D-241: no goat search for roles without the goat register (RBAC §2.3)
                     <form onSubmit={submitSearch} className="relative min-w-0 flex-1 sm:max-w-sm" role="search">
                         <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint" />
                         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search goats" aria-label="Search goats by number, name or tag" className="field pl-9" />

@@ -74,7 +74,7 @@ class AccessController extends Controller
             'modules' => collect(Access::MODULE_LABELS)->map(fn ($label, $m) => ['key' => $m, 'label' => $label, 'role' => in_array($u->role, $roleModules[$m] ?? [], true),
                 'own' => $u->module_access[$m] ?? null, 'effective' => $u->canModule($m), 'locked' => $m === 'settings' && $u->role === 'ceo'])->values(),
             'gates' => collect(Access::GATE_LABELS)->map(fn ($label, $g) => ['key' => $g, 'label' => $label, 'role' => in_array($u->role, $roleGates[$g] ?? [], true),
-                'own' => $u->gate_access[$g] ?? null, 'effective' => $u->passes($g), 'locked' => in_array($g, Access::PROTECTED_GATES, true)])->values(),
+                'own' => $u->gate_access[$g] ?? null, 'effective' => $u->passes($g), 'locked' => false, 'vetLocked' => in_array($g, Access::PROTECTED_GATES, true)])->values(), // D-241: the administrator may grant a vet-locked action to one person
             'departments' => Department::orderBy('name')->get(['id', 'name']),
             'canEdit' => $request->user()->role === 'ceo',
         ]);
@@ -91,7 +91,7 @@ class AccessController extends Controller
         if ($u->role === 'ceo') {
             unset($modules['settings']);
         }
-        $gates = $keep($data['gates'] ?? [], array_diff(array_keys(config('kkfarm.gates')), Access::PROTECTED_GATES));
+        $gates = $keep($data['gates'] ?? [], array_keys(config('kkfarm.gates'))); // D-241: vet-locked actions too, per person, by the administrator only
         $u->forceFill(['module_access' => $modules ?: null, 'gate_access' => $gates ?: null])->save();
         Farm::log($request->user(), "Changed access rights of {$u->name}", "/settings/users/{$u->id}");
 

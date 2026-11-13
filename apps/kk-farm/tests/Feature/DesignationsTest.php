@@ -60,7 +60,7 @@ class DesignationsTest extends TestCase
         $buck->update(['animal_class' => 'breeding_male']);
         $this->assertSame('wether', $buck->fresh()->animal_class);
 
-        $this->actingAs($vet)->get('/')->assertInertia(fn ($p) => $p->where('herdAge.roles', fn ($r) => collect($r)->firstWhere('code', 'WTH')['total'] === 1 && collect($r)->firstWhere('code', 'PD')['main'] === false));
+        $this->actingAs(User::create(['email' => 'o@role.test', 'name' => 'Owner', 'password' => 'x', 'role' => 'ceo', 'org_id' => Tenant::current(), 'active' => true]))->get('/')->assertInertia(fn ($p) => $p->where('herdAge.roles', fn ($r) => collect($r)->firstWhere('code', 'WTH')['total'] === 1 && collect($r)->firstWhere('code', 'PD')['main'] === false));
         $this->actingAs($vet)->get("/goats/{$doe->id}")->assertInertia(fn ($p) => $p->where('roleLabels', ['BD' => 'Breeding Doe', 'PD' => 'Proven Dam', 'DD' => 'Dairy Doe'])->where('castration', null));
         $this->actingAs($vet)->get('/goats?show=role_PD')->assertInertia(fn ($p) => $p->where('showLabels.role_PD', 'PD · Proven Dam'));
     }

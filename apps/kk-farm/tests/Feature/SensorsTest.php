@@ -59,7 +59,7 @@ class SensorsTest extends TestCase
     /** Add a device through the page; returns [device, key]. */
     private function device(string $type, ?Pen $pen = null, array $settings = []): array
     {
-        $this->actingAs($this->user('manager'))->post('/sensors/devices', ['name' => "Test $type", 'type' => $type, 'pen_id' => $pen?->id, 'settings' => $settings])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->post('/sensors/devices', ['name' => "Test $type", 'type' => $type, 'pen_id' => $pen?->id, 'settings' => $settings])->assertSessionHasNoErrors();
         $key = session('device_key')['key'];
         auth()->logout();
 
@@ -93,7 +93,7 @@ class SensorsTest extends TestCase
         $this->assertSame(['weight_loss', 'warning', $this->goat->id], [$alert->kind, $alert->severity, $alert->animal_id]);
         $task = Task::findOrFail($alert->task_id);
         $this->assertSame(['health', 'high', 'Veterinary'], [$task->type, $task->priority, Department::find($task->department_id)->name]);
-        $this->assertSame(['G-1 lost 12.5% of its weight'], array_column(collect(ActionCenter::items($this->user('vet')))->firstWhere('key', 'sensor_alerts')['items'], 'text'));
+        $this->assertSame(['G-1 lost 12.5% of its weight'], array_column(collect(ActionCenter::items($this->user('ceo')))->firstWhere('key', 'sensor_alerts')['items'], 'text')); // D-241: the vet gets the task, not the device feed
 
         $this->send($key, [$this->reading('weight_kg', 50, ['rfid' => 'FFFF'])])->assertJson(['results' => ['unknown tag']]);
         $this->assertSame(1, SensorAlert::where('kind', 'unknown_tag')->count());
@@ -105,13 +105,15 @@ class SensorsTest extends TestCase
         $this->send('kkd_wrong', [$this->reading('weight_kg', 40)])->assertStatus(401);
         $this->withHeader('Authorization', "Bearer $key")->getJson('/api/v1/ping')->assertOk()->assertJson(['device' => 'SCL-01']);
 
-        $this->actingAs($this->user('manager'))->post("/sensors/devices/{$scale->id}/key")->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post("/sensors/devices/{$scale->id}/key")->assertForbidden(); // D-241: devices and keys are the administrator's
+        $this->actingAs($this->user('ceo'))->post("/sensors/devices/{$scale->id}/key")->assertSessionHasNoErrors();
         $newKey = session('device_key')['key'];
         $this->send($key, [$this->reading('weight_kg', 40)])->assertStatus(401);
         $this->send($newKey, [$this->reading('weight_kg', 40)])->assertOk();
 
-        $this->actingAs($this->user('vet'))->post('/sensors/devices', ['name' => 'X', 'type' => 'camera'])->assertForbidden();
-        $this->actingAs($this->user('vet'))->get('/sensors')->assertOk();
+        $this->actingAs($this->user('manager'))->post('/sensors/devices', ['name' => 'X', 'type' => 'camera'])->assertForbidden();
+        $this->actingAs($this->user('manager'))->get('/sensors')->assertOk(); // D-241: the manager views device status; the vet no longer opens Sensors
+        $this->actingAs($this->user('vet'))->get('/sensors')->assertForbidden();
         $this->actingAs($this->user('caretaker'))->get('/sensors')->assertForbidden();
     }
 

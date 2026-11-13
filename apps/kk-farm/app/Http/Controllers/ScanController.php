@@ -43,7 +43,7 @@ class ScanController extends Controller
 
             // The scan starts the goat register when there is nothing to show (D-040): a tag the farm has never seen,
             // or one that was never used on any goat.
-            if (! $tag || (! $open && $past->isEmpty() && $tag->status !== 'lost')) {
+            if ((! $tag || (! $open && $past->isEmpty() && $tag->status !== 'lost')) && \App\Support\Pages::allows($request->user(), '/goats/register')) { // D-241: only roles that register goats
                 return redirect('/goats/register?epc='.urlencode($code));
             }
 
@@ -53,7 +53,7 @@ class ScanController extends Controller
                 'goat' => $open ? $open->animal->card() + ['withdrawal' => \App\Support\Withdrawal::summary($open->animal),
                     // D-102: what the scan pop-up offers, and her day of pregnancy
                     'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($open->animal, now()->toDateString()),
-                    'can' => ['health' => $request->user()->canModule('health'), 'check' => $request->user()->passes('health_checkup'), 'weigh' => $request->user()->canModule('weights'), 'move' => $request->user()->canModule('sheds')]] : null,
+                    'can' => ['health' => $request->user()->canModule('health'), 'check' => $request->user()->passes('health_checkup'), 'weigh' => $request->user()->passes('record_weights'), 'move' => $request->user()->canModule('sheds')]] : null,
                 'since' => $open?->valid_from->format('j M Y'),
                 'history' => $past->map(fn (RfidAssignment $a) => ['id' => $a->animal_id, 'number' => $a->animal->farm_number, 'to' => $a->valid_to?->format('j M Y'), 'reason' => $a->reason_unassigned])->values(),
             ];

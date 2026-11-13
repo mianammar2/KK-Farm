@@ -56,6 +56,7 @@ class WeightController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->passes('record_weights'), 403, 'Your role views weights only.'); // D-241 (RBAC §4)
         $data = $request->validate([
             'animal_id' => ['required', 'exists:animals,id'], 'weight_kg' => ['required', 'numeric', 'min:0.5', 'max:200'], 'measured_on' => ['nullable', 'date', 'before_or_equal:today'],
             'body_score' => ['nullable', 'integer', 'between:1,5'], 'height_in' => ['nullable', 'numeric', 'between:4,80'], // D-078

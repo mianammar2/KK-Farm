@@ -118,13 +118,13 @@ class MilkingTest extends TestCase
             $this->milk($on, 'evening', 1.0)->assertSessionHasNoErrors();
         }
         // 7-day average: (2.6 + 2.8) ÷ 2 days = 2.7 L a day.
-        $this->actingAs($this->user('vet'))->post('/milking/settings', ['high_yield_litres' => 2.5, 'dry_off_days' => 200])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/milking/settings', ['high_yield_litres' => 2.5, 'dry_off_days' => 200])->assertSessionHasNoErrors();
         Tenant::flush();
         $this->assertSame('High-Producing Lactating Female', Feed::standardFor($this->doe->fresh(), 40)->name);
 
         $l = Lactation::sole();
         $this->actingAs($this->user('caretaker'))->post("/milking/lactations/{$l->id}/dry-off", ['dried_on' => '2026-11-10', 'reason' => 'end'])->assertForbidden();
-        $this->actingAs($this->user('vet'))->post("/milking/lactations/{$l->id}/dry-off", ['dried_on' => '2026-11-10', 'reason' => 'low_yield'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post("/milking/lactations/{$l->id}/dry-off", ['dried_on' => '2026-11-10', 'reason' => 'low_yield'])->assertSessionHasNoErrors();
         Tenant::flush();
         $doe = $this->doe->fresh();
         $this->assertSame(['dry', 'Low milk yield'], [$doe->repro_status, $l->fresh()->dry_reason]);
@@ -135,7 +135,7 @@ class MilkingTest extends TestCase
         $this->doe->update(['repro_status' => 'pregnant']);
         Mating::create(['dam_id' => $this->doe->id, 'mated_on' => '2026-06-12', 'expected_kidding_on' => '2026-11-09', 'status' => 'pregnant', 'method' => 'natural', 'recorded_by' => 'x']);
         $m = Mating::where('status', 'pregnant')->sole();
-        $this->actingAs($this->user('vet'))->post("/milking/lactations/{$l->id}/dry-off", ['dried_on' => '2026-11-10', 'reason' => 'end'])->assertStatus(422);
+        $this->actingAs($this->user('manager'))->post("/milking/lactations/{$l->id}/dry-off", ['dried_on' => '2026-11-10', 'reason' => 'end'])->assertStatus(422);
         $this->actingAs($this->user('vet'))->post("/breeding/matings/{$m->id}/kidding", ['alive' => 1, 'stillborn' => 0, 'females' => 0, 'kidded_on' => '2026-11-10'])->assertSessionHasNoErrors();
         $this->assertSame(2, Lactation::open()->sole()->number);
     }
