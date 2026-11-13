@@ -24,6 +24,8 @@ type Props = {
     tags: Array<{ code: string; from: string; to: string | null; reason: string; closed: string | null; by: string }>;
     weights: Array<{ on: string; kg: number }>;
     records: GoatRecord[]; // D-249
+    recovery: { state: 'improving' | 'not_improving' | 'no_recheck'; since: string; title: string; then: number | null; now: number | null; nowOn: string | null; goal: number | null; temp: number | null }
+        | { state: 'recovered'; on: string; why: string } | null; // D-251
     timeline: Array<{ id: number; type: string; summary: string; by: string; on: string }>;
     cases: Array<{ id: number; label: string; condition: string; status: string; active: boolean; severity: string; onset: string; resolved: string | null; diagnosis: string | null; treatments: Array<{ id: number; on: string; text: string; meat: string | null; milk: string | null; by: string }> }>;
     health: Array<{ id: number; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; status: string }>;
@@ -56,7 +58,7 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { records, goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
+    const { recovery, records, goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
     const [outcome, setOutcome] = useState(false); // D-161
     const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
@@ -220,6 +222,7 @@ export default function GoatShow(props: Props) {
             {tab === 'overview' ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                     <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg >= 0 ? '+' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
+                        {recovery ? <RecoveryNote r={recovery} /> : null}
                         {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={240} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
                         <RecordsTable rows={records} />
                     </Panel>
@@ -623,5 +626,22 @@ function RecordsTable({ rows }: { rows: GoatRecord[] }) {
             </div>
             {rows.length > 10 ? <button type="button" className="mt-2 min-h-10 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length} days`}</button> : null}
         </div>
+    );
+}
+
+/** D-251: how this goat is doing since it went on Watch, or when it came off. */
+function RecoveryNote({ r }: { r: NonNullable<Props['recovery']> }) {
+    if (r.state === 'recovered') {
+        return <p className="mb-3 rounded-tile border-l-4 border-ok-700 bg-ok-100 px-3 py-2 text-sm text-ok-700"><b>Off Watch on {r.on}:</b> {r.why}.</p>;
+    }
+    const tone = r.state === 'improving' ? 'border-turq-600 bg-turq-100/60 text-turq-800' : r.state === 'not_improving' ? 'border-crit-500 bg-crit-100 text-crit-700' : 'border-watch-400 bg-watch-100 text-watch-700';
+    const head = r.state === 'improving' ? 'Improving' : r.state === 'not_improving' ? 'Not improving' : 'Waiting for a recheck';
+    const weight = r.then !== null && r.now !== null ? ` Weight ${r.then} KG at the watch → ${r.now} KG on ${r.nowOn}.` : '';
+    const goal = r.goal !== null ? ` Comes off Watch at ${r.goal} KG${r.now !== null && r.now < r.goal ? ` (${Math.round((r.goal - r.now) * 10) / 10} KG to go)` : ''}.` : '';
+    const temp = r.temp !== null ? ` Last temperature ${r.temp} °F.` : '';
+    return (
+        <p className={`mb-3 rounded-tile border-l-4 px-3 py-2 text-sm ${tone}`}>
+            <b>On Watch since {r.since}: {head}.</b> {r.title}.{weight}{temp}{goal}{r.state === 'no_recheck' ? ' Weigh it or check its temperature to see if it is getting better.' : ''}
+        </p>
     );
 }

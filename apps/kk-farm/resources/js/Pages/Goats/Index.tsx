@@ -113,6 +113,21 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 </div>
             ) : null}
 
+            {/* D-251: goats on Watch by how they are doing, so the ones not improving come first */}
+            {['attention', 'not_improving', 'no_recheck', 'improving', 'recovered'].includes(show) ? (
+                <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Goats on Watch by progress">
+                    {([['not_improving', 'Not improving', 'border-crit-500 text-crit-700'], ['no_recheck', 'Waiting for a recheck', 'border-watch-400 text-watch-700'], ['improving', 'Improving', 'border-turq-600 text-turq-800'], ['recovered', 'Recovered (14 days)', 'border-ok-700 text-ok-700']] as const).map(([key, label, tone]) => {
+                        const n = goats.filter((g) => (g.tags ?? []).includes(key)).length;
+                        return (
+                            <button key={key} type="button" aria-pressed={show === key} onClick={() => setShow(show === key ? 'attention' : key)}
+                                className={cx('min-h-11 shrink-0 rounded-tile border-l-4 bg-tile px-3 py-1.5 text-start shadow-tile', tone, show === key && 'ring-2 ring-cobalt-800')}>
+                                <span className="block text-lg font-bold tabular-nums">{n}</span><span className="text-xs font-semibold">{label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            ) : null}
+
             {adding ? <AddGoat breeds={breeds} pens={pens} onDone={() => setAdding(false)} /> : null}
 
             {/* D-089: status pills, each with its colour and count; tap to filter. */}

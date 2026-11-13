@@ -35,10 +35,7 @@ final class Recovery
     /** @return list<string> the reasons for each watch closed */
     public static function review(Animal $goat, string $by = 'System'): array
     {
-        $open = HealthRecord::where('animal_id', $goat->id)->where('kind', 'observation')->where('status', 'open')
-            ->where(fn ($q) => $q->where('title', 'like', 'Checkup: %')->orWhere('title', 'Poor growth: veterinary review'))
-            ->whereNotIn('id', HealthCase::whereNotNull('report_id')->select('report_id'))
-            ->orderBy('id')->get();
+        $open = self::openWatches($goat);
         $closed = [];
         foreach ($open as $record) {
             $why = self::answered($goat, $record);
@@ -129,5 +126,64 @@ final class Recovery
         }
 
         return $reasons ? implode('; ', $reasons) : null;
+    }
+
+    /** Open watches raised by measurements (the ones this rule can answer). */
+    private static function openWatches(Animal $goat)
+    {
+        return HealthRecord::where('animal_id', $goat->id)->where('kind', 'observation')->where('status', 'open')
+            ->where(fn ($q) => $q->where('title', 'like', 'Checkup: %')->orWhere('title', 'Poor growth: veterinary review'))
+            ->whereNotIn('id', HealthCase::whereNotNull('report_id')->select('report_id'))
+            ->orderBy('occurred_on')->orderBy('id')->get();
+    }
+
+    /**
+     * D-251: how a goat on Watch is doing since the watch began: improving (weight up since then, no fever since),
+     * not improving (weight the same or down, or a fever since), or no recheck yet (nothing measured since).
+     *
+     * @return array{state: string, since: string, title: string, then: ?float, now: ?float, nowOn: ?string, goal: ?float, temp: ?float}|null
+     */
+    public static function progress(Animal $goat): ?array
+    {
+        $watches = self::openWatches($goat);
+        if ($watches->isEmpty()) {
+            return null;
+        }
+        $first = $watches->first();
+        $then = Checkups::lastWeight($goat, $first->occurred_on->copy()->addDay()->toDateString());
+        $w = WeightRecord::where('animal_id', $goat->id)->where(fn ($q) => $q->whereDate('measured_on', '>', $first->occurred_on)->orWhere(fn ($x) => $x->whereDate('measured_on', $first->occurred_on)->where('created_at', '>', $first->created_at)))
+            ->orderByDesc('measured_on')->orderByDesc('id')->first();
+        $c = HealthCheckup::where('animal_id', $goat->id)->whereNotNull('temperature_f')->where(fn ($q) => $q->whereDate('checked_on', '>', $first->occurred_on)->orWhere(fn ($x) => $x->whereDate('checked_on', $first->occurred_on)->where('created_at', '>', $first->created_at)))
+            ->orderByDesc('checked_on')->orderByDesc('id')->first();
+        [$low, $high] = HealthCheckup::NORMAL['temperature_f'];
+        $fever = $c && ($c->temperature_f < $low || $c->temperature_f > $high);
+        $drop = $watches->first(fn ($r) => str_contains($r->title, 'Weight down'));
+        $before = $drop ? Checkups::lastWeight($goat, $drop->occurred_on->toDateString()) : null;
+        $state = match (true) {
+            ! $w && ! $c => 'no_recheck',
+            $fever => 'not_improving',
+            $w && $then && (float) $w->weight_kg > $then['kg'] => 'improving',
+            ! $w => 'no_recheck', // a normal temperature but no weight yet
+            default => 'not_improving',
+        };
+
+        return [
+            'state' => $state, 'since' => $first->occurred_on->format('j M'), 'title' => preg_replace('/^Checkup: /', '', $first->title),
+            'then' => $then['kg'] ?? null, 'now' => $w ? (float) $w->weight_kg : null, 'nowOn' => $w?->measured_on->format('j M'),
+            'goal' => $before ? round($before['kg'] * (1 - self::TOLERANCE_PCT / 100), 1) : null, 'temp' => $c?->temperature_f,
+        ];
+    }
+
+    /** D-251: every goat's progress (for the herd filters), and the goats taken off Watch in the last 14 days. */
+    public static function herd(): array
+    {
+        return Tenant::memo('recovery.herd', function () {
+            $ids = HealthRecord::where('kind', 'observation')->where('status', 'open')
+                ->where(fn ($q) => $q->where('title', 'like', 'Checkup: %')->orWhere('title', 'Poor growth: veterinary review'))->distinct()->pluck('animal_id');
+            $state = Animal::whereIn('id', $ids)->get()->mapWithKeys(fn (Animal $a) => [$a->id => self::progress($a)['state'] ?? null])->filter()->all();
+            $recovered = \App\Models\AnimalEvent::where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(14))->distinct()->pluck('animal_id')->flip()->all();
+
+            return ['state' => $state, 'recovered' => $recovered];
+        });
     }
 }

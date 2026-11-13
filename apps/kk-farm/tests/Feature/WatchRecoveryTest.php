@@ -126,4 +126,29 @@ class WatchRecoveryTest extends TestCase
         $this->assertSame('closed', $old->fresh()->status);
         $this->assertSame('healthy', $this->flag());
     }
+
+    /** D-251: goats on Watch are sorted by how they are doing; the list and the goat page say so. */
+    public function test_goats_on_watch_show_whether_they_are_improving(): void
+    {
+        $tag = fn () => collect(\App\Support\HerdStats::tags($this->goat->fresh(), true))->intersect(['not_improving', 'no_recheck', 'improving', 'recovered', 'attention'])->values()->all();
+        $this->weigh(23, 32.2);
+        $this->checkup(19, ['weight_kg' => 30.1, 'outcome' => 'monitor']);
+        Tenant::flush();
+        $this->assertSame(['attention', 'no_recheck'], $tag());
+        $this->weigh(12, 29.5);
+        Tenant::flush();
+        $this->assertSame(['attention', 'not_improving'], $tag());
+        $this->weigh(8, 30.8); // up since the watch (30.1), not yet back to 31.2 (3% under 32.2)
+        Tenant::flush();
+        $this->assertSame(['attention', 'improving'], $tag());
+        $this->actingAs($this->user('vet'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p
+            ->where('recovery.state', 'improving')->where('recovery.then', 30.1)->where('recovery.now', 30.8)->where('recovery.goal', 31.2));
+        $this->actingAs($this->user('caretaker'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('recovery.state', 'improving')->where('recovery.title', 'Health watch')->where('recovery.temp', null));
+
+        $this->weigh(3, 32);
+        Tenant::flush();
+        $this->assertSame(['recovered'], $tag());
+        $this->actingAs($this->user('vet'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('recovery.state', 'recovered'));
+        $this->actingAs($this->user('vet'))->get('/goats?show=improving')->assertInertia(fn ($p) => $p->where('showLabels.improving', 'On Watch: improving'));
+    }
 }

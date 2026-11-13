@@ -362,6 +362,9 @@ class GoatController extends Controller
                 ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('j M Y'), 'to' => $r->valid_to?->format('j M Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
             'records' => $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
+            // D-251: how it is doing since a watch began, or when it last came off Watch
+            'recovery' => $seeHealth || in_array($request->user()->role, ['caretaker'], true) ? ((($p = \App\Support\Recovery::progress($animal)) ? ($seeHealth ? $p : ['title' => 'Health watch', 'temp' => null] + $p) : null) ?? (($e = \App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(30))->latest('occurred_at')->first())
+                ? ['state' => 'recovered', 'on' => $e->occurred_at->format('j M'), 'why' => trim(substr($e->summary, strlen('Out of Watch:')))] : null)) : null,
             'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => $e->summary, 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('j M Y')]),
             // D-073: health cases with their treatment doses
             'cases' => ! $seeHealth ? [] : \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->orderByDesc('onset_on')->get()->map(fn ($c) => [

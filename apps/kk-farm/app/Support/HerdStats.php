@@ -22,7 +22,7 @@ final class HerdStats
         'kid_female' => 'Female Kids', 'kid_male' => 'Male Kids', 'grower_female' => 'Female Growers', 'grower_male' => 'Male Growers',
         'adult_female' => 'Adult Females', 'adult_male' => 'Adult Males', 'age_unknown_female' => 'Females, Age Not Known', 'age_unknown_male' => 'Males, Age Not Known',
         // Not CEO categories, but filters the dashboard links to.
-        'attention' => 'Need attention', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'newborn' => 'Newborns to complete', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data', 'no_stage' => 'No age stage (no birth date)', 'no_stage_female' => 'Females with no age stage', 'no_stage_male' => 'Males with no age stage',
+        'attention' => 'Need attention', 'not_improving' => 'On Watch: not improving', 'no_recheck' => 'On Watch: waiting for a recheck', 'improving' => 'On Watch: improving', 'recovered' => 'Recovered (off Watch, last 14 days)', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'newborn' => 'Newborns to complete', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data', 'no_stage' => 'No age stage (no birth date)', 'no_stage_female' => 'Females with no age stage', 'no_stage_male' => 'Males with no age stage',
     ];
 
     /** D-123: labels for the class_* filters (/goats?show=class_breeding_female). */
@@ -73,6 +73,11 @@ final class HerdStats
             'treatment' => in_array($flag, ['sick', 'quarantine'], true),
             'for_sale' => in_array($a->animal_purpose, ['sale', 'meat'], true) || in_array($cat, ['fattening_male', 'cull'], true) || $a->kid_stage === 'sale_selected',
             'attention' => $flag !== 'healthy',
+            // D-251: how a goat on Watch is doing since the watch, and the goats that came off it lately
+            'not_improving' => (Recovery::herd()['state'][$a->id] ?? null) === 'not_improving',
+            'no_recheck' => (Recovery::herd()['state'][$a->id] ?? null) === 'no_recheck',
+            'improving' => (Recovery::herd()['state'][$a->id] ?? null) === 'improving',
+            'recovered' => $flag === 'healthy' && isset(Recovery::herd()['recovered'][$a->id]),
             'no_pen' => $a->pen_id === null,
             'no_weight' => ! $hasWeight,
             // D-171: a kid born on the farm in the last 60 days whose birth details the vet has not entered yet (birth weight)
