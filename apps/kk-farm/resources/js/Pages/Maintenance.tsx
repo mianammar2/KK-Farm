@@ -24,7 +24,7 @@ export default function Maintenance(p: Props) {
     return (
         <>
             <Head title="Maintenance & Assets" />
-            <PageHeader title="Maintenance & Assets" description="Report a breakdown, keep services on time and see what repairs cost." actions={<Button onClick={() => setReporting({ assetId: p.assets[0]?.id ?? 0, kind: 'repair' })} disabled={!p.assets.length}><LibIcon name="mod-assets" size={18} /> Report a Breakdown</Button>} />
+            <PageHeader title="Maintenance & Assets" description="Report a breakdown, keep services on time and see what repairs cost." actions={<Button onClick={() => setReporting({ assetId: p.assets[0]?.id ?? 0, kind: 'repair' })} disabled={!p.assets.length}><LibIcon name="app-maintenance" size={18} /> Report a Breakdown</Button>} />
             <StatRow>
                 <Stat label="Open jobs" value={open.length} tone={open.length ? 'alert' : undefined} />
                 <Stat label="Under repair" value={p.assets.filter((a) => a.status === 'under_repair').length} />

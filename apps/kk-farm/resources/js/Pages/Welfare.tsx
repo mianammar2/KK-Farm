@@ -142,7 +142,7 @@ function CaseItem({ c, options, isVet, pens, users }: { c: Case; options: Props[
             {c.evidence ? <p className="mt-1 text-ok-700">Closed {c.closedAt} by {c.closedBy}: {c.evidence}</p> : null}
             {c.status !== 'closed' ? (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                    {['open', 'escalated'].includes(c.status) ? <Button onClick={() => setMode('vet_referral')}><LibIcon name="mod-health" size={16} /> Urgent Vet Referral</Button> : null}
+                    {['open', 'escalated'].includes(c.status) ? <Button onClick={() => setMode('vet_referral')}><LibIcon name="app-veterinary" size={16} /> Urgent Vet Referral</Button> : null}
                     {c.status !== 'vet_referral' || isVet ? <Button variant="secondary" onClick={() => setMode('action')}>Hoof / Handling / Habitat Action</Button> : null}
                     {['action', 'vet_referral', 'escalated'].includes(c.status) ? <Button variant="secondary" onClick={() => setMode('follow_up')}>Follow-up: Improved?</Button> : null}
                     {c.goat ? <Button variant="secondary" onClick={() => setMode('housing')}>Move to Care Housing</Button> : null}

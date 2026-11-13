@@ -146,15 +146,15 @@ export default function GoatShow(props: Props) {
                         {/* Phones: the everyday actions as one tidy grid of icons; rarer ones as links below it. */}
                         {onFarm || (!removed && can.edit) ? (
                             <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
-                                {onFarm && scanMating ? <ActionTile icon={<LibIcon name="mod-reports" size={26} />} label="Ultrasound" onClick={() => setScan(true)} /> : null}
+                                {onFarm && scanMating ? <ActionTile icon={<LibIcon name="app-reports" size={26} />} label="Ultrasound" onClick={() => setScan(true)} /> : null}
                                 {onFarm && pregnancy && can.breeding ? <ActionTile icon={<LibIcon name="ic-pregnant" size={26} />} label="Pregnancy" primary onClick={() => setOutcome(true)} /> : null}
-                                {onFarm && healthEntry?.canCheck ? <ActionTile icon={<LibIcon name="mod-health" size={26} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
+                                {onFarm && healthEntry?.canCheck ? <ActionTile icon={<LibIcon name="app-veterinary" size={26} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
                                 {onFarm && healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
-                                {onFarm ? <ActionTile icon={<LibIcon name="mod-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
+                                {onFarm ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
                                 {onFarm ? <ActionTile icon={<LibIcon name="ic-sick" size={26} />} label="Concern" active={panel === 'concern'} onClick={() => setPanel(panel === 'concern' ? null : 'concern')} /> : null}
                                 {onFarm ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
-                                {!removed && can.edit ? <ActionTile icon={<LibIcon name="mod-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
+                                {!removed && can.edit ? <ActionTile icon={<LibIcon name="app-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
                             </div>
                         ) : null}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm sm:hidden">
@@ -164,17 +164,17 @@ export default function GoatShow(props: Props) {
                         </div>
                         {!removed && can.edit ? (
                             <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
-                                <Button onClick={() => router.visit(`/goats/${goat.id}/edit`)}><LibIcon name="mod-settings" size={18} /> Edit details</Button>
+                                <Button onClick={() => router.visit(`/goats/${goat.id}/edit`)}><LibIcon name="app-settings" size={18} /> Edit details</Button>
                                 {!goat.removal ? <Button variant="quiet" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}><Trash2 size={16} aria-hidden /> Remove (wrong entry)</Button> : null}
                             </div>
                         ) : null}
                         {onFarm ? (
                             <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
-                                {scanMating ? <Button variant="secondary" onClick={() => setScan(true)}><LibIcon name="mod-reports" size={18} /> Ultrasound</Button> : null}
+                                {scanMating ? <Button variant="secondary" onClick={() => setScan(true)}><LibIcon name="app-reports" size={18} /> Ultrasound</Button> : null}
                                 {pregnancy && can.breeding ? <Button onClick={() => setOutcome(true)}><LibIcon name="ic-pregnant" size={18} /> Pregnancy Outcome</Button> : null}
-                                {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="mod-health" size={18} /> Health checkup</Button> : null}
+                                {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="app-veterinary" size={18} /> Health checkup</Button> : null}
                                 {healthEntry && (healthEntry.canCheck || healthEntry.canOpenCase) ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="mod-growth" size={18} /> Add weight</Button>
+                                <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><LibIcon name="ic-sick" size={18} /> Report concern</Button>
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button>
@@ -189,7 +189,7 @@ export default function GoatShow(props: Props) {
                     <div className="flex flex-wrap items-center gap-3 border-t border-rule bg-turq-100/60 px-4 py-3 text-sm">
                         <LibIcon name="cls-kid" size={34} />
                         <span className="min-w-0 flex-1"><strong className="text-cobalt-900">Newborn: complete its details.</strong> It was added from the kidding record (mother, father, breed, birth date and pen are already filled). Enter the birth weight; add teeth or a photo when ready.</span>
-                        <Button onClick={() => setPanel('weight')}><LibIcon name="mod-growth" size={18} /> Enter birth weight</Button>
+                        <Button onClick={() => setPanel('weight')}><LibIcon name="app-growth" size={18} /> Enter birth weight</Button>
                     </div>
                 ) : null}
                 {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} /></div> : null}

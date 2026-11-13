@@ -124,7 +124,7 @@ function NewCase({ pick, options, prefill, isLead, done }: Props & { done: () =>
                 <Field label="Details" error={e.description}><input className="field" value={form.data.description} onChange={(x) => form.setData('description', x.target.value)} /></Field>
                 <Field label="Immediate food / animal risk?" error={e.immediate_risk}><select className="field" value={form.data.immediate_risk ? 'yes' : 'no'} onChange={(x) => form.setData((d) => ({ ...d, immediate_risk: x.target.value === 'yes', containment: '' }))}><option value="no">No: go to root cause</option><option value="yes">Yes: contain now</option></select></Field>
                 {form.data.immediate_risk ? <Field label="Containment" error={e.containment}><select className="field" value={form.data.containment} onChange={(x) => form.setData('containment', x.target.value)}><option value="">Choose…</option>{holdKinds.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field> : null}
-                <div className="flex items-end gap-2 sm:col-span-3"><Button type="submit" disabled={form.processing}><LibIcon name="mod-biosecurity" size={18} /> Record Case</Button></div>
+                <div className="flex items-end gap-2 sm:col-span-3"><Button type="submit" disabled={form.processing}><LibIcon name="app-quality" size={18} /> Record Case</Button></div>
             </form>
         </Panel>
     );

@@ -212,7 +212,7 @@ export function BarnRoof({ id, name, typeName }: { id: number | string; name: st
     const maternity = typeName === 'Maternity Unit';
     return (
         <div className={`kk-roof ${maternity ? 'kk-roof-maternity' : ''}`} data-shed={id}>
-            <span className="kk-roof-icon kk-roof-pic" aria-hidden><img src={`/icons/${maternity ? 'mod-health' : 'mod-housing'}.png`} alt="" /></span>
+            <span className="kk-roof-icon kk-roof-pic" aria-hidden><img src={`/icons/${maternity ? 'app-veterinary' : 'app-housing'}.png`} alt="" /></span>
             <span className="min-w-0">
                 <span className="block truncate font-mono text-base font-bold tracking-wide">{name}</span>
                 {typeName ? <span className="block truncate text-xs text-white/80">{typeName}{maternity ? ' · Kidding & Neonatal Care' : ''}</span> : null}

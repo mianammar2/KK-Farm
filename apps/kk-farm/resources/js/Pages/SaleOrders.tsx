@@ -82,7 +82,7 @@ function Quote({ candidates, customers, canSell, done }: Props & { done: () => v
             </tbody></table></div>
             {Object.entries(e).filter(([k]) => k.startsWith('lines')).slice(0, 4).map(([k, v]) => <p key={k} className="px-4 text-sm text-crit-700">{v}</p>)}
             <div className="flex items-center gap-3 border-t border-rule p-4">
-                <Button disabled={form.processing || !ids.length} onClick={() => { form.transform((d) => ({ ...d, customer_id: d.customer_id || null, buyer: d.buyer || null, rate_per_kg: d.rate_per_kg || null, due_on: d.due_on || null, lines: ids.map((id) => ({ animal_id: id, price: picked[id] || null })) })); form.post('/sales/orders', { preserveScroll: true, onSuccess: () => { setPicked({}); done(); } }); }}><LibIcon name="mod-sales" size={18} /> Send Quote for Approval</Button>
+                <Button disabled={form.processing || !ids.length} onClick={() => { form.transform((d) => ({ ...d, customer_id: d.customer_id || null, buyer: d.buyer || null, rate_per_kg: d.rate_per_kg || null, due_on: d.due_on || null, lines: ids.map((id) => ({ animal_id: id, price: picked[id] || null })) })); form.post('/sales/orders', { preserveScroll: true, onSuccess: () => { setPicked({}); done(); } }); }}><LibIcon name="app-sales" size={18} /> Send Quote for Approval</Button>
                 <span className="text-sm">{ids.length} goats · {pkr(total)}</span>
             </div>
         </Panel>

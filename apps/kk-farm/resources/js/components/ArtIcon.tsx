@@ -7,15 +7,16 @@ import { cx } from './ui';
  * mod-* modules, cls-* goat classifications (picture cards), ic-* gender, origin, breed, health, repro and status.
  */
 export const NAV_ART: Record<string, string> = {
-    '/': 'mod-dashboard', '/actions': 'ic-sick', '/goats': 'mod-livestock', '/breeding': 'mod-breeding', '/milking': 'ic-lactating',
-    '/health': 'mod-health', '/weights': 'mod-growth', '/feeding': 'mod-feeding', '/sheds': 'mod-housing', '/movements': 'ic-transferred',
-    '/tasks': 'ic-active', '/employees': 'mod-hr', '/activity': 'mod-reports', '/value': 'mod-sales', '/finance': 'mod-finance',
-    '/finance/books': 'mod-inventory', '/sensors': 'mod-assets', '/reports': 'mod-reports', '/settings': 'mod-settings',
+    // D-247: module pages use the owner's app icons (public/icons/app-*.svg); other pages keep the library pictures
+    '/': 'app-dashboard', '/actions': 'ic-sick', '/goats': 'app-livestock', '/breeding': 'app-breeding', '/milking': 'app-dairy',
+    '/health': 'app-veterinary', '/weights': 'app-growth', '/feeding': 'app-feeding', '/sheds': 'app-housing', '/movements': 'ic-transferred',
+    '/tasks': 'app-operations', '/employees': 'app-employees', '/activity': 'app-reports', '/value': 'app-sales', '/finance': 'app-accounting',
+    '/finance/books': 'app-accounting', '/sensors': 'app-maintenance', '/reports': 'app-reports', '/settings': 'app-settings',
 };
 
 export function ArtIcon({ name, size = 24, className, label }: { name: string; size?: number; className?: string; label?: string }) {
     return (
-        <img src={`/icons/${name}.png`} width={size} height={size} alt={label ?? ''} aria-hidden={label ? undefined : true} decoding="async" loading="lazy"
+        <img src={`/icons/${name}.${name.startsWith('app-') ? 'svg' : 'png'}`} width={size} height={size} alt={label ?? ''} aria-hidden={label ? undefined : true} decoding="async" loading="lazy"
             className={cx('shrink-0 rounded-[28%] bg-white object-contain shadow-sm ring-1 ring-black/5', className)} style={{ width: size, height: size }} />
     );
 }

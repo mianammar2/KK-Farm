@@ -58,7 +58,7 @@ function RequestForm({ suppliers, done }: Props & { done: () => void }) {
                 <Field label="Purpose" error={e.purpose}><input className="field" value={form.data.purpose} onChange={(x) => form.setData('purpose', x.target.value)} placeholder="e.g. Fattening lot for Eid" /></Field>
                 <Field label="Number of goats" error={e.expected_head}><input type="number" min={1} className="field" value={form.data.expected_head} onChange={(x) => form.setData('expected_head', x.target.value)} /></Field>
                 <Field label="Agreed price for the lot (PKR)" error={e.budget}><input type="number" min={1} className="field" value={form.data.budget} onChange={(x) => form.setData('budget', x.target.value)} /></Field>
-                <div className="flex items-end"><Button type="submit" disabled={form.processing}><LibIcon name="mod-procurement" size={18} /> Send for Approval</Button></div>
+                <div className="flex items-end"><Button type="submit" disabled={form.processing}><LibIcon name="app-purchase" size={18} /> Send for Approval</Button></div>
             </form>
         </Panel>
     );
@@ -108,7 +108,7 @@ function LotItem({ l, options, canApprove, canReceive, ...p }: Props & { l: Lot 
             <div className="mt-2 flex flex-wrap gap-1.5">
                 {l.canDecide ? <Button onClick={() => setMode('decide')}>Approve / Reject</Button> : null}
                 {l.status === 'requested' && canApprove && !l.canDecide ? <span className="text-xs text-ink-soft">Someone other than the requester approves it.</span> : null}
-                {l.status === 'approved' && canReceive ? <Button onClick={() => setMode('receive')}><LibIcon name="mod-procurement" size={16} /> Receive, Count & Inspect</Button> : null}
+                {l.status === 'approved' && canReceive ? <Button onClick={() => setMode('receive')}><LibIcon name="app-purchase" size={16} /> Receive, Count & Inspect</Button> : null}
                 {l.status === 'received' && accepted.some((i) => i.goat?.inQuarantine) ? <Link href="/intake" className="self-center text-xs font-semibold text-cobalt-800 hover:underline">Quarantine & vet clearance →</Link> : null}
                 {l.discrepancy && !l.reconciledBy && canApprove ? <Button variant="secondary" onClick={() => setMode('reconcile')}>Reconcile</Button> : null}
             </div>

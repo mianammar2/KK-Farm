@@ -30,7 +30,7 @@ export default function Intake({ goats, days, canClear, canConfigure, pens }: { 
         <>
             <Head title="Intake & Quarantine" />
             <PageHeader title="Intake & Quarantine" description={`Purchased and transferred goats stay in quarantine for ${days} days until the vet clears them: Registration → RFID → Quarantine → Veterinary Clearance.`}
-                actions={canConfigure ? <Button variant="secondary" onClick={() => setEditing(!editing)}><LibIcon name="mod-settings" size={18} /> Quarantine Days</Button> : undefined} />
+                actions={canConfigure ? <Button variant="secondary" onClick={() => setEditing(!editing)}><LibIcon name="app-settings" size={18} /> Quarantine Days</Button> : undefined} />
             {editing ? (
                 <Panel className="mb-4" title="Configuration" description="How long a new arrival is kept apart before clearance">
                     <form className="flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => { e.preventDefault(); settings.post('/intake/settings', { preserveScroll: true, onSuccess: () => setEditing(false) }); }}>

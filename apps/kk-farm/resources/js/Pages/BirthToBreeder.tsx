@@ -159,7 +159,7 @@ function CandRow({ c, options, isLead }: Props & { c: Cand }) {
             {open ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                 <Field label="Decision" error={form.errors.decision}><select className="field" value={form.data.decision} onChange={(x) => form.setData('decision', x.target.value)}>{Object.entries(options.decisions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <Field label="Reason" error={form.errors.reason} hint={!c.eligible && form.data.decision === 'replacement' ? 'Required: not all checks pass' : undefined}><input className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} /></Field>
-                <div className="flex items-end gap-2"><Button disabled={form.processing} onClick={() => form.post(`/growth/${c.id}/select`, { preserveScroll: true, onSuccess: () => setOpen(false) })}><LibIcon name="mod-breeding" size={16} /> Save</Button></div>
+                <div className="flex items-end gap-2"><Button disabled={form.processing} onClick={() => form.post(`/growth/${c.id}/select`, { preserveScroll: true, onSuccess: () => setOpen(false) })}><LibIcon name="app-breeding" size={16} /> Save</Button></div>
             </div> : null}
         </li>
     );

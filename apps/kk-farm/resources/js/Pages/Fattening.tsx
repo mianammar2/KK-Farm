@@ -128,7 +128,7 @@ function BatchView({ b, pens, rations, customers, options, canManage, isVet }: {
     const live = b.members.filter((m) => ['finishing', 'ready', 'reserved'].includes(m.status));
     return (
         <Panel flush title={`${b.code}${b.name ? ` · ${b.name}` : ''}`} description={`${options.status[b.status]} · started ${b.started} · day ${b.daysOnFeed} of ${b.targetDays} · target ${b.targetWeight} KG by ${b.targetDate}${b.pen ? ` · ${b.pen}` : ''}${b.ration ? ` · ${b.ration}` : ''}`}
-            actions={<span className="flex gap-1.5"><Button variant="secondary" onClick={() => setMode(mode === 'weigh' ? null : 'weigh')}><LibIcon name="mod-growth" size={16} /> Weigh Batch</Button>{canManage || isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'plan' ? null : 'plan')}>Revise Plan</Button> : null}</span>}>
+            actions={<span className="flex gap-1.5"><Button variant="secondary" onClick={() => setMode(mode === 'weigh' ? null : 'weigh')}><LibIcon name="app-growth" size={16} /> Weigh Batch</Button>{canManage || isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'plan' ? null : 'plan')}>Revise Plan</Button> : null}</span>}>
             <div className="grid grid-cols-2 gap-2 border-b border-rule p-3 text-sm sm:grid-cols-5">
                 {[['Head', b.headcount], ['Avg ADG', b.adg !== null ? `${b.adg} g/day` : '—'], ['At target', b.atTarget], ['Feed + health', money(b.feedCost + b.healthCost)], ['Cost / KG gain', money(b.costPerKgGain)]].map(([l, v]) => <div key={l as string} className="rounded-lg bg-glaze px-3 py-2"><div className="text-xs text-ink-soft">{l}</div><div className="font-bold text-cobalt-900">{v}</div></div>)}
             </div>

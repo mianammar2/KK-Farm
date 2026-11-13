@@ -13,7 +13,7 @@ export type Protocol = { id: number; name: string; kind: string; medicineId: num
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const plus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
-const ART: Record<string, string> = { vaccination: 'ic-healthy', deworming: 'mod-health', hoof_care: 'mod-assets', examination: 'mod-reports', other_care: 'ic-active' };
+const ART: Record<string, string> = { vaccination: 'ic-healthy', deworming: 'app-veterinary', hoof_care: 'app-maintenance', examination: 'app-reports', other_care: 'ic-active' };
 
 /** D-173: Vaccination & Deworming calendar: per protocol, the goats due in the next 30 days; the vet records them in one go. */
 export function CareCalendar({ calendar, isVet }: { calendar: CalendarRow[]; isVet: boolean }) {

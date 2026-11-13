@@ -34,7 +34,7 @@ function FeedSack({ sack, index }: { sack: Sack; index: number }) {
     return (
         <div className="kk-sack kk-rise" style={{ animationDelay: `${index * 60}ms` }}>
             <div className="flex items-center gap-2">
-                <span className="kk-icon-tile size-10!" aria-hidden><img src={`/icons/${green ? 'mod-growth' : ['mod-feeding', 'mod-inventory', 'mod-reports'][index] ?? 'mod-reports'}.png`} alt="" className="size-[86%] object-contain" /></span>
+                <span className="kk-icon-tile size-10!" aria-hidden><img src={`/icons/${green ? 'app-growth' : ['app-feeding', 'app-inventory', 'app-reports'][index] ?? 'app-reports'}.png`} alt="" className="size-[86%] object-contain" /></span>
                 <span className="kk-sack-tag truncate">{sack.label}</span>
             </div>
             <span className="kk-lcd self-start">{sack.value}</span>

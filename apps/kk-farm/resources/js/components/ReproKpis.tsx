@@ -14,7 +14,7 @@ export default function ReproKpiTiles({ k }: { k: ReproKpis }) {
         { art: 'ic-sick', label: 'Abortion Cases', value: k.abortions, alert: true },
         { art: 'ic-died', label: 'Stillborn Kids', value: k.stillborn, alert: true },
         { art: 'cls-kid', label: 'Total Live Kids', value: k.live },
-        { art: 'mod-growth', label: 'Kidding Rate', value: k.kiddingRate, suffix: ' kids/doe' },
+        { art: 'app-growth', label: 'Kidding Rate', value: k.kiddingRate, suffix: ' kids/doe' },
         { art: 'ic-recovery', label: 'Pregnancy Loss Rate', value: k.lossRate, suffix: '%', alert: true },
         { art: 'ic-lactating', label: 'Post-Kidding Recovery', value: k.recovery, suffix: '%' },
     ].filter((t) => t.value);

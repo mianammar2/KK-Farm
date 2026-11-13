@@ -92,7 +92,7 @@ function TriageForm({ c, diseases, conditions, pens, options, close }: Props & {
                 <label className="flex items-center gap-2"><input type="checkbox" checked={form.data.restrict_pen} onChange={(x) => form.setData('restrict_pen', x.target.checked)} /> Restrict {c.pen ?? 'the pen'} (no moves or sales)</label>
                 {form.data.contagion !== 'none' ? <label className="flex items-center gap-2"><input type="checkbox" checked={form.data.declare_outbreak} onChange={(x) => form.setData('declare_outbreak', x.target.checked)} /> Declare an outbreak</label> : null}
             </div>
-            <div className="flex items-end gap-2 sm:col-span-3"><Button disabled={form.processing} onClick={() => { form.transform((d) => ({ ...d, isolate_pen_id: d.isolate_pen_id || null })); form.post('/disease/triage', { preserveScroll: true, onSuccess: close }); }}><LibIcon name="mod-health" size={16} /> {risky ? 'Open Case, Isolate & Alert' : 'Open Veterinary Case'}</Button><Button variant="secondary" onClick={close}>Cancel</Button></div>
+            <div className="flex items-end gap-2 sm:col-span-3"><Button disabled={form.processing} onClick={() => { form.transform((d) => ({ ...d, isolate_pen_id: d.isolate_pen_id || null })); form.post('/disease/triage', { preserveScroll: true, onSuccess: close }); }}><LibIcon name="app-veterinary" size={16} /> {risky ? 'Open Case, Isolate & Alert' : 'Open Veterinary Case'}</Button><Button variant="secondary" onClick={close}>Cancel</Button></div>
         </div>
     );
 }
