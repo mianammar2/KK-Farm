@@ -12,7 +12,7 @@ import { ALLEY, buildLayout, CLASS, clockState, COLLAR, GATE_W, PEN_D, RAMP_LEN,
 export type EngineGoat = { key: string; cls: Cls; attention: boolean };
 export type EnginePen = { id: number; code: string; capacity: number | null; goats: EngineGoat[] };
 export type EngineData = { pens: EnginePen[]; meals: string[]; clock: string | null; selected: number | null };
-export type EngineEvents = { hover(goat: string | null, pen: number | null): void; pick(goat: string | null, pen: number | null): void };
+export type EngineEvents = { hover(goat: string | null, pen: number | null): void; pick(goat: string | null, pen: number | null, at: { x: number; y: number }): void };
 
 const FLOOR_H = 1.4; // the floor stands this high above the ground
 const SIZE = 0.85; // drawn size against the simulation's metres
@@ -644,8 +644,9 @@ export class ShedEngine {
             pair();
             if (this.pointers.size === 0) el.style.cursor = 'grab';
             if (had && !this.dragged && e.type === 'pointerup' && e.button === 0 && this.pointers.size === 0) {
-                const hit = this.pickAt(e.clientX, e.clientY);
-                this.events.pick(hit.goat, hit.pen);
+                const hit = this.pickAt(e.clientX, e.clientY, e.pointerType === 'touch' ? 0.75 : 0.5); // a finger is wider than a mouse
+                const r = el.getBoundingClientRect();
+                this.events.pick(hit.goat, hit.pen, { x: e.clientX - r.left, y: e.clientY - r.top });
             }
         };
         on('pointerup', up); on('pointercancel', up);
@@ -661,13 +662,13 @@ export class ShedEngine {
 
     private ray = new THREE.Raycaster(); private ndc = new THREE.Vector2(); private plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.3); private hit = new THREE.Vector3();
 
-    private pickAt(cx: number, cy: number): { goat: string | null; pen: number | null } {
+    private pickAt(cx: number, cy: number, reach = 0.42): { goat: string | null; pen: number | null } {
         const sim = this.sim, r = this.renderer.domElement.getBoundingClientRect();
         if (!sim || !r.width) return { goat: null, pen: null };
         this.ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
         this.ray.setFromCamera(this.ndc, this.camera);
         if (!this.ray.ray.intersectPlane(this.plane, this.hit)) return { goat: null, pen: null };
-        let goat: string | null = null, best = 0.42;
+        let goat: string | null = null, best = reach;
         for (const g of sim.goats) { const d = Math.hypot(g.x - this.hit.x, g.z - this.hit.z); if (d < best) { best = d; goat = g.key; } }
         let pen: number | null = goat ? this.penOf.get(goat) ?? null : null;
         if (pen === null) for (const p of sim.layout.pens) if (this.hit.x >= p.rect.x0 && this.hit.x <= p.rect.x1 && this.hit.z >= p.rect.z0 && this.hit.z <= p.rect.z1) pen = p.id;

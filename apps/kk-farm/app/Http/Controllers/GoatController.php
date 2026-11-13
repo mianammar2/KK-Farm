@@ -247,6 +247,24 @@ class GoatController extends Controller
         return redirect("/goats/{$animal->id}")->with('success', $tag ? "{$animal->farm_number} registered with tag $tag." : "{$animal->farm_number} registered. Assign an RFID tag from the scan screen.");
     }
 
+    /** D-248: a goat's card for the 3D shed (tap a goat): the essentials, health only for the roles that see it (RBAC §7). */
+    public function peek(Request $request, Animal $animal): \Illuminate\Http\JsonResponse
+    {
+        $animal->load(['breed', 'pen.shed', 'latestWeight', 'photos']);
+        $u = $request->user();
+        $seeHealth = in_array($u->role, ['ceo', 'manager', 'vet'], true) || ($u->module_access['health'] ?? false) === true;
+        $w = $animal->latestWeight;
+
+        return response()->json($animal->card() + [
+            'weighedOn' => $w?->measured_on?->format('j M Y'),
+            'bodyScore' => $w?->body_score,
+            'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, now()->toDateString()),
+            'withdrawal' => $seeHealth ? \App\Support\Withdrawal::summary($animal) : null,
+            'openCases' => $seeHealth ? \App\Models\HealthCase::where('animal_id', $animal->id)->whereNotIn('status', ['recovered', 'closed', 'deceased'])->pluck('condition')->values() : [],
+            'seeHealth' => $seeHealth,
+        ]);
+    }
+
     public function show(Request $request, Animal $animal): Response
     {
         $animal->load(['breed', 'pen.shed', 'feedingGroup', 'latestWeight', 'photos', 'sire.breed', 'dam.breed', 'sire.sire', 'sire.dam', 'dam.sire', 'dam.dam']);

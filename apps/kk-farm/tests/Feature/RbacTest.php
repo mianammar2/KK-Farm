@@ -234,4 +234,14 @@ class RbacTest extends TestCase
         $this->actingAs($owner)->get('/settings/users')->assertInertia(fn (AssertableInertia $p) => $p->where('users', fn ($u) => in_array('Livestock', collect($u)->firstWhere('role', 'finance')['diffs']['caretaker']['gain'], true)
             || collect(collect($u)->firstWhere('role', 'finance')['diffs']['caretaker']['gain'])->isNotEmpty()));
     }
+
+    /** D-248: the goat card in the 3D shed follows the same rules: health only for ADM/MGR/VET, no card without the goat register. */
+    public function test_the_shed_goat_card_hides_health_from_other_roles(): void
+    {
+        $goat = Animal::create(['farm_number' => 'P-1', 'sex' => 'female', 'breed_id' => Breed::create(['name' => 'Beetal'])->id, 'birth_date' => now()->subYears(2), 'origin' => 'purchased', 'status' => 'active']);
+        HealthCase::create(['case_no' => 1, 'animal_id' => $goat->id, 'onset_on' => now(), 'condition' => 'Pneumonia', 'severity' => 'low', 'status' => 'open', 'recorded_by' => 'x']);
+        $this->actingAs($this->user('vet'))->getJson("/goats/{$goat->id}/peek")->assertOk()->assertJson(['number' => 'P-1', 'seeHealth' => true, 'openCases' => ['Pneumonia']]);
+        $this->actingAs($this->user('feeding'))->getJson("/goats/{$goat->id}/peek")->assertOk()->assertJson(['number' => 'P-1', 'seeHealth' => false, 'openCases' => [], 'withdrawal' => null]);
+        $this->actingAs($this->user('finance'))->getJson("/goats/{$goat->id}/peek")->assertForbidden();
+    }
 }

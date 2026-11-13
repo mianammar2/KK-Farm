@@ -241,6 +241,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/goats/register', [GoatController::class, 'register']);
         Route::post('/goats', [GoatController::class, 'store']);
         Route::get('/goats/{animal}', [GoatController::class, 'show']);
+        Route::get('/goats/{animal}/peek', [GoatController::class, 'peek']); // D-248: the card when a goat is tapped in the 3D shed
         Route::post('/goats/{animal}/rfid/arm', [\App\Http\Controllers\RfidAttachController::class, 'arm']); // D-144
         Route::post('/goats/rfid/disarm', [\App\Http\Controllers\RfidAttachController::class, 'disarm']);
         Route::post('/goats/{animal}/rfid', [\App\Http\Controllers\RfidAttachController::class, 'attach']);

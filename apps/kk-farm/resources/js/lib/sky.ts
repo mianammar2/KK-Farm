@@ -114,7 +114,7 @@ export function skyView(s: Sky): SkyView {
     const [r, g, b] = skyColor(s);
     const place = (alt: number, az: number) => (alt < -3 ? null : {
         x: Math.min(0.94, Math.max(0.06, 0.5 + az / 260)),
-        y: Math.min(0.9, Math.max(0.08, 0.86 - (Math.max(0, alt) / 70) * 0.78)),
+        y: Math.min(0.66, Math.max(0.07, 0.64 - (Math.max(0, alt) / 70) * 0.57)), // D-248: high in the sky, well away from the roof
     });
     const moon = place(s.moonAlt, s.moonAz);
     return {
