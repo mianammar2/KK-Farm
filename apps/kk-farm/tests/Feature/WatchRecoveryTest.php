@@ -151,4 +151,16 @@ class WatchRecoveryTest extends TestCase
         $this->actingAs($this->user('vet'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('recovery.state', 'recovered'));
         $this->actingAs($this->user('vet'))->get('/goats?show=improving')->assertInertia(fn ($p) => $p->where('showLabels.improving', 'On Watch: improving'));
     }
+
+    /** D-253: the vet's Temp check (a temperature with its date) is a checkup: it shows in the goat's table and answers a fever watch. */
+    public function test_a_temp_check_with_its_date_records_and_clears_a_fever(): void
+    {
+        $this->checkup(6, ['temperature_f' => 104.6, 'outcome' => 'monitor'])->assertSessionHasNoErrors();
+        $this->assertSame('monitor', $this->flag());
+        $this->checkup(3, ['temperature_f' => 102.4, 'outcome' => 'healthy'])->assertSessionHasNoErrors(); // the Temp check form sends just these
+        $this->assertSame('healthy', $this->flag());
+        $rows = $this->actingAs($this->user('vet'))->get("/goats/{$this->goat->id}")->viewData('page')['props']['records'];
+        $this->assertSame([[now()->subDays(3)->toDateString(), 102.4, false], [now()->subDays(6)->toDateString(), 104.6, true]], array_map(fn ($r) => [$r['on'], $r['temp'], $r['tempFlag']], $rows));
+        $this->actingAs($this->user('caretaker'))->post('/health/checkups', ['animal_id' => $this->goat->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 102, 'outcome' => 'healthy'])->assertForbidden();
+    }
 }

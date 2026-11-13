@@ -1,7 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useConfirm } from '../../components/Confirm';
 import PhotoPicker from '../../components/PhotoPicker';
-import { Camera, ClipboardPlus, MoveRight, Pencil, Scale, Star, Stethoscope, Trash2, TriangleAlert } from 'lucide-react';
+import { Camera, ClipboardPlus, MoveRight, Pencil, Scale, Star, Stethoscope, Trash2, Thermometer, TriangleAlert } from 'lucide-react';
 import HealthEntry from '../../components/HealthEntry';
 import Sheet from '../../components/Sheet';
 import type { CheckupData } from '../../components/Checkups';
@@ -67,7 +67,7 @@ export default function GoatShow(props: Props) {
     const [tab, setTab] = useState('overview');
     // D-102: opened from a scan with ?do=checkup|pregnancy|entry|weight|move|concern, the right form is already open.
     const todo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('do') : null;
-    const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern'].includes(todo ?? '') ? todo : null);
+    const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern', 'temp'].includes(todo ?? '') ? todo : null);
     const [entry, setEntry] = useState<string | null>(['checkup', 'pregnancy', 'entry'].includes(todo ?? '') && healthEntry ? (todo === 'entry' ? '' : todo) : null);
     const profile = photos.find((p) => p.isProfile);
     const onFarm = goat.status === 'active';
@@ -154,7 +154,7 @@ export default function GoatShow(props: Props) {
                                 {onFarm && healthEntry?.canEntry ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
                                 {onFarm && auth?.gates.includes('record_weights') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
-                                {onFarm && auth?.gates.includes('report_concern') ? <ActionTile icon={<LibIcon name="ic-sick" size={26} />} label="Concern" active={panel === 'concern'} onClick={() => setPanel(panel === 'concern' ? null : 'concern')} /> : null}
+                                {onFarm && auth?.gates.includes('health_checkup') ? <ActionTile icon={<Thermometer size={20} aria-hidden />} label="Temp check" active={panel === 'temp'} onClick={() => setPanel(panel === 'temp' ? null : 'temp')} /> : null}
                                 {onFarm ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
                                 {!removed && can.edit ? <ActionTile icon={<LibIcon name="app-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
                             </div>
@@ -178,7 +178,7 @@ export default function GoatShow(props: Props) {
                                 {healthEntry?.canEntry ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
                                 {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
-                                {auth?.gates.includes('report_concern') ? <Button variant="secondary" onClick={() => setPanel(panel === 'concern' ? null : 'concern')}><LibIcon name="ic-sick" size={18} /> Report concern</Button> : null}
+                                {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Temp check</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button>
                                 {auth?.gates.includes('edit_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
                                 {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
@@ -372,6 +372,8 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     const weight = useForm({ animal_id: goat.id, weight_kg: '', measured_on: today }); // D-252: the day it was weighed
     const concern = useForm({ animal_id: goat.id, title: '', severity: 'low', notes: '' });
+    // D-253: a quick temperature reading with its date, saved as a checkup (the vet can change the result)
+    const temp = useForm({ animal_id: goat.id, temperature_f: '', checked_on: today, outcome: 'healthy' });
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? ''), capacity_override: '', reason: '' });
     const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
     const [ask, confirmBox] = useConfirm(); // D-133
@@ -409,6 +411,20 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
                 <div className="w-44"><Field label="Weight (KG)" error={weight.errors.weight_kg}><input inputMode="decimal" autoFocus className="field" value={weight.data.weight_kg} onChange={(e) => weight.setData('weight_kg', e.target.value)} /></Field></div>
                 <div className="w-44"><Field label="Weighed on" error={weight.errors.measured_on}><input type="date" className="field" max={today} value={weight.data.measured_on} onChange={(e) => weight.setData('measured_on', e.target.value)} /></Field></div>
                 <Button type="submit" disabled={weight.processing}>Save weight</Button>
+            </form>
+        );
+    }
+    if (kind === 'temp') {
+        const t = Number(temp.data.temperature_f);
+        const normal = temp.data.temperature_f !== '' && t >= 101.3 && t <= 103.5;
+        const reading = (v: string) => { const n = Number(v); temp.setData({ ...temp.data, temperature_f: v, outcome: v !== '' && (n < 101.3 || n > 103.5) ? 'monitor' : 'healthy' }); };
+        return (
+            <form onSubmit={(e) => { e.preventDefault(); temp.post('/health/checkups', { ...options, onSuccess: () => temp.reset('temperature_f') }); }} className="flex flex-wrap items-end gap-2">
+                <div className="w-40"><Field label="Temperature (°F)" error={temp.errors.temperature_f} hint="Normal 101.3–103.5"><input inputMode="decimal" autoFocus required className="field" value={temp.data.temperature_f} onChange={(e) => reading(e.target.value.replace(/[^0-9.]/g, ''))} /></Field></div>
+                <div className="w-44"><Field label="Checked on" error={temp.errors.checked_on}><input type="date" className="field" max={today} value={temp.data.checked_on} onChange={(e) => temp.setData('checked_on', e.target.value)} /></Field></div>
+                <div className="w-36"><Field label="Result" error={temp.errors.outcome}><select className="field" value={temp.data.outcome} onChange={(e) => temp.setData('outcome', e.target.value)}><option value="healthy">Healthy</option><option value="monitor">Watch</option><option value="sick">Sick</option></select></Field></div>
+                <Button type="submit" disabled={temp.processing || temp.data.temperature_f === ''}>Save temperature</Button>
+                {temp.data.temperature_f !== '' ? <span className={`pb-2.5 text-sm font-semibold ${normal ? 'text-ok-700' : 'text-crit-700'}`}>{normal ? 'Normal' : t > 103.5 ? 'High: the goat goes on Watch' : 'Low: the goat goes on Watch'}</span> : null}
             </form>
         );
     }
