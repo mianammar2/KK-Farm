@@ -114,4 +114,14 @@ class WorkerTest extends TestCase
         $this->actingAs($care)->post('/worker/start', ['job' => 'temp'])->assertForbidden();
         $this->actingAs($vet)->post('/worker/start', ['job' => 'weigh', 'on' => now()->addDay()->toDateString()])->assertSessionHasErrors('on'); // not in the future
     }
+
+    /** D-256: the Administrator has every job by default. */
+    public function test_the_administrator_has_every_job(): void
+    {
+        $this->withoutVite();
+        Tenant::set(Organization::create(['name' => 'Admin Farm', 'slug' => 'admin-farm'])->id);
+        $owner = User::create(['name' => 'Owner', 'email' => 'o@admin-jobs.test', 'password' => 'x', 'role' => 'ceo', 'org_id' => Tenant::current()]);
+        $jobs = array_keys($this->actingAs($owner)->get('/worker')->viewData('page')['props']['jobs']);
+        $this->assertEqualsCanonicalizing(array_keys(\App\Http\Controllers\WorkerController::JOBS), $jobs);
+    }
 }

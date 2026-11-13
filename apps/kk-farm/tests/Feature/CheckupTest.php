@@ -69,8 +69,8 @@ class CheckupTest extends TestCase
 
     public function test_readings_outside_normal_are_flagged_and_a_finding_opens_a_case(): void
     {
-        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertForbidden(); // D-252: checkups are the vet's by default
-        $this->actingAs($this->user('vet'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertForbidden(); // D-252: the vet's and (D-256) the Administrator's by default
+        $this->actingAs($this->user('ceo'))->post('/health/checkups', ['animal_id' => $this->buck->id, 'checked_on' => now()->toDateString(), 'temperature_f' => 105.1, 'outcome' => 'monitor'])->assertSessionHasNoErrors();
         $this->assertSame(['Temperature 105.1 °F (high)'], HealthCheckup::sole()->flags());
         $this->assertSame(['open', 'monitor'], [HealthRecord::sole()->status, $this->buck->fresh()->health_flag]);
 

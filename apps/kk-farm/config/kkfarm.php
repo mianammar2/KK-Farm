@@ -66,13 +66,13 @@ return [
         'open_cases' => ['vet'], // 🔒 open health cases (caretakers report a sick goat instead)
         'approve_breeding' => ['vet'], // 🔒 approve goats for breeding
         // D-252: the health buttons on a goat are the vet's unless the administrator ticks a role or a person
-        'health_checkup' => ['vet'],
+        'health_checkup' => ['ceo', 'vet'], // D-256: the Administrator has every Tasks job by default
         'health_entry' => ['vet'], // New health entry
-        'report_concern' => ['vet'], // Report concern (and the health round on the RFID gun)
+        'report_concern' => ['ceo', 'vet'], // Report concern (and the health round on the RFID gun)
         // D-255: field jobs, on the RFID gun and in the app
         'record_heat' => ['ceo', 'manager', 'vet', 'caretaker'],
         'record_mating' => ['ceo', 'manager', 'vet', 'caretaker'],
-        'give_care' => ['vet'], // vaccination, deworming and other preventive care given
+        'give_care' => ['ceo', 'vet'], // vaccination, deworming and other preventive care given
         'move_goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
         'manage_medicine_store' => ['ceo', 'vet'],
         'approve_feeding_plan' => ['ceo', 'manager'],
