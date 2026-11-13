@@ -224,6 +224,7 @@ final class Checkups
                 self::alertVet($goat, $checkup, $warnings, $by);
             }
             self::fillPregnancyDays($goat); // D-101
+            Recovery::review($goat, $by->name); // D-250: a normal reading or a Healthy result answers an earlier watch
             self::syncHealth($goat);
             $readings = array_filter([
                 $checkup->temperature_f !== null ? "{$checkup->temperature_f} °F" : null, $checkup->body_score ? "body {$checkup->body_score}/5" : null,

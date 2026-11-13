@@ -31,6 +31,9 @@ class WeightRecord extends Model
                 \App\Support\Lifecycle::record($record->animal);
             }
         });
+        // D-250: a weighing can answer a watch (weight back after a drop, growth back on track): the goat leaves Watch
+        static::created(fn (self $record) => $record->review_status !== 'held' && $record->animal ? \App\Support\Recovery::review($record->animal, $record->measured_by ?? 'System') : null);
+        static::updated(fn (self $record) => $record->wasChanged('review_status') && $record->review_status === 'accepted' && $record->animal ? \App\Support\Recovery::review($record->animal, $record->reviewed_by ?? 'System') : null);
     }
 
     public function animal()

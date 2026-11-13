@@ -60,3 +60,26 @@ Artisan::command('kkfarm:status-round', function () {
 })->purpose('Record changes in each goat\'s statuses with the rule behind them');
 
 \Illuminate\Support\Facades\Schedule::command('kkfarm:status-round')->hourly()->withoutOverlapping();
+
+/* D-250: goats on Watch whose later weighings or checkups show they have recovered leave Watch. It runs on every
+ * weighing and checkup; this daily round also catches watches opened before D-250. */
+Artisan::command('kkfarm:watch-review', function () {
+    foreach (\Illuminate\Support\Facades\DB::table('organizations')->pluck('id') as $orgId) {
+        \App\Support\Tenant::enter((string) $orgId);
+        try {
+            $ids = \App\Models\HealthRecord::where('kind', 'observation')->where('status', 'open')->distinct()->pluck('animal_id');
+            $n = 0;
+            foreach (\App\Models\Animal::whereIn('id', $ids)->where('status', 'active')->get() as $goat) {
+                foreach (\App\Support\Recovery::review($goat) as $why) {
+                    $n++;
+                    $this->line("{$goat->farm_number}: {$why}");
+                }
+            }
+            $this->info("{$n} watches cleared");
+        } finally {
+            \App\Support\Tenant::leave();
+        }
+    }
+})->purpose('Take recovered goats out of Watch');
+
+\Illuminate\Support\Facades\Schedule::command('kkfarm:watch-review')->dailyAt('05:45')->withoutOverlapping();
