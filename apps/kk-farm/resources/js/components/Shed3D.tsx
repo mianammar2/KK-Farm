@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Minus, Plus, RotateCcw } from 'lucide-react';
+import { Maximize, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { inScannerApp } from '../lib/native';
 import type { Cls } from '../lib/shedSim';
@@ -32,6 +32,9 @@ export default function Shed3D({ pens, meals, clock, selected = null, onPen, pen
 }) {
     const host = useRef<HTMLDivElement>(null);
     const engine = useRef<ShedEngine | null>(null);
+    const frame = useRef<HTMLDivElement>(null);
+    // D-245: the whole screen for the shed, and back (where the browser allows it)
+    const full = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void frame.current?.requestFullscreen?.().catch(() => undefined); };
     const [near, setNear] = useState(false);
     const [failed, setFailed] = useState(false);
     const [ready, setReady] = useState(false);
@@ -101,14 +104,15 @@ export default function Shed3D({ pens, meals, clock, selected = null, onPen, pen
     const goats = pens.reduce((n, p) => n + p.goats.length, 0);
     return (
         <>
-            <div className="kk-shed3d">
+            <div className="kk-shed3d" ref={frame}>
                 <div ref={host} className="kk-shed3d-view" role="img" aria-label={`${label}: ${pens.length} pens, ${goats} goats`} />
                 <div className="kk-shed3d-tools">
                     <button type="button" onClick={() => engine.current?.view(1)} aria-label="Zoom in" title="Zoom in"><Plus className="size-4" aria-hidden /></button>
                     <button type="button" onClick={() => engine.current?.view(-1)} aria-label="Zoom out" title="Zoom out"><Minus className="size-4" aria-hidden /></button>
                     <button type="button" onClick={() => engine.current?.view(0)} aria-label="Reset the view" title="Reset the view"><RotateCcw className="size-4" aria-hidden /></button>
+                    {typeof document !== 'undefined' && document.fullscreenEnabled ? <button type="button" onClick={full} aria-label="Full screen" title="Full screen"><Maximize className="size-4" aria-hidden /></button> : null}
                 </div>
-                <span className="kk-shed3d-hint" aria-hidden>Drag to turn · pinch to zoom</span>
+                <span className="kk-shed3d-hint" aria-hidden>Drag to turn · scroll or pinch to zoom · right-drag or two fingers to move</span>
             </div>
             {children?.(true)}
         </>

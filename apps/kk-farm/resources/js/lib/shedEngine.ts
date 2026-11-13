@@ -15,6 +15,8 @@ export type EngineEvents = { hover(goat: string | null, pen: number | null): voi
 
 const FLOOR_H = 1.4; // the floor stands this high above the ground
 const SIZE = 0.85; // drawn size against the simulation's metres
+// D-245: the camera orbits a target, as in the Office 3D Model: turn (az), tilt (el), distance (x the shed's longest side).
+const AZ0 = -0.62, EL0 = 0.58, DIST0 = 1.75, EL_MIN = 0.06, EL_MAX = 1.45, DIST_MIN = 0.23, DIST_MAX = 4.5, PAN_W = 0.62, PAN_D = 0.75;
 const STEEL = 0xb4bdc2, DARK_STEEL = 0x7f8a90, GREEN = 0x1f7a40, BLUE = 0x2f7fd0;
 const CREAMS = [0xfaf6ec, 0xf4eddd, 0xefe6d2, 0xf8f2e5, 0xece0c8, 0xf6f0e2];
 
@@ -69,7 +71,7 @@ function slatTexture(): THREE.CanvasTexture {
 export class ShedEngine {
     private renderer: THREE.WebGLRenderer;
     private scene = new THREE.Scene();
-    private camera = new THREE.PerspectiveCamera(36, 1, 0.3, 200);
+    private camera = new THREE.PerspectiveCamera(38, 1, 0.3, 400);
     private hemi = new THREE.HemisphereLight(0xffffff, 0x9aa58a, 1.25);
     private sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
     private lamps: THREE.PointLight[] = [];
@@ -92,10 +94,11 @@ export class ShedEngine {
     private dLegs = [new THREE.Object3D(), new THREE.Object3D(), new THREE.Object3D(), new THREE.Object3D()];
     private m = new THREE.Matrix4(); private v3 = new THREE.Vector3(); private s3 = new THREE.Vector3(); private col = new THREE.Color();
 
-    private az = 0.62; private el = 0.62; private zoom = 1; private fit = 20; private target = new THREE.Vector3();
+    private az = AZ0; private el = EL0; private dist = 20; private panX = 0; private panZ = 0;
+    private long = 12; private shedW = 12; private shedD = 12; private centre = new THREE.Vector3(); private target = new THREE.Vector3();
     private raf = 0; private last = 0; private acc = 0; private clock = 0; private dirty = true; private running = false;
     private frameMs = 16; private farLimit = 22; private farPen: boolean[] = [];
-    private pointers = new Map<number, { x: number; y: number }>(); private dragged = false; private pinch = 0;
+    private pointers = new Map<number, { x: number; y: number }>(); private dragged = false; private panning = false; private gap = 0; private mid = { x: 0, y: 0 };
     private hoverAt: { x: number; y: number } | null = null; private hoverKey: string | null = null; private hoverPen: number | null = null;
     private ro: ResizeObserver; private night = false;
     private stop: Array<() => void> = [];
@@ -104,7 +107,7 @@ export class ShedEngine {
         this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         const el = this.renderer.domElement;
-        el.style.cssText = 'display:block;width:100%;height:100%;touch-action:pan-y;outline:none';
+        el.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;outline:none;cursor:grab';
         host.appendChild(el);
 
         this.sun.position.set(-8, 14, 9);
@@ -155,7 +158,7 @@ export class ShedEngine {
         this.night = night;
         const sky = night ? 0x101c2e : 0xdcedf3;
         this.renderer.setClearColor(sky);
-        this.scene.fog = new THREE.Fog(sky, this.fit * 1.6, this.fit * 4);
+        this.scene.fog = new THREE.Fog(sky, this.long * 5, this.long * 14);
         this.hemi.intensity = night ? 0.5 : 1.25; this.hemi.color.set(night ? 0x9fb4ff : 0xffffff);
         this.sun.intensity = night ? 0.2 : 1.5;
         for (const l of this.lamps) l.intensity = night ? 14 : 0;
@@ -302,11 +305,14 @@ export class ShedEngine {
         for (const lamp of this.lamps) lamp.intensity = this.night ? 14 : 0;
 
         this.scene.add(group);
-        this.target.set(W / 2 - 0.6, 0.5, (zA + zB) / 2);
-        this.span = Math.hypot(W + RAMP_LEN * 0.7, zB - zA + 1.5) / 2;
+        // the camera looks at the middle of the floor, at about 40% of the roof's height
+        this.centre.set(W / 2, yR * 0.4, (zA + zB) / 2);
+        this.shedW = W; this.shedD = zB - zA; this.long = Math.max(W, zB - zA);
+        this.camera.far = this.long * 16;
+        if (this.scene.fog instanceof THREE.Fog) { this.scene.fog.near = this.long * 5; this.scene.fog.far = this.long * 14; }
         this.resize();
+        this.view(0);
     }
-    private span = 10;
 
     private addSign(group: THREE.Group, pen: PenLayout, zb: number): void {
         const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 176;
@@ -505,7 +511,6 @@ export class ShedEngine {
             while (this.acc >= TICK && steps < 4) { sim.tick((pen) => this.farPen[pen]); this.acc -= TICK; steps++; }
             if (this.acc >= TICK) this.acc = 0;
         }
-        this.place();
         const pens = sim.layout.pens;
         this.farPen.length = pens.length;
         for (let i = 0; i < pens.length; i++) {
@@ -518,28 +523,41 @@ export class ShedEngine {
         this.dirty = false;
     }
 
-    private place(): void {
-        const d = this.fit * this.zoom, ce = Math.cos(this.el);
-        this.camera.position.set(this.target.x - d * ce * Math.cos(this.az), this.target.y + d * Math.sin(this.el), this.target.z + d * ce * Math.sin(this.az));
+    /** Every input ends here: keep the camera inside its limits, put it in place and ask for a new picture. */
+    private apply(): void {
+        this.el = clamp(this.el, EL_MIN, EL_MAX); // never under the floor, never over the top
+        this.dist = clamp(this.dist, DIST_MIN * this.long, DIST_MAX * this.long);
+        this.panX = clamp(this.panX, -PAN_W * this.shedW, PAN_W * this.shedW); // the shed cannot be lost off-screen
+        this.panZ = clamp(this.panZ, -PAN_D * this.shedD, PAN_D * this.shedD);
+        this.target.set(this.centre.x + this.panX, this.centre.y, this.centre.z + this.panZ);
+        const ce = Math.cos(this.el);
+        this.camera.position.set(this.target.x - this.dist * ce * Math.sin(this.az), this.target.y + this.dist * Math.sin(this.el), this.target.z + this.dist * ce * Math.cos(this.az));
         this.camera.lookAt(this.target);
         this.camera.updateMatrixWorld();
+        this.dirty = true;
     }
 
     private resize(): void {
         const w = Math.max(1, this.host.clientWidth), h = Math.max(1, this.host.clientHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         this.renderer.setSize(w, h, false);
         this.camera.aspect = w / h;
-        const vf = (this.camera.fov * Math.PI) / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * this.camera.aspect);
-        this.fit = (this.span / Math.sin(Math.min(vf, hf) / 2)) * 0.6;
         this.camera.updateProjectionMatrix();
-        if (this.scene.fog instanceof THREE.Fog) { this.scene.fog.near = this.fit * 1.6; this.scene.fog.far = this.fit * 4; }
-        this.dirty = true;
+        this.apply();
     }
 
-    /** Zoom buttons: in (+1), out (-1) or back to the opening view (0). */
+    /** The buttons: closer (+1), further (-1) or back to the opening view (0). */
     view(step: number): void {
-        if (step === 0) { this.az = 0.62; this.el = 0.62; this.zoom = 1; } else this.zoom = clamp(this.zoom * (step > 0 ? 0.8 : 1.25), 0.3, 1.6);
-        this.dirty = true;
+        if (step === 0) { this.az = AZ0; this.el = EL0; this.dist = DIST0 * this.long; this.panX = 0; this.panZ = 0; } else this.dist *= step > 0 ? 0.8 : 1.25;
+        this.apply();
+    }
+
+    /** Slide the target along the floor by a drag of (dx, dy) pixels, as seen from the camera. Further away slides faster. */
+    private pan(dx: number, dy: number): void {
+        const k = (this.dist * 2 * Math.tan((this.camera.fov * Math.PI) / 360)) / Math.max(1, this.host.clientHeight);
+        const sin = Math.sin(this.az), cos = Math.cos(this.az); // right = (cos, sin), forward = (sin, -cos)
+        this.panX += (-dx * cos + dy * sin) * k;
+        this.panZ += (-dx * sin - dy * cos) * k;
     }
 
     // ---------------------------------------------------------------- pointer
@@ -549,44 +567,58 @@ export class ShedEngine {
             el.addEventListener(type, fn as EventListener, opts);
             this.stop.push(() => el.removeEventListener(type, fn as EventListener, opts));
         };
-        const span = () => { const p = [...this.pointers.values()]; return p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0; };
+        // two fingers: how far apart they are, and their middle
+        const pair = () => {
+            const p = [...this.pointers.values()];
+            if (p.length < 2) { this.gap = 0; return; }
+            this.gap = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+            this.mid = { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 };
+        };
         on('pointerdown', (e) => {
             this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            if (this.pointers.size === 1) this.dragged = false;
-            this.pinch = span();
+            if (this.pointers.size === 1) { this.dragged = false; this.panning = e.button === 2 || e.button === 1 || e.shiftKey; }
+            pair();
+            this.hoverAt = null;
+            el.style.cursor = 'grabbing';
             try { el.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
         });
         on('pointermove', (e) => {
             const p = this.pointers.get(e.pointerId);
             if (!p) { if (e.pointerType === 'mouse') this.hoverAt = { x: e.clientX, y: e.clientY }; return; }
             const dx = e.clientX - p.x, dy = e.clientY - p.y;
-            p.x = e.clientX; p.y = e.clientY;
-            if (this.pointers.size > 1) { // pinch to zoom
-                const now = span();
-                if (this.pinch > 0 && now > 0) this.zoom = clamp(this.zoom * (this.pinch / now), 0.3, 1.6);
-                this.pinch = now; this.dragged = true; this.dirty = true;
+            if (this.pointers.size > 1) { // two fingers: pinch zooms, moving together pans
+                p.x = e.clientX; p.y = e.clientY;
+                const gap = this.gap, mid = this.mid;
+                pair();
+                if (gap > 0 && this.gap > 0) this.dist *= gap / this.gap;
+                this.pan(this.mid.x - mid.x, this.mid.y - mid.y);
+                this.dragged = true;
+                this.apply();
                 return;
             }
-            if (!this.dragged && Math.hypot(dx, dy) < 3) return;
+            if (!this.dragged && Math.hypot(dx, dy) < 3) return; // a click, not a drag
+            p.x = e.clientX; p.y = e.clientY;
             this.dragged = true;
-            this.az = clamp(this.az + dx * 0.006, -1.45, 1.45);
-            if (e.pointerType === 'mouse') this.el = clamp(this.el + dy * 0.005, 0.28, 1.3);
-            this.dirty = true;
+            if (this.panning) this.pan(dx, dy); else { this.az += dx * 0.008; this.el += dy * 0.006; }
+            this.apply();
         });
         const up = (e: PointerEvent) => {
             const had = this.pointers.delete(e.pointerId);
-            this.pinch = span();
-            if (had && !this.dragged && e.type === 'pointerup' && this.pointers.size === 0) {
+            pair();
+            if (this.pointers.size === 0) el.style.cursor = 'grab';
+            if (had && !this.dragged && e.type === 'pointerup' && e.button === 0 && this.pointers.size === 0) {
                 const hit = this.pickAt(e.clientX, e.clientY);
                 this.events.pick(hit.goat, hit.pen);
             }
         };
         on('pointerup', up); on('pointercancel', up);
         on('pointerleave', () => { this.hoverAt = null; this.setHover(null, null); });
-        on('wheel', (e) => { // only with Ctrl / pinch on a trackpad, so the page still scrolls
-            if (!e.ctrlKey && !e.metaKey) return;
+        on('contextmenu', (e) => e.preventDefault()); // right-drag pans
+        on('wheel', (e) => { // zoom by a percentage for each notch; the page does not scroll
             e.preventDefault();
-            this.zoom = clamp(this.zoom * Math.exp(e.deltaY * 0.004), 0.3, 1.6); this.dirty = true;
+            const notches = e.deltaMode === 0 ? clamp(e.deltaY / 100, -1, 1) : Math.sign(e.deltaY);
+            this.dist *= Math.pow(1.1, notches);
+            this.apply();
         }, { passive: false });
     }
 
@@ -615,7 +647,6 @@ export class ShedEngine {
     private setHover(goat: string | null, pen: number | null): void {
         if (goat === this.hoverKey && pen === this.hoverPen) return;
         this.hoverKey = goat; this.hoverPen = pen;
-        this.renderer.domElement.style.cursor = pen !== null ? 'pointer' : 'grab';
         this.events.hover(goat, pen);
     }
 

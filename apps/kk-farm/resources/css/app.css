@@ -286,7 +286,9 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 
 /* D-244: the 3D shed, its zoom buttons, the pen links under it and the collar dots of the legend. */
 .kk-shed3d { position: relative; overflow: hidden; border-radius: 12px; border: 1px solid var(--kk-line); background: linear-gradient(#dcedf3, #eef5ea); }
-.kk-shed3d-view { height: clamp(260px, 46vw, 520px); cursor: grab; }
+.kk-shed3d-view { height: clamp(260px, 46vw, 520px); }
+.kk-shed3d:fullscreen { border-radius: 0; border: 0; }
+.kk-shed3d:fullscreen .kk-shed3d-view { height: 100vh; }
 .kk-shed3d-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
 .kk-shed3d-tools button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: #0b4f35; background: rgb(255 255 255 / 0.9); box-shadow: 0 1px 3px rgb(16 48 31 / 0.25); }
 .kk-shed3d-tools button:hover { background: #fff; }
