@@ -2,9 +2,10 @@ import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/react'
 import DeleteButton from '../components/DeleteButton';
 import { LIVE_MS } from '../lib/live';
 import { LocateFixed, MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { BarnRoof, EarTag, FigureLegend, GoatFigure, useTen } from '../components/FarmScene';
 import { GoatBadges } from '../components/GoatBadges';
+import Shed3D, { goatClass, type ShedPen } from '../components/Shed3D';
 import { Button, Chip, cx, Empty, Field, HealthChip, Panel } from '../components/ui';
 import type { Health, SharedProps } from '../types';
 import { useFive } from '../lib/useFive';
@@ -17,7 +18,7 @@ type Shed = { id: number; farmId: number | null; code: string; name: string; sta
 type UnitType = { code: string; name: string; purpose: string };
 /** D-128: a farm (location). Organization → Farm → Shed → Pen. */
 type FarmLoc = { id: number; code: string; name: string; address: string | null; city: string | null; district: string | null; province: string | null; country: string | null; latitude: number | null; longitude: number | null; notes: string | null; active: boolean; place: string; sheds: number };
-type Props = { farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string };
+type Props = { farms: FarmLoc[]; sheds: Shed[]; types: UnitType[]; prefix: string; shedClock?: { meals: string[]; clock: string | null } };
 
 /** Same rule as Pen::standardName on the server (D-055): the part after the "Pen" prefix. */
 /** D-057: the pen number from what was typed or stored ("P01", "pen 1", "1" → 1); 0 when there is none. */
@@ -27,8 +28,8 @@ const penCode = (n: number, area = false) => `${area ? 'OA' : 'P'}${String(n).pa
 /** What the editor panel is doing: adding or editing a shed, or adding or editing a pen inside a shed (D-051). */
 type Editing = { kind: 'farm'; farm?: FarmLoc } | { kind: 'shed'; shed?: Shed } | { kind: 'pen'; shed: Shed; pen?: Pen; area?: boolean } | null;
 
-export default function Sheds({ farms, sheds, types, prefix }: Props) {
-    usePoll(LIVE_MS, { only: ['farms', 'sheds'] }); // D-086: live
+export default function Sheds({ farms, sheds, types, prefix, shedClock }: Props) {
+    usePoll(LIVE_MS, { only: ['farms', 'sheds', 'shedClock'] }); // D-086: live
     const { auth } = usePage<SharedProps>().props;
     const canManage = !!auth?.gates.includes('manage_sheds');
     // D-129: the page shows one farm at a time when there are several; its sheds, pens and goats follow.
@@ -109,16 +110,20 @@ export default function Sheds({ farms, sheds, types, prefix }: Props) {
                                     ) : null}
                                 </div>
                                 {shed.pens.length ? (
-                                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-                                        {shed.pens.map((p) => <ShedPenCard key={p.id} p={p} selected={selected === p.id} onSelect={() => setSelected(p.id)} onEdit={canManage ? () => setEditing({ kind: 'pen', shed, pen: p }) : undefined} />)}
-                                    </div>
+                                    <ShedView shed={shed} clock={shedClock} selected={selected} onSelect={setSelected}>
+                                        {(ok) => (
+                                            <div className={cx('grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4', ok && 'mt-2')}>
+                                                {shed.pens.map((p) => <ShedPenCard key={p.id} p={p} plain={ok && p.kind === 'pen'} selected={selected === p.id} onSelect={() => setSelected(p.id)} onEdit={canManage ? () => setEditing({ kind: 'pen', shed, pen: p }) : undefined} />)}
+                                            </div>
+                                        )}
+                                    </ShedView>
                                 ) : <p className="px-1 text-sm text-[#3d5446]">No pens yet.{canManage ? ' Tap “Pen” to add one.' : ''}</p>}
                             </div>
                             <div className="kk-grass" aria-hidden />
                         </section>
                     ))}
 
-                    {shown.some((x) => x.pens.some((p) => p.goats.length)) ? <FigureLegend breeds={shown.flatMap((x) => x.pens.flatMap((p) => p.goats.map((g) => g.breed)))} /> : null}
+                    {shown.some((x) => x.pens.some((p) => p.goats.length)) ? <FigureLegend collars breeds={shown.flatMap((x) => x.pens.flatMap((p) => p.goats.map((g) => g.breed)))} /> : null}
 
                     {pen ? (
                         <PenRollCall pen={pen} />
@@ -441,11 +446,22 @@ function PenRollCall({ pen }: { pen: Pen }) {
     );
 }
 
-/** D-158: one pen card on the Sheds page: 10 goats, then Load More adds 10 at a time. */
-function ShedPenCard({ p, selected, onSelect, onEdit }: { p: Pen; selected: boolean; onSelect: () => void; onEdit?: () => void }) {
+/** D-244: the shed's indoor pens in 3D, every goat walking about inside its own pen. Open areas stay as cards below. */
+function ShedView({ shed, clock, selected, onSelect, children }: { shed: Shed; clock?: Props['shedClock']; selected: number | null; onSelect: (id: number) => void; children: (ok: boolean) => ReactNode }) {
+    const pens = useMemo<ShedPen[]>(() => shed.pens.filter((p) => p.kind === 'pen').map((p) => ({
+        id: p.id, code: p.code, name: p.name, capacity: p.capacity,
+        goats: p.goats.map((g) => ({ key: g.id, cls: goatClass(g.sex === 'female', g.stage), attention: g.health !== 'healthy',
+            info: { id: g.id, number: g.number, name: g.name, breed: g.breed, female: g.sex === 'female', stage: g.stage, code: g.code, health: g.health } })),
+    })), [shed.pens]);
+    return <Shed3D pens={pens} meals={clock?.meals} clock={clock?.clock} selected={pens.some((p) => p.id === selected) ? selected : null} onPen={onSelect} label={shed.name}>{children}</Shed3D>;
+}
+
+/** D-158: one pen card on the Sheds page. D-244: `plain` when its goats are in the 3D shed above: the card then shows how many need attention instead of the pictures. */
+function ShedPenCard({ p, plain = false, selected, onSelect, onEdit }: { p: Pen; plain?: boolean; selected: boolean; onSelect: () => void; onEdit?: () => void }) {
     const area = p.kind === 'open_area';
-    const [shown, more] = useTen(p.goats);
+    const [shown, more] = useTen(plain ? [] : p.goats);
     const full = p.capacity !== null && p.count > p.capacity;
+    const attention = p.goats.filter((g) => g.health !== 'healthy').length;
     return (
         <div className={cx('kk-pen relative !p-0', area && 'kk-yard', selected && 'kk-pen-selected')}>
                                                     <button type="button" aria-pressed={selected} onClick={onSelect} className="block w-full px-2 pt-1.5 pb-2 pr-8 text-left">
@@ -454,10 +470,10 @@ function ShedPenCard({ p, selected, onSelect, onEdit }: { p: Pen; selected: bool
                                                             <span className={cx('text-sm font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#022a1c]')}>{area ? 'Outdoor' : <>{p.count}{p.capacity ? <span className="text-xs font-semibold opacity-70">/{p.capacity}</span> : null}</>}</span>
                                                         </span>
                                                         <span className="mt-0.5 block truncate text-xs text-[#3d5446]">{p.purpose}</span>
-                                                        <span className="kk-herd" aria-hidden>
+                                                        {plain ? (attention ? <span className="mt-1 block text-[11px] font-semibold text-crit-700">{attention} need attention</span> : null) : <span className="kk-herd" aria-hidden>
                                                             {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={(i * 0.37) % 2.4} info={{ id: g.id, number: g.number, name: g.name, breed: g.breed, female: g.sex === 'female', stage: g.stage, health: g.health, pen: p.name }} />)}
-                                                                                                                    </span>
-                                                        {!area ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
+                                                                                                                    </span>}
+                                                        {!area && !plain ? <span className="kk-trough mt-1 block" aria-hidden /> : null}
                                                     </button>
                                                     {more ? <div className="px-2 pb-2">{more}</div> : null}
                                                     {onEdit ? <button type="button" onClick={onEdit} aria-label={`Edit ${p.name}`} className="absolute right-1 top-1 rounded-md p-1.5 text-[#12663f] hover:bg-white/70"><Pencil className="size-4" aria-hidden /></button> : null}

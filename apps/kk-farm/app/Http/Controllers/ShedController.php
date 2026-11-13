@@ -35,6 +35,8 @@ class ShedController extends Controller
             ]),
             'types' => collect(Shed::TYPES)->map(fn ($t, $code) => ['code' => $code, 'name' => $t[0], 'purpose' => $t[1]])->values(),
             'prefix' => $this->prefix(),
+            // D-244: the 3D shed feeds its goats at the farm's feeding times and beds them down at night
+            'shedClock' => ['meals' => array_values(\App\Support\Feed::mealTimes()), 'clock' => \App\Support\Feed::now()->format('H:i')],
         ]);
     }
 

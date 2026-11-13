@@ -213,6 +213,8 @@ class DashboardController extends Controller
                     ])->values()->all()])->values()->all(),
             ])->sortBy('name')->values()->all(),
             'noPen' => $goats->whereNull('pen_id')->count(),
+            // D-244: the 3D shed feeds its goats at the farm's feeding times and beds them down at night
+            'meals' => array_values(\App\Support\Feed::mealTimes()), 'clock' => \App\Support\Feed::now()->format('H:i'),
         ];
     }
 }

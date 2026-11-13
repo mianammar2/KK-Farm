@@ -1,9 +1,11 @@
 import { Link } from '@inertiajs/react';
 import { useFive } from '../lib/useFive';
 import { AgeBadge, BreedBadge } from './GoatBadges';
-import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { CountUp, HealthChip, SexIcon } from './ui';
 import type { Health } from '../types';
+import { COLLAR, type Cls } from '../lib/shedSim';
+import Shed3D, { goatClass, type ShedPen } from './Shed3D';
 
 export type SceneFigure = { female: boolean; stage: string | null; code?: string | null; breed: string | null; flag: boolean; id?: number; number?: string; name?: string | null; health?: Health };
 
@@ -22,19 +24,28 @@ export type SceneShed = { id: number; name: string; typeName: string | null; goa
  * with each pen as a wooden-fenced enclosure (feed trough and water bucket), and a figure for each goat in it:
  * cream for a female, brown for a male, a red tag for one that needs attention. A pen opens its goats.
  */
-export default function FarmScene({ sheds }: { sheds: SceneShed[] }) {
+export default function FarmScene({ sheds, meals, clock }: { sheds: SceneShed[]; meals?: string[]; clock?: string | null }) {
     const [shown, more] = useFive(sheds);
     return (
         <div className="space-y-5 p-3 sm:p-4">
-            {shown.map((s, i) => <Barn key={s.id} shed={s} index={i} />)}
+            {shown.map((s, i) => <Barn key={s.id} shed={s} index={i} meals={meals} clock={clock} />)}
             {more ? <div className="-mx-3 sm:-mx-4">{more}</div> : null}
-            <FigureLegend breeds={sheds.flatMap((s) => s.pens.flatMap((p) => (p.figures ?? []).map((f) => f.breed)))} />
+            <FigureLegend collars breeds={sheds.flatMap((s) => s.pens.flatMap((p) => (p.figures ?? []).map((f) => f.breed)))} />
         </div>
     );
 }
 
-function Barn({ shed, index }: { shed: SceneShed; index: number }) {
+/** The goats of a pen: from the server, or made up from the counts (females first, those needing attention first). */
+const figuresOf = (pen: ScenePen): SceneFigure[] => (pen.figures?.length ? pen.figures
+    : Array.from({ length: pen.goats }, (_, i) => ({ female: i < pen.female, flag: i < pen.attention, stage: null, breed: null })));
+
+function Barn({ shed, index, meals, clock }: { shed: SceneShed; index: number; meals?: string[]; clock?: string | null }) {
     const [pens, more] = useFive(shed.pens);
+    // D-244: every goat of every pen walks about in the 3D shed.
+    const pens3d = useMemo<ShedPen[]>(() => shed.pens.map((p) => ({
+        id: p.id, code: p.code, name: p.name, capacity: p.capacity,
+        goats: figuresOf(p).map((f, i) => ({ key: f.id !== undefined ? String(f.id) : `${p.id}-${i}`, cls: goatClass(f.female, f.stage), attention: f.flag, info: f.number ? f : undefined })),
+    })), [shed.pens]);
     const capacity = shed.pens.reduce((n, p) => n + (p.capacity ?? 0), 0);
     return (
         <section className="kk-barn kk-rise" style={{ animationDelay: `${index * 70}ms` }} aria-label={`${shed.name}: ${shed.goats} goats`}>
@@ -45,9 +56,17 @@ function Barn({ shed, index }: { shed: SceneShed; index: number }) {
                     <span />
                     <span className="font-semibold text-[#3d5446]"><CountUp to={shed.goats} /> goats{capacity ? <span className="font-normal opacity-75"> of {capacity}</span> : null}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {pens.map((p) => <PenYard key={p.id} pen={p} />)}
-                </div>
+                <Shed3D pens={pens3d} meals={meals} clock={clock} label={shed.name} penHref={(p) => `/goats?pen=${encodeURIComponent(p.name)}`}>
+                    {(ok) => ok ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            {pens.map((p) => <PenChip key={p.id} pen={p} />)}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                            {pens.map((p) => <PenYard key={p.id} pen={p} />)}
+                        </div>
+                    )}
+                </Shed3D>
                 {more ? <div className="mt-2 overflow-hidden rounded-md bg-tile/80">{more}</div> : null}
             </div>
             <div className="kk-grass" aria-hidden />
@@ -55,11 +74,22 @@ function Barn({ shed, index }: { shed: SceneShed; index: number }) {
     );
 }
 
+/** D-244: under the 3D shed, each pen as a link to its goats: code, goats of capacity, how many need attention. */
+function PenChip({ pen }: { pen: ScenePen }) {
+    const full = pen.capacity !== null && pen.goats > pen.capacity;
+    return (
+        <Link href={`/goats?pen=${encodeURIComponent(pen.name)}`} className="kk-pen-chip kk-lift" title={`${pen.name}: ${pen.goats} goats`}>
+            <span className="kk-pen-sign">{pen.code}</span>
+            <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#022a1c]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
+            {pen.attention ? <span className="text-[11px] font-semibold text-crit-700">{pen.attention} need attention</span> : null}
+            <span className="sr-only">{pen.female} female, {pen.male} male</span>
+        </Link>
+    );
+}
+
 function PenYard({ pen }: { pen: ScenePen }) {
     const full = pen.capacity !== null && pen.goats > pen.capacity;
-    // Females first, then males; figures come from the server, or are made up from the counts.
-    const all: SceneFigure[] = pen.figures?.length ? pen.figures
-        : Array.from({ length: pen.goats }, (_, i) => ({ female: i < pen.female, flag: i < pen.attention, stage: null, breed: null }));
+    const all = figuresOf(pen);
     const [shown, more] = useTen(all);
     return (
         <div className="kk-pen kk-lift group">
@@ -132,9 +162,10 @@ export function GoatFigure({ female, flag, delay, stage = 'adult', info }: { fem
 }
 
 /** D-155: what the pictures mean (from the icon library) and the symbol of each breed on the farm. */
-export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | undefined> }) {
-    const item = (art: string, label: string) => (
-        <span key={art} className="inline-flex items-center gap-1.5"><img src={`/icons/${art}.png`} alt="" className="kk-legend-pic" />{label}</span>
+export function FigureLegend({ breeds = [], collars = false }: { breeds?: Array<string | null | undefined>; collars?: boolean }) {
+    // D-244: in the 3D shed the goats are all cream; the class is the colour of the collar and ear tag.
+    const item = (art: string, label: string, cls?: Cls) => (
+        <span key={art} className="inline-flex items-center gap-1.5"><img src={`/icons/${art}.png`} alt="" className="kk-legend-pic" />{collars && cls ? <span className="kk-collar-dot" style={{ background: COLLAR[cls] }} title="Collar and ear tag colour" /> : null}{label}</span>
     );
     const present = [...new Set(breeds.filter(Boolean).map((b) => b!.trim()))].sort();
     const g = useHovered();
@@ -157,10 +188,10 @@ export function FigureLegend({ breeds = [] }: { breeds?: Array<string | null | u
     return (
         <div className="space-y-2 px-1 text-xs font-semibold text-[#3d5446]">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                {item('cls-bdf', 'Female (Doe)')}
-                {item('cls-bkm', 'Male (Buck)')}
-                {item('cls-grw', 'Grower')}
-                {item('cls-kid', 'Kid')}
+                {item('cls-bdf', 'Female (Doe)', 'doe')}
+                {item('cls-bkm', 'Male (Buck)', 'buck')}
+                {item('cls-grw', 'Grower', 'grower')}
+                {item('cls-kid', 'Kid', 'kid')}
                 {item('ic-sick', 'Needs Attention')}
                 <span className="text-[11px] font-normal opacity-80">Point at a goat to see its details</span>
             </div>

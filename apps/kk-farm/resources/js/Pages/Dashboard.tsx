@@ -360,7 +360,7 @@ function HerdByAge({ h }: { h: HerdAge }) {
 
 type PensSummary = {
     sheds: Array<{ id: number; name: string; typeName: string | null; goats: number; pens: Array<{ id: number; name: string; code: string; capacity: number | null; goats: number; female: number; male: number; attention: number }> }>;
-    noPen: number;
+    noPen: number; meals?: string[]; clock?: string | null;
 };
 
 /** D-120: sheds, then their pens with how many goats; a pen opens its goats. Moving goats is on the Sheds page. */
@@ -368,7 +368,7 @@ function PensAtAGlance({ data }: { data: PensSummary }) {
     return (
         <Panel title="Sheds and Pens" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a pen` : ''}`} className="mt-4" flush
             actions={<Link href="/movements" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
-            <FarmScene sheds={data.sheds} /> {/* D-133: drawn like the real farm */}
+            <FarmScene sheds={data.sheds} meals={data.meals} clock={data.clock} /> {/* D-133: drawn like the real farm */}
             {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a pen →</Link> : null}
         </Panel>
     );

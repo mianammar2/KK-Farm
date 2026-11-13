@@ -284,6 +284,16 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .kk-load-more { display: flex; width: 100%; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; padding: 5px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #0b4f35; background: #eef5ef; box-shadow: inset 0 0 0 1px rgb(1 54 36 / 0.12); }
 .kk-load-more:hover { background: #e2efe5; }
 
+/* D-244: the 3D shed, its zoom buttons, the pen links under it and the collar dots of the legend. */
+.kk-shed3d { position: relative; overflow: hidden; border-radius: 12px; border: 1px solid var(--kk-line); background: linear-gradient(#dcedf3, #eef5ea); }
+.kk-shed3d-view { height: clamp(260px, 46vw, 520px); cursor: grab; }
+.kk-shed3d-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
+.kk-shed3d-tools button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: #0b4f35; background: rgb(255 255 255 / 0.9); box-shadow: 0 1px 3px rgb(16 48 31 / 0.25); }
+.kk-shed3d-tools button:hover { background: #fff; }
+.kk-shed3d-hint { position: absolute; left: 10px; bottom: 6px; font-size: 11px; font-weight: 600; color: #3d5446; background: rgb(255 255 255 / 0.7); border-radius: 999px; padding: 1px 8px; pointer-events: none; }
+.kk-pen-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 5px; border-radius: 10px; background: #fff; border: 1px solid var(--kk-line); }
+.kk-collar-dot { display: inline-block; width: 10px; height: 10px; border-radius: 999px; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px rgb(16 48 31 / 0.25); }
+
 /* Feed totals as modern tiles: an icon, a label, a digital readout. */
 .kk-store { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (min-width: 640px) { .kk-store { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
