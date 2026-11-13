@@ -499,6 +499,12 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/settings/users', [UserController::class, 'index']);
         Route::post('/settings/users', [UserController::class, 'store']);
         Route::post('/settings/users/{id}', [UserController::class, 'update'])->whereNumber('id');
+        Route::get('/settings/users/{id}/details', [UserController::class, 'details'])->whereNumber('id'); // D-244
+        Route::get('/settings/users/check-login', [UserController::class, 'checkLogin']);
+        Route::post('/settings/users/bulk', [UserController::class, 'bulk']);
+        Route::post('/settings/users/{id}/reset-password', [UserController::class, 'resetPassword'])->whereNumber('id');
+        Route::post('/settings/users/{id}/sign-out', [UserController::class, 'signOut'])->whereNumber('id');
+        Route::delete('/settings/departments/{department}', [UserController::class, 'destroyDepartment']);
         Route::post('/settings/departments', [UserController::class, 'storeDepartment']);
         Route::post('/settings/departments/{department}', [UserController::class, 'updateDepartment']);
         Route::get('/settings/fields', [FieldController::class, 'index']);
