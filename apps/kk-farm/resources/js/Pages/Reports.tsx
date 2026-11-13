@@ -10,18 +10,19 @@ type Props = {
     ages: Array<{ band: string; value: number }>;
     teeth: Array<{ band: string; value: number }>; // D-229
     exits: Array<{ name: string; value: number }>;
-    breeding: { kiddings: number; alive: number; stillborn: number; perKidding: number };
+    breeding: { kiddings: number; alive: number; stillborn: number; perKidding: number } | null;
     sires: Array<{ id: string; number: string; name: string | null; offspring: number }>;
     costs: Array<{ name: string; value: number }> | null;
+    allowed: string[]; // D-243: the reports this person may open
 };
 
 const TITLES: Record<string, string> = { herd: 'Herd by Breed and Sex', age: 'Herd by Age', breeds: 'Breed Summary', sires: 'Most Used Sires', exits: 'Exits from the Herd', spending: 'Spending, Last 12 Months' };
 
-export default function Reports({ breeds, ages, teeth, exits, breeding, sires, costs }: Props) {
+export default function Reports({ breeds, ages, teeth, exits, breeding, sires, costs, allowed }: Props) {
     // D-215: a menu link opens one report on its own (?section=); /reports without it is the master page with all of them.
     const section = new URLSearchParams(usePage().url.split('?')[1] ?? '').get('section');
     const solo = section && TITLES[section] ? section : null;
-    const show = (id: string) => !solo || solo === id;
+    const show = (id: string) => allowed.includes(id) && (!solo || solo === id);
     const ageChart = useMemo(() => ({
         tooltip: { trigger: 'axis' },
         xAxis: axis.category(ages.map((a) => a.band)),
@@ -51,7 +52,7 @@ export default function Reports({ breeds, ages, teeth, exits, breeding, sires, c
         <>
             <Head title="Reports" />
             <PageHeader title={solo ? TITLES[solo] : 'Reports'} description={solo ? undefined : 'The master page: every report. Each one also opens on its own from the menu.'} actions={<>{solo ? <Link href="/reports"><Button variant="secondary">All reports</Button></Link> : null}<a href="/goats/export"><Button variant="secondary"><Download size={16} aria-hidden /> Goat register CSV</Button></a></>} />
-            {solo ? null : <StatRow>
+            {solo || !breeding ? null : <StatRow>
                 <Stat label="Kiddings recorded" value={breeding.kiddings} />
                 <Stat label="Kids born alive" value={breeding.alive} />
                 <Stat label="Kids per kidding" value={breeding.perKidding} />

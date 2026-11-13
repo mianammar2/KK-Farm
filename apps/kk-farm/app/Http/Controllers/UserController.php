@@ -26,7 +26,7 @@ class UserController extends Controller
             'users' => $this->scope($request)->orderBy('name')->get()->map(fn (User $u) => [
                 'id' => $u->id, 'name' => $u->name, 'login' => $u->email, 'role' => $u->role, 'active' => $u->active, 'department' => $u->department_id,
                 'mustChange' => $u->must_change_password, 'lastLogin' => $u->last_login_at?->format('j M Y, H:i'), 'me' => $u->is($request->user()),
-                'own' => count($u->module_access ?? []) + count($u->gate_access ?? []), // D-215
+                'own' => count($u->module_access ?? []) + count($u->gate_access ?? []) + count(\App\Support\Pages::userTicks($u)), // D-215, D-243
                 'diffs' => collect(array_keys(config('kkfarm.roles')))->reject(fn ($r) => $r === $u->role)->mapWithKeys(fn ($r) => [$r => \App\Support\Access::roleDiff($u, $r)]), // D-241: shown before a role change is saved
             ]),
             'departments' => Department::withCount(['users' => fn ($q) => $q->where('active', true)])->orderBy('name')->get()->map(fn (Department $d) => ['id' => $d->id, 'name' => $d->name, 'users' => $d->users_count]),

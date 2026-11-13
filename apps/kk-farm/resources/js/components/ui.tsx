@@ -199,7 +199,11 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; labe
     // D-215: opened from an app menu (?solo=1), a section is its own page with no other tabs (D-218: no master page link).
     const [path, query = ''] = url.split('?');
     const params = new URLSearchParams(query);
-    tabs = tabs.filter((t) => t.id === value || canOpen(`${path}?tab=${t.id}`)); // D-241: only tabs this person may open
+    const open = tabs.filter((t) => canOpen(`${path}?tab=${t.id}`)); // D-241 / D-243: only tabs this person may open
+    const firstOpen = open[0]?.id;
+    const valueOpen = open.some((t) => t.id === value);
+    useEffect(() => { if (!valueOpen && firstOpen) onChange(firstOpen); }, [valueOpen, firstOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+    tabs = open.length ? open : tabs.filter((t) => t.id === value);
     if (params.get('solo') && tabs.some((t) => t.id === value)) {
         const current = tabs.find((t) => t.id === value)!;
         return (

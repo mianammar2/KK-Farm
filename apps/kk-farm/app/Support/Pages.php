@@ -3,25 +3,40 @@
 namespace App\Support;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 /**
- * D-241: which pages a person may open (config/kkfarm_pages.php, from KK_FARMS_RBAC.md §8.3). The same rules gate the
- * server (EnsurePage middleware) and the menus (shared to the browser), so a menu never shows a page that answers 403.
+ * D-241 / D-243: the one place that decides which pages a person may open. The registry (config/kkfarm_pages.php)
+ * holds every page with its default roles; the administrator's changes per role (role_page_access) and per person
+ * (user_page_access) go on top. The server (EnsurePage), the menus, the All Apps grid, tab bars, role homes,
+ * search, reports and notifications all ask here, so a menu never shows a page that answers 403.
+ *
+ * Effective access to a page = its module is open to the person AND (person's own tick ?? role's tick ?? default).
+ * Locks: 'admin' (Administrator only, never changed), 'vet' (roles fixed; one person may be given it),
+ * 'always' (everyone), 'opening' (the address without a tab: opens when any of its tabs does).
  */
 final class Pages
 {
-    /** The rule for this address: the exact path with the most matching query values, else the nearest parent path. */
+    /** Addresses every signed-in person may open, not listed in the registry. */
+    private const ALWAYS = ['/apps', '/app', '/account', '/notifications', '/media'];
+
+    /** @return array<string, array> the registry by page key */
+    public static function registry(): array
+    {
+        return Tenant::memo('pages.registry', fn () => collect(config('kkfarm_pages'))->keyBy('key')->all());
+    }
+
+    /** The registry row for this address: the exact path with the most matching query values, else the nearest parent path. */
     public static function rule(string $path, array $query = []): ?array
     {
         $path = '/'.trim($path, '/');
-        $rules = config('kkfarm_pages');
         $best = null;
         $score = -1;
-        foreach ($rules as $r) {
-            if ($r[0] !== $path) {
+        foreach (self::registry() as $r) {
+            if ($r['path'] !== $path) {
                 continue;
             }
-            $q = $r[1] ?? [];
+            $q = $r['query'] ?? [];
             if (collect($q)->every(fn ($v, $k) => ($query[$k] ?? null) === $v) && count($q) > $score) {
                 [$best, $score] = [$r, count($q)];
             }
@@ -29,13 +44,12 @@ final class Pages
         if ($best || $path === '/') {
             return $best;
         }
-        // a page under a listed path (a goat's page under /goats) follows that path's base rule
         $parts = explode('/', trim($path, '/'));
         while (count($parts) > 1) {
             array_pop($parts);
             $parent = '/'.implode('/', $parts);
-            foreach ($rules as $r) {
-                if ($r[0] === $parent && empty($r[1])) {
+            foreach (self::registry() as $r) {
+                if ($r['path'] === $parent && empty($r['query'])) {
                     return $r;
                 }
             }
@@ -44,51 +58,87 @@ final class Pages
         return null;
     }
 
-    /** May this person open the page? A per-person grant of the page's module (Users → the person) also opens it. */
+    /** May this person open the address? A page missing from the registry is for the Administrator only. */
     public static function allows(User $u, string $path, array $query = []): bool
     {
         $rule = self::rule($path, $query);
         if (! $rule) {
-            return true; // not a listed page: the module check on its route decides
+            $first = '/'.(explode('/', trim($path, '/'))[0] ?? '');
+
+            return in_array($first, self::ALWAYS, true) || $u->role === 'ceo';
         }
-        if (in_array($u->role, $rule[2], true)) {
+
+        return self::allowsKey($u, $rule['key']);
+    }
+
+    public static function allowsKey(User $u, string $key): bool
+    {
+        $r = self::registry()[$key] ?? null;
+        if (! $r) {
+            return $u->role === 'ceo';
+        }
+
+        return match ($r['lock']) {
+            'always' => true,
+            'admin' => $u->role === 'ceo',
+            'opening' => collect(self::registry())->contains(fn ($x) => $x['path'] === $r['path'] && ! empty($x['query']) && self::allowsKey($u, $x['key'])),
+            default => $u->canModule($r['module']) && (self::userTicks($u)[$key] ?? self::roleAllows($u->org_id, $u->role, $r)),
+        };
+    }
+
+    /** The role's tick for a page (its saved change, else the default), before the module and a person's own ticks. */
+    public static function roleAllows(?string $orgId, string $role, array $r): bool
+    {
+        if ($r['lock'] === 'vet') {
+            return in_array($role, $r['roles'], true); // the role screen never changes a vet-locked page
+        }
+        $saved = self::roleTicks($orgId)[$role][$r['key']] ?? null;
+
+        return $saved ?? self::defaultFor($role, $r);
+    }
+
+    /**
+     * The default: the registry's roles. A role that does not hold the page's module by default (the module was
+     * ticked for it later, or for one person) starts with the module's everyday pages: those open to the Farm Manager.
+     */
+    public static function defaultFor(string $role, array $r): bool
+    {
+        if (in_array($role, $r['roles'], true)) {
             return true;
         }
+        $holdsModule = in_array($role, config("kkfarm.modules.{$r['module']}", []), true);
 
-        return self::grantedByOverride($u, $path);
+        return ! $holdsModule && $r['lock'] === null && in_array('manager', $r['roles'], true);
     }
 
-    /** A module ticked for this person on their own page opens that module's pages for them (RBAC §11). */
-    private static function grantedByOverride(User $u, string $path): bool
+    /** @return array<string, array<string, bool>> role => page key => allowed */
+    public static function roleTicks(?string $orgId): array
     {
-        $granted = collect($u->module_access ?? [])->filter()->keys();
-        if ($granted->isEmpty()) {
-            return false;
-        }
-        $owner = self::MODULE_OF[strtok(trim($path, '/'), '/') ?: ''] ?? null;
-
-        return $owner !== null && $granted->contains($owner);
+        return Tenant::memo("pages.roles.$orgId", fn () => DB::table('role_page_access')->get(['role', 'page_key', 'allowed'])
+            ->groupBy('role')->map(fn ($rows) => $rows->mapWithKeys(fn ($x) => [$x->page_key => (bool) $x->allowed])->all())->all());
     }
 
-    /** First path segment => module, for per-person grants. */
-    private const MODULE_OF = [
-        'goats' => 'goats', 'intake' => 'goats', 'movements' => 'goats', 'scan' => 'scan', 'worker' => 'scan', 'breeding' => 'breeding', 'genetics' => 'breeding', 'repro-loss' => 'breeding',
-        'health' => 'health', 'disease' => 'health', 'parasites' => 'health', 'feeding' => 'feeding', 'feed-cost' => 'feed_cost', 'sheds' => 'sheds', 'housing' => 'sheds',
-        'growth' => 'weights', 'weights' => 'weights', 'tasks' => 'tasks', 'operations' => 'tasks', 'employees' => 'employees', 'hr' => 'employees', 'inventory' => 'inventory',
-        'purchase' => 'purchase', 'sales' => 'sales', 'transport' => 'sales', 'value' => 'value', 'finance' => 'finance', 'maintenance' => 'maintenance', 'sensors' => 'sensors',
-        'milking' => 'milking', 'dairy' => 'milking', 'fattening' => 'fattening', 'welfare' => 'welfare', 'environment' => 'environment', 'waste' => 'environment',
-        'quality' => 'quality', 'fodder' => 'fodder', 'reports' => 'reports', 'dashboard' => 'dashboard',
-    ];
+    /** @return array<string, bool> page key => allowed, this person's own ticks */
+    public static function userTicks(User $u): array
+    {
+        return Tenant::memo("pages.user.{$u->id}", fn () => $u->id ? DB::table('user_page_access')->where('user_id', $u->id)->pluck('allowed', 'page_key')->map(fn ($v) => (bool) $v)->all() : []);
+    }
 
-    /** @return list<array{0: string, 1: ?array, 2: bool}> every rule with whether this person may open it (for the menus) */
+    /** May a person's page change this page for them? (vet-locked: yes, by the administrator, for one person) */
+    public static function userEditable(array $r): bool
+    {
+        return in_array($r['lock'], [null, 'vet'], true);
+    }
+
+    /** @return list<array{0: string, 1: ?array, 2: bool}> every page with whether this person may open it (for the menus) */
     public static function forUser(User $u): array
     {
-        return collect(config('kkfarm_pages'))->map(fn ($r) => [$r[0], $r[1], in_array($u->role, $r[2], true) || self::grantedByOverride($u, $r[0])])->all();
+        return collect(self::registry())->map(fn ($r) => [$r['path'], $r['query'] ?: null, self::allowsKey($u, $r['key'])])->values()->all();
     }
 
     /** Where this person lands after signing in and when a page is closed to them (RBAC §6). */
     public static function home(User $u): string
     {
-        return in_array($u->role, ['ceo', 'manager'], true) ? '/' : '/home';
+        return in_array($u->role, ['ceo', 'manager'], true) && self::allows($u, '/') ? '/' : '/home';
     }
 }

@@ -50,6 +50,17 @@ Status: implemented locally, all 305 feature tests pass, **not deployed**. Sourc
 
 `tests/Feature/RbacTest.php`, one user per role, covers §13.1 to §13.12: Finance apps and refused pages, Executive Dashboard and Scorecard for every role, no Linked Apps, Cleaning, Feeding, Caretaker, Vet-only actions, Manager limits, last Administrator, 403 + audit entry, notifications and task scoping, personal grant and role-change diff. 21 existing test files were updated where they used a role the document no longer allows (listed in the commit). Full suite: **305 / 305 passing**. `GeneticSelectionTest::test_merit_from_progeny...` failed once in one full run and passed on three reruns: a pre-existing ordering tie, not caused by D-241.
 
+## D-243: page access editable on screen (2026-11-13)
+
+- **Registry:** `config/kkfarm_pages.php` now has one row per menu destination (179 pages): stable key (`health.medical_cases`), label, app, group, address, default roles, lock, and the apps whose menus show it. Rows were generated from D-241's rules and the app menus, so the defaults did not change; menus that shared one rule (every `/breeding` tab) now have their own row starting from the same roles.
+- **Storage:** `role_page_access` and `user_page_access` (per farm, row-level security). Only differences from the default are stored; ticking a box back to its default deletes the row.
+- **Effective access** = the page's app is open to the person AND (person's own tick, else the role's tick, else the default). A role given an app it did not have starts with that app's everyday pages (those open to the Farm Manager by default); the administrator narrows them.
+- **Locks:** Settings (every page) and the CEO Scorecard: Administrator only, cannot be changed, so the last Administrator cannot lose them. Vet-locked pages keep their role ticks; the administrator may give one to a single person. Addresses without a tab (`/health`) open when any of their tabs does. A page missing from the registry is Administrator only.
+- **One resolver everywhere:** server page check, menus, All Apps grid, in-page tabs (a closed tab is skipped), role homes, report hub (only permitted reports are sent and shown), finance books (closed tabs' rows are not sent), goat search, and notifications (sent only when the person can open the alert's link).
+- **Audit:** every changed cell is written to the Activity Log as "Page access: role or person · page: old → new" (Administrator only).
+- **Tests:** `tests/Feature/PageAccessTest.php` (8 tests) covers default, role and person ticks, locks, the last Administrator, unticking a page for Finance (menu, 403, data, notifications), ticking a page for Cleaning (only with its app), reset to defaults, and the editor's data. Full suite **313 / 313**.
+- **Still open:** pages other than Health, the goat page, Finance books and Reports still send all tabs' data even when a tab is closed (the tab is hidden and its address refused).
+
 ## Audit: every menu entry and who may open it
 
 ● = the entry shows and the page opens (module **and** page rule). Generated from the code, not typed by hand.

@@ -18,7 +18,9 @@ class ReportController extends Controller
             ->selectRaw("breeds.name, count(*) as total, count(*) filter (where sex = 'female') as female, count(*) filter (where sex = 'male') as male, count(*) filter (where health_status <> 'healthy') as unwell")
             ->groupBy('breeds.name')->orderByDesc('total')->get();
 
-        return Inertia::render('Reports', [
+        // D-243: each report only goes to people who may open it (its own page); the master page shows the rest
+        $allowed = collect(['herd', 'age', 'breeds', 'sires', 'exits', 'spending'])->filter(fn ($x) => \App\Support\Pages::allows($request->user(), '/reports', ['section' => $x]))->values();
+        $props = [
             'breeds' => $breedRows,
             // D-227: by the farm's age stages (Settings → Age Groups), in stage order; goats with no birth date last.
             'ages' => (function () {
@@ -43,6 +45,14 @@ class ReportController extends Controller
                 ->selectRaw('sire.id, sire.farm_number as number, sire.name, count(*) as offspring')->orderByDesc('offspring')->limit(6)->get(),
             'costs' => $request->user()->canModule('finance') ? LedgerEntry::where('direction', 'out')->where('occurred_on', '>=', now()->subMonths(11)->startOfMonth())->groupBy('category')
                 ->select('category as name', DB::raw('sum(amount)::float as value'))->orderByDesc('value')->get() : null,
-        ]);
+        ];
+        $needs = ['breeds' => ['herd', 'breeds'], 'ages' => ['age'], 'teeth' => ['age'], 'exits' => ['exits'], 'breeding' => ['herd'], 'sires' => ['sires'], 'costs' => ['spending']];
+        foreach ($needs as $prop => $sections) {
+            if (array_key_exists($prop, $props) && $allowed->intersect($sections)->isEmpty()) {
+                $props[$prop] = in_array($prop, ['breeding', 'costs'], true) ? null : [];
+            }
+        }
+
+        return Inertia::render('Reports', $props + ['allowed' => $allowed]);
     }
 }

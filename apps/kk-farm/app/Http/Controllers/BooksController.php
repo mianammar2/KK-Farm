@@ -25,19 +25,31 @@ class BooksController extends Controller
         $from = isset($q['from']) ? Carbon::parse($q['from'])->toDateString() : Carbon::parse($to)->startOfYear()->toDateString();
         $account = Account::find($q['account'] ?? null) ?? Account::where('system_key', 'cash')->first();
 
+        // D-243: each tab's records only go to people who may open that tab; the headline figures stay for everyone here
+        $tab = fn (string $t) => \App\Support\Pages::allows($request->user(), '/finance/books', ['tab' => $t]);
+        $trial = Accounting::trialBalance($to);
+        $pl = Accounting::profitAndLoss($from, $to);
+        $balance = Accounting::balanceSheet($to);
+        $ledger = ['account' => ['id' => $account->id, 'label' => $account->label(), 'type' => $account->type]] + Accounting::ledger($account, $from, $to);
+        if (! $tab('trial')) { $trial['rows'] = []; }
+        if (! $tab('pl')) { $pl['income'] = []; $pl['expenses'] = []; }
+        if (! $tab('balance')) { $balance['assets'] = []; $balance['liabilities'] = []; $balance['equity'] = []; }
+        if (! $tab('ledger')) { $ledger['lines'] = []; }
+        $allAccounts = $tab('accounts') || $tab('journal') || $tab('ledger');
+
         return Inertia::render('Books', [
             'from' => $from, 'to' => $to,
-            'journal' => JournalEntry::with(['lines.account', 'lines.animal', 'reversal'])->whereBetween('posted_on', [$from, $to])
+            'journal' => ! $tab('journal') ? [] : JournalEntry::with(['lines.account', 'lines.animal', 'reversal'])->whereBetween('posted_on', [$from, $to])
                 ->orderByDesc('posted_on')->orderByDesc('entry_no')->limit(200)->get()->map(fn (JournalEntry $j) => [
                     'id' => $j->id, 'no' => $j->entry_no, 'on' => $j->posted_on->format('j M Y'), 'memo' => $j->memo, 'source' => JournalEntry::SOURCES[$j->source] ?? $j->source,
                     'reference' => $j->reference, 'by' => $j->recorded_by, 'reversed' => (bool) $j->reversal, 'isReversal' => (bool) $j->reverses_id,
                     'lines' => $j->lines->map(fn (JournalLine $l) => ['account' => $l->account->label(), 'accountId' => $l->account_id, 'debit' => $l->debit_minor / 100, 'credit' => $l->credit_minor / 100, 'goat' => $l->animal?->farm_number])->all(),
                 ]),
-            'trial' => Accounting::trialBalance($to),
-            'pl' => Accounting::profitAndLoss($from, $to),
-            'balance' => Accounting::balanceSheet($to),
-            'ledger' => ['account' => ['id' => $account->id, 'label' => $account->label(), 'type' => $account->type]] + Accounting::ledger($account, $from, $to),
-            'accounts' => Accounting::balances($to)->map(fn ($r) => [
+            'trial' => $trial,
+            'pl' => $pl,
+            'balance' => $balance,
+            'ledger' => $ledger,
+            'accounts' => Accounting::balances($to)->filter(fn ($r) => $allAccounts || $r['account']->is_money || $r['account']->code === '2000')->map(fn ($r) => [
                 'id' => $r['account']->id, 'code' => $r['account']->code, 'name' => $r['account']->name, 'type' => $r['account']->type, 'money' => $r['account']->is_money,
                 'active' => $r['account']->active, 'system' => (bool) $r['account']->system_key, 'balance' => $r['balance'] / 100, 'used' => $r['debit'] > 0 || $r['credit'] > 0,
             ])->values(),
