@@ -23,6 +23,7 @@ type Props = {
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
     tags: Array<{ code: string; from: string; to: string | null; reason: string; closed: string | null; by: string }>;
     weights: Array<{ on: string; kg: number }>;
+    records: GoatRecord[]; // D-249
     timeline: Array<{ id: number; type: string; summary: string; by: string; on: string }>;
     cases: Array<{ id: number; label: string; condition: string; status: string; active: boolean; severity: string; onset: string; resolved: string | null; diagnosis: string | null; treatments: Array<{ id: number; on: string; text: string; meat: string | null; milk: string | null; by: string }> }>;
     health: Array<{ id: number; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; status: string }>;
@@ -55,7 +56,7 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
+    const { records, goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
     const [outcome, setOutcome] = useState(false); // D-161
     const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
@@ -218,8 +219,9 @@ export default function GoatShow(props: Props) {
 
             {tab === 'overview' ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                    <Panel title="Weight history" description={gain && goat.lifetimeAdg !== null ? `${gain.kg >= 0 ? '+' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
-                        {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={260} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
+                    <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg >= 0 ? '+' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
+                        {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={240} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
+                        <RecordsTable rows={records} />
                     </Panel>
                     <div className="space-y-4">
                         {pregnancy ? <PregnancyPanel p={pregnancy} /> : null}
@@ -576,6 +578,50 @@ function StatusStrip({ statuses, history }: { statuses: Record<string, { code: s
                 </li>
             ))}</ul>
             {history.length ? <details className="mt-1 text-xs text-ink-soft"><summary className="cursor-pointer">Status changes ({history.length})</summary><ul className="mt-1 space-y-0.5">{history.map((h, i) => <li key={i}>{h.at} · {DIM_LABEL[h.dimension] ?? h.dimension}: {h.from} → <span className="font-semibold">{h.to}</span> <span className="font-mono">({h.rule})</span></li>)}</ul></details> : null}
+        </div>
+    );
+}
+
+/** D-249: one goat's measurements and care, one row per day, newest first. */
+export type GoatRecord = {
+    on: string; weight: number | null; change: number | null; adg: number | null; bcs: number | null; height: number | null;
+    temp: number | null; tempFlag: boolean; heart: number | null; breaths: number | null; teeth: string | null; ultrasound: string | null;
+    care: string[]; treatments: string[]; result: string | null; by: string[];
+};
+const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean; cell: (r: GoatRecord) => ReactNode; num?: boolean }> = [
+    { key: 'weight', label: 'Weight', num: true, has: (r) => r.weight !== null, cell: (r) => (r.weight !== null ? `${r.weight} KG` : '') },
+    { key: 'change', label: 'Change', num: true, has: (r) => r.change !== null, cell: (r) => (r.change === null ? '' : <span className={r.change < 0 ? 'text-crit-700' : r.change > 0 ? 'text-ok-700' : ''}>{r.change > 0 ? '+' : ''}{r.change} KG</span>) },
+    { key: 'adg', label: 'Daily gain', num: true, has: (r) => r.adg !== null, cell: (r) => (r.adg === null ? '' : <span className={r.adg < 0 ? 'text-crit-700' : ''}>{r.adg} g</span>) },
+    { key: 'bcs', label: 'Body score', num: true, has: (r) => r.bcs !== null, cell: (r) => r.bcs ?? '' },
+    { key: 'height', label: 'Height', num: true, has: (r) => r.height !== null, cell: (r) => (r.height !== null ? `${r.height} in` : '') },
+    { key: 'temp', label: 'Temp °F', num: true, has: (r) => r.temp !== null, cell: (r) => (r.temp === null ? '' : <span className={r.tempFlag ? 'rounded bg-crit-100 px-1 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span>) },
+    { key: 'heart', label: 'Heart /min', num: true, has: (r) => r.heart !== null, cell: (r) => (r.heart === null ? '' : <span className={r.heart < 60 || r.heart > 100 ? 'rounded bg-watch-100 px-1 text-watch-700' : ''} title={r.heart < 60 || r.heart > 100 ? 'Outside the usual 60–100' : undefined}>{r.heart}</span>) },
+    { key: 'breaths', label: 'Breaths /min', num: true, has: (r) => r.breaths !== null, cell: (r) => (r.breaths === null ? '' : <span className={r.breaths < 12 || r.breaths > 40 ? 'rounded bg-watch-100 px-1 text-watch-700' : ''} title={r.breaths < 12 || r.breaths > 40 ? 'Outside the usual 12–40' : undefined}>{r.breaths}</span>) },
+    { key: 'teeth', label: 'Teeth', has: (r) => !!r.teeth, cell: (r) => r.teeth ?? '' },
+    { key: 'ultrasound', label: 'Ultrasound', has: (r) => !!r.ultrasound, cell: (r) => r.ultrasound ?? '' },
+    { key: 'care', label: 'Care given', has: (r) => r.care.length > 0, cell: (r) => r.care.join('; ') },
+    { key: 'treatments', label: 'Treatment', has: (r) => r.treatments.length > 0, cell: (r) => r.treatments.join('; ') },
+    { key: 'result', label: 'Checkup', has: (r) => !!r.result, cell: (r) => (r.result ? <span className={r.result === 'Sick' ? 'font-semibold text-crit-700' : r.result === 'Watch' ? 'text-watch-700' : 'text-ok-700'}>{r.result}</span> : '') },
+    { key: 'by', label: 'By', has: (r) => r.by.length > 0, cell: (r) => <span className="text-ink-soft">{r.by.join(', ')}</span> },
+];
+function RecordsTable({ rows }: { rows: GoatRecord[] }) {
+    const [all, setAll] = useState(false);
+    if (!rows.length) return null;
+    const cols = COLS.filter((c) => rows.some(c.has)); // a column with nothing in it is not shown
+    const shown = all ? rows : rows.slice(0, 10);
+    const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return (
+        <div className="mt-4 border-t border-rule pt-3">
+            <h3 className="mb-2 text-sm font-semibold text-cobalt-900">Measurements and care <span className="font-normal text-ink-soft">· {rows.length} {rows.length === 1 ? 'day' : 'days'}</span></h3>
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                <table className="data-table min-w-[560px] text-sm">
+                    <thead><tr><th className="text-start">Date</th>{cols.map((c) => <th key={c.key} className={c.num ? 'text-end' : 'text-start'}>{c.label}</th>)}</tr></thead>
+                    <tbody>{shown.map((r) => (
+                        <tr key={r.on}><td className="whitespace-nowrap font-medium">{date(r.on)}</td>{cols.map((c) => <td key={c.key} className={c.num ? 'text-end tabular-nums whitespace-nowrap' : 'max-w-[16rem]'}>{c.cell(r)}</td>)}</tr>
+                    ))}</tbody>
+                </table>
+            </div>
+            {rows.length > 10 ? <button type="button" className="mt-2 min-h-10 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length} days`}</button> : null}
         </div>
     );
 }

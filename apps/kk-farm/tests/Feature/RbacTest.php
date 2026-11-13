@@ -244,4 +244,20 @@ class RbacTest extends TestCase
         $this->actingAs($this->user('feeding'))->getJson("/goats/{$goat->id}/peek")->assertOk()->assertJson(['number' => 'P-1', 'seeHealth' => false, 'openCases' => [], 'withdrawal' => null]);
         $this->actingAs($this->user('finance'))->getJson("/goats/{$goat->id}/peek")->assertForbidden();
     }
+
+    /** D-249: the goat page's Overview table: one row per day, newest first; health columns only for ADM/MGR/VET. */
+    public function test_the_goat_overview_table_lists_each_day_and_hides_health_from_other_roles(): void
+    {
+        $goat = Animal::create(['farm_number' => 'R-1', 'sex' => 'female', 'breed_id' => Breed::create(['name' => 'Beetal'])->id, 'birth_date' => now()->subYears(2), 'origin' => 'purchased', 'status' => 'active']);
+        \App\Models\WeightRecord::create(['animal_id' => $goat->id, 'measured_on' => now()->subDays(10), 'weight_kg' => 30, 'measured_by' => 'Ali', 'source' => 'manual']);
+        \App\Models\WeightRecord::create(['animal_id' => $goat->id, 'measured_on' => now()->subDays(5), 'weight_kg' => 31.5, 'body_score' => 3, 'measured_by' => 'Ali', 'source' => 'manual']);
+        \App\Models\HealthCheckup::create(['animal_id' => $goat->id, 'checked_on' => now()->subDays(5), 'temperature_f' => 104.2, 'heart_rate' => 80, 'respiration_rate' => 24, 'outcome' => 'monitor', 'examiner' => 'Dr Sana']);
+        $rows = fn (string $role) => $this->actingAs($this->user($role))->get("/goats/{$goat->id}")->viewData('page')['props']['records'];
+        $vet = $rows('vet');
+        $this->assertCount(2, $vet);
+        $this->assertSame([31.5, 1.5, 300, 3, 104.2, true, 80, 24, 'Watch'], [$vet[0]['weight'], $vet[0]['change'], $vet[0]['adg'], $vet[0]['bcs'], $vet[0]['temp'], $vet[0]['tempFlag'], $vet[0]['heart'], $vet[0]['breaths'], $vet[0]['result']]);
+        $this->assertEqualsCanonicalizing(['Ali', 'Dr Sana'], $vet[0]['by']);
+        $care = $rows('caretaker');
+        $this->assertSame([31.5, null, null, null], [$care[0]['weight'], $care[0]['temp'], $care[0]['heart'], $care[0]['result']]);
+    }
 }

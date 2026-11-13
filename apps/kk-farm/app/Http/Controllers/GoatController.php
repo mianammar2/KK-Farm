@@ -247,6 +247,71 @@ class GoatController extends Controller
         return redirect("/goats/{$animal->id}")->with('success', $tag ? "{$animal->farm_number} registered with tag $tag." : "{$animal->farm_number} registered. Assign an RFID tag from the scan screen.");
     }
 
+    /**
+     * D-249: every measurement and care of one goat, one row per day, newest first: weight (with the change and daily gain
+     * since the weighing before), body score, height, temperature, heart and breathing rate, teeth, ultrasound, care given,
+     * treatments and the checkup's result. Health columns only for the roles that see health (RBAC §7).
+     */
+    private function records(Animal $animal, $weights, bool $seeHealth): array
+    {
+        $days = [];
+        $day = function &(string $on) use (&$days) {
+            $days[$on] ??= ['on' => $on, 'weight' => null, 'change' => null, 'adg' => null, 'bcs' => null, 'height' => null, 'temp' => null, 'tempFlag' => false,
+                'heart' => null, 'breaths' => null, 'teeth' => null, 'ultrasound' => null, 'care' => [], 'treatments' => [], 'result' => null, 'by' => []];
+
+            return $days[$on];
+        };
+        $prev = null;
+        foreach ($weights as $w) {
+            $on = $w->measured_on->format('Y-m-d');
+            $r = &$day($on);
+            $r['weight'] = (float) $w->weight_kg;
+            $r['bcs'] = $w->body_score ?? $r['bcs'];
+            $r['height'] = $w->height_cm !== null ? round((float) $w->height_cm / 2.54, 1) : $r['height'];
+            if ($prev) {
+                $r['change'] = round((float) $w->weight_kg - (float) $prev->weight_kg, 1);
+                $gap = max(1, $prev->measured_on->diffInDays($w->measured_on));
+                $r['adg'] = (int) round($r['change'] * 1000 / $gap);
+            }
+            $r['by'][] = $w->measured_by;
+            unset($r);
+            $prev = $w;
+        }
+        foreach ($animal->dentalExams()->get() as $e) {
+            $r = &$day($e->examined_on->format('Y-m-d'));
+            $r['teeth'] = trim(($e->dental_code ?? '').($e->condition && $e->condition !== 'normal' ? " ({$e->condition})" : '')) ?: null;
+            unset($r);
+        }
+        if ($seeHealth) {
+            foreach (\App\Models\HealthCheckup::where('animal_id', $animal->id)->get() as $c) {
+                $r = &$day($c->checked_on->format('Y-m-d'));
+                $r['temp'] = $c->temperature_f; $r['tempFlag'] = (bool) $c->flags();
+                $r['heart'] = $c->heart_rate; $r['breaths'] = $c->respiration_rate;
+                $r['bcs'] = $r['bcs'] ?? $c->body_score;
+                $r['weight'] = $r['weight'] ?? ($c->weight_kg ? (float) $c->weight_kg : null);
+                $r['ultrasound'] = $c->ultrasound ? str_replace('_', ' ', $c->ultrasound).($c->days_pregnant ? ", day {$c->days_pregnant}" : '').($c->fetuses ? ", {$c->fetuses} ".($c->fetuses > 1 ? 'kids' : 'kid') : '') : null;
+                $r['result'] = \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome;
+                $r['by'][] = $c->examiner;
+                unset($r);
+            }
+            foreach ($animal->healthRecords()->get() as $h) {
+                $r = &$day($h->occurred_on->format('Y-m-d'));
+                $r['care'][] = ucfirst(str_replace('_', ' ', $h->kind)).': '.$h->title;
+                $r['by'][] = $h->recorded_by;
+                unset($r);
+            }
+            foreach (\App\Models\Treatment::where('animal_id', $animal->id)->get() as $t) {
+                $r = &$day($t->given_on->format('Y-m-d'));
+                $r['treatments'][] = trim("{$t->product} {$t->dose}");
+                $r['by'][] = $t->recorded_by;
+                unset($r);
+            }
+        }
+        krsort($days);
+
+        return array_values(array_map(fn ($r) => ['by' => array_values(array_unique(array_filter($r['by'])))] + $r, $days));
+    }
+
     /** D-248: a goat's card for the 3D shed (tap a goat): the essentials, health only for the roles that see it (RBAC §7). */
     public function peek(Request $request, Animal $animal): \Illuminate\Http\JsonResponse
     {
@@ -296,6 +361,7 @@ class GoatController extends Controller
             'tags' => RfidAssignment::with('tag')->where('animal_id', $animal->id)->orderByDesc('valid_from')->get()
                 ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('j M Y'), 'to' => $r->valid_to?->format('j M Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
+            'records' => $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
             'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => $e->summary, 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('j M Y')]),
             // D-073: health cases with their treatment doses
             'cases' => ! $seeHealth ? [] : \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->orderByDesc('onset_on')->get()->map(fn ($c) => [
