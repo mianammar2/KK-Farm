@@ -6,6 +6,7 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { direction, farmMinutes, skyAt, skyColor, skyView, type Sky, type SkyView } from './sky';
 import { ALLEY, buildLayout, CLASS, clockState, COLLAR, GATE_W, PEN_D, RAMP_LEN, ShedSim, TICK, type Cls, type Goat, type Layout, type PenLayout } from './shedSim';
 
 export type EngineGoat = { key: string; cls: Cls; attention: boolean };
@@ -75,6 +76,10 @@ export class ShedEngine {
     private hemi = new THREE.HemisphereLight(0xffffff, 0x9aa58a, 1.25);
     private sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
     private lamps: THREE.PointLight[] = [];
+    // D-246: the sky over the farm: a real sun and moon (Pakistan time), stars at night, lamps on from dusk to dawn
+    private moonLight = new THREE.DirectionalLight(0xb9c8ff, 0);
+    private bulbs: THREE.Mesh[] = [];
+    private sky: Sky | null = null; private skyAge = 99;
     private shedGroup: THREE.Group | null = null;
     private goatGroup: THREE.Group | null = null;
     private sim: ShedSim | null = null;
@@ -111,7 +116,7 @@ export class ShedEngine {
         host.appendChild(el);
 
         this.sun.position.set(-8, 14, 9);
-        this.scene.add(this.hemi, this.sun);
+        this.scene.add(this.hemi, this.sun, this.moonLight, this.sun.target, this.moonLight.target);
         this.dBody.add(this.dHead, this.dTail, ...this.dLegs);
         this.root.add(this.dBody);
 
@@ -119,7 +124,7 @@ export class ShedEngine {
         this.ro.observe(host);
         this.resize();
         this.listen(el);
-        this.setNight(false);
+        this.updateSky();
     }
 
     // ---------------------------------------------------------------- data
@@ -134,7 +139,8 @@ export class ShedEngine {
         const sim = this.sim!;
         const state = clockState(data.clock, data.meals);
         sim.feeding = state.feeding; sim.night = state.night;
-        if (state.night !== this.night) this.setNight(state.night);
+        this.night = state.night; // goats lie down at night (the clock's rule); the light follows the real sun
+        this.updateSky();
         sim.sync(data.pens.map((p) => ({ id: p.id, goats: p.goats })));
         this.penOf.clear();
         for (const p of data.pens) for (const g of p.goats) this.penOf.set(g.key, p.id);
@@ -154,15 +160,39 @@ export class ShedEngine {
         }
     }
 
-    private setNight(night: boolean): void {
-        this.night = night;
-        const sky = night ? 0x101c2e : 0xdcedf3;
-        this.renderer.setClearColor(sky);
-        this.scene.fog = new THREE.Fog(sky, this.long * 5, this.long * 14);
-        this.hemi.intensity = night ? 0.5 : 1.25; this.hemi.color.set(night ? 0x9fb4ff : 0xffffff);
-        this.sun.intensity = night ? 0.2 : 1.5;
-        for (const l of this.lamps) l.intensity = night ? 14 : 0;
+    /** D-246: light, sky, sun, moon, stars and lamps for the farm's time of day. */
+    private updateSky(): void {
+        const sky = skyAt(farmMinutes(this.data.clock));
+        this.sky = sky; this.skyAge = 0;
+        const [r, g, b] = skyColor(sky);
+        const color = new THREE.Color().setRGB(r, g, b, THREE.SRGBColorSpace);
+        this.renderer.setClearColor(color);
+        if (this.scene.fog instanceof THREE.Fog) this.scene.fog.color.copy(color); else this.scene.fog = new THREE.Fog(color, this.long * 5, this.long * 14);
+        const d = sky.daylight;
+        const low = 1 - Math.min(1, Math.max(0, sky.sunAlt) / 25); // low sun: warmer light
+        this.hemi.intensity = 0.32 + 0.95 * d;
+        this.hemi.color.setRGB(0.62 + 0.38 * d, 0.7 + 0.3 * d, 1);
+        this.sun.intensity = 1.6 * d;
+        this.sun.color.setRGB(1, 0.95 - 0.25 * low, 0.88 - 0.42 * low);
+        const moonUp = Math.max(0, Math.min(1, (sky.moonAlt + 2) / 12));
+        this.moonLight.intensity = 0.45 * moonUp * (0.25 + 0.75 * sky.moonLit) * (1 - d);
+        // the light comes from where the sun and the moon really are
+        const aim = (light: THREE.DirectionalLight, alt: number, az: number) => {
+            const [x, y, z] = direction(Math.max(alt, 4), az);
+            const far = this.long * 2;
+            light.position.set(this.centre.x + x * far, this.centre.y + y * far, this.centre.z + z * far);
+            light.target.position.copy(this.centre);
+        };
+        aim(this.sun, sky.sunAlt, sky.sunAz);
+        aim(this.moonLight, sky.moonAlt, sky.moonAz);
+        for (const l of this.lamps) l.intensity = sky.lampsOn ? 14 : 0;
+        for (const b of this.bulbs) (b.material as THREE.MeshBasicMaterial).color.set(sky.lampsOn ? 0xfff1c4 : 0x9aa09a);
         this.dirty = true;
+    }
+
+    /** What the sky shows now: the label, and the sun and moon for the sky band over the shed. */
+    skyInfo(): SkyView | null {
+        return this.sky ? skyView(this.sky) : null;
     }
 
     // ---------------------------------------------------------------- the building
@@ -302,7 +332,11 @@ export class ShedEngine {
             lamp.position.set(W * ((i + 0.5) / Math.min(3, cols)), yR - 0.5, rM);
             this.lamps.push(lamp); group.add(lamp);
         }
-        for (const lamp of this.lamps) lamp.intensity = this.night ? 14 : 0;
+        // a bulb under each lamp: lit from dusk to dawn
+        this.bulbs = this.lamps.map((lamp) => {
+            const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), new THREE.MeshBasicMaterial({ color: 0x9aa09a }));
+            bulb.position.copy(lamp.position); group.add(bulb); return bulb;
+        });
 
         this.scene.add(group);
         // the camera looks at the middle of the floor, at about 40% of the roof's height
@@ -312,6 +346,7 @@ export class ShedEngine {
         if (this.scene.fog instanceof THREE.Fog) { this.scene.fog.near = this.long * 5; this.scene.fog.far = this.long * 14; }
         this.resize();
         this.view(0);
+        this.updateSky();
     }
 
     private addSign(group: THREE.Group, pen: PenLayout, zb: number): void {
@@ -511,6 +546,8 @@ export class ShedEngine {
             while (this.acc >= TICK && steps < 4) { sim.tick((pen) => this.farPen[pen]); this.acc -= TICK; steps++; }
             if (this.acc >= TICK) this.acc = 0;
         }
+        this.skyAge += dt;
+        if (this.skyAge > 20) this.updateSky();
         const pens = sim.layout.pens;
         this.farPen.length = pens.length;
         for (let i = 0; i < pens.length; i++) {
@@ -678,3 +715,4 @@ function disposeTree(root: THREE.Object3D): void {
         }
     });
 }
+

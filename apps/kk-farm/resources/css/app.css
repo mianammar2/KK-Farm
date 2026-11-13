@@ -292,6 +292,11 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .kk-shed3d-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
 .kk-shed3d-tools button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: #0b4f35; background: rgb(255 255 255 / 0.9); box-shadow: 0 1px 3px rgb(16 48 31 / 0.25); }
 .kk-shed3d-tools button:hover { background: #fff; }
+.kk-shed3d-skyband { position: absolute; inset: 0 0 auto 0; height: 30%; pointer-events: none; transition: background 1.5s; }
+.kk-shed3d-skyband .kk-star { position: absolute; border-radius: 999px; background: #fff; }
+.kk-shed3d-skyband .kk-sun { position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 999px; }
+.kk-shed3d-skyband .kk-moon { position: absolute; margin: -15px 0 0 -15px; }
+.kk-shed3d-sky { position: absolute; left: 10px; top: 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: #0b4f35; background: rgb(255 255 255 / 0.85); border-radius: 999px; padding: 3px 10px; box-shadow: 0 1px 3px rgb(16 48 31 / 0.2); pointer-events: none; }
 .kk-shed3d-hint { position: absolute; left: 10px; bottom: 6px; font-size: 11px; font-weight: 600; color: #3d5446; background: rgb(255 255 255 / 0.7); border-radius: 999px; padding: 1px 8px; pointer-events: none; }
 .kk-pen-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 5px; border-radius: 10px; background: #fff; border: 1px solid var(--kk-line); }
 .kk-collar-dot { display: inline-block; width: 10px; height: 10px; border-radius: 999px; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px rgb(16 48 31 / 0.25); }
