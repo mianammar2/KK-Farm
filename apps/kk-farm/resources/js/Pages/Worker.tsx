@@ -62,7 +62,7 @@ export default function Worker({ jobs, job, goat, unknown, pens, can, myTasks }:
                 <span className="min-w-0 flex-1"><span className="block text-lg font-extrabold">{job.label}{job.pen ? ` → ${job.pen}` : ''}</span><span className="block text-sm text-white/80">{job.done} goat{job.done === 1 ? '' : 's'} done</span></span>
                 <button type="button" onClick={() => router.post('/worker/stop')} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-4 text-sm font-bold hover:bg-white/25"><Square size={14} aria-hidden />Finish</button>
             </div>
-            {unknown ? <p className="rounded-tile bg-watch-100 px-3 py-2 font-semibold text-watch-700" role="alert">Tag {unknown} is not linked to any goat. Link it in Goat Registry → Link RFID, then scan again.</p> : null}
+            {unknown ? <p className="rounded-tile bg-watch-100 px-3 py-2 font-semibold text-watch-700" role="alert">No goat found for {unknown}. Check the goat number, or if it is a chip, link it in Goat Registry → Link RFID, then scan again.</p> : null}
             {goat ? <GoatJob job={job} goat={goat} /> : <ScanPrompt />}
         </div>
     );

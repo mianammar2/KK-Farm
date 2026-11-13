@@ -36,9 +36,17 @@ class ScanController extends Controller
                 ]]);
             }
 
+            // D-242: what was typed may be the goat's farm number (the ear tag), not a chip: find the goat by it.
+            $byNumber = ! $open ? \App\Models\Animal::whereRaw('upper(farm_number) = ?', [$code])->where('status', 'active')->first() : null;
+
             // D-179: a worker job is running on this device: the scanned goat goes straight into that job.
             if (WorkerController::job($request)) {
-                return $open ? redirect('/worker?goat='.$open->animal_id) : redirect('/worker?unknown='.urlencode($code));
+                $goatId = $open?->animal_id ?? $byNumber?->id;
+
+                return $goatId ? redirect('/worker?goat='.$goatId) : redirect('/worker?unknown='.urlencode($code));
+            }
+            if ($byNumber && ! $tag && \App\Support\Pages::allows($request->user(), "/goats/{$byNumber->id}")) {
+                return redirect("/goats/{$byNumber->id}");
             }
 
             // The scan starts the goat register when there is nothing to show (D-040): a tag the farm has never seen,

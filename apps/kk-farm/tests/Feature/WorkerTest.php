@@ -60,6 +60,10 @@ class WorkerTest extends TestCase
         $this->actingAs($care)->post('/worker/move', ['animal_id' => $goat->id])->assertRedirect('/worker');
         $this->assertSame($p2->id, $goat->fresh()->pen_id);
 
+        // D-242: the goat's number typed in the box finds the goat too (any case); an unknown number says so.
+        $this->actingAs($care)->get('/scan?tag='.strtolower($goat->farm_number))->assertRedirect('/worker?goat='.$goat->id);
+        $this->actingAs($care)->get('/scan?tag=NO-SUCH-GOAT')->assertRedirect('/worker?unknown=NO-SUCH-GOAT');
+
         // Finish: scanning is normal again.
         $this->actingAs($care)->post('/worker/stop');
         $this->actingAs($care)->get('/scan?tag=E280000000000001')->assertInertia(fn (AssertableInertia $p) => $p->component('Scan'));
