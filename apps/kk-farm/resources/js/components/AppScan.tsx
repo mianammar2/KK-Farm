@@ -44,7 +44,8 @@ const ACTIONS: Record<string, Action[]> = {
 };
 const DEFAULT: Action[] = [{ label: 'Add weight', href: goat('weight'), gate: 'record_weights' }, { label: 'Health checkup', href: goat('checkup'), gate: 'health_checkup' }, { label: 'Move PEN', href: goat('move'), gate: 'move_goats' }];
 
-export default function AppScan({ listen = true }: { listen?: boolean }) { // listen: the one instance that takes RFID gun reads
+// D-302: how the scanner shows: a box in the top bar, a big button in the app menu, or a small button (phone bar)
+export default function AppScan({ listen = true, variant = 'button' }: { listen?: boolean; variant?: 'field' | 'menu' | 'button' }) { // listen: the one instance that takes RFID gun reads
     const { auth } = usePage<SharedProps>().props;
     const pageUrl = usePage().url;
     const app = currentApp(pageUrl, auth?.modules ?? []);
@@ -82,10 +83,22 @@ export default function AppScan({ listen = true }: { listen?: boolean }) { // li
 
     return (
         <>
-            <button type="button" onClick={() => setOpen(true)} title={app ? `Scan a goat for ${app.label}` : 'Scan a goat'}
-                className="inline-flex h-10 items-center gap-1.5 rounded-tile border border-rule bg-tile px-3 text-sm text-cobalt-800 hover:bg-glaze">
-                <ScanLine size={17} aria-hidden /><span className="max-sm:hidden">Scan</span>
-            </button>
+            {variant === 'field' ? (
+                <form onSubmit={(e) => { e.preventDefault(); const v = (e.currentTarget.elements.namedItem('scan') as HTMLInputElement).value; if (v.trim()) { setCode(v); setOpen(true); lookUp(v); e.currentTarget.reset(); } }}
+                    className="relative w-full max-w-xs" title={app ? `Scan a goat for ${app.label}` : 'Scan a goat'}>
+                    <ScanLine size={17} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-cobalt-800" />
+                    <input name="scan" className="field border-cobalt-800 ps-9" placeholder="Scan RFID or type Tag ID" autoComplete="off" autoCapitalize="characters" aria-label="Scan RFID or type Tag ID" />
+                </form>
+            ) : variant === 'menu' ? (
+                <button type="button" onClick={() => setOpen(true)} className="mb-3 flex min-h-11 w-full items-center gap-2 rounded-tile bg-turq-600 px-3 text-sm text-cobalt-950 hover:bg-turq-500">
+                    <ScanLine size={18} aria-hidden /> Scan RFID / Tag ID
+                </button>
+            ) : (
+                <button type="button" onClick={() => setOpen(true)} title={app ? `Scan a goat for ${app.label}` : 'Scan a goat'}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-tile border border-rule bg-tile px-3 text-sm text-cobalt-800 hover:bg-glaze">
+                    <ScanLine size={17} aria-hidden /><span>Scan</span>
+                </button>
+            )}
             {open ? createPortal(
                 <Sheet onClose={close}>
                     <div className="space-y-4 p-4 sm:p-5">

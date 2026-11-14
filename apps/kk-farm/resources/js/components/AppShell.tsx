@@ -134,6 +134,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                     <ArtIcon name={app.art} size={38} />
                     <span className="min-w-0 text-base leading-tight font-bold text-white">{app.label}</span>
                 </Link>
+                <AppScan variant="menu" listen={false} />
                 <AppMenu appKey={app.key} sections={sections} active={active} onNavigate={onNavigate} />
             </nav>
         );
@@ -319,12 +320,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search goats" aria-label="Search goats by number, name or tag" className="field pl-9" />
                     </form>
                 )}
+                <AppScan variant="field" />
                 {page.props.demo ? (
                     <span className="ml-auto hidden items-center gap-1.5 rounded-[4px] bg-watch-100 px-2 py-1 text-xs font-semibold text-watch-700 md:inline-flex">
                         Synthetic demo data
                     </span>
                 ) : <span className="ml-auto" />}
-                <AppScan />
                 <NotificationBell path={path} />
                 <RoleSwitcher auth={auth} roles={roles} />
             </header>
