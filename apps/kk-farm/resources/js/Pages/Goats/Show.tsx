@@ -657,7 +657,7 @@ function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) 
     if (!rows.length) return null;
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const resultTone = (x: string) => (x === 'Sick' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
-    const th = 'px-2.5 py-2.5 text-xs font-semibold whitespace-nowrap text-ink-soft';
+    const th = 'px-2.5 py-2.5 text-xs font-medium whitespace-nowrap text-ink-soft';
     const td = 'px-2.5 py-3 align-middle';
     return (
         <div>
@@ -669,14 +669,14 @@ function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) 
                     </thead>
                     <tbody className="divide-y divide-rule">{shown.map((r) => (
                         <tr key={r.on} className="cursor-pointer hover:bg-glaze/40" onClick={() => setDay(r.on)} title={`Open everything recorded on ${date(r.on)}`}>
-                            <td className={`${td} font-semibold whitespace-nowrap text-cobalt-900`} title={r.by.length ? `Recorded by ${r.by.join(', ')}` : undefined}><span className="underline decoration-rule decoration-dotted underline-offset-4">{date(r.on)}</span></td>
-                            <td className={td}><span className="flex flex-wrap gap-1">{performed(r).map((d, i) => <span key={i} title={d.detail} className={`rounded px-1.5 py-0.5 text-xs font-semibold ${d.tone}`}>{d.label}</span>)}</span></td>
-                            <td className={`${td} text-end font-semibold tabular-nums whitespace-nowrap`} title={r.weight !== null ? `${r.weight} KG${r.bcs !== null ? ` · body score ${r.bcs}` : ''}` : 'Not weighed this day'}>{r.weight !== null ? `${r.weight} KG` : dash}</td>
+                            <td className={`${td} whitespace-nowrap text-cobalt-900`} title={r.by.length ? `Recorded by ${r.by.join(', ')}` : undefined}>{date(r.on)}</td>
+                            <td className={td}><span className="flex flex-wrap gap-1">{performed(r).map((d, i) => <span key={i} title={d.detail} className={`rounded px-1.5 py-0.5 text-xs font-medium ${d.tone}`}>{d.label}</span>)}</span></td>
+                            <td className={`${td} text-end tabular-nums whitespace-nowrap`} title={r.weight !== null && r.bcs !== null ? `Body score ${r.bcs}` : undefined}>{r.weight !== null ? `${r.weight} KG` : dash}</td>
                             <td className={`${td} text-end whitespace-nowrap`} title={r.change !== null && r.weight !== null ? `${r.change > 0 ? 'Gained' : r.change < 0 ? 'Lost' : 'No change:'} ${Math.abs(r.change)} KG since ${Math.round((r.weight - r.change) * 10) / 10} KG, ${r.days} ${r.days === 1 ? 'day' : 'days'} before (${r.adg ?? 0} g a day)` : undefined}>{r.change !== null ? <Ticker kg={r.change} pct={r.pct} days={r.days} perDay={r.adg ?? undefined} small /> : dash}</td>
-                            <td className={`${td} text-end tabular-nums whitespace-nowrap`} title={r.height !== null ? `${r.height} inches (${Math.round(r.height * 2.54)} cm) at the withers` : 'Not measured this day'}>{r.height !== null ? `${r.height} in` : dash}</td>
-                            <td className={`${td} text-end tabular-nums`} title={r.temp !== null ? `${r.temp} °F${r.heart !== null ? ` · heart ${r.heart}/min` : ''}${r.breaths !== null ? ` · breaths ${r.breaths}/min` : ''} · normal 101.3–103.5 °F` : 'No temperature this day'}>{r.temp !== null ? <span className={r.tempFlag ? 'rounded bg-crit-100 px-1.5 py-0.5 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span> : dash}</td>
-                            <td className={`${td} min-w-[9rem] text-ink`} title={r.care.join('\n') || undefined}>{r.care.length ? r.care.join('; ') : dash}</td>
-                            <td className={td}>{r.result ? <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${resultTone(r.result)}`}>{r.result}</span> : dash}</td>
+                            <td className={`${td} text-end tabular-nums whitespace-nowrap`} title={r.height !== null ? `${Math.round(r.height * 2.54)} cm at the withers` : undefined}>{r.height !== null ? `${r.height} in` : dash}</td>
+                            <td className={`${td} text-end tabular-nums`} title={r.temp !== null ? `Normal 101.3–103.5 °F${r.heart !== null ? ` · heart ${r.heart}/min` : ''}${r.breaths !== null ? ` · breaths ${r.breaths}/min` : ''}` : undefined}>{r.temp !== null ? <span className={r.tempFlag ? 'rounded bg-crit-100 px-1.5 py-0.5 text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span> : dash}</td>
+                            <td className={`${td} min-w-[9rem] text-ink`}>{r.care.length ? r.care.join('; ') : dash}</td>
+                            <td className={td}>{r.result ? <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${resultTone(r.result)}`}>{r.result}</span> : dash}</td>
                         </tr>
                     ))}</tbody>
                 </table>
@@ -710,7 +710,7 @@ function Ticker({ kg, pct, days, perDay, small, unit = 'KG' }: { kg: number; pct
     const tone = up ? 'text-ok-700' : down ? 'text-crit-700' : 'text-ink-soft';
     return (
         <span className={`inline-flex flex-col ${small ? 'items-end' : ''}`}>
-            <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${tone}`}>
+            <span className={`inline-flex items-center gap-1 tabular-nums ${tone}`}>
                 <span aria-hidden className={small ? 'text-xs' : 'text-xs'}>{up ? '▲' : down ? '▼' : '■'}</span>
                 {up ? '+' : ''}{kg} {unit}{pct !== null && pct !== undefined ? <span className={`rounded px-1 ${small ? 'text-xs' : 'text-xs'} ${up ? 'bg-ok-100' : down ? 'bg-crit-100' : 'bg-glaze'}`}>{pct > 0 ? '+' : ''}{pct}%</span> : null}
             </span>

@@ -44,7 +44,7 @@ export default function Pager({ total, page, size, onPage, onSize }: { total: nu
     return (
         <nav className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-4 py-3" aria-label="Pages">
             <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                <p className="text-sm text-ink-soft">Showing <b className="text-ink">{from.toLocaleString('en-PK')}–{to.toLocaleString('en-PK')}</b> of <b className="text-ink">{total.toLocaleString('en-PK')}</b></p>
+                <p className="text-sm text-ink-soft">Showing <span className="text-ink">{from.toLocaleString('en-PK')}–{to.toLocaleString('en-PK')}</span> of <span className="text-ink">{total.toLocaleString('en-PK')}</span></p>
                 <label className="flex items-center gap-2 text-sm text-ink-soft">Show
                     <select className="field min-h-9 w-20 py-1" value={size} onChange={(e) => onSize(Number(e.target.value))}>{SIZES.map((n) => <option key={n} value={n}>{n}</option>)}</select>
                 </label>

@@ -146,7 +146,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
         return `${c.total === 'avg' ? 'avg ' : ''}${(Math.round(n * 10) / 10).toLocaleString('en-PK')}${c.unit ? ` ${c.unit}` : ''}`;
     }) : null;
     const num = (c: Col<T>) => c.type === 'number';
-    const head = 'border border-rule bg-[#eef1ea] px-2.5 py-2 text-xs font-semibold whitespace-nowrap text-ink';
+    const head = 'border border-rule bg-[#eef1ea] px-2.5 py-2 text-xs font-medium whitespace-nowrap text-ink';
     const cell = 'border border-rule px-2.5 py-2 align-middle';
     const key = (r: T, i: number) => (rowKey ? rowKey(r, i) : String(i + (at - 1) * size));
     return (
@@ -155,7 +155,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
             {toolbar || !filterable ? <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">{toolbar ?? <span />}{exportBtn}</div> : null}
             {!sorted.length ? <p className="px-4 py-8 text-center text-sm text-ink-soft">{empty}{filterable && (own.filters.length) ? ': no row matches these filters.' : '.'}</p> : (
                 <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
+                    <table className="w-full border-collapse text-sm [&_td]:font-normal [&_td_*]:!font-normal">
                         <thead><tr>
                             <th className={cx(head, 'w-12 text-center text-ink-soft')}>#</th>
                             {cols.map((c) => {
