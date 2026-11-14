@@ -43,7 +43,7 @@ export default function Register({ registered = [], epc, fields, lookups, classS
     // D-058: the form asks Origin Type first. A farm-born kid's Birth Date takes the place of the purchase date,
     // right after the breed, so the Tag ID always comes after the date.
     const farmBorn = form.data.origin === 'born_on_farm';
-    const ordered = (() => {
+    const baseOrder = (() => {
         if (!farmBorn) {
             // D-063: a bought goat's birthday is rarely known, so ask its estimated age just before the birth date.
             const at = fields.findIndex((f) => f.key === 'birth_date');
@@ -57,6 +57,18 @@ export default function Register({ registered = [], epc, fields, lookups, classS
         const rest = fields.filter((f) => f.key !== 'birth_date');
         rest.splice(rest.findIndex((f) => f.key === 'breed_id') + 1, 0, { ...birth, section: fields[at].section });
         return rest;
+    })();
+    // D-281: the owner's order for the first four: the date (purchase / transfer / birth), Tag ID, then Origin Type and Breed
+    const ordered = (() => {
+        const dateKey = farmBorn ? 'birth_date' : 'acquired_on';
+        const pick = [dateKey, 'tag_id', 'origin', 'breed_id'].map((k) => baseOrder.find((f) => f.key === k)).filter((f): f is FieldDef => !!f);
+        const at = baseOrder.findIndex((f) => f.key === 'origin');
+        if (!form.data.origin || pick.length < 4 || at < 0) return baseOrder;
+        const section = baseOrder[at].section;
+        const rest = baseOrder.filter((f) => !pick.includes(f));
+        const where = Math.min(at, ...pick.map((f) => baseOrder.indexOf(f)));
+        const before = rest.filter((f) => baseOrder.indexOf(f) < where);
+        return [...before, ...pick.map((f) => ({ ...f, section })), ...rest.filter((f) => !before.includes(f))];
     })();
     const sections = ordered.reduce<Array<{ name: string; fields: FieldDef[] }>>((acc, f) => {
         const group = acc.find((s) => s.name === f.section);
