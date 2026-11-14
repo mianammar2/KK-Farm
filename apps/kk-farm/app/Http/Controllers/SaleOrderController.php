@@ -58,8 +58,8 @@ class SaleOrderController extends Controller
         return Inertia::render('SaleOrders', [
             'orders' => $orders->map(fn (SaleOrder $o) => [
                 'id' => $o->id, 'no' => $o->order_no, 'customer' => $o->customer?->name ?? $o->buyer, 'customerId' => $o->customer_id, 'basis' => $o->basis, 'terms' => $o->terms,
-                'due' => $o->due_on?->format('j M Y'), 'status' => $o->status, 'by' => $o->created_by, 'approvedBy' => $o->approved_by, 'invoice' => $o->invoice_no, 'notes' => $o->notes,
-                'dispatched' => $o->dispatched_on?->format('j M Y'), 'collected' => $o->collected_at?->format('j M Y'), 'checklist' => $o->checklist ?? [],
+                'due' => $o->due_on?->format('d/m/Y'), 'status' => $o->status, 'by' => $o->created_by, 'approvedBy' => $o->approved_by, 'invoice' => $o->invoice_no, 'notes' => $o->notes,
+                'dispatched' => $o->dispatched_on?->format('d/m/Y'), 'collected' => $o->collected_at?->format('d/m/Y'), 'checklist' => $o->checklist ?? [],
                 'owed' => $o->status === 'dispatched' && ! $o->collected_at ? round($o->lines->filter(fn ($l) => $l->sale)->sum(fn ($l) => ($e = LedgerEntry::find($l->sale->ledger_entry_id)) ? Accounting::receivableMinor($e) : 0) / 100) : 0,
                 'total' => $o->lines->whereNotIn('status', ['removed'])->sum('price_minor') / 100,
                 'errors' => $o->scans->whereNotIn('result', ['match'])->count(),

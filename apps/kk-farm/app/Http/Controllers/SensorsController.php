@@ -34,10 +34,10 @@ class SensorsController extends Controller
             'alerts' => SensorAlert::with(['device', 'animal', 'pen.shed'])->orderByRaw("status = 'open' desc")->orderByDesc('id')->limit(100)->get()->map(fn (SensorAlert $a) => [
                 'id' => $a->id, 'kind' => SensorAlert::KINDS[$a->kind] ?? $a->kind, 'severity' => $a->severity, 'title' => $a->title, 'detail' => $a->detail, 'status' => $a->status,
                 'device' => $a->device?->name, 'goat' => $a->animal?->farm_number, 'goatId' => $a->animal_id, 'pen' => $a->pen?->fullName(), 'taskId' => $a->task_id,
-                'on' => $a->created_at->format('j M g:i A'), 'by' => $a->resolved_by ?? $a->acknowledged_by,
+                'on' => $a->created_at->format('d/m g:i A'), 'by' => $a->resolved_by ?? $a->acknowledged_by,
             ]),
             'readings' => SensorReading::with(['device', 'animal'])->orderByDesc('read_at')->orderByDesc('id')->limit(100)->get()->map(fn (SensorReading $r) => [
-                'id' => $r->id, 'at' => $r->read_at->format('j M g:i:s A'), 'device' => $r->device->name, 'metric' => $r->metric, 'value' => $r->value, 'unit' => $r->unit,
+                'id' => $r->id, 'at' => $r->read_at->format('d/m g:i:s A'), 'device' => $r->device->name, 'metric' => $r->metric, 'value' => $r->value, 'unit' => $r->unit,
                 'rfid' => $r->rfid_epc, 'goat' => $r->animal?->farm_number, 'goatId' => $r->animal_id, 'result' => $r->result,
             ]),
             'out' => Sensors::outNow()->map(fn ($p) => ['goatId' => $p->animal_id, 'goat' => $p->animal->farm_number, 'area' => $p->area?->fullName(), 'since' => $p->at->diffForHumans(short: true), 'hours' => round($p->at->diffInMinutes(now()) / 60, 1)])->values(),

@@ -30,9 +30,9 @@ class TaskController extends Controller
                 'pen' => $t->pen?->fullName(), 'goatId' => $t->animal_id, 'goat' => $t->animal?->farm_number, 'notes' => $t->notes,
                 'assignee' => $t->user?->name ?? $t->employee?->name, 'department' => $t->department?->name,
                 'mine' => $t->user_id === $me->id || ($t->user_id === null && $t->department_id !== null && $t->department_id === $me->department_id),
-                'due' => $t->due_on->format('j M'), 'dueIso' => $t->due_on->toDateString(),
+                'due' => $t->due_on->format('d/m'), 'dueIso' => $t->due_on->toDateString(),
                 'alert' => in_array($t->status, Task::OPEN, true) ? ($t->due_on->lessThan($today) ? 'overdue' : ($t->due_on->lessThanOrEqualTo($today->copy()->addDays(7)) ? 'soon' : null)) : null,
-                'completedBy' => $t->completed_by, 'completedAt' => $t->completed_at?->format('j M g:i A'),
+                'completedBy' => $t->completed_by, 'completedAt' => $t->completed_at?->format('d/m g:i A'),
             ]),
             'departments' => Department::orderBy('name')->get(['id', 'name']),
             'users' => User::where('org_id', $me->org_id)->where('active', true)->orderBy('name')->get(['id', 'name', 'role', 'department_id'])

@@ -115,7 +115,7 @@ final class AppDashboards
         $data = [];
         for ($i = 0; $i < $days; $i++) {
             $day = $from->copy()->addDays($i);
-            $labels[] = $day->format('j M');
+            $labels[] = $day->format('d/m');
             $data[] = round((float) ($rows[$day->toDateString()] ?? 0), 1);
         }
 
@@ -130,7 +130,7 @@ final class AppDashboards
         $data = [];
         for ($i = 0; $i < $months; $i++) {
             $m = $from->copy()->addMonths($i);
-            $labels[] = $m->format('M');
+            $labels[] = $m->format('m/y');
             $data[] = round((float) ($rows[$m->format('Y-m')] ?? 0), 1);
         }
 

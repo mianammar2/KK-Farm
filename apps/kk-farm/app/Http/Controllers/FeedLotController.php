@@ -35,7 +35,7 @@ class FeedLotController extends Controller
         $lots = FeedLot::with('item')->orderByRaw("status = 'quarantined' desc")->orderByDesc('received_on')->orderByDesc('id')->limit(200)->get();
 
         return Inertia::render('FeedLots', [
-            'lots' => $lots->map(fn (FeedLot $l) => ['id' => $l->id, 'no' => $l->lot_no, 'item' => $l->item?->name, 'on' => $l->received_on->format('j M Y'), 'kg' => $l->qty_kg, 'supplier' => $l->supplier,
+            'lots' => $lots->map(fn (FeedLot $l) => ['id' => $l->id, 'no' => $l->lot_no, 'item' => $l->item?->name, 'on' => $l->received_on->format('d/m/Y'), 'kg' => $l->qty_kg, 'supplier' => $l->supplier,
                 'status' => $l->status, 'moisture' => $l->moisture_pct, 'aflatoxin' => $l->aflatoxin_ppb, 'appearance' => $l->appearance, 'sample' => $l->sample_ref, 'testedBy' => $l->tested_by,
                 'receivedBy' => $l->received_by, 'decidedBy' => $l->decided_by, 'note' => $l->decision_note, 'tested' => $l->tested_at !== null]),
             'items' => FeedItem::where('active', true)->orderBy('name')->get(['id', 'name', 'safety_test']),

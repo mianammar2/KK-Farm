@@ -38,13 +38,13 @@ class MaintenanceController extends Controller
             'assets' => $assets->map(fn (Asset $a) => [
                 'id' => $a->id, 'code' => $a->code, 'name' => $a->name, 'category' => $a->category, 'shed' => $a->shed?->name, 'shedId' => $a->shed_id, 'status' => $a->status,
                 'purchased' => $a->purchased_on?->toDateString(), 'cost' => $a->cost_minor !== null ? $a->cost_minor / 100 : null, 'every' => $a->service_every_days,
-                'next' => $a->next_service_on?->format('j M Y'), 'nextIso' => $a->next_service_on?->toDateString(), 'due' => $a->status !== 'retired' && $a->next_service_on && $a->next_service_on->lessThanOrEqualTo($soon),
+                'next' => $a->next_service_on?->format('d/m/Y'), 'nextIso' => $a->next_service_on?->toDateString(), 'due' => $a->status !== 'retired' && $a->next_service_on && $a->next_service_on->lessThanOrEqualTo($soon),
                 'overdue' => $a->status !== 'retired' && $a->next_service_on?->isPast(), 'notes' => $a->notes,
             ]),
             'jobs' => MaintenanceJob::with('asset')->where(fn ($q) => $q->where('status', '!=', 'done')->orWhere('done_on', '>=', now()->subDays(90)))
                 ->orderByRaw("case status when 'open' then 0 when 'in_progress' then 1 else 2 end")->orderByDesc('requested_on')->get()->map(fn (MaintenanceJob $j) => [
-                    'id' => $j->id, 'asset' => $j->asset?->name, 'assetCode' => $j->asset?->code, 'kind' => $j->kind, 'on' => $j->requested_on->format('j M Y'), 'problem' => $j->problem,
-                    'priority' => $j->priority, 'status' => $j->status, 'by' => $j->requested_by, 'doneOn' => $j->done_on?->format('j M Y'), 'work' => $j->work_done,
+                    'id' => $j->id, 'asset' => $j->asset?->name, 'assetCode' => $j->asset?->code, 'kind' => $j->kind, 'on' => $j->requested_on->format('d/m/Y'), 'problem' => $j->problem,
+                    'priority' => $j->priority, 'status' => $j->status, 'by' => $j->requested_by, 'doneOn' => $j->done_on?->format('d/m/Y'), 'work' => $j->work_done,
                     'cost' => $j->cost_minor !== null ? $j->cost_minor / 100 : null, 'doneBy' => $j->done_by,
                 ]),
             'spend' => [

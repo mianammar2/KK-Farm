@@ -49,7 +49,7 @@ class AgeFromWeight
         $goat->update(['birth_date' => $on->copy()->subMonths($months)->toDateString(), 'birth_date_is_estimate' => true, 'age_category' => null]);
         $line = rtrim(rtrim(number_format((float) $goat->breed->young_below_kg, 1), '0'), '.');
         Farm::event($goat, 'edit', sprintf('Age estimated from weight: %s KG on %s is %s %s KG for %s, so about %d months then', rtrim(rtrim(number_format($kg, 1), '0'), '.'),
-            $on->format('j M Y'), $kg < (float) $goat->breed->young_below_kg ? 'under' : 'at or over', $line, $goat->breed->name, $months), $by);
+            $on->format('d/m/Y'), $kg < (float) $goat->breed->young_below_kg ? 'under' : 'at or over', $line, $goat->breed->name, $months), $by);
 
         return $months;
     }

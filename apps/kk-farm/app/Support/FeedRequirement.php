@@ -78,7 +78,7 @@ class FeedRequirement
             // D-111: crude protein the day's feed should carry (feed KG × CP % for each goat's age); null when no CP % is set.
             'cpDay' => $req->contains(fn ($r) => $r['cp'] !== null) ? round($req->sum('cpKg'), 2) : null, 'cpMonth' => $req->contains(fn ($r) => $r['cp'] !== null) ? round($req->sum('cpKg') * $monthDays, 1) : null,
             'cpMissing' => $req->where('state', 'planned')->whereNull('cp')->count(),
-            'month' => $now->format('F'), 'monthDays' => $monthDays, 'daysLeft' => $daysLeft,
+            'month' => $now->format('m/Y'), 'monthDays' => $monthDays, 'daysLeft' => $daysLeft,
             'needMonth' => round($kgDay * $monthDays, 1), 'needLeft' => round($kgDay * $daysLeft, 1), 'shortMonth' => round(max(0, $kgDay * $daysLeft - $inStore), 1),
             'days' => $kgDay > 0 ? (int) floor($inStore / $kgDay) : null,
             'unsplit' => round($req->where('state', 'planned')->where('split', false)->sum('kgDay'), 1),

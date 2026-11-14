@@ -31,10 +31,10 @@ class PurchaseController extends Controller
 
         return Inertia::render('Purchase', [
             'orders' => $orders->map(fn (PurchaseOrder $o) => [
-                'id' => $o->id, 'no' => $o->po_no, 'supplier' => $o->supplier->name, 'supplierId' => $o->supplier_id, 'status' => $o->status, 'ordered' => $o->ordered_on->format('j M Y'),
-                'expected' => $o->expected_on?->format('j M Y'), 'received' => $o->received_on?->format('j M Y'), 'receivedBy' => $o->received_by, 'notes' => $o->notes, 'total' => $o->totalMinor() / 100,
+                'id' => $o->id, 'no' => $o->po_no, 'supplier' => $o->supplier->name, 'supplierId' => $o->supplier_id, 'status' => $o->status, 'ordered' => $o->ordered_on->format('d/m/Y'),
+                'expected' => $o->expected_on?->format('d/m/Y'), 'received' => $o->received_on?->format('d/m/Y'), 'receivedBy' => $o->received_by, 'notes' => $o->notes, 'total' => $o->totalMinor() / 100,
                 'overdue' => $o->status === 'ordered' && $o->expected_on && $o->expected_on->isPast(),
-                'lines' => $o->lines->map(fn (PurchaseOrderLine $l) => ['kind' => $l->kind, 'item' => $names[$l->kind][$l->item_id] ?? '?', 'unit' => $units[$l->kind][$l->item_id] ?? '', 'qty' => $l->qty, 'rate' => $l->rate_minor / 100, 'batch' => $l->batch, 'expiry' => $l->expiry_on?->format('j M Y')]),
+                'lines' => $o->lines->map(fn (PurchaseOrderLine $l) => ['kind' => $l->kind, 'item' => $names[$l->kind][$l->item_id] ?? '?', 'unit' => $units[$l->kind][$l->item_id] ?? '', 'qty' => $l->qty, 'rate' => $l->rate_minor / 100, 'batch' => $l->batch, 'expiry' => $l->expiry_on?->format('d/m/Y')]),
             ]),
             'suppliers' => Supplier::orderByDesc('active')->orderBy('name')->get()->map(fn (Supplier $s) => ['id' => $s->id, 'name' => $s->name, 'phone' => $s->phone, 'city' => $s->city, 'supplies' => $s->supplies, 'notes' => $s->notes, 'active' => $s->active,
                 'orders' => $orders->where('supplier_id', $s->id)->count(), 'spent' => $orders->where('supplier_id', $s->id)->where('status', 'received')->sum(fn ($o) => $o->totalMinor()) / 100]),

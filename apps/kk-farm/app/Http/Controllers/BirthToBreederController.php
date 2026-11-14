@@ -77,20 +77,20 @@ class BirthToBreederController extends Controller
 
                 return ['id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'breed' => $a->breed?->name, 'pen' => $a->pen?->fullName(), 'dam' => $a->dam?->farm_number,
                     'weak' => $a->birth_outcome === 'BAW', 'weaned' => $a->kid_stage === 'weaned' || $a->kid_stage === 'breeding_selected' || $a->kid_stage === 'sale_selected'] + $s
-                    + ['intervention' => $i ? ['id' => $i->id, 'kind' => $i->kind, 'due' => $i->follow_up_on->format('j M'), 'overdue' => $i->follow_up_on->lte(today())] : null];
+                    + ['intervention' => $i ? ['id' => $i->id, 'kind' => $i->kind, 'due' => $i->follow_up_on->format('d/m'), 'overdue' => $i->follow_up_on->lte(today())] : null];
             })->values(),
             'interventions' => GrowthIntervention::with('animal')->where(fn ($q) => $q->where('status', 'open')->orWhere('closed_on', '>=', now()->subDays(90)->toDateString()))->orderByRaw("status = 'open' desc")->orderByDesc('id')->limit(100)->get()
                 ->map(fn (GrowthIntervention $i) => ['id' => $i->id, 'goatId' => $i->animal_id, 'number' => $i->animal?->farm_number, 'kind' => $i->kind, 'reason' => $i->reason, 'action' => $i->action,
-                    'weight' => $i->weight_kg, 'target' => $i->target_kg, 'opened' => $i->opened_on->format('j M'), 'due' => $i->follow_up_on->format('j M Y'), 'status' => $i->status, 'result' => $i->result_kg,
+                    'weight' => $i->weight_kg, 'target' => $i->target_kg, 'opened' => $i->opened_on->format('d/m'), 'due' => $i->follow_up_on->format('d/m/Y'), 'status' => $i->status, 'result' => $i->result_kg,
                     'by' => $i->opened_by, 'closedBy' => $i->closed_by]),
             'candidates' => $candidates->map(fn (Animal $a) => [
                 'id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'breed' => $a->breed?->name, 'pen' => $a->pen?->fullName(), 'purpose' => $a->animal_purpose,
                 'checks' => $c = Growth::eligibility($a, $cw[$a->id] ?? null, $org->selection_age_days, $org->growth_alert_pct),
-                'eligible' => collect($c)->every(fn ($x) => $x['ok']), 'last' => ($d = $latestDecision->get($a->id)) ? BreederSelection::DECISIONS[$d->decision].' · '.$d->decided_on->format('j M') : null,
+                'eligible' => collect($c)->every(fn ($x) => $x['ok']), 'last' => ($d = $latestDecision->get($a->id)) ? BreederSelection::DECISIONS[$d->decision].' · '.$d->decided_on->format('d/m') : null,
             ])->sortByDesc('eligible')->values(),
             'selections' => BreederSelection::with('animal')->orderByDesc('id')->limit(50)->get()->map(fn (BreederSelection $s) => [
                 'id' => $s->id, 'goatId' => $s->animal_id, 'number' => $s->animal?->farm_number, 'decision' => $s->decision, 'reason' => $s->reason, 'override' => $s->override,
-                'failed' => collect($s->checks)->reject(fn ($c) => $c['ok'])->pluck('label')->values(), 'by' => $s->decided_by, 'on' => $s->decided_on->format('j M Y'),
+                'failed' => collect($s->checks)->reject(fn ($c) => $c['ok'])->pluck('label')->values(), 'by' => $s->decided_by, 'on' => $s->decided_on->format('d/m/Y'),
             ]),
             'plan' => [
                 'farm' => GrowthTarget::whereNull('breed_id')->orderBy('age_days')->get(['age_days', 'target_kg']),

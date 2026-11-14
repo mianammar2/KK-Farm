@@ -34,7 +34,7 @@ class Milking
             'started_on' => $on->toDateString(), 'source' => $source, 'recorded_by' => $by,
         ]);
         $doe->update(['repro_status' => 'lactating', 'repro_state' => 'lactating']);
-        Farm::event($doe, 'breeding', "In milk: lactation {$lactation->number} from ".$on->format('j M Y').($source === 'arrival' ? ' (in milk when she came to the farm)' : ' (kidded)'), $by, $on);
+        Farm::event($doe, 'breeding', "In milk: lactation {$lactation->number} from ".$on->format('d/m/Y').($source === 'arrival' ? ' (in milk when she came to the farm)' : ' (kidded)'), $by, $on);
         Tenant::flush();
 
         return $lactation;
@@ -43,7 +43,7 @@ class Milking
     public static function dryOff(Lactation $lactation, CarbonInterface $on, string $reason, string $by): void
     {
         if ($on->lt($lactation->started_on)) {
-            throw ValidationException::withMessages(['dried_on' => 'Drying off cannot be before the lactation started ('.$lactation->started_on->format('j M Y').').']);
+            throw ValidationException::withMessages(['dried_on' => 'Drying off cannot be before the lactation started ('.$lactation->started_on->format('d/m/Y').').']);
         }
         $lactation->update(['dried_on' => $on->toDateString(), 'dry_reason' => $reason, 'dried_by' => $by]);
         $doe = $lactation->animal;
@@ -81,13 +81,13 @@ class Milking
             }
             $lactation = $open[$row['animal_id']] ?? null;
             if (! $lactation || $on->lt($lactation->started_on)) {
-                throw ValidationException::withMessages(["rows.$i.litres" => 'This doe is not in milk on '.$on->format('j M Y').'.']);
+                throw ValidationException::withMessages(["rows.$i.litres" => 'This doe is not in milk on '.$on->format('d/m/Y').'.']);
             }
             $previous = MilkRecord::current()->where('animal_id', $row['animal_id'])->whereDate('milked_on', $on->toDateString())->where('session', $session)->first();
             $withdrawal = self::withdrawalOn($row['animal_id'], $on);
             MilkRecord::create([
                 'id' => $row['id'], 'animal_id' => $row['animal_id'], 'lactation_id' => $lactation->id, 'milked_on' => $on->toDateString(), 'session' => $session,
-                'litres' => $row['litres'], 'discarded' => $withdrawal !== null, 'discard_reason' => $withdrawal ? 'Milk withdrawal until '.$withdrawal->format('j M Y') : null,
+                'litres' => $row['litres'], 'discarded' => $withdrawal !== null, 'discard_reason' => $withdrawal ? 'Milk withdrawal until '.$withdrawal->format('d/m/Y') : null,
                 'supersedes_id' => $previous?->id, 'recorded_by' => $by,
             ]);
             $out[$previous ? 'corrected' : 'saved']++;

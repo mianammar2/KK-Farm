@@ -36,11 +36,11 @@ class MilkProcessingController extends Controller
         $batches = MilkProcessingBatch::with('dispatch.lot')->orderByDesc('made_on')->orderByDesc('id')->limit(200)->get();
 
         return Inertia::render('MilkProcessing', [
-            'milk' => $sent->map(fn (MilkDispatch $d) => ['id' => $d->id, 'lot' => $d->lot?->code, 'on' => $d->dispatched_on->format('j M Y'), 'litres' => (float) $d->litres, 'left' => round((float) $d->litres - self::used($d->id), 2)])->values(),
+            'milk' => $sent->map(fn (MilkDispatch $d) => ['id' => $d->id, 'lot' => $d->lot?->code, 'on' => $d->dispatched_on->format('d/m/Y'), 'litres' => (float) $d->litres, 'left' => round((float) $d->litres - self::used($d->id), 2)])->values(),
             'batches' => $batches->map(fn (MilkProcessingBatch $b) => ['id' => $b->id, 'code' => $b->code, 'product' => MilkProcessingBatch::PRODUCTS[$b->product][0] ?? $b->product, 'lot' => $b->dispatch?->lot?->code,
                 'input' => $b->input_l, 'output' => $b->output_qty, 'unit' => $b->output_unit, 'yield' => $b->input_l > 0 ? round($b->output_qty / $b->input_l * 100, 1) : null,
-                'heat' => $b->heat_temp_c !== null ? "{$b->heat_temp_c} °C".($b->heat_minutes ? " for {$b->heat_minutes} min" : '') : null, 'made' => $b->made_on->format('j M Y'),
-                'bestBefore' => $b->best_before?->format('j M Y'), 'status' => $b->status, 'by' => $b->made_by, 'releasedBy' => $b->released_by, 'notes' => $b->notes])->values(),
+                'heat' => $b->heat_temp_c !== null ? "{$b->heat_temp_c} °C".($b->heat_minutes ? " for {$b->heat_minutes} min" : '') : null, 'made' => $b->made_on->format('d/m/Y'),
+                'bestBefore' => $b->best_before?->format('d/m/Y'), 'status' => $b->status, 'by' => $b->made_by, 'releasedBy' => $b->released_by, 'notes' => $b->notes])->values(),
             'kpi' => ['litres' => round($batches->where('made_on', '>=', now()->subDays(30))->sum('input_l'), 1), 'batches' => $batches->where('made_on', '>=', now()->subDays(30))->count(),
                 'toRelease' => $batches->where('status', 'made')->count(), 'waiting' => round($sent->sum(fn ($d) => max(0, (float) $d->litres - self::used($d->id))), 1)],
             'products' => collect(MilkProcessingBatch::PRODUCTS)->map(fn ($p, $k) => ['id' => $k, 'label' => $p[0], 'unit' => $p[1], 'heated' => in_array($k, MilkProcessingBatch::HEATED, true)])->values(),

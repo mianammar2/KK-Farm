@@ -207,7 +207,7 @@ class Animal extends Model
             'status' => $this->status,
             'health' => $this->health_status,
             'repro' => $this->reproNow(), // D-162: 'monitoring' for 3 days after a delivery or loss
-            'monitorUntil' => $this->isMonitored() ? $this->monitor_until->format('j M') : null,
+            'monitorUntil' => $this->isMonitored() ? $this->monitor_until->format('d/m') : null,
             'weight' => $this->latestWeight?->weight_kg,
             'photo' => $this->photos->firstWhere('is_profile', true)?->id,
         ];

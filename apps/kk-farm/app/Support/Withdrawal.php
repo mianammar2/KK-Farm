@@ -45,6 +45,6 @@ final class Withdrawal
             return null;
         }
 
-        return ['meat' => $w['meat']?->format('j M Y'), 'milk' => $w['milk']?->format('j M Y')];
+        return ['meat' => $w['meat']?->format('d/m/Y'), 'milk' => $w['milk']?->format('d/m/Y')];
     }
 }

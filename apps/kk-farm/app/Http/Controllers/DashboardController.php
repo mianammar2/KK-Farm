@@ -37,7 +37,7 @@ class DashboardController extends Controller
         $open = HealthRecord::where('status', 'open')->whereIn('animal_id', $goats->modelKeys())->orderByDesc('occurred_on')->orderByDesc('id')->get()->groupBy('animal_id');
         $attentionIds = $tags->filter(fn ($t) => in_array('attention', $t, true))->keys();
         $attention = $attentionIds->map(fn ($id) => $card($byId[$id]) + [
-            'title' => $open[$id][0]->title ?? null, 'on' => isset($open[$id]) ? $open[$id][0]->occurred_on->format('j M') : null,
+            'title' => $open[$id][0]->title ?? null, 'on' => isset($open[$id]) ? $open[$id][0]->occurred_on->format('d/m') : null,
         ])->values();
         $toReview = $open->keys()->diff($attentionIds)->sum(fn ($id) => $open[$id]->count());
 
@@ -48,12 +48,12 @@ class DashboardController extends Controller
 
             return $card($byId[$id]) + [
                 'missing' => array_values(array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight', 'age_conflict'], $tags[$id]))),
-                'source' => $o ? $o->summary.' · '.$o->recorded_by.' · '.\Illuminate\Support\Carbon::parse($o->occurred_at)->format('j M') : 'Added '.$byId[$id]->created_at->format('j M'),
+                'source' => $o ? $o->summary.' · '.$o->recorded_by.' · '.\Illuminate\Support\Carbon::parse($o->occurred_at)->format('d/m') : 'Added '.$byId[$id]->created_at->format('d/m'),
             ];
         })->values();
 
         $kiddings = Mating::with('dam')->where('status', 'pregnant')->orderBy('expected_kidding_on')->limit(20)->get()
-            ->map(fn (Mating $m) => ['goatId' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'on' => $m->expected_kidding_on->format('j M'), 'days' => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false)]);
+            ->map(fn (Mating $m) => ['goatId' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'on' => $m->expected_kidding_on->format('d/m'), 'days' => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false)]);
 
         $tracking = (bool) (\App\Support\Tenant::org()?->feed_tracking ?? true); // D-107
         $feedToday = $tracking ? $this->feedingToday() : ['compliance' => ['expected' => 0, 'done' => 0, 'late' => 0, 'missed' => 0]]; // D-069: feed section, pens that have goats

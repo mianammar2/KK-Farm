@@ -31,9 +31,9 @@ class EndOfLifeController extends Controller
         return Inertia::render('EndOfLife', [
             'reviews' => $rows->map(fn (EndOfLifeReview $r) => ['id' => $r->id, 'no' => $r->label(), 'goatId' => $r->animal_id, 'goat' => $r->animal?->farm_number, 'animalId' => $r->animal?->animal_code,
                 'pen' => $r->animal?->pen?->fullName(), 'reason' => EndOfLifeReview::REASONS[$r->reason] ?? $r->reason, 'details' => $r->details, 'requestedBy' => $r->requested_by,
-                'on' => $r->created_at->format('j M Y'), 'welfare' => $r->welfareCase?->label(), 'assessment' => $r->vet_assessment, 'recommends' => $r->vet_recommends, 'vetBy' => $r->vet_by,
+                'on' => $r->created_at->format('d/m/Y'), 'welfare' => $r->welfareCase?->label(), 'assessment' => $r->vet_assessment, 'recommends' => $r->vet_recommends, 'vetBy' => $r->vet_by,
                 'approvedBy' => $r->approved_by, 'status' => $r->status, 'statusLabel' => EndOfLifeReview::STATUS[$r->status] ?? $r->status, 'method' => $r->method, 'disposition' => $r->disposition,
-                'performedBy' => $r->performed_by, 'performedAt' => $r->performed_at?->format('j M Y g:i A')])->values(),
+                'performedBy' => $r->performed_by, 'performedAt' => $r->performed_at?->format('d/m/Y g:i A')])->values(),
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->values(),
             'cases' => WelfareCase::whereNotIn('status', ['closed'])->with('animal')->get()->map(fn ($c) => ['id' => $c->id, 'label' => $c->label(), 'goatId' => $c->animal_id])->values(),
             'reasons' => EndOfLifeReview::REASONS,

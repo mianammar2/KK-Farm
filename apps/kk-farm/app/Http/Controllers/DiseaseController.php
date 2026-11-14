@@ -58,7 +58,7 @@ class DiseaseController extends Controller
             'concerns' => HealthRecord::with('animal.pen.shed')->where('kind', 'observation')->where('status', 'open')->orderByDesc('occurred_on')->limit(50)->get()
                 ->filter(fn ($r) => $r->animal && $r->animal->status === 'active')->map(fn (HealthRecord $r) => [
                     'id' => $r->id, 'goatId' => $r->animal_id, 'number' => $r->animal->farm_number, 'pen' => $r->animal->pen?->fullName(), 'title' => $r->title, 'notes' => $r->notes,
-                    'severity' => $r->severity, 'by' => $r->recorded_by, 'on' => $r->occurred_on?->format('j M Y'),
+                    'severity' => $r->severity, 'by' => $r->recorded_by, 'on' => $r->occurred_on?->format('d/m/Y'),
                 ])->values(),
             'cases' => $active->map(fn (HealthCase $c) => $this->row($c, $rate))->values(),
             'restricted' => collect(Biosecurity::restrictedPens())->map(fn ($cases, $penId) => ['pen' => Pen::with('shed')->find($penId)?->fullName(), 'cases' => $cases,
@@ -89,10 +89,10 @@ class DiseaseController extends Controller
 
         return [
             'id' => $c->id, 'no' => $c->label(), 'goatId' => $c->animal_id, 'number' => $c->animal?->farm_number, 'pen' => $c->animal?->pen?->fullName(), 'condition' => $c->condition,
-            'severity' => $c->severity, 'contagion' => $c->contagion, 'emergency' => $c->emergency, 'isolated' => $c->isolated, 'status' => $c->status, 'onset' => $c->onset_on->format('j M Y'),
-            'days' => $c->ageDays(), 'review' => $c->review_on?->format('j M Y'), 'reviewDue' => $c->review_on && $c->review_on->lte(today()), 'diagnosis' => $c->diagnosis,
-            'restrictedPen' => $c->restrictedPen?->fullName(), 'outbreak' => $c->outbreak?->code, 'lab' => $c->lab_test ? ['test' => $c->lab_test, 'on' => $c->lab_sampled_on?->format('j M'), 'result' => $c->lab_result] : null,
-            'treatments' => $c->treatments->map(fn ($t) => ['on' => $t->given_on->format('j M'), 'product' => $t->product, 'dose' => $t->dose, 'meat' => $t->meat_clear_on?->format('j M'), 'milk' => $t->milk_clear_on?->format('j M')])->values(),
+            'severity' => $c->severity, 'contagion' => $c->contagion, 'emergency' => $c->emergency, 'isolated' => $c->isolated, 'status' => $c->status, 'onset' => $c->onset_on->format('d/m/Y'),
+            'days' => $c->ageDays(), 'review' => $c->review_on?->format('d/m/Y'), 'reviewDue' => $c->review_on && $c->review_on->lte(today()), 'diagnosis' => $c->diagnosis,
+            'restrictedPen' => $c->restrictedPen?->fullName(), 'outbreak' => $c->outbreak?->code, 'lab' => $c->lab_test ? ['test' => $c->lab_test, 'on' => $c->lab_sampled_on?->format('d/m'), 'result' => $c->lab_result] : null,
+            'treatments' => $c->treatments->map(fn ($t) => ['on' => $t->given_on->format('d/m'), 'product' => $t->product, 'dose' => $t->dose, 'meat' => $t->meat_clear_on?->format('d/m'), 'milk' => $t->milk_clear_on?->format('d/m')])->values(),
             'cost' => ['medicine' => $cost['medicine'] / 100, 'lab' => $cost['lab'] / 100, 'labour' => $cost['labour'] / 100, 'total' => $cost['total'] / 100],
         ];
     }
@@ -102,7 +102,7 @@ class DiseaseController extends Controller
         $cases = $o->cases;
 
         return [
-            'id' => $o->id, 'code' => $o->code, 'condition' => $o->condition, 'status' => $o->status, 'opened' => $o->opened_on->format('j M Y'), 'closed' => $o->closed_on?->format('j M Y'),
+            'id' => $o->id, 'code' => $o->code, 'condition' => $o->condition, 'status' => $o->status, 'opened' => $o->opened_on->format('d/m/Y'), 'closed' => $o->closed_on?->format('d/m/Y'),
             'cases' => $cases->count(), 'active' => $cases->whereIn('status', HealthCase::ACTIVE)->count(), 'recovered' => $cases->where('status', 'recovered')->count(),
             'deaths' => $cases->where('status', 'deceased')->count(), 'population' => $o->population,
             'attackRate' => $o->population ? round($cases->count() / $o->population * 100, 1) : null,
@@ -194,7 +194,7 @@ class DiseaseController extends Controller
         $this->vet($request);
         abort_unless(in_array($case->status, HealthCase::ACTIVE, true), 422, 'This case is closed.');
         $data = $request->validate(['review_on' => ['required', 'date', 'after:today'], 'notes' => ['required', 'string', 'max:500']], ['notes.required' => 'Say what changes (treatment, dose, protocol).']);
-        $case->update(['review_on' => $data['review_on'], 'status' => 'under_treatment', 'notes' => trim(($case->notes ? "{$case->notes}\n" : '').now()->format('j M').": not recovered, {$data['notes']}")]);
+        $case->update(['review_on' => $data['review_on'], 'status' => 'under_treatment', 'notes' => trim(($case->notes ? "{$case->notes}\n" : '').now()->format('d/m').": not recovered, {$data['notes']}")]);
         Farm::event($case->animal, 'health', "Not recovered ({$case->label()}): {$data['notes']}. Reassess ".date('j M', strtotime($data['review_on'])), $request->user()->name);
 
         return back()->with('success', "{$case->label()} extended. Reassess on ".date('j M', strtotime($data['review_on'])).'.');

@@ -71,14 +71,14 @@ final class ActionCenter
         if ($user->passes('approve_death')) {
             $deaths = \App\Models\DeathReport::with('animal')->where('status', 'pending')->orderBy('died_at')->get();
             $add('goats', 'death_approvals', 'Deaths to approve', 'critical', 'Read the vet\'s report, then approve the exit or send it back.', '/goats',
-                $deaths->map(fn ($r) => $goat($r->animal, "{$r->cause} · {$r->died_at->format('j M H:i')} · {$r->reported_by}")));
+                $deaths->map(fn ($r) => $goat($r->animal, "{$r->cause} · {$r->died_at->format('d/m H:i')} · {$r->reported_by}")));
         }
 
         // D-231: goats that passed every breeding check and wait for an authorised approval.
         if ($user->passes('approve_breeding')) {
             $waiting = \App\Models\Task::with('animal')->where('title', 'like', Eligibility::TASK_PREFIX.'%')->whereIn('status', \App\Models\Task::OPEN)->orderBy('due_on')->get();
             $add('breeding', 'breeding_approval', 'Breeding approval pending', 'warning', 'Confirm the reproductive exam and genetics, then approve or reject.', '/breeding/eligibility',
-                $waiting->map(fn ($t) => $goat($t->animal, 'qualified · due '.$t->due_on?->format('j M'))));
+                $waiting->map(fn ($t) => $goat($t->animal, 'qualified · due '.$t->due_on?->format('d/m'))));
         }
 
         // ---- Health ----
@@ -86,7 +86,7 @@ final class ActionCenter
         $dosesOverdue = Treatment::with(['animal', 'healthCase'])->whereIn('id', Treatment::whereHas('healthCase', fn ($q) => $q->whereIn('status', HealthCase::ACTIVE))
             ->groupBy('health_case_id')->selectRaw('max(id)'))->whereNotNull('next_dose_on')->where('next_dose_on', '<', $todayIso)->orderBy('next_dose_on')->get();
         $add('health', 'dose_overdue', 'Treatment dose overdue', 'critical', 'Give the dose or update the case with the vet.', '/health',
-            $dosesOverdue->map(fn (Treatment $t) => $goat($t->animal, "{$t->product} · due {$t->next_dose_on->format('j M')} · {$t->healthCase->label()}")));
+            $dosesOverdue->map(fn (Treatment $t) => $goat($t->animal, "{$t->product} · due {$t->next_dose_on->format('d/m')} · {$t->healthCase->label()}")));
 
         $cases = HealthCase::with('animal')->whereIn('status', HealthCase::ACTIVE)->orderByRaw("case severity when 'emergency' then 0 when 'high' then 1 when 'moderate' then 2 else 3 end")->get();
         $add('health', 'open_cases', 'Open or treated cases', $cases->whereIn('severity', ['emergency', 'high'])->isNotEmpty() ? 'critical' : 'warning', 'Review isolated and sick goats with the vet.', '/health',
@@ -94,19 +94,19 @@ final class ActionCenter
 
         $concerns = HealthRecord::with('animal')->where('status', 'open')->whereNotIn('id', HealthCase::whereNotNull('report_id')->select('report_id'))->orderByDesc('occurred_on')->get();
         $add('health', 'concerns', 'Reported concerns to review', 'warning', 'A vet opens a case or records "nothing found".', '/health',
-            $concerns->map(fn (HealthRecord $r) => $goat($r->animal, "{$r->title} · {$r->occurred_on->format('j M')} · {$r->recorded_by}")));
+            $concerns->map(fn (HealthRecord $r) => $goat($r->animal, "{$r->title} · {$r->occurred_on->format('d/m')} · {$r->recorded_by}")));
 
         // Preventive care: the latest record of each goat and care type, overdue.
         $care = HealthRecord::with('animal')->whereIn('id', DB::table('health_records')->whereIn('kind', ['vaccination', 'deworming', 'hoof_care'])->where(fn ($q) => $q->whereNull('care_status')->orWhere('care_status', '!=', 'cancelled'))
             ->selectRaw('distinct on (animal_id, kind) id')->orderBy('animal_id')->orderBy('kind')->orderByDesc('occurred_on')->orderByDesc('id'))
             ->where('next_due_on', '<', $todayIso)->whereHas('animal', fn ($q) => $q->active())->orderBy('next_due_on')->get();
         $add('health', 'care_overdue', 'Preventive care overdue', 'warning', 'Vaccinate or deworm and record it with the next due date.', '/health',
-            $care->map(fn (HealthRecord $r) => $goat($r->animal, ucfirst(str_replace('_', ' ', $r->kind))." · {$r->title} · due {$r->next_due_on->format('j M')}")));
+            $care->map(fn (HealthRecord $r) => $goat($r->animal, ucfirst(str_replace('_', ' ', $r->kind))." · {$r->title} · due {$r->next_due_on->format('d/m')}")));
 
         $withdrawal = Withdrawal::active();
         $wGoats = Animal::whereIn('id', $withdrawal->keys())->get()->keyBy('id');
         $add('health', 'withdrawal', 'Goats under withdrawal', 'info', 'Do not sell these goats or use their milk before the dates.', '/health',
-            $withdrawal->map(fn ($w, $id) => $goat($wGoats[$id] ?? null, trim(($w['meat'] ? 'meat until '.Carbon::parse($w['meat'])->format('j M') : '').($w['milk'] ? ' · milk until '.Carbon::parse($w['milk'])->format('j M') : ''), ' ·')))->values());
+            $withdrawal->map(fn ($w, $id) => $goat($wGoats[$id] ?? null, trim(($w['meat'] ? 'meat until '.Carbon::parse($w['meat'])->format('d/m') : '').($w['milk'] ? ' · milk until '.Carbon::parse($w['milk'])->format('d/m') : ''), ' ·')))->values());
 
         $qty = MedicineStock::quantities();
         $batches = MedicineStock::batches();
@@ -120,15 +120,15 @@ final class ActionCenter
         $matings = Mating::with(['dam', 'checks'])->whereIn('status', ['open', 'pregnant', 'inconclusive'])->orderBy('expected_kidding_on')->get();
         $alerts = $matings->groupBy(fn (Mating $m) => $m->alert($org->kidding_alert_days) ?? 'none');
         $add('breeding', 'check_overdue', 'Pregnancy checks overdue', 'warning', 'Arrange the vet check and record the result.', '/breeding',
-            collect($alerts['check_overdue'] ?? [])->merge($alerts['recheck_overdue'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'mated '.$m->mated_on->format('j M').($m->check_due_on ? ' · check was due '.$m->check_due_on->format('j M') : ''))));
+            collect($alerts['check_overdue'] ?? [])->merge($alerts['recheck_overdue'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'mated '.$m->mated_on->format('d/m').($m->check_due_on ? ' · check was due '.$m->check_due_on->format('d/m') : ''))));
         $add('breeding', 'edd_passed', 'Kidding overdue', 'critical', 'Check the doe and record the kidding or the outcome.', '/breeding',
-            collect($alerts['edd_passed'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'expected '.$m->expected_kidding_on->format('j M'))));
+            collect($alerts['edd_passed'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'expected '.$m->expected_kidding_on->format('d/m'))));
         // D-103: from 10 days before the expected kidding; urgent in the last 3 days.
         $left = fn (Mating $m) => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false);
         $add('breeding', 'kidding_imminent', 'Kidding within 3 days', 'critical', 'Move her to the kidding pen, keep watch and have the vet on call.', '/breeding',
             collect($alerts['kidding_imminent'] ?? [])->map(fn (Mating $m) => $goat($m->dam, ($left($m) === 0 ? 'due today' : "in {$left($m)} day".($left($m) === 1 ? '' : 's')).' · day '.$m->mated_on->diffInDays(now()->startOfDay()).' of pregnancy')));
         $add('breeding', 'kidding_soon', 'Kidding in the next '.$org->kidding_alert_days.' days', 'warning', 'Prepare the kidding pen, bedding and colostrum; watch the doe.', '/breeding',
-            collect($alerts['kidding_soon'] ?? [])->map(fn (Mating $m) => $goat($m->dam, "in {$left($m)} days · expected ".$m->expected_kidding_on->format('j M'))));
+            collect($alerts['kidding_soon'] ?? [])->map(fn (Mating $m) => $goat($m->dam, "in {$left($m)} days · expected ".$m->expected_kidding_on->format('d/m'))));
 
         $weaningDue = Animal::active()->where('origin', 'born_on_farm')->where(fn ($q) => $q->whereNull('kid_stage')->orWhere('kid_stage', '!=', 'weaned'))
             ->whereNotNull('birth_date')->whereBetween('birth_date', [$today->copy()->subDays($org->weaning_age_days + 90)->toDateString(), $today->copy()->subDays($org->weaning_age_days)->toDateString()])
@@ -212,12 +212,12 @@ final class ActionCenter
         // ---- Money ----
         $unpaid = \App\Models\LedgerEntry::where('direction', 'out')->whereIn('payment_status', ['pending', 'partial'])->whereNull('reverses_id')->whereDoesntHave('reversal')->orderBy('occurred_on')->get();
         $add('finance', 'unpaid', 'Expenses not fully paid', 'info', 'Pay the vendor and record it.', '/finance',
-            $unpaid->map(fn ($e) => ['text' => $e->counterparty ?? $e->category, 'sub' => $e->category.' · PKR '.number_format((float) $e->amount).' · '.$e->occurred_on->format('j M').($e->payment_status === 'partial' ? ' · partly paid' : ''), 'url' => '/finance']));
+            $unpaid->map(fn ($e) => ['text' => $e->counterparty ?? $e->category, 'sub' => $e->category.' · PKR '.number_format((float) $e->amount).' · '.$e->occurred_on->format('d/m').($e->payment_status === 'partial' ? ' · partly paid' : ''), 'url' => '/finance']));
 
         // ---- Tasks ----
         $tasks = Task::visibleTo($user)->whereIn('status', Task::OPEN)->where('due_on', '<', $todayIso)->orderBy('due_on')->get(); // D-241: own and department tasks only
         $add('tasks', 'tasks_overdue', 'Tasks overdue', 'warning', 'Finish or reassign the task.', '/tasks',
-            $tasks->map(fn (Task $t) => ['text' => $t->title, 'sub' => 'due '.$t->due_on->format('j M'), 'url' => '/tasks']));
+            $tasks->map(fn (Task $t) => ['text' => $t->title, 'sub' => 'due '.$t->due_on->format('d/m'), 'url' => '/tasks']));
 
         $rank = ['critical' => 0, 'warning' => 1, 'info' => 2];
         usort($out, fn ($a, $b) => $rank[$a['severity']] <=> $rank[$b['severity']]);

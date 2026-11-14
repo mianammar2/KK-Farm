@@ -51,7 +51,7 @@ class FeedingController extends Controller
         ];
 
         return Inertia::render('Feeding', [
-            'today' => Carbon::parse($today)->format('l j M'),
+            'today' => Carbon::parse($today)->format('d/m'),
             'meal' => $meal,
             'meals' => Feed::MEALS,
             'mealTimes' => Feed::mealTimes($org),
@@ -86,12 +86,12 @@ class FeedingController extends Controller
                 'daysLeft' => ($weekUse[$i->id] ?? 0) > 0 ? (int) floor(max(0, $stock[$i->id] ?? 0) / ($weekUse[$i->id] / 7)) : null,
             ]),
             'movements' => FeedStockMovement::with('item')->orderByDesc('moved_on')->orderByDesc('id')->limit(15)->get()->map(fn (FeedStockMovement $m) => [
-                'id' => $m->id, 'on' => $m->moved_on->format('j M'), 'item' => $m->item->name, 'type' => FeedStockMovement::TYPES[$m->type][0] ?? $m->type,
+                'id' => $m->id, 'on' => $m->moved_on->format('d/m'), 'item' => $m->item->name, 'type' => FeedStockMovement::TYPES[$m->type][0] ?? $m->type,
                 'qty' => $m->qty_kg, 'rate' => $m->rate_minor !== null ? $m->rate_minor / 100 : null, 'party' => $m->party, 'reference' => $m->reference, 'by' => $m->recorded_by,
             ]),
             'history' => FeedUsage::current()->with(['item', 'pen.shed'])->where('fed_on', '>=', Carbon::parse($today)->subDays(13)->toDateString())
                 ->orderByDesc('fed_at')->limit(300)->get()->map(fn (FeedUsage $u) => [
-                    'id' => $u->id, 'on' => $u->fed_on->format('j M'), 'meal' => $u->meal, 'pen' => $u->pen->fullName(), 'feed' => $u->item->name, 'headcount' => $u->headcount,
+                    'id' => $u->id, 'on' => $u->fed_on->format('d/m'), 'meal' => $u->meal, 'pen' => $u->pen->fullName(), 'feed' => $u->item->name, 'headcount' => $u->headcount,
                     'planned' => $u->planned_kg, 'offered' => $u->offered_kg, 'refused' => $u->refused_kg, 'wasted' => $u->wasted_kg, 'consumed' => round($u->consumedKg(), 2),
                     'perHead' => $u->headcount ? round($u->consumedKg() / $u->headcount, 3) : null, 'cost' => round($u->offered_kg * $u->unit_cost_minor / 100),
                     'by' => $u->fed_by, 'corrected' => $u->supersedes_id !== null,
@@ -123,14 +123,14 @@ class FeedingController extends Controller
         $inForce = Feed::plansOn($today);
         $head = Feed::groupIds(\App\Models\Animal::active()->get())->countBy();
         $show = fn (?RationPlan $p) => $p ? [
-            'id' => $p->id, 'from' => $p->effective_from->format('j M Y'), 'fromIso' => $p->effective_from->toDateString(), 'status' => $p->status, 'basis' => $p->basis,
+            'id' => $p->id, 'from' => $p->effective_from->format('d/m/Y'), 'fromIso' => $p->effective_from->toDateString(), 'status' => $p->status, 'basis' => $p->basis,
             'split' => ['morning' => $p->split_morning, 'midday' => $p->split_midday, 'evening' => $p->split_evening],
             'lines' => $p->lines->map(fn ($l) => ['feedItemId' => $l->feed_item_id, 'name' => $l->item->name, 'code' => $l->item->code, 'kg' => $l->kg_per_head, 'share' => $l->share_pct, 'cp' => $l->item->cp_pct !== null ? (float) $l->item->cp_pct : null]),
             'cpMix' => Feed::mix($p)['cp'] ?? null, 'cpBasis' => Feed::mix($p)['basis'] ?? null, // D-112, D-116
             'costPerKg' => round($p->lines->sum(fn ($l) => ($l->share_pct ?? 0) * $l->item->cost_per_kg_minor) / 10000, 2), // body-weight rations: PKR per kg of the mix
             'kgPerHead' => round($p->lines->sum('kg_per_head'), 3),
             'costPerHead' => round($p->lines->sum(fn ($l) => ($l->kg_per_head ?? 0) * $l->item->cost_per_kg_minor) / 100, 2),
-            'notes' => $p->notes, 'createdBy' => $p->created_by, 'approvedBy' => $p->approved_by, 'approvedOn' => $p->approved_at?->format('j M Y'),
+            'notes' => $p->notes, 'createdBy' => $p->created_by, 'approvedBy' => $p->approved_by, 'approvedOn' => $p->approved_at?->format('d/m/Y'),
         ] : null;
 
         $targets = Feed::groupCpTargets(); // D-116
@@ -338,7 +338,7 @@ class FeedingController extends Controller
                 'id' => $s->id, 'name' => $s->name, 'category' => $s->category, 'breedId' => $s->breed_id, 'breed' => $s->breed?->name,
                 'minKg' => $s->min_weight_kg, 'maxKg' => $s->max_weight_kg, 'cpMin' => $s->cp_min_pct, 'cpMax' => $s->cp_max_pct, 'range' => $s->range(), 'target' => $s->target(),
                 'tdnMin' => $s->tdn_min_pct, 'tdnMax' => $s->tdn_max_pct, 'method' => $s->feeding_method, 'meals' => $s->meals_per_day, 'formula' => $s->feed_formula,
-                'purpose' => $s->purpose, 'reviewedOn' => $s->reviewed_on?->format('j M Y'), 'reviewedIso' => $s->reviewed_on?->toDateString(), 'reviewedBy' => $s->reviewed_by, 'active' => $s->active,
+                'purpose' => $s->purpose, 'reviewedOn' => $s->reviewed_on?->format('d/m/Y'), 'reviewedIso' => $s->reviewed_on?->toDateString(), 'reviewedBy' => $s->reviewed_by, 'active' => $s->active,
                 'goats' => $mine->count(), 'tags' => $mine->sortBy('farm_number')->pluck('farm_number')->take(40)->values(),
                 'pens' => $mine->map(fn ($g) => $g->pen?->fullName())->filter()->countBy()->sortDesc()->all(),
                 'cpKgDay' => round($mine->sum(fn ($g) => $req[$g->id]['cpKg']), 2), 'feedKgDay' => round($mine->sum(fn ($g) => $req[$g->id]['kgDay']), 1),
@@ -504,7 +504,7 @@ class FeedingController extends Controller
         $plan->update(['status' => 'approved', 'approved_by' => $request->user()->name, 'approved_at' => now()]);
         Farm::log($request->user(), "Approved the ration for {$plan->group->name}", '/feeding');
 
-        return back()->with('success', "Ration for {$plan->group->name} approved from {$plan->effective_from->format('j M')}.");
+        return back()->with('success', "Ration for {$plan->group->name} approved from {$plan->effective_from->format('d/m')}.");
     }
 
     public function settings(Request $request): RedirectResponse

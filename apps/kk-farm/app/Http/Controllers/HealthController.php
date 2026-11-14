@@ -27,7 +27,7 @@ class HealthController extends Controller
         $row = fn (HealthRecord $r) => [
             'id' => $r->id, 'goatId' => $r->animal_id, 'number' => $r->animal->farm_number, 'name' => $r->animal->name, 'coat' => $r->animal->coat, 'breed' => $r->animal->breed?->name, 'stage' => $r->animal->effectiveAge(), 'sex' => $r->animal->sex,
             'health' => $r->animal->health_status, 'kind' => $r->kind, 'title' => $r->title, 'notes' => $r->notes, 'severity' => $r->severity, 'by' => $r->recorded_by, 'role' => $r->recorded_role,
-            'on' => $r->occurred_on->format('j M Y'), 'next' => $r->next_due_on?->format('j M Y'),
+            'on' => $r->occurred_on->format('d/m/Y'), 'next' => $r->next_due_on?->format('d/m/Y'),
         ];
         $care = HealthRecord::with('animal')->whereIn('kind', array_keys(self::CARE_TYPES))->where(fn ($q) => $q->whereNull('care_status')->orWhere('care_status', '!=', 'cancelled'))->whereBetween('next_due_on', [now()->subDays(60), now()->addDays(21)])
             ->whereHas('animal', fn ($q) => $q->active())->orderBy('next_due_on')->limit(30)->get();
@@ -46,10 +46,10 @@ class HealthController extends Controller
         $since = now()->subDays($interval)->toDateString();
         $checkupGoats = Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => [
             'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'pen' => $a->pen?->fullName(), 'repro' => $a->repro_status,
-            'last' => isset($latest[$a->id]) ? ['on' => $latest[$a->id]->checked_on->format('j M'), 'outcome' => $latest[$a->id]->outcome, 'by' => $latest[$a->id]->examiner] : null,
+            'last' => isset($latest[$a->id]) ? ['on' => $latest[$a->id]->checked_on->format('d/m'), 'outcome' => $latest[$a->id]->outcome, 'by' => $latest[$a->id]->examiner] : null,
             'due' => ! isset($latest[$a->id]) || $latest[$a->id]->checked_on->toDateString() <= $since,
-            'next' => isset($latest[$a->id]) ? $latest[$a->id]->checked_on->copy()->addDays($interval)->format('j M') : null, // D-099
-            'recheck' => isset($latest[$a->id]) && $latest[$a->id]->follow_up_on ? $latest[$a->id]->follow_up_on->format('j M') : null,
+            'next' => isset($latest[$a->id]) ? $latest[$a->id]->checked_on->copy()->addDays($interval)->format('d/m') : null, // D-099
+            'recheck' => isset($latest[$a->id]) && $latest[$a->id]->follow_up_on ? $latest[$a->id]->follow_up_on->format('d/m') : null,
             'matedOn' => isset($pregnant[$a->id]) ? $pregnant[$a->id]->mated_on->toDateString() : null,
             'weights' => ($weightsBy[$a->id] ?? collect())->map(fn ($w) => ['on' => $w->measured_on->toDateString(), 'kg' => (float) $w->weight_kg])->values()->all(), // D-104
         ])->values();
@@ -63,7 +63,7 @@ class HealthController extends Controller
             'checkups' => [
                 'goats' => $checkupGoats, 'interval' => $interval,
                 'recent' => ($recent = \App\Models\HealthCheckup::with('animal')->orderByDesc('checked_on')->orderByDesc('id')->limit(60)->get())->map(fn ($c) => [
-                    'id' => $c->id, 'on' => $c->checked_on->format('j M Y'), 'goat' => $c->animal->farm_number, 'goatId' => $c->animal_id, 'outcome' => $c->outcome,
+                    'id' => $c->id, 'on' => $c->checked_on->format('d/m/Y'), 'goat' => $c->animal->farm_number, 'goatId' => $c->animal_id, 'outcome' => $c->outcome,
                     'temp' => $c->temperature_f, 'score' => $c->body_score, 'weight' => $c->weight_kg,
                     'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'flags' => $c->flags(), 'findings' => $c->findings, 'caseId' => $c->health_case_id, 'by' => $c->examiner,
                     // D-099: what a correction form needs, and whether this person may correct it
@@ -83,7 +83,7 @@ class HealthController extends Controller
             'care' => $care->map(fn (HealthRecord $r) => $row($r) + ['overdue' => $r->next_due_on->isPast(), 'planned' => $r->care_status === 'planned']),
             'withdrawal' => $withdrawal->map(fn ($w, $id) => [
                 'goatId' => $id, 'number' => $goatsById[$id]->farm_number ?? '?', 'name' => $goatsById[$id]->name ?? null, 'coat' => $goatsById[$id]->coat ?? 'brown', 'breed' => ($goatsById[$id] ?? null)?->breed?->name, 'stage' => ($goatsById[$id] ?? null)?->effectiveAge(), 'sex' => $goatsById[$id]->sex ?? 'female',
-                'meat' => $w['meat'] ? \Illuminate\Support\Carbon::parse($w['meat'])->format('j M Y') : null, 'milk' => $w['milk'] ? \Illuminate\Support\Carbon::parse($w['milk'])->format('j M Y') : null,
+                'meat' => $w['meat'] ? \Illuminate\Support\Carbon::parse($w['meat'])->format('d/m/Y') : null, 'milk' => $w['milk'] ? \Illuminate\Support\Carbon::parse($w['milk'])->format('d/m/Y') : null,
             ])->values(),
             'counts' => [
                 'active' => $cases->whereIn('status', HealthCase::ACTIVE)->count(),
@@ -123,15 +123,15 @@ class HealthController extends Controller
                 'id' => $m->id, 'code' => $m->code, 'name' => $m->name, 'category' => $m->category, 'unit' => $m->unit, 'reorder' => $m->reorder_level,
                 'costPerUnit' => $m->cost_per_unit_minor / 100, 'storage' => $m->storage, 'supplier' => $m->supplier, 'active' => $m->active, 'qty' => $q,
                 'value' => round(max(0, $q) * $m->cost_per_unit_minor / 100), 'status' => \App\Support\MedicineStock::status($q, $m->reorder_level, $b),
-                'batches' => $b->map(fn ($x) => ['batch' => $x['batch'], 'expiry' => $x['expiry']?->format('j M Y'), 'expired' => $x['expiry']?->isPast() ?? false, 'qty' => $x['qty']])->values(),
+                'batches' => $b->map(fn ($x) => ['batch' => $x['batch'], 'expiry' => $x['expiry']?->format('d/m/Y'), 'expired' => $x['expiry']?->isPast() ?? false, 'qty' => $x['qty']])->values(),
             ];
         });
 
         return [
             'medicines' => $medicines,
             'medicineMoves' => \App\Models\MedicineMovement::with('medicine')->orderByDesc('moved_on')->orderByDesc('id')->limit(40)->get()->map(fn ($mv) => [
-                'id' => $mv->id, 'on' => $mv->moved_on->format('j M'), 'medicine' => $mv->medicine->name, 'unit' => $mv->medicine->unit, 'type' => \App\Models\MedicineMovement::TYPES[$mv->type][0] ?? $mv->type,
-                'qty' => $mv->qty, 'batch' => $mv->batch, 'expiry' => $mv->expiry_on?->format('j M Y'), 'by' => $mv->recorded_by, 'party' => $mv->party,
+                'id' => $mv->id, 'on' => $mv->moved_on->format('d/m'), 'medicine' => $mv->medicine->name, 'unit' => $mv->medicine->unit, 'type' => \App\Models\MedicineMovement::TYPES[$mv->type][0] ?? $mv->type,
+                'qty' => $mv->qty, 'batch' => $mv->batch, 'expiry' => $mv->expiry_on?->format('d/m/Y'), 'by' => $mv->recorded_by, 'party' => $mv->party,
             ]),
             'medicineCategories' => \App\Models\Medicine::CATEGORIES, 'medicineUnits' => \App\Models\Medicine::UNITS,
             'medicineTypes' => collect(\App\Models\MedicineMovement::TYPES)->except(['opening', 'issue'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
@@ -147,15 +147,15 @@ class HealthController extends Controller
 
         return [
             'id' => $c->id, 'label' => $c->label(), 'goatId' => $c->animal_id, 'number' => $c->animal->farm_number, 'name' => $c->animal->name, 'coat' => $c->animal->coat, 'breed' => $c->animal->breed?->name, 'stage' => $c->animal->effectiveAge(), 'sex' => $c->animal->sex,
-            'onset' => $c->onset_on->format('j M Y'), 'condition' => $c->condition, 'symptoms' => $c->symptoms, 'severity' => $c->severity, 'isolated' => $c->isolated,
+            'onset' => $c->onset_on->format('d/m/Y'), 'condition' => $c->condition, 'symptoms' => $c->symptoms, 'severity' => $c->severity, 'isolated' => $c->isolated,
             'status' => $c->status, 'active' => in_array($c->status, HealthCase::ACTIVE, true), 'vet' => $c->vet, 'diagnosis' => $c->diagnosis, 'notes' => $c->notes,
-            'resolved' => $c->resolved_on?->format('j M Y'), 'age' => $c->ageDays(), 'by' => $c->recorded_by,
-            'nextDose' => $next?->format('j M'), 'doseAlert' => $next && in_array($c->status, HealthCase::ACTIVE, true) ? ($next->lessThan($today) ? 'overdue' : ($next->lessThanOrEqualTo($today->copy()->addDays(2)) ? 'soon' : null)) : null,
-            'withdrawal' => $withdrawal ? ['meat' => $withdrawal['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal['meat'])->format('j M') : null, 'milk' => $withdrawal['milk'] ? \Illuminate\Support\Carbon::parse($withdrawal['milk'])->format('j M') : null] : null,
+            'resolved' => $c->resolved_on?->format('d/m/Y'), 'age' => $c->ageDays(), 'by' => $c->recorded_by,
+            'nextDose' => $next?->format('d/m'), 'doseAlert' => $next && in_array($c->status, HealthCase::ACTIVE, true) ? ($next->lessThan($today) ? 'overdue' : ($next->lessThanOrEqualTo($today->copy()->addDays(2)) ? 'soon' : null)) : null,
+            'withdrawal' => $withdrawal ? ['meat' => $withdrawal['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal['meat'])->format('d/m') : null, 'milk' => $withdrawal['milk'] ? \Illuminate\Support\Carbon::parse($withdrawal['milk'])->format('d/m') : null] : null,
             'treatments' => $c->treatments->map(fn (Treatment $t) => [
-                'id' => $t->id, 'on' => $t->given_on->format('j M Y'), 'product' => $t->product, 'dose' => $t->dose, 'route' => Treatment::ROUTES[$t->route] ?? $t->route,
-                'frequency' => $t->frequency, 'days' => $t->days_prescribed, 'next' => $t->next_dose_on?->format('j M Y'),
-                'meat' => $t->meat_clear_on?->format('j M Y'), 'milk' => $t->milk_clear_on?->format('j M Y'), 'cost' => $t->cost_minor !== null ? $t->cost_minor / 100 : null, 'by' => $t->recorded_by, 'notes' => $t->notes,
+                'id' => $t->id, 'on' => $t->given_on->format('d/m/Y'), 'product' => $t->product, 'dose' => $t->dose, 'route' => Treatment::ROUTES[$t->route] ?? $t->route,
+                'frequency' => $t->frequency, 'days' => $t->days_prescribed, 'next' => $t->next_dose_on?->format('d/m/Y'),
+                'meat' => $t->meat_clear_on?->format('d/m/Y'), 'milk' => $t->milk_clear_on?->format('d/m/Y'), 'cost' => $t->cost_minor !== null ? $t->cost_minor / 100 : null, 'by' => $t->recorded_by, 'notes' => $t->notes,
             ])->values(),
         ];
     }
@@ -229,9 +229,9 @@ class HealthController extends Controller
         $pm = HealthRecord::where('kind', 'postmortem')->whereIn('animal_id', $deaths->pluck('animal_id'))->orderByDesc('occurred_on')->get()->unique('animal_id')->keyBy('animal_id');
         $rows = $deaths->map(fn ($m) => [
             'id' => $m->id, 'goatId' => $m->animal_id, 'number' => $m->animal?->farm_number, 'sex' => $m->animal?->sex, 'breed' => $m->animal?->breed?->name,
-            'age' => $m->animal?->birth_date ? (int) $m->animal->birth_date->diffInMonths($m->moved_on) : null, 'on' => $m->moved_on->format('j M Y'),
+            'age' => $m->animal?->birth_date ? (int) $m->animal->birth_date->diffInMonths($m->moved_on) : null, 'on' => $m->moved_on->format('d/m/Y'),
             'pen' => $m->fromPen?->fullName(), 'reason' => $m->reason, 'notes' => $m->notes,
-            'postmortem' => isset($pm[$m->animal_id]) ? ['cause' => $pm[$m->animal_id]->title, 'findings' => $pm[$m->animal_id]->notes, 'by' => $pm[$m->animal_id]->recorded_by, 'on' => $pm[$m->animal_id]->occurred_on->format('j M Y')] : null,
+            'postmortem' => isset($pm[$m->animal_id]) ? ['cause' => $pm[$m->animal_id]->title, 'findings' => $pm[$m->animal_id]->notes, 'by' => $pm[$m->animal_id]->recorded_by, 'on' => $pm[$m->animal_id]->occurred_on->format('d/m/Y')] : null,
         ])->values();
 
         return [
@@ -436,12 +436,12 @@ class HealthController extends Controller
         Farm::log($request->user(), "Treated {$case->animal->farm_number}: {$data['product']}", '/health');
         // D-196 (journey G): a milk withdrawal, possibly entered late, holds her milk in lots made since the dose.
         if (! empty($data['milk_clear_on']) && $case->animal->sex === 'female') {
-            \App\Support\MilkTrace::doeFlagged($case->animal, "treated with {$data['product']}, no milk until ".\Illuminate\Support\Carbon::parse($data['milk_clear_on'])->format('j M Y'), $data['given_on'], $request->user());
+            \App\Support\MilkTrace::doeFlagged($case->animal, "treated with {$data['product']}, no milk until ".\Illuminate\Support\Carbon::parse($data['milk_clear_on'])->format('d/m/Y'), $data['given_on'], $request->user());
         }
 
         $warning = $short > 0 ? " Warning: not enough in-date {$medicine->name} in the store ({$short} {$medicine->unit} short), so stock shows below zero. Record the receipt or check for expired packs." : '';
 
-        return back()->with('success', 'Treatment saved.'.$warning.(! empty($data['meat_clear_on']) ? ' Meat withdrawal until '.\Illuminate\Support\Carbon::parse($data['meat_clear_on'])->format('j M Y').'.' : ''));
+        return back()->with('success', 'Treatment saved.'.$warning.(! empty($data['meat_clear_on']) ? ' Meat withdrawal until '.\Illuminate\Support\Carbon::parse($data['meat_clear_on'])->format('d/m/Y').'.' : ''));
     }
 
     public function observe(Request $request): RedirectResponse

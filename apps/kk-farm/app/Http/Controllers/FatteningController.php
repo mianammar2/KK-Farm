@@ -50,15 +50,15 @@ class FatteningController extends Controller
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             // a ration plan belongs to a feeding group; it is shown as "<group> · from <date>"
             'rations' => RationPlan::with('group')->where('status', 'approved')->orderByDesc('effective_from')->get() // only rations the vet approved
-                ->map(fn (RationPlan $r) => ['id' => $r->id, 'name' => ($r->group?->name ?? 'Ration').' · from '.$r->effective_from?->format('j M Y')])->values(),
+                ->map(fn (RationPlan $r) => ['id' => $r->id, 'name' => ($r->group?->name ?? 'Ration').' · from '.$r->effective_from?->format('d/m/Y')])->values(),
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'options' => ['status' => FatteningBatch::STATUS, 'memberStatus' => FatteningBatchAnimal::STATUS],
             'canManage' => $this->supervisor($request), 'isVet' => $request->user()->passes('clinical'),
             // D-197: meat selections (journey H): open ones, then the last decisions
             'selections' => MeatSelection::with('animal.breed')->orderByRaw("case status when 'proposed' then 0 when 'approved' then 1 else 2 end")->latest('id')->limit(60)->get()
                 ->map(fn (MeatSelection $s) => ['id' => $s->id, 'goatId' => $s->animal_id, 'number' => $s->animal?->farm_number, 'breed' => $s->animal?->breed?->name, 'sex' => $s->animal?->sex,
-                    'purpose' => $s->animal?->animal_purpose, 'reason' => $s->reason, 'notes' => $s->notes, 'status' => $s->status, 'proposedBy' => $s->proposed_by, 'proposedAt' => $s->created_at?->format('j M Y'),
-                    'decidedBy' => $s->decided_by, 'decidedAt' => $s->decided_at?->format('j M Y'), 'decisionNote' => $s->decision_note,
+                    'purpose' => $s->animal?->animal_purpose, 'reason' => $s->reason, 'notes' => $s->notes, 'status' => $s->status, 'proposedBy' => $s->proposed_by, 'proposedAt' => $s->created_at?->format('d/m/Y'),
+                    'decidedBy' => $s->decided_by, 'decidedAt' => $s->decided_at?->format('d/m/Y'), 'decisionNote' => $s->decision_note,
                     'mine' => $s->proposed_by === $request->user()->name])->values(),
             'proposable' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number', 'sex', 'animal_purpose'])
                 ->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'purpose' => $a->animal_purpose])->values(),
@@ -197,7 +197,7 @@ class FatteningController extends Controller
         abort_unless($request->user()->passes('clinical'), 403, 'The vet gives the meat-withdrawal clearance.');
         $a = $member->animal;
         if ($meat = Withdrawal::forAnimal($a->id)['meat']) {
-            throw ValidationException::withMessages(['member' => "{$a->farm_number} is under meat withdrawal until {$meat->format('j M Y')}."]);
+            throw ValidationException::withMessages(['member' => "{$a->farm_number} is under meat withdrawal until {$meat->format('d/m/Y')}."]);
         }
         abort_if(HealthCase::where('animal_id', $a->id)->whereIn('status', HealthCase::ACTIVE)->exists(), 422, "{$a->farm_number} has an open health case.");
         $member->update(['status' => 'ready', 'cleared_by' => $request->user()->name, 'cleared_at' => now()]);

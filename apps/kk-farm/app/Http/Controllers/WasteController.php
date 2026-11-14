@@ -32,14 +32,14 @@ class WasteController extends Controller
 
         return Inertia::render('Waste', [
             'streams' => $streams->map(fn (WasteStream $s) => ['id' => $s->id, 'kind' => $s->kind, 'name' => $s->name, 'method' => $s->method, 'instructions' => $s->instructions, 'adviser' => $s->adviser,
-                'adviserRole' => $s->adviser_role, 'advised' => $s->advised_on?->format('j M Y'), 'advisedOn' => $s->advised_on?->toDateString(), 'contractor' => $s->contractor, 'licence' => $s->licence_no, 'every' => $s->pickup_every_days,
+                'adviserRole' => $s->adviser_role, 'advised' => $s->advised_on?->format('d/m/Y'), 'advisedOn' => $s->advised_on?->toDateString(), 'contractor' => $s->contractor, 'licence' => $s->licence_no, 'every' => $s->pickup_every_days,
                 'approved' => $s->approved(), 'active' => $s->active, 'biohazard' => in_array($s->kind, WasteStream::BIOHAZARD, true)] + Waste::pickups($s)),
             'disposals' => WasteDisposal::with(['stream', 'animal'])->orderByRaw('verified_at is not null')->orderByDesc('disposed_on')->orderByDesc('id')->limit(150)->get()->map(fn (WasteDisposal $d) => [
-                'id' => $d->id, 'on' => $d->disposed_on->format('j M Y'), 'stream' => $d->stream?->name, 'kind' => $d->stream?->kind, 'qty' => $d->qty, 'unit' => $d->unit, 'method' => $d->method,
+                'id' => $d->id, 'on' => $d->disposed_on->format('d/m/Y'), 'stream' => $d->stream?->name, 'kind' => $d->stream?->kind, 'qty' => $d->qty, 'unit' => $d->unit, 'method' => $d->method,
                 'deviation' => $d->deviation_reason, 'goat' => $d->animal?->farm_number, 'evidence' => $d->evidence_ref, 'ppe' => $d->ppe_used, 'disinfected' => $d->area_disinfected, 'cost' => $d->cost_minor,
                 'by' => $d->recorded_by, 'verifiedBy' => $d->verified_by, 'audit' => $d->audit_note, 'notes' => $d->notes]),
             'carcasses' => Animal::where('status', 'deceased')->where('exit_date', '>=', now()->subDays(90)->toDateString())->orderByDesc('exit_date')->get(['id', 'farm_number', 'exit_date'])
-                ->reject(fn ($a) => isset($disposed[$a->id]))->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number, 'died' => $a->exit_date?->format('j M Y')])->values(),
+                ->reject(fn ($a) => isset($disposed[$a->id]))->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number, 'died' => $a->exit_date?->format('d/m/Y')])->values(),
             'kpi' => Waste::kpis(),
             'options' => ['kinds' => WasteStream::KINDS, 'methods' => WasteStream::METHODS],
             'isLead' => $this->lead($request), 'me' => $request->user()->name,

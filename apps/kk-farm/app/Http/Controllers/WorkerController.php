@@ -79,7 +79,7 @@ class WorkerController extends Controller
                 'teeth' => \App\Support\Teeth::options(), 'teethConditions' => \App\Support\Teeth::CONDITIONS, // D-262
             ],
             'goat' => $goat ? $goat->card() + [
-                'lastWeight' => $goat->latestWeight?->weight_kg, 'lastWeighed' => $goat->latestWeight?->measured_on?->format('j M Y'), 'penId' => $goat->pen_id,
+                'lastWeight' => $goat->latestWeight?->weight_kg, 'lastWeighed' => $goat->latestWeight?->measured_on?->format('d/m/Y'), 'penId' => $goat->pen_id,
                 'withdrawal' => \App\Support\Withdrawal::summary($goat),
             ] : null,
             'unknown' => $request->query('unknown'),

@@ -274,7 +274,7 @@ function MatingForm({ does, bucks, pairCheck, options, settings, onDone, presetD
     const checkPair = () => router.get('/breeding', { sire: mating.data.sire_id, dam: mating.data.dam_id }, { preserveState: true, preserveScroll: true, only: ['pairCheck'] });
     const e = mating.errors as Record<string, string>;
     const mated = new Date(`${mating.data.mated_on}T12:00:00`);
-    const plus = (days: number) => { const d = new Date(mated); d.setDate(d.getDate() + days); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+    const plus = (days: number) => { const d = new Date(mated); d.setDate(d.getDate() + days); return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
     return (
         <Panel title="Record a mating">
             <form onSubmit={(ev) => { ev.preventDefault(); mating.post('/breeding/matings', { preserveScroll: true, onSuccess: () => { mating.reset('notes'); onDone?.(); } }); }} className="space-y-3">

@@ -28,8 +28,8 @@ class ActivityController extends Controller
         return Inertia::render('Activity', [
             'activity' => $rows->take(((int) $request->query('pages', 1)) * self::PER_PAGE)->map(fn (Activity $a) => [
                 'id' => $a->id, 'actor' => $a->actor, 'role' => $a->role, 'action' => $a->action, 'url' => $a->url,
-                'at' => $a->created_at->setTimezone(\App\Support\Tenant::org()?->timezone ?: 'Asia/Karachi')->format('j M Y, g:i A'), 'ago' => $a->created_at->diffForHumans(short: true),
-                'day' => $a->created_at->setTimezone(\App\Support\Tenant::org()?->timezone ?: 'Asia/Karachi')->format('l j F Y'),
+                'at' => $a->created_at->setTimezone(\App\Support\Tenant::org()?->timezone ?: 'Asia/Karachi')->format('d/m/Y g:i A'), 'ago' => $a->created_at->diffForHumans(short: true),
+                'day' => $a->created_at->setTimezone(\App\Support\Tenant::org()?->timezone ?: 'Asia/Karachi')->format('d/m/Y'),
             ])->values(),
             'more' => $more,
             'people' => (clone $base)->distinct()->orderBy('actor')->pluck('actor'),

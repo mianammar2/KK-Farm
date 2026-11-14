@@ -67,7 +67,7 @@ final class Parasites
         $since = now()->subDays(90)->toDateString();
         $trend = ParasiteSample::whereNotNull('epg')->where('sampled_on', '>=', now()->subMonths(6)->startOfMonth()->toDateString())->get()
             ->groupBy(fn ($s) => $s->sampled_on->format('Y-m'))->sortKeys()
-            ->map(fn ($g, $m) => ['month' => \Illuminate\Support\Carbon::parse("{$m}-01")->format('M Y'), 'epg' => (int) round($g->avg('epg')), 'samples' => $g->count()])->values();
+            ->map(fn ($g, $m) => ['month' => \Illuminate\Support\Carbon::parse("{$m}-01")->format('m/Y'), 'epg' => (int) round($g->avg('epg')), 'samples' => $g->count()])->values();
         $targeted = Treatment::whereNotNull('parasite_sample_id')->where('given_on', '>=', $since)->count();
         $blind = HealthRecord::where('kind', 'deworming')->where('care_status', 'administered')->where('occurred_on', '>=', $since)->count();
         $tested = ParasiteSample::where('sampled_on', '>=', $since)->whereNotNull('decision')->get();

@@ -28,12 +28,12 @@ final class KidCare
             $ageHours = (int) $k->birth_date->diffInHours(now());
 
             return [
-                'id' => $k->id, 'number' => $k->farm_number, 'sex' => $k->sex, 'breed' => $k->breed?->name, 'pen' => $k->pen?->fullName(), 'born' => $k->birth_date->format('j M'),
+                'id' => $k->id, 'number' => $k->farm_number, 'sex' => $k->sex, 'breed' => $k->breed?->name, 'pen' => $k->pen?->fullName(), 'born' => $k->birth_date->format('d/m'),
                 'ageDays' => (int) $k->birth_date->diffInDays(now()), 'dam' => $k->dam?->farm_number, 'damId' => $k->dam_id,
-                'colostrum' => $colostrum ? $colostrum->given_at->format('j M g:i A') : null, 'colostrumDue' => ! $colostrum && $ageHours <= 72,
+                'colostrum' => $colostrum ? $colostrum->given_at->format('d/m g:i A') : null, 'colostrumDue' => ! $colostrum && $ageHours <= 72,
                 'weak' => (bool) $weak, 'orphan' => $orphan, 'fosteredTo' => $r->where('kind', 'fostered')->last()?->foster_dam_id ? Animal::find($r->where('kind', 'fostered')->last()->foster_dam_id)?->farm_number : null,
                 'lastCheck' => $lastCheck ? KidCareRecord::SUCKLING[$lastCheck->suckling] ?? null : null, 'feeds' => $r->where('kind', 'bottle_feed')->count(),
-                'history' => $r->reverse()->take(5)->map(fn ($x) => ['kind' => KidCareRecord::KINDS[$x->kind], 'at' => $x->given_at->format('j M g:i A'), 'ml' => $x->amount_ml, 'by' => $x->recorded_by])->values(),
+                'history' => $r->reverse()->take(5)->map(fn ($x) => ['kind' => KidCareRecord::KINDS[$x->kind], 'at' => $x->given_at->format('d/m g:i A'), 'ml' => $x->amount_ml, 'by' => $x->recorded_by])->values(),
             ];
         })->sortByDesc(fn ($k) => ($k['colostrumDue'] ? 4 : 0) + ($k['weak'] ? 2 : 0) + ($k['orphan'] ? 1 : 0))->values()->all();
     }

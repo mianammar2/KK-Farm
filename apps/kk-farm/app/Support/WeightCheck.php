@@ -24,7 +24,7 @@ class WeightCheck
         $on = Carbon::parse($on)->startOfDay();
         $same = WeightRecord::where('animal_id', $animalId)->whereDate('measured_on', $on)->get();
         if ($same->contains(fn ($w) => abs($w->weight_kg - $kg) < 0.05)) {
-            return ['duplicate', "{$kg} KG was already recorded for this goat on {$on->format('j M')}."];
+            return ['duplicate', "{$kg} KG was already recorded for this goat on {$on->format('d/m')}."];
         }
         if ($other = $same->first(fn ($w) => abs($w->weight_kg - $kg) > max(1, $w->weight_kg * 0.1))) {
             return ['conflict', "{$other->weight_kg} KG was recorded the same day."];
@@ -34,10 +34,10 @@ class WeightCheck
             $days = max(1, (int) $prev->measured_on->diffInDays($on));
             $change = $kg - $prev->weight_kg;
             if ($change > max(2, 0.5 * $days) && $change / $prev->weight_kg > 0.25) {
-                return ['jump', "+{$change} KG in {$days} days since {$prev->weight_kg} KG on {$prev->measured_on->format('j M')}."];
+                return ['jump', "+{$change} KG in {$days} days since {$prev->weight_kg} KG on {$prev->measured_on->format('d/m')}."];
             }
             if (-$change > max(2, 0.3 * $days) && -$change / $prev->weight_kg > 0.2) {
-                return ['drop', round($change, 2)." KG in {$days} days since {$prev->weight_kg} KG on {$prev->measured_on->format('j M')}."];
+                return ['drop', round($change, 2)." KG in {$days} days since {$prev->weight_kg} KG on {$prev->measured_on->format('d/m')}."];
             }
         }
 

@@ -33,7 +33,7 @@ final class Fodder
     public static function phiBlocks(FodderCrop $crop, string $date): array
     {
         return $crop->inputs()->where('kind', 'chemical')->whereNotNull('safe_from')->where('safe_from', '>', $date)->get()
-            ->map(fn (FodderInput $i) => "{$i->product} (safe from {$i->safe_from->format('j M Y')})")->all();
+            ->map(fn (FodderInput $i) => "{$i->product} (safe from {$i->safe_from->format('d/m/Y')})")->all();
     }
 
     /** What still stops a lot being released. */

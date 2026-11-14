@@ -85,7 +85,7 @@ final class Movements
             Biosecurity::assertExitAllowed($animal); // D-193
             $meat = Withdrawal::forAnimal($animal->id)['meat'];
             if ($meat) {
-                throw ValidationException::withMessages(['type' => "{$animal->farm_number} is under meat withdrawal until {$meat->format('j M Y')} (veterinary treatment). It cannot leave for meat before then."]);
+                throw ValidationException::withMessages(['type' => "{$animal->farm_number} is under meat withdrawal until {$meat->format('d/m/Y')} (veterinary treatment). It cannot leave for meat before then."]);
             }
         }
         $finishing = Fattening::openMember($animal->id); // D-197

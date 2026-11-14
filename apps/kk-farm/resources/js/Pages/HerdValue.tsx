@@ -92,7 +92,7 @@ function Ticker({ rate, change, costPerKg, purposeOptions }: { rate: Props['rate
             return { name: key === 'all' ? 'All Goats' : purposeOptions[key] ?? key, type: 'line', step: 'end', symbolSize: 6, color: SERIES[i % SERIES.length],
                 data: days.map((d) => { if (h[d] !== undefined) last = h[d]; return last; }) };
         });
-        const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
         return {
             grid: { left: 56, right: 16, top: 30, bottom: 28 }, tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v === null ? '—' : `PKR ${v.toLocaleString('en-PK')}/KG`) },
             legend: { top: 0, textStyle: { color: '#5e6a5f' } },

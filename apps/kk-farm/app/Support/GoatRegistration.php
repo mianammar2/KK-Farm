@@ -315,7 +315,7 @@ final class GoatRegistration
             'notes' => "Pregnant when she came to the farm; sire unknown. Mating date estimated from about {$days} days pregnant.",
         ]);
         $animal->update(['repro_status' => 'pregnant', 'repro_state' => Classification::LEGACY_REPRO['pregnant'] ?? 'pregnant']);
-        Farm::event($animal, 'breeding', 'Pregnant on arrival. Expected kidding about '.$mated->copy()->addDays($gestation)->format('j M Y'), $user->name);
+        Farm::event($animal, 'breeding', 'Pregnant on arrival. Expected kidding about '.$mated->copy()->addDays($gestation)->format('d/m/Y'), $user->name);
     }
 
     /** Fields a person may change after registering (D-091). Measurements (weight, temperature) are new records instead. */

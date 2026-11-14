@@ -61,10 +61,10 @@ class FeedCostController extends Controller
             'supply' => $req['supply'],
             'items' => FeedItem::where('active', true)->orderBy('name')->get()->map(fn (FeedItem $i) => ['id' => $i->id, 'name' => $i->name, 'book' => round((float) ($stock[$i->id] ?? 0), 1), 'cost' => $i->cost_per_kg_minor / 100, 'supplier' => $i->supplier])->values(),
             'counts' => FeedStockCount::with('item')->orderByDesc('counted_on')->orderByDesc('id')->limit(40)->get()->map(fn (FeedStockCount $c) => [
-                'id' => $c->id, 'on' => $c->counted_on->format('j M Y'), 'item' => $c->item?->name, 'book' => $c->book_kg, 'counted' => $c->counted_kg, 'diff' => $c->diff_kg, 'value' => $c->value_minor / 100, 'by' => $c->counted_by, 'notes' => $c->notes,
+                'id' => $c->id, 'on' => $c->counted_on->format('d/m/Y'), 'item' => $c->item?->name, 'book' => $c->book_kg, 'counted' => $c->counted_kg, 'diff' => $c->diff_kg, 'value' => $c->value_minor / 100, 'by' => $c->counted_by, 'notes' => $c->notes,
             ]),
             'tmr' => TmrBatch::with('formula')->orderByDesc('mixed_on')->orderByDesc('id')->limit(20)->get()->map(fn (TmrBatch $b) => [
-                'no' => $b->batch_no, 'on' => $b->mixed_on->format('j M'), 'formula' => $b->formula?->name, 'input' => (float) $b->total_kg, 'output' => $b->output_kg !== null ? (float) $b->output_kg : null,
+                'no' => $b->batch_no, 'on' => $b->mixed_on->format('d/m'), 'formula' => $b->formula?->name, 'input' => (float) $b->total_kg, 'output' => $b->output_kg !== null ? (float) $b->output_kg : null,
                 'shrink' => $b->output_kg !== null && $b->total_kg > 0 ? round((1 - $b->output_kg / $b->total_kg) * 100, 1) : null, 'cost' => $b->cost_minor / 100,
             ]),
             'suppliers' => Supplier::where('active', true)->orderBy('name')->get(['id', 'name']),

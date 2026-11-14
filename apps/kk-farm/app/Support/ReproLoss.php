@@ -60,7 +60,7 @@ final class ReproLoss
             return "the vet advised not to breed her ({$c->label()})";
         }
         if ($c = $cases->first(fn ($c) => $c->breeding === 'delay' && $c->breed_after?->isFuture())) {
-            return "the vet advised breeding again after {$c->breed_after->format('j M Y')} ({$c->label()})";
+            return "the vet advised breeding again after {$c->breed_after->format('d/m/Y')} ({$c->label()})";
         }
         if ($c = $cases->first(fn ($c) => in_array($c->loss_type, ['abortion', 'early_loss'], true) && $c->breeding === null && $c->status !== 'closed')) {
             return "her pregnancy loss {$c->label()} is still under investigation";

@@ -50,7 +50,7 @@ function ago(iso: string | null) {
     for (const [sec, name] of steps) if (s >= sec) { unit = name; v = Math.floor(s / sec); }
     return `${v} ${unit}${v === 1 ? '' : 's'} ago`;
 }
-const exact = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+const exact = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 
 function Avatar({ name, role, size = 36 }: { name: string; role: string; size?: number }) {
     return <span className={`grid shrink-0 place-items-center rounded-full font-bold ${ROLE_TONE[role] ?? 'bg-glaze text-cobalt-900'}`} style={{ width: size, height: size, fontSize: size * 0.38 }} aria-hidden>{initials(name)}</span>;

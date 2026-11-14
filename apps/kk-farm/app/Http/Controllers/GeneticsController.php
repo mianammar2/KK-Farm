@@ -65,12 +65,12 @@ class GeneticsController extends Controller
                     // for a doe: bucks ranked by measured merit, with the inbreeding of their kid with her
                     'bucks' => $a->sex === 'female' ? $bucks->map(fn ($b) => ['id' => $b->id, 'number' => $b->farm_number, 'merit' => $parents[$b->id]['merit'] ?? null, 'coi' => Genetics::coi($b->id, $a->id)])
                         ->sortBy([fn ($x, $y) => ($y['merit'] ?? -1) <=> ($x['merit'] ?? -1)])->values() : [],
-                    'last' => ($d = $latest->get($a->id)) ? BreederSelection::DECISIONS[$d->decision].' · '.$d->decided_on->format('j M') : null,
+                    'last' => ($d = $latest->get($a->id)) ? BreederSelection::DECISIONS[$d->decision].' · '.$d->decided_on->format('d/m') : null,
                 ];
             })->sortByDesc('eligible')->values(),
             'selections' => BreederSelection::with(['animal', 'plannedSire'])->orderByDesc('id')->limit(40)->get()->map(fn (BreederSelection $s) => [
                 'id' => $s->id, 'goatId' => $s->animal_id, 'number' => $s->animal?->farm_number, 'decision' => $s->decision, 'reason' => $s->reason, 'override' => $s->override,
-                'sire' => $s->plannedSire?->farm_number, 'coi' => $s->planned_coi_pct, 'by' => $s->decided_by, 'on' => $s->decided_on->format('j M Y'),
+                'sire' => $s->plannedSire?->farm_number, 'coi' => $s->planned_coi_pct, 'by' => $s->decided_by, 'on' => $s->decided_on->format('d/m/Y'),
             ]),
             'bucks' => $bucks->map(fn ($b) => ['id' => $b->id, 'number' => $b->farm_number]),
             'does' => Animal::active()->where('sex', 'female')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($d) => ['id' => $d->id, 'number' => $d->farm_number]),

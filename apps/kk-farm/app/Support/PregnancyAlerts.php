@@ -29,11 +29,11 @@ class PregnancyAlerts
         // D-162: every delivery or loss: watch her daily for the monitoring days.
         $until = $k->kidded_on->copy()->addDays(Kidding::MONITOR_DAYS);
         $task("Monitor {$dam->farm_number} for ".Kidding::MONITOR_DAYS." days after {$what}", 'observation', 'high', $care,
-            'Check her every day until '.$until->format('j M Y').': temperature, appetite, discharge, udder and milk, and that the kids suckle. Report anything unusual to the vet.', $until);
+            'Check her every day until '.$until->format('d/m/Y').': temperature, appetite, discharge, udder and milk, and that the kids suckle. Report anything unusual to the vet.', $until);
 
         if (in_array($k->outcome, Kidding::LOSSES, true)) {
             $task("Vet review: {$what} – {$dam->farm_number}", 'health', 'high', $vet,
-                'Pregnancy lost on '.$k->kidded_on->format('j M Y').($k->abortion_cause ? " · suspected cause: {$k->abortion_cause}" : '').'. The vet investigates the cause and records the diagnosis.', $k->follow_up_on);
+                'Pregnancy lost on '.$k->kidded_on->format('d/m/Y').($k->abortion_cause ? " · suspected cause: {$k->abortion_cause}" : '').'. The vet investigates the cause and records the diagnosis.', $k->follow_up_on);
             $task("Biosecurity: isolate {$dam->farm_number} after {$what}", 'biosecurity', 'critical', $care,
                 'Move her away from the other does, keep the aborted material and bedding for the vet, wear gloves and clean the area. Some causes of goat abortion can spread to people.');
 
@@ -42,7 +42,7 @@ class PregnancyAlerts
         if (in_array($k->mother_status, Kidding::VET_REVIEW, true) || $k->delivery_method === 'CSE') {
             $why = $k->delivery_method === 'CSE' && ! in_array($k->mother_status, Kidding::VET_REVIEW, true) ? 'after a Cesarean' : (Kidding::MOTHER[$k->mother_status] ?? '');
             $task("Vet review: {$dam->farm_number} – {$why}", 'health', $k->mother_status === 'DED' ? 'critical' : 'high', $vet,
-                'After kidding on '.$k->kidded_on->format('j M Y').($k->complications ? " · {$k->complications}" : '').'.'.($k->mother_status === 'DED' ? ' Record her death under Record Exit and make sure the kids get colostrum.' : ''), $k->follow_up_on);
+                'After kidding on '.$k->kidded_on->format('d/m/Y').($k->complications ? " · {$k->complications}" : '').'.'.($k->mother_status === 'DED' ? ' Record her death under Record Exit and make sure the kids get colostrum.' : ''), $k->follow_up_on);
         }
         if ($k->weak) {
             $task("Watch weak kid".($k->weak > 1 ? 's' : '')." of {$dam->farm_number}", 'observation', 'high', $care,

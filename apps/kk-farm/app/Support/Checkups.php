@@ -54,7 +54,7 @@ final class Checkups
             return null;
         }
 
-        return 'Weight down '.round($drop, 1).' KG ('.round($pct, 1).'%) since '.Carbon::parse($last['on'])->format('j M').($pregnant ? ' while pregnant' : '');
+        return 'Weight down '.round($drop, 1).' KG ('.round($pct, 1).'%) since '.Carbon::parse($last['on'])->format('d/m').($pregnant ? ' while pregnant' : '');
     }
 
     /**
@@ -134,15 +134,15 @@ final class Checkups
 
         return [
             'matingId' => $m->id, 'matedOnIso' => $m->mated_on->toDateString(), // D-161: record the outcome from the goat page
-            'matedOn' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'sire' => $m->sire?->farm_number,
+            'matedOn' => $m->mated_on->format('d/m/Y'), 'expected' => $m->expected_kidding_on?->format('d/m/Y'), 'sire' => $m->sire?->farm_number,
             'day' => (int) $m->mated_on->diffInDays(now()->startOfDay()), 'gestation' => $gestation,
             'daysLeft' => $m->expected_kidding_on ? (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false) : null,
             'alertDays' => (int) (Tenant::org()?->kidding_alert_days ?: 10), // D-103
             'checks' => $checks->map(fn (HealthCheckup $c) => [
-                'on' => $c->checked_on->format('j M Y'), 'day' => (int) $m->mated_on->diffInDays($c->checked_on), 'weight' => $c->weight_kg, 'temp' => $c->temperature_f,
+                'on' => $c->checked_on->format('d/m/Y'), 'day' => (int) $m->mated_on->diffInDays($c->checked_on), 'weight' => $c->weight_kg, 'temp' => $c->temperature_f,
                 'ultrasound' => $c->ultrasound, 'fetuses' => $c->fetuses, 'by' => $c->examiner,
             ])->values()->all(),
-            'weights' => $weights->map(fn (WeightRecord $w) => ['day' => (int) $m->mated_on->diffInDays($w->measured_on), 'kg' => (float) $w->weight_kg, 'on' => $w->measured_on->format('j M')])->values()->all(),
+            'weights' => $weights->map(fn (WeightRecord $w) => ['day' => (int) $m->mated_on->diffInDays($w->measured_on), 'kg' => (float) $w->weight_kg, 'on' => $w->measured_on->format('d/m')])->values()->all(),
         ];
     }
 
@@ -208,7 +208,7 @@ final class Checkups
                 $case = HealthCase::create([
                     'case_no' => (int) HealthCase::max('case_no') + 1, 'animal_id' => $goat->id, 'onset_on' => $on, 'condition' => $data['condition'],
                     'symptoms' => trim(implode('. ', array_filter([implode(', ', $flags), $data['findings'] ?? null]))) ?: null, 'severity' => $data['severity'] ?? 'moderate',
-                    'isolated' => (bool) ($data['isolated'] ?? false), 'vet' => $by->name, 'recorded_by' => $by->name, 'notes' => 'Found at the health checkup on '.Carbon::parse($on)->format('j M Y').'.',
+                    'isolated' => (bool) ($data['isolated'] ?? false), 'vet' => $by->name, 'recorded_by' => $by->name, 'notes' => 'Found at the health checkup on '.Carbon::parse($on)->format('d/m/Y').'.',
                 ]);
                 $checkup->update(['health_case_id' => $case->id]);
                 $parts[] = "case {$case->label()} opened: {$case->condition}";
@@ -243,7 +243,7 @@ final class Checkups
         \App\Models\Task::create([
             'title' => mb_substr("Vet check {$goat->farm_number}: ".implode('; ', $warnings), 0, 190), 'type' => 'health', 'priority' => $fever ? 'critical' : 'high', 'status' => 'open',
             'due_on' => now()->toDateString(), 'animal_id' => $goat->id, 'pen_id' => $goat->pen_id, 'department_id' => \App\Models\Department::where('name', 'Veterinary')->value('id'),
-            'notes' => mb_substr('Flagged at the checkup on '.$c->checked_on->format('j M Y')." by {$by->name}.", 0, 500),
+            'notes' => mb_substr('Flagged at the checkup on '.$c->checked_on->format('d/m/Y')." by {$by->name}.", 0, 500),
         ]);
     }
 
@@ -267,7 +267,7 @@ final class Checkups
             $task = \App\Models\Task::create([
                 'title' => $title, 'type' => 'health', 'priority' => $c->outcome === 'sick' ? 'high' : 'medium', 'status' => 'open', 'due_on' => $on,
                 'animal_id' => $goat->id, 'pen_id' => $goat->pen_id, 'department_id' => \App\Models\Department::where('name', 'Veterinary')->value('id'),
-                'notes' => mb_substr('Follow-up of the checkup on '.$c->checked_on->format('j M Y')." by {$by->name}.", 0, 500),
+                'notes' => mb_substr('Follow-up of the checkup on '.$c->checked_on->format('d/m/Y')." by {$by->name}.", 0, 500),
             ]);
         }
         $c->update(['follow_up_on' => $on, 'follow_up_note' => $data['follow_up_note'] ?? null, 'follow_up_task_id' => $task->id]);
@@ -391,7 +391,7 @@ final class Checkups
                 $mating = Mating::create([
                     'dam_id' => $doe->id, 'sire_id' => $data['sire_id'] ?? null, 'mated_on' => $mated, 'method' => 'natural', 'status' => 'pregnant',
                     'expected_kidding_on' => $mated->copy()->addDays($gestation), 'recorded_by' => $by->name,
-                    'notes' => 'Found pregnant at the health checkup on '.$on->format('j M Y').($days ? ", about {$days} days pregnant" : '').'.',
+                    'notes' => 'Found pregnant at the health checkup on '.$on->format('d/m/Y').($days ? ", about {$days} days pregnant" : '').'.',
                 ]);
             } else {
                 $update = ['status' => 'pregnant'];

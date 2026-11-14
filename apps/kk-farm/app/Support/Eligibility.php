@@ -82,7 +82,7 @@ final class Eligibility
 
         $checks = [
             'age' => ['ok' => $months !== null && $months >= $rule->min_age_months, 'label' => ($months === null ? 'Age unknown' : "{$months} months").", needs {$rule->min_age_months}"],
-            'weight' => ['ok' => $fresh && $w->weight_kg >= $rule->min_weight_kg, 'label' => ! $w ? 'No weight' : "{$w->weight_kg} KG on {$w->measured_on->format('j M')}".($fresh ? '' : ' (older than '.$rule->weight_max_age_days.' days: weigh again)').", needs {$rule->min_weight_kg} KG ({$breed})"],
+            'weight' => ['ok' => $fresh && $w->weight_kg >= $rule->min_weight_kg, 'label' => ! $w ? 'No weight' : "{$w->weight_kg} KG on {$w->measured_on->format('d/m')}".($fresh ? '' : ' (older than '.$rule->weight_max_age_days.' days: weigh again)').", needs {$rule->min_weight_kg} KG ({$breed})"],
             'mature' => $rule->mature_weight_kg
                 ? ['ok' => $fresh && $pct !== null && $pct >= $rule->min_mature_pct, 'label' => ($pct === null ? 'No weight' : "{$pct}% of mature weight {$rule->mature_weight_kg} KG").", needs {$rule->min_mature_pct}%"]
                 : ['ok' => true, 'info' => true, 'label' => 'Mature weight not set for this breed (not checked)'],
@@ -91,7 +91,7 @@ final class Eligibility
                 : ['ok' => true, 'info' => true, 'label' => 'Body condition not checked'],
             'health' => ['ok' => ! $sick && ! $welfare && ! $growth && ($a->health_status ?? 'healthy') === 'healthy', 'label' => $sick ? 'Open health case' : ($welfare ? 'Open welfare case' : ($growth ? 'Growth intervention open' : (($a->health_status ?? 'healthy') === 'healthy' ? 'Healthy, no open case' : 'Not healthy')))],
             'teeth' => ['ok' => true, 'info' => true, 'label' => in_array($a->teeth, ['T02', 'T04', 'T06', 'T08'], true) ? "{$a->teeth}: supports maturity" : 'Teeth '.Teeth::code($a->teeth).' (supporting evidence only)'],
-            'genetics' => ['ok' => true, 'info' => true, 'label' => $selected ? "Selected as replacement breeder on {$selected->decided_on->format('j M Y')}" : 'Not yet selected as replacement: confirm the line at approval'],
+            'genetics' => ['ok' => true, 'info' => true, 'label' => $selected ? "Selected as replacement breeder on {$selected->decided_on->format('d/m/Y')}" : 'Not yet selected as replacement: confirm the line at approval'],
         ];
         $qualified = collect($checks)->every(fn ($c) => $c['ok']);
         $review = ! $qualified && (in_array($a->teeth, ['T02', 'T04', 'T06', 'T08'], true) || ($w && $w->weight_kg >= $rule->min_weight_kg));

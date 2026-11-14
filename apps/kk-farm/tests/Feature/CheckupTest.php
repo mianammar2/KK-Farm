@@ -104,7 +104,7 @@ class CheckupTest extends TestCase
         $this->assertSame('2026-09-16', Mating::sole()->mated_on->toDateString());
         $this->actingAs($vet)->get("/goats/{$this->doe->id}")->assertInertia(fn (AssertableInertia $p) => $p
             ->where('pregnancy.checks.0.day', 35)->where('pregnancy.checks.1.day', 42)->where('pregnancy.checks.1.weight', 19.4)
-            ->where('pregnancy.weights.1.day', 42)->where('pregnancy.matedOn', '16 Sep 2026')->where('pregnancy.expected', '13 Feb 2027'));
+            ->where('pregnancy.weights.1.day', 42)->where('pregnancy.matedOn', '16/09/2026')->where('pregnancy.expected', '13/02/2027'));
     }
 
     /** D-101: a weight-only check of a pregnant doe carries her day of pregnancy; older checkups are filled in too. */
@@ -174,7 +174,7 @@ class CheckupTest extends TestCase
         $task = \App\Models\Task::where('type', 'health')->sole();
         $this->assertSame('critical', $task->priority);
         $this->assertStringContainsString('Temperature 104.6 °F (high)', $task->title);
-        $this->assertStringContainsString('Weight down 0.9 KG (4.6%) since 28 Oct while pregnant', $task->title);
+        $this->assertStringContainsString('Weight down 0.9 KG (4.6%) since 28/10 while pregnant', $task->title);
         $this->assertSame('open', HealthRecord::where('animal_id', $this->doe->id)->sole()->status);
         $this->assertSame('monitor', $this->doe->fresh()->health_flag);
     }

@@ -146,7 +146,7 @@ final class WaterIncident
     public static function closeWelfare(EnvironmentIssue $issue, User $by): void
     {
         $issue->welfareCase?->update(['status' => 'closed', 'closed_by' => $by->name, 'closed_at' => now(),
-            'closure_evidence' => mb_substr("Water incident verified. Restored {$issue->restored_at?->format('j M g:i A')}; vet check by {$issue->health_checked_by}: {$issue->goats_ill} ill. {$issue->health_outcome}", 0, 1000)]);
+            'closure_evidence' => mb_substr("Water incident verified. Restored {$issue->restored_at?->format('d/m g:i A')}; vet check by {$issue->health_checked_by}: {$issue->goats_ill} ill. {$issue->health_outcome}", 0, 1000)]);
     }
 
     public static function outageMinutes(EnvironmentIssue $i): ?int

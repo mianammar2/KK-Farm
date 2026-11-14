@@ -35,12 +35,12 @@ class HousingController extends Controller
         return Inertia::render('Housing', [
             'pens' => $pens->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose, 'capacity' => $p->capacity, 'count' => $p->animals_count,
                 'pct' => $p->capacity ? (int) round($p->animals_count / $p->capacity * 100) : null, 'over' => $p->capacity && $p->animals_count > $p->capacity,
-                'status' => $p->status, 'reason' => $p->status_reason, 'statusBy' => $p->status_by, 'lastClean' => isset($last[$p->id]) ? \Illuminate\Support\Carbon::parse($last[$p->id])->format('j M Y') : null]),
+                'status' => $p->status, 'reason' => $p->status_reason, 'statusBy' => $p->status_by, 'lastClean' => isset($last[$p->id]) ? \Illuminate\Support\Carbon::parse($last[$p->id])->format('d/m/Y') : null]),
             'cleanings' => PenCleaning::with('pen.shed')->orderByRaw('finished_at is not null, verified_at is not null')->orderByDesc('started_at')->limit(100)->get()->map(fn (PenCleaning $c) => [
-                'id' => $c->id, 'pen' => $c->pen?->fullName(), 'kind' => $c->kind, 'started' => $c->started_at->format('j M g:i A'), 'finished' => $c->finished_at?->format('j M g:i A'),
+                'id' => $c->id, 'pen' => $c->pen?->fullName(), 'kind' => $c->kind, 'started' => $c->started_at->format('d/m g:i A'), 'finished' => $c->finished_at?->format('d/m g:i A'),
                 'disinfectant' => $c->disinfectant, 'minutes' => $c->contact_minutes, 'notes' => $c->notes, 'by' => $c->done_by, 'verifiedBy' => $c->verified_by]),
             'overrides' => AnimalMovement::with(['animal', 'toPen.shed'])->whereNotNull('capacity_override')->where('moved_on', '>=', now()->subDays(90))->orderByDesc('id')->limit(30)->get()
-                ->map(fn ($m) => ['on' => $m->moved_on->format('j M Y'), 'goat' => $m->animal?->farm_number, 'pen' => $m->toPen?->fullName(), 'why' => $m->capacity_override]),
+                ->map(fn ($m) => ['on' => $m->moved_on->format('d/m/Y'), 'goat' => $m->animal?->farm_number, 'pen' => $m->toPen?->fullName(), 'why' => $m->capacity_override]),
             'kpi' => ['full' => $pens->filter(fn ($p) => $p->capacity && $p->animals_count >= $p->capacity)->count(), 'over' => $pens->filter(fn ($p) => $p->capacity && $p->animals_count > $p->capacity)->count(),
                 'closed' => $pens->where('status', '!=', 'active')->count(), 'toVerify' => PenCleaning::whereNotNull('finished_at')->whereNull('verified_at')->count(),
                 'occupancy' => $pens->sum('capacity') ? (int) round($pens->filter(fn ($p) => $p->capacity)->sum('animals_count') / $pens->sum('capacity') * 100) : null],

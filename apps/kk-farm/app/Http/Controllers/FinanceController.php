@@ -33,12 +33,12 @@ class FinanceController extends Controller
             'goats' => \App\Models\Animal::active()->orderBy('farm_number')->get(['id', 'farm_number']),
             'pending' => (float) LedgerEntry::where('direction', 'out')->whereIn('payment_status', ['pending', 'partial'])->whereDoesntHave('reversal')->whereNull('reverses_id')->sum('amount'),
             'entries' => LedgerEntry::with(['reversal', 'animal'])->orderByDesc('occurred_on')->orderByDesc('id')->limit(60)->get()->map(fn (LedgerEntry $e) => [
-                'id' => $e->id, 'direction' => $e->direction, 'category' => $e->category, 'amount' => $e->amount, 'on' => $e->occurred_on->format('j M Y'), 'counterparty' => $e->counterparty,
+                'id' => $e->id, 'direction' => $e->direction, 'category' => $e->category, 'amount' => $e->amount, 'on' => $e->occurred_on->format('d/m/Y'), 'counterparty' => $e->counterparty,
                 'description' => $e->description, 'by' => $e->recorded_by, 'reversed' => (bool) $e->reversal, 'isReversal' => (bool) $e->reverses_id,
                 'payment' => $e->payment_status, 'paidBy' => $e->paid_by, 'reference' => $e->reference, 'goatId' => $e->animal_id, 'goat' => $e->animal?->farm_number,
             ]),
             'sales' => \App\Models\Sale::with('animal')->orderByDesc('sold_on')->orderByDesc('id')->limit(100)->get()->map(fn (\App\Models\Sale $s) => [
-                'id' => $s->id, 'on' => $s->sold_on->format('j M Y'), 'category' => \App\Models\Sale::CATEGORIES[$s->category] ?? $s->category, 'goatId' => $s->animal_id,
+                'id' => $s->id, 'on' => $s->sold_on->format('d/m/Y'), 'category' => \App\Models\Sale::CATEGORIES[$s->category] ?? $s->category, 'goatId' => $s->animal_id,
                 'what' => $s->animal?->farm_number ?? $s->item, 'buyer' => $s->buyer, 'gross' => $s->gross_minor / 100, 'fee' => $s->fee_minor / 100, 'net' => $s->netMinor() / 100,
                 'receipt' => $s->receipt_ref, 'by' => $s->recorded_by,
             ]),

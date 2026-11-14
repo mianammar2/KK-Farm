@@ -39,7 +39,7 @@ class EligibilityController extends Controller
             'rules' => BreedingRule::with('breed')->get()->sortBy(fn ($r) => [$r->breed_id === null ? 0 : 1, $r->breed?->name, $r->sex])->map($rule)->values(),
             'breeds' => Breed::orderBy('name')->get(['id', 'name']),
             'history' => BreedingApproval::with('animal')->latest('decided_on')->latest('id')->limit(30)->get()->map(fn ($a) => ['id' => $a->id, 'goatId' => $a->animal_id, 'number' => $a->animal?->farm_number,
-                'decision' => $a->decision, 'on' => $a->decided_on->format('j M Y'), 'by' => $a->decided_by, 'override' => $a->override, 'reason' => $a->reason]),
+                'decision' => $a->decision, 'on' => $a->decided_on->format('d/m/Y'), 'by' => $a->decided_by, 'override' => $a->override, 'reason' => $a->reason]),
             'canApprove' => $request->user()->passes('approve_breeding'),
         ]);
     }

@@ -38,7 +38,7 @@ class DeathController extends Controller
             Task::create([
                 'title' => mb_substr(self::TASK.$animal->farm_number, 0, 190), 'type' => 'health', 'priority' => 'high', 'status' => 'open', 'due_on' => now()->toDateString(),
                 'animal_id' => $animal->id, 'pen_id' => $animal->pen_id, 'department_id' => \App\Models\Department::where('name', 'Management')->value('id'),
-                'notes' => mb_substr("Reported by {$u->name}: died ".Carbon::parse($data['died_at'])->format('j M Y H:i')." · {$data['cause']}. Approve to record the exit.", 0, 500),
+                'notes' => mb_substr("Reported by {$u->name}: died ".Carbon::parse($data['died_at'])->format('d/m/Y H:i')." · {$data['cause']}. Approve to record the exit.", 0, 500),
             ]);
             Farm::event($animal, 'health', "Death reported by {$u->name}: {$data['cause']} (waiting for approval)", $u->name, Carbon::parse($data['died_at']));
         });
@@ -82,7 +82,7 @@ class DeathController extends Controller
             if ($data['decision'] === 'approved') {
                 abort_unless($animal->status === 'active', 422, 'This goat is no longer on the farm.');
                 try {
-                    $m = Movements::exit($animal, 'death', $u, ['moved_on' => $report->died_at->toDateString(), 'reason' => "Died {$report->died_at->format('j M Y H:i')}: {$report->cause}",
+                    $m = Movements::exit($animal, 'death', $u, ['moved_on' => $report->died_at->toDateString(), 'reason' => "Died {$report->died_at->format('d/m/Y H:i')}: {$report->cause}",
                         'notes' => mb_substr($report->circumstances ?? '', 0, 500), 'authorized_by' => $u->name]);
                 } catch (ValidationException $e) {
                     throw ValidationException::withMessages(['decision' => collect($e->errors())->flatten()->first()]);

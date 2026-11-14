@@ -42,7 +42,7 @@ class TrainingController extends Controller
                     default => 'ok',
                 };
 
-                return [$topic => ['state' => $state, 'on' => $last?->trained_on->format('j M Y'), 'expires' => $last?->expires_on?->format('j M Y')]];
+                return [$topic => ['state' => $state, 'on' => $last?->trained_on->format('d/m/Y'), 'expires' => $last?->expires_on?->format('d/m/Y')]];
             });
 
             return ['id' => $e->id, 'name' => $e->name, 'code' => $e->code, 'role' => $e->role, 'cells' => $cells, 'compliant' => $cells->every(fn ($c) => in_array($c['state'], ['ok', 'due'], true)),
@@ -52,9 +52,9 @@ class TrainingController extends Controller
         return Inertia::render('Training', [
             'matrix' => $matrix->values(),
             'trainings' => $trainings->take(200)->map(fn (StaffTraining $t) => ['id' => $t->id, 'person' => $t->employee?->name, 'topic' => StaffTraining::TOPICS[$t->topic] ?? $t->topic, 'title' => $t->title,
-                'on' => $t->trained_on->format('j M Y'), 'expires' => $t->expires_on?->format('j M Y'), 'expired' => (bool) $t->expires_on?->lt(today()), 'trainer' => $t->trainer, 'certificate' => $t->certificate_ref, 'by' => $t->recorded_by])->values(),
+                'on' => $t->trained_on->format('d/m/Y'), 'expires' => $t->expires_on?->format('d/m/Y'), 'expired' => (bool) $t->expires_on?->lt(today()), 'trainer' => $t->trainer, 'certificate' => $t->certificate_ref, 'by' => $t->recorded_by])->values(),
             'skills' => $skills->map(fn (StaffSkill $s) => ['id' => $s->id, 'person' => $s->employee?->name, 'skill' => StaffSkill::SKILLS[$s->skill] ?? $s->skill, 'authorisation' => in_array($s->skill, StaffSkill::AUTHORISATIONS, true),
-                'level' => StaffSkill::LEVELS[$s->level] ?? $s->level, 'evidence' => $s->evidence, 'on' => $s->assessed_on->format('j M Y'), 'until' => $s->valid_until?->format('j M Y'), 'valid' => $s->valid(),
+                'level' => StaffSkill::LEVELS[$s->level] ?? $s->level, 'evidence' => $s->evidence, 'on' => $s->assessed_on->format('d/m/Y'), 'until' => $s->valid_until?->format('d/m/Y'), 'valid' => $s->valid(),
                 'status' => $s->status, 'by' => $s->assessed_by, 'revokedBy' => $s->revoked_by, 'revokeReason' => $s->revoke_reason])->values(),
             'kpi' => ['people' => $people->count(), 'compliance' => $people->count() ? (int) round($matrix->where('compliant', true)->count() * 100 / $people->count()) : null,
                 'expired' => $matrix->sum(fn ($m) => collect($m['cells'])->whereIn('state', ['missing', 'expired'])->count()), 'due' => $matrix->sum(fn ($m) => collect($m['cells'])->where('state', 'due')->count()),

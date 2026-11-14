@@ -86,9 +86,9 @@ class DairyController extends Controller
             'day' => $day, 'sessions' => $sessions,
             'lots' => MilkLot::with(['session', 'dispatches.customer'])->where(fn ($q) => $q->whereNotIn('status', ['dispatched', 'rejected', 'recalled'])->orWhere('updated_at', '>=', now()->subDays(30)))
                 ->orderByDesc('id')->limit(100)->get()->map(fn (MilkLot $l) => [
-                    'id' => $l->id, 'code' => $l->code, 'litres' => $l->litres, 'remaining' => $l->remaining(), 'status' => $l->status, 'session' => $l->session?->milked_on->format('j M').' '.ucfirst($l->session?->session ?? ''),
+                    'id' => $l->id, 'code' => $l->code, 'litres' => $l->litres, 'remaining' => $l->remaining(), 'status' => $l->status, 'session' => $l->session?->milked_on->format('d/m').' '.ucfirst($l->session?->session ?? ''),
                     'tank' => $l->tank, 'temp' => $l->storage_temp_c, 'residue' => $l->residue, 'testedBy' => $l->tested_by, 'releasedBy' => $l->released_by, 'hold' => $l->hold_reason,
-                    'buyers' => $l->dispatches->map(fn ($d) => ['on' => $d->dispatched_on->format('j M'), 'to' => $d->customer?->name ?? $d->buyer ?? 'Processing', 'litres' => $d->litres, 'kind' => $d->kind])->values(),
+                    'buyers' => $l->dispatches->map(fn ($d) => ['on' => $d->dispatched_on->format('d/m'), 'to' => $d->customer?->name ?? $d->buyer ?? 'Processing', 'litres' => $d->litres, 'kind' => $d->kind])->values(),
                 ]),
             'kpi' => [
                 'perDoeDay' => $does->count() ? round($produced / $milkDays / $does->count(), 2) : null,
@@ -103,12 +103,12 @@ class DairyController extends Controller
             // D-195: customer milk orders, invoices and the monthly milk profit view (CEO).
             'orders' => \App\Models\MilkOrder::with('customer')->where(fn ($q) => $q->where('status', 'open')->orWhere('updated_at', '>=', now()->subDays(30)))->orderByRaw("status = 'open' desc")->orderBy('wanted_on')->get()
                 ->map(fn ($o) => ['id' => $o->id, 'no' => $o->order_no, 'customer' => $o->customer?->name ?? $o->buyer, 'litres' => $o->litres, 'remaining' => $o->remaining(), 'price' => $o->price_per_litre_minor / 100,
-                    'wanted' => $o->wanted_on->format('j M Y'), 'terms' => $o->terms, 'creditDays' => $o->credit_days, 'status' => $o->status, 'by' => $o->created_by]),
+                    'wanted' => $o->wanted_on->format('d/m/Y'), 'terms' => $o->terms, 'creditDays' => $o->credit_days, 'status' => $o->status, 'by' => $o->created_by]),
             'invoices' => MilkDispatch::with(['customer', 'lot', 'order'])->whereNotNull('invoice_no')->where(fn ($q) => $q->whereNull('collected_at')->orWhere('dispatched_on', '>=', now()->subDays(60)->toDateString()))
                 ->orderByRaw('collected_at is null desc')->orderByDesc('id')->limit(100)->get()->map(fn ($d) => [
-                    'id' => $d->id, 'invoice' => $d->invoice_no, 'on' => $d->dispatched_on->format('j M Y'), 'to' => $d->customer?->name ?? $d->buyer, 'litres' => $d->litres, 'amount' => round($d->litres * $d->price_per_litre_minor / 100),
-                    'lot' => $d->lot?->code, 'order' => $d->order?->order_no, 'temp' => $d->dispatch_temp_c, 'due' => $d->due_on?->format('j M Y'), 'overdue' => $d->due_on && ! $d->collected_at && $d->due_on->lt(today()),
-                    'collected' => $d->collected_at?->format('j M Y')]),
+                    'id' => $d->id, 'invoice' => $d->invoice_no, 'on' => $d->dispatched_on->format('d/m/Y'), 'to' => $d->customer?->name ?? $d->buyer, 'litres' => $d->litres, 'amount' => round($d->litres * $d->price_per_litre_minor / 100),
+                    'lot' => $d->lot?->code, 'order' => $d->order?->order_no, 'temp' => $d->dispatch_temp_c, 'due' => $d->due_on?->format('d/m/Y'), 'overdue' => $d->due_on && ! $d->collected_at && $d->due_on->lt(today()),
+                    'collected' => $d->collected_at?->format('d/m/Y')]),
             'monthly' => $this->monthly(),
             'maxTemp' => (float) (\App\Support\Tenant::org()?->milk_dispatch_max_c ?? 7),
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
@@ -140,7 +140,7 @@ class DairyController extends Controller
             $revenue = $d->sum(fn ($x) => $x->litres * $x->price_per_litre_minor) / 100;
             $feed = $produced > 0 ? $this->milkFeedCost(Carbon::parse($from), Carbon::parse($to)) : null;
 
-            return ['month' => $from->format('M Y'), 'produced' => round($produced, 1), 'saleable' => round((float) $s->sum('saleable_l'), 1), 'lost' => round((float) $s->sum('held_l') + (float) $s->sum('discard_l'), 1),
+            return ['month' => $from->format('m/Y'), 'produced' => round($produced, 1), 'saleable' => round((float) $s->sum('saleable_l'), 1), 'lost' => round((float) $s->sum('held_l') + (float) $s->sum('discard_l'), 1),
                 'kid' => round((float) $s->sum('kid_l'), 1), 'colostrum' => round((float) $s->sum('colostrum_l'), 1), 'sold' => round((float) $d->sum('litres'), 1), 'revenue' => round($revenue),
                 'feed' => $feed !== null ? round($feed) : null, 'contribution' => $feed !== null ? round($revenue - $feed) : null,
                 'revenuePerLitre' => $d->sum('litres') > 0 ? round($revenue / $d->sum('litres'), 1) : null];

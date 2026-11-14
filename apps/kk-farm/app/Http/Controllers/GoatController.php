@@ -163,7 +163,7 @@ class GoatController extends Controller
             \App\Models\HealthRecord::create(['animal_id' => $animal->id, 'kind' => 'procedure', 'occurred_on' => $on, 'title' => 'Castration ('.self::CASTRATION_METHODS[$data['method']].')',
                 'notes' => $data['notes'] ?? null, 'next_due_on' => $on->copy()->addDays(7), 'recorded_by' => $request->user()->name, 'recorded_role' => $request->user()->roleLabel(), 'status' => 'open']);
             $animal->forceFill(['castrated_on' => $on->toDateString(), 'animal_purpose' => in_array($animal->animal_purpose, ['breeding', 'replacement'], true) ? null : $animal->animal_purpose])->save();
-            Farm::event($animal, 'health', 'Castrated ('.self::CASTRATION_METHODS[$data['method']].'): now a wether, breeding blocked. Recovery check due '.$on->copy()->addDays(7)->format('j M').'.', $request->user()->name, $on);
+            Farm::event($animal, 'health', 'Castrated ('.self::CASTRATION_METHODS[$data['method']].'): now a wether, breeding blocked. Recovery check due '.$on->copy()->addDays(7)->format('d/m').'.', $request->user()->name, $on);
         });
         Farm::log($request->user(), "Castration recorded for {$animal->farm_number}", "/goats/{$animal->id}");
 
@@ -222,7 +222,7 @@ class GoatController extends Controller
                 ->orderByRaw("CASE status WHEN 'pregnant' THEN 0 WHEN 'kidded' THEN 1 ELSE 2 END")->orderByDesc('mated_on')->get()->unique('dam_id')
                 ->mapWithKeys(fn (Mating $m) => [$m->dam_id => [
                     'sireId' => $m->sire_id, 'sire' => $m->sire?->farm_number, 'sireBreed' => $m->sire?->breed_id, 'status' => $m->status,
-                    'matedOn' => $m->mated_on->format('j M Y'), 'expected' => $m->expected_kidding_on?->format('Y-m-d'), 'expectedLabel' => $m->expected_kidding_on?->format('j M Y'),
+                    'matedOn' => $m->mated_on->format('d/m/Y'), 'expected' => $m->expected_kidding_on?->format('Y-m-d'), 'expectedLabel' => $m->expected_kidding_on?->format('d/m/Y'),
                 ]]),
             'mixedBreedId' => Breed::whereIn('name', ['Crossbreed', 'Mixed'])->value('id'),
             'canAssignTags' => $request->user()->passes('assign_tags'),
@@ -350,8 +350,8 @@ class GoatController extends Controller
         if (! $r && $animal->exit_reason !== 'died') {
             return null;
         }
-        $out = $r ? ['id' => $r->id, 'status' => $r->status, 'diedAt' => $r->died_at->format('j M Y, H:i'), 'cause' => $r->cause, 'circumstances' => $seeHealth ? $r->circumstances : null,
-            'postmortem' => $seeHealth ? $r->postmortem : null, 'reportedBy' => $r->reported_by, 'decidedBy' => $r->decided_by, 'decidedAt' => $r->decided_at?->format('j M Y'), 'note' => $r->decision_note] : null;
+        $out = $r ? ['id' => $r->id, 'status' => $r->status, 'diedAt' => $r->died_at->format('d/m/Y H:i'), 'cause' => $r->cause, 'circumstances' => $seeHealth ? $r->circumstances : null,
+            'postmortem' => $seeHealth ? $r->postmortem : null, 'reportedBy' => $r->reported_by, 'decidedBy' => $r->decided_by, 'decidedAt' => $r->decided_at?->format('d/m/Y'), 'note' => $r->decision_note] : null;
         if ($animal->exit_reason !== 'died' || ! $seeHealth) {
             return $out ? ['report' => $out, 'review' => null] : null;
         }
@@ -364,13 +364,13 @@ class GoatController extends Controller
         $care = \App\Models\HealthRecord::where('animal_id', $animal->id)->whereDate('occurred_on', '>=', $from)->whereNotIn('kind', ['postmortem'])->orderBy('occurred_on')->get();
 
         return ['report' => $out, 'review' => [
-            'from' => \Illuminate\Support\Carbon::parse($from)->format('j M Y'),
-            'cases' => $cases->map(fn ($c) => ['label' => $c->label(), 'condition' => $c->condition, 'onset' => $c->onset_on->format('j M'), 'status' => \App\Models\HealthCase::STATUSES[$c->status] ?? $c->status,
+            'from' => \Illuminate\Support\Carbon::parse($from)->format('d/m/Y'),
+            'cases' => $cases->map(fn ($c) => ['label' => $c->label(), 'condition' => $c->condition, 'onset' => $c->onset_on->format('d/m'), 'status' => \App\Models\HealthCase::STATUSES[$c->status] ?? $c->status,
                 'severity' => $c->severity, 'vet' => $c->vet, 'diagnosis' => $c->diagnosis])->values(),
-            'treatments' => $treatments->map(fn ($t) => ['on' => $t->given_on->format('j M'), 'product' => $t->product, 'dose' => $t->dose, 'route' => $t->route, 'by' => $t->recorded_by])->values(),
-            'checkups' => $checks->map(fn ($c) => ['on' => $c->checked_on->format('j M'), 'temp' => $c->temperature_f, 'result' => \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome, 'by' => $c->examiner, 'findings' => $c->findings])->values(),
-            'care' => $care->map(fn ($h) => ['on' => $h->occurred_on->format('j M'), 'what' => ucfirst(str_replace('_', ' ', $h->kind)).': '.$h->title, 'by' => $h->recorded_by])->values(),
-            'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('j M'), 'kg' => (float) $w->weight_kg])->values(),
+            'treatments' => $treatments->map(fn ($t) => ['on' => $t->given_on->format('d/m'), 'product' => $t->product, 'dose' => $t->dose, 'route' => $t->route, 'by' => $t->recorded_by])->values(),
+            'checkups' => $checks->map(fn ($c) => ['on' => $c->checked_on->format('d/m'), 'temp' => $c->temperature_f, 'result' => \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome, 'by' => $c->examiner, 'findings' => $c->findings])->values(),
+            'care' => $care->map(fn ($h) => ['on' => $h->occurred_on->format('d/m'), 'what' => ucfirst(str_replace('_', ' ', $h->kind)).': '.$h->title, 'by' => $h->recorded_by])->values(),
+            'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('d/m'), 'kg' => (float) $w->weight_kg])->values(),
         ]];
     }
 
@@ -383,7 +383,7 @@ class GoatController extends Controller
         $w = $animal->latestWeight;
 
         return response()->json($animal->card() + [
-            'weighedOn' => $w?->measured_on?->format('j M Y'),
+            'weighedOn' => $w?->measured_on?->format('d/m/Y'),
             'bodyScore' => $w?->body_score,
             'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, now()->toDateString()),
             'withdrawal' => $seeHealth ? \App\Support\Withdrawal::summary($animal) : null,
@@ -404,51 +404,51 @@ class GoatController extends Controller
 
         return Inertia::render('Goats/Show', [
             'goat' => $animal->card() + [
-                'origin' => $animal->origin, 'birthDate' => $animal->birth_date?->format('j M Y'), 'estimated' => $animal->birth_date_is_estimate, 'height' => $animal->height_cm !== null ? round((float) $animal->height_cm / 2.54, 1) : null, // inches (D-065)
+                'origin' => $animal->origin, 'birthDate' => $animal->birth_date?->format('d/m/Y'), 'estimated' => $animal->birth_date_is_estimate, 'height' => $animal->height_cm !== null ? round((float) $animal->height_cm / 2.54, 1) : null, // inches (D-065)
                 'shed' => $animal->pen?->shed?->name, 'penPurpose' => $animal->pen?->purpose, 'feedingGroup' => $animal->feedingGroup?->name ?? FeedingGroup::where('code', \App\Support\Feed::groupCode($animal))->value('name'), // D-054: automatic group
                 'withdrawal' => \App\Support\Withdrawal::summary($animal), // D-073
                 // D-267: when it came to the farm: the purchase or transfer date (the registration date when none was entered), and from where
-                'arrivedOn' => ($animal->acquired_on ?? ($animal->origin !== 'born_on_farm' ? $animal->created_at : null))?->format('j M Y'), 'arrivedEntered' => (bool) $animal->acquired_on, 'sourceFarm' => $animal->source_farm,
+                'arrivedOn' => ($animal->acquired_on ?? ($animal->origin !== 'born_on_farm' ? $animal->created_at : null))?->format('d/m/Y'), 'arrivedEntered' => (bool) $animal->acquired_on, 'sourceFarm' => $animal->source_farm,
                 'inBreeding' => in_array($animal->effectiveCategory(), ['breeding_male', 'breeding_female', 'replacement_male', 'replacement_female'], true), // D-260: can be culled
-                'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('j M Y'), 'adg' => Farm::adg($weights),
+                'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('d/m/Y'), 'adg' => Farm::adg($weights),
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
                 'identity' => $animal->id,
-                'removal' => $animal->removal_requested_at || $animal->status === 'voided' ? ['by' => $animal->removal_requested_by, 'on' => $animal->removal_requested_at?->format('j M Y g:i A'), 'reason' => $animal->removal_reason, 'voidedBy' => $animal->voided_by, 'voidedOn' => $animal->voided_at?->format('j M Y g:i A')] : null, // D-091
+                'removal' => $animal->removal_requested_at || $animal->status === 'voided' ? ['by' => $animal->removal_requested_by, 'on' => $animal->removal_requested_at?->format('d/m/Y g:i A'), 'reason' => $animal->removal_reason, 'voidedBy' => $animal->voided_by, 'voidedOn' => $animal->voided_at?->format('d/m/Y g:i A')] : null, // D-091
                 'teeth' => $animal->teeth ? (\App\Support\Teeth::options()[$animal->teeth] ?? $animal->teeth) : null,
                 'ageStage' => ($st = \App\Support\AgeStages::forBirth($animal->birth_date, $animal->exit_date)) ? ['code' => $st->code, 'label' => $st->label, 'range' => $st->rangeText()] : null, // D-229
-                'dental' => ['code' => \App\Support\Teeth::code($animal->teethCode()), 'fromAge' => ! $animal->teeth && $animal->teethCode() !== null, 'condition' => \App\Support\Teeth::CONDITIONS[$animal->dental_condition] ?? null, 'checkedOn' => $animal->teeth_checked_on?->format('j M Y'),
-                    'history' => $animal->dentalExams()->limit(10)->get()->map(fn ($e) => ['on' => $e->examined_on->format('j M Y'), 'code' => \App\Support\Teeth::code($e->dental_code), 'condition' => \App\Support\Teeth::CONDITIONS[$e->condition] ?? null, 'by' => $e->recorded_by, 'source' => $e->source])->all()],
+                'dental' => ['code' => \App\Support\Teeth::code($animal->teethCode()), 'fromAge' => ! $animal->teeth && $animal->teethCode() !== null, 'condition' => \App\Support\Teeth::CONDITIONS[$animal->dental_condition] ?? null, 'checkedOn' => $animal->teeth_checked_on?->format('d/m/Y'),
+                    'history' => $animal->dentalExams()->limit(10)->get()->map(fn ($e) => ['on' => $e->examined_on->format('d/m/Y'), 'code' => \App\Support\Teeth::code($e->dental_code), 'condition' => \App\Support\Teeth::CONDITIONS[$e->condition] ?? null, 'by' => $e->recorded_by, 'source' => $e->source])->all()],
                 'classification' => $animal->classification(),
                 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null),
                 'dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null),
             ],
-            'photos' => $animal->photos->map(fn (AnimalPhoto $p) => ['id' => $p->id, 'notes' => $p->notes, 'isProfile' => $p->is_profile, 'by' => $p->added_by, 'on' => $p->created_at->format('j M Y')]),
+            'photos' => $animal->photos->map(fn (AnimalPhoto $p) => ['id' => $p->id, 'notes' => $p->notes, 'isProfile' => $p->is_profile, 'by' => $p->added_by, 'on' => $p->created_at->format('d/m/Y')]),
             'tags' => RfidAssignment::with('tag')->where('animal_id', $animal->id)->orderByDesc('valid_from')->get()
-                ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('j M Y'), 'to' => $r->valid_to?->format('j M Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
+                ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('d/m/Y'), 'to' => $r->valid_to?->format('d/m/Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
             'records' => $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
             'death' => $this->death($animal, $seeHealth), // D-260: the vet's death report, and the review once it is approved
             // D-251: how it is doing since a watch began, or when it last came off Watch
             'recovery' => $seeHealth || in_array($request->user()->role, ['caretaker'], true) ? ((($p = \App\Support\Recovery::progress($animal)) ? ($seeHealth ? $p : ['title' => 'Health watch', 'temp' => null] + $p) : null) ?? (($e = \App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(30))->latest('occurred_at')->first())
-                ? ['state' => 'recovered', 'on' => $e->occurred_at->format('j M'), 'why' => trim(substr($e->summary, strlen('Out of Watch:')))] : null)) : null,
-            'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => $e->summary, 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('j M Y')]),
+                ? ['state' => 'recovered', 'on' => $e->occurred_at->format('d/m'), 'why' => trim(substr($e->summary, strlen('Out of Watch:')))] : null)) : null,
+            'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => $e->summary, 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('d/m/Y')]),
             // D-073: health cases with their treatment doses
             'cases' => ! $seeHealth ? [] : \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->orderByDesc('onset_on')->get()->map(fn ($c) => [
                 'id' => $c->id, 'label' => $c->label(), 'condition' => $c->condition, 'status' => \App\Models\HealthCase::STATUSES[$c->status], 'active' => in_array($c->status, \App\Models\HealthCase::ACTIVE, true),
-                'severity' => \App\Models\HealthCase::SEVERITIES[$c->severity], 'onset' => $c->onset_on->format('j M Y'), 'resolved' => $c->resolved_on?->format('j M Y'), 'diagnosis' => $c->diagnosis,
-                'treatments' => $c->treatments->map(fn ($t) => ['id' => $t->id, 'on' => $t->given_on->format('j M'), 'text' => "{$t->product} {$t->dose}", 'meat' => $t->meat_clear_on?->format('j M Y'), 'milk' => $t->milk_clear_on?->format('j M Y'), 'by' => $t->recorded_by])->values(),
+                'severity' => \App\Models\HealthCase::SEVERITIES[$c->severity], 'onset' => $c->onset_on->format('d/m/Y'), 'resolved' => $c->resolved_on?->format('d/m/Y'), 'diagnosis' => $c->diagnosis,
+                'treatments' => $c->treatments->map(fn ($t) => ['id' => $t->id, 'on' => $t->given_on->format('d/m'), 'text' => "{$t->product} {$t->dose}", 'meat' => $t->meat_clear_on?->format('d/m/Y'), 'milk' => $t->milk_clear_on?->format('d/m/Y'), 'by' => $t->recorded_by])->values(),
             ]),
-            'health' => ! $seeHealth ? [] : $animal->healthRecords()->limit(40)->get()->map(fn ($h) => ['id' => $h->id, 'kind' => $h->kind, 'title' => $h->title, 'notes' => $h->notes, 'severity' => $h->severity, 'by' => $h->recorded_by, 'role' => $h->recorded_role, 'on' => $h->occurred_on->format('j M Y'), 'next' => $h->next_due_on?->format('j M Y'), 'status' => $h->status]),
+            'health' => ! $seeHealth ? [] : $animal->healthRecords()->limit(40)->get()->map(fn ($h) => ['id' => $h->id, 'kind' => $h->kind, 'title' => $h->title, 'notes' => $h->notes, 'severity' => $h->severity, 'by' => $h->recorded_by, 'role' => $h->recorded_role, 'on' => $h->occurred_on->format('d/m/Y'), 'next' => $h->next_due_on?->format('d/m/Y'), 'status' => $h->status]),
             'pedigree' => Farm::pedigree($animal),
             'offspring' => $offspring->map(fn (Animal $a) => $a->card()),
             'matings' => Mating::with(['sire', 'dam'])->where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->orderByDesc('mated_on')->limit(12)->get()
-                ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('j M Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('j M Y')]),
-            'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
+                ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('d/m/Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('d/m/Y')]),
+            'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('d/m/Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),
             'cost' => $canFinance ? $this->illustrativeCost($animal) : null,
-            'castration' => $animal->sex === 'male' ? ['on' => $animal->castrated_on?->format('j M Y'), 'methods' => self::CASTRATION_METHODS, 'can' => $request->user()->passes('clinical')] : null, // D-230
+            'castration' => $animal->sex === 'male' ? ['on' => $animal->castrated_on?->format('d/m/Y'), 'methods' => self::CASTRATION_METHODS, 'can' => $request->user()->passes('clinical')] : null, // D-230
             'statuses' => $animal->status === 'active' ? (function () use ($animal) { \App\Support\Lifecycle::record($animal); return \App\Support\Lifecycle::statuses($animal); })() : null, // D-232
             'statusHistory' => \App\Models\StatusHistory::where('animal_id', $animal->id)->whereNotNull('from_status')->latest('changed_at')->latest('id')->limit(20)->get()
-                ->map(fn ($h) => ['dimension' => $h->dimension, 'from' => \App\Support\Lifecycle::LABELS[$h->dimension][$h->from_status] ?? $h->from_status, 'to' => \App\Support\Lifecycle::LABELS[$h->dimension][$h->to_status] ?? $h->to_status, 'rule' => $h->rule, 'at' => $h->changed_at->format('j M Y g:i A')]),
+                ->map(fn ($h) => ['dimension' => $h->dimension, 'from' => \App\Support\Lifecycle::LABELS[$h->dimension][$h->from_status] ?? $h->from_status, 'to' => \App\Support\Lifecycle::LABELS[$h->dimension][$h->to_status] ?? $h->to_status, 'rule' => $h->rule, 'at' => $h->changed_at->format('d/m/Y g:i A')]),
             'eligibility' => ($e = \App\Support\Eligibility::check($animal))['status'] === 'not_candidate' ? null : ['status' => $e['status'], 'label' => $e['label'], 'review' => $e['review'], 'recommendation' => $e['recommendation'],
                 'failed' => collect($e['checks'])->filter(fn ($c) => ! $c['ok'])->pluck('label')->values()], // D-231
             'roleLabels' => \App\Support\Designations::labels(\App\Support\Designations::codes($animal)),
@@ -515,12 +515,12 @@ class GoatController extends Controller
             'estimated' => ['boolean'], 'reason' => ['required', 'string', 'max:200'],
         ], [], ['age_months' => 'age in months']);
         $new = ! empty($data['birth_date']) ? \Illuminate\Support\Carbon::parse($data['birth_date']) : now()->subMonths((int) $data['age_months']);
-        $old = $animal->birth_date?->format('j M Y') ?? 'none';
+        $old = $animal->birth_date?->format('d/m/Y') ?? 'none';
         $animal->update(['birth_date' => $new->toDateString(), 'birth_date_is_estimate' => (bool) ($data['estimated'] ?? empty($data['birth_date'])), 'age_category' => null]);
-        Farm::event($animal, 'origin', "Birth date corrected from {$old} to {$new->format('j M Y')}: {$data['reason']}", $request->user()->name);
+        Farm::event($animal, 'origin', "Birth date corrected from {$old} to {$new->format('d/m/Y')}: {$data['reason']}", $request->user()->name);
         Farm::log($request->user(), "Corrected the birth date of {$animal->farm_number}", "/goats/{$animal->id}");
 
-        return back()->with('success', "Birth date of {$animal->farm_number} is now {$new->format('j M Y')}.");
+        return back()->with('success', "Birth date of {$animal->farm_number} is now {$new->format('d/m/Y')}.");
     }
 
     /**
@@ -548,7 +548,7 @@ class GoatController extends Controller
             $out['care'] = \App\Models\HealthRecord::where('animal_id', $animal->id)->whereDate('occurred_on', $on)->get()->map(fn ($h) => ['kind' => ucfirst(str_replace('_', ' ', $h->kind)),
                 'title' => preg_replace('/^Checkup: /', '', $h->title), 'notes' => $h->notes, 'status' => $h->status, 'by' => $h->recorded_by, 'at' => $time($h)])->values();
             $out['treatments'] = \App\Models\Treatment::where('animal_id', $animal->id)->whereDate('given_on', $on)->get()->map(fn ($t) => ['product' => $t->product, 'dose' => $t->dose, 'route' => $t->route,
-                'meat' => $t->meat_clear_on?->format('j M Y'), 'milk' => $t->milk_clear_on?->format('j M Y'), 'by' => $t->recorded_by, 'at' => $time($t)])->values();
+                'meat' => $t->meat_clear_on?->format('d/m/Y'), 'milk' => $t->milk_clear_on?->format('d/m/Y'), 'by' => $t->recorded_by, 'at' => $time($t)])->values();
         }
 
         return response()->json($out);
@@ -632,7 +632,7 @@ class GoatController extends Controller
         return [
             'avg7' => \App\Support\Milking::weekAverages()[$animal->id] ?? null, 'high' => \App\Support\Milking::isHighYield($animal),
             'standard' => $std?->name, 'cp' => $std?->range(),
-            'lactations' => $lactations->map(fn ($l) => ['number' => $l->number, 'started' => $l->started_on->format('j M Y'), 'dried' => $l->dried_on?->format('j M Y'),
+            'lactations' => $lactations->map(fn ($l) => ['number' => $l->number, 'started' => $l->started_on->format('d/m/Y'), 'dried' => $l->dried_on?->format('d/m/Y'),
                 'days' => $l->daysInMilk(), 'total' => round((float) ($totals[$l->id] ?? 0), 1), 'reason' => $l->dry_reason, 'open' => $l->dried_on === null])->values(),
         ];
     }

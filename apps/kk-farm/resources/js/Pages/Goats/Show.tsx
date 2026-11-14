@@ -655,7 +655,7 @@ function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) 
     const { rows: shown, pager } = usePaged(rows, { size: 10, id: 'goat-records' }); // D-263: numbered pages
     const [day, setDay] = useState<string | null>(null); // D-270: a day opened in full
     if (!rows.length) return null;
-    const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const resultTone = (x: string) => (x === 'Sick' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
     const th = 'px-2.5 py-2.5 text-xs font-medium whitespace-nowrap text-ink-soft';
     const td = 'px-2.5 py-3 align-middle';
@@ -841,7 +841,7 @@ function GrowthView({ rows, number }: { rows: GoatRecord[]; number: string }) {
             return { on: r.on, v, ch, pct: prev ? Math.round(((v - prev) / prev) * 1000) / 10 : null, days, color: ch === null || ch === 0 ? FLAT : ch > 0 ? UP : DOWN };
         });
     }, [rows, metric]);
-    const label = (on: string, year = false) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) });
+    const label = (on: string, year = false) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', ...(year ? { year: 'numeric' } : {}) });
     const option = useMemo(() => ({
         tooltip: { trigger: 'item', formatter: (x: { dataIndex: number }) => { const p = pts[x.dataIndex]; return `<b>${label(p.on, true)}</b><br/>${p.v} ${unit}${p.ch !== null ? `<br/><span style="color:${p.color}">${p.ch > 0 ? '▲ +' : p.ch < 0 ? '▼ ' : '■ '}${p.ch} ${unit} (${p.pct! > 0 ? '+' : ''}${p.pct}%) in ${p.days} ${p.days === 1 ? 'day' : 'days'}</span>` : ''}`; } },
         grid: { left: 8, right: 12, top: 28, bottom: 6, containLabel: true },
@@ -899,7 +899,7 @@ type DayData = {
 function DayDetail({ goatId, on }: { goatId: string; on: string }) {
     const [d, setD] = useState<DayData | null>(null);
     useEffect(() => { fetch(`/goats/${goatId}/day/${on}`, { headers: { Accept: 'application/json' } }).then((r) => r.json()).then(setD); }, [goatId, on]);
-    const title = new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const title = new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const block = (label: string, items: ReactNode[]) => (items.length ? (
         <section className="mt-4"><h3 className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">{label}</h3>
             <ul className="divide-y divide-rule rounded-tile bg-tile ring-1 ring-rule">{items.map((x, i) => <li key={i} className="px-3 py-2.5 text-sm">{x}</li>)}</ul></section>

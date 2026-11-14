@@ -21,7 +21,7 @@ class WeightChangeController extends Controller
         $since = rescue(fn () => Carbon::parse($request->string('since')->toString() ?: now()->subDays(30)->toDateString())->startOfDay(), now()->subDays(30)->startOfDay(), false);
         $goats = Animal::active()->with(['breed', 'pen.shed', 'weights'])->orderBy('farm_number')->get();
         $held = WeightRecord::held()->whereIn('animal_id', $goats->pluck('id'))->selectRaw('animal_id, count(*) as n')->groupBy('animal_id')->pluck('n', 'animal_id');
-        $pt = fn ($w) => $w ? ['kg' => (float) $w->weight_kg, 'on' => $w->measured_on->format('j M Y')] : null;
+        $pt = fn ($w) => $w ? ['kg' => (float) $w->weight_kg, 'on' => $w->measured_on->format('d/m/Y')] : null;
         $diff = function ($a, $b): array {
             if (! $a || ! $b || $a->id === $b->id) {
                 return ['kg' => null, 'days' => null, 'adg' => null];

@@ -382,7 +382,7 @@ class FeedTest extends TestCase
 
         // 40 kg × 2.5% = 1 kg a day: November has 30 days, 10 are left including today, the store holds 5 kg.
         $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page
-            ->where('requirement.supply.month', 'November')->where('requirement.supply.needMonth', 30)
+            ->where('requirement.supply.month', '11/2026')->where('requirement.supply.needMonth', 30)
             ->where('requirement.supply.daysLeft', 10)->where('requirement.supply.needLeft', 10)->where('requirement.supply.shortMonth', 5)
             ->where('requirement.kgMonth', 30)->where('requirement.sheds.0.kgMonth', 30)->where('requirement.sheds.0.pens.0.goats.0.kgMonth', 30));
     }

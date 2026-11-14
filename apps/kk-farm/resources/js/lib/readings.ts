@@ -5,7 +5,7 @@
  */
 export type Weighing = { on: string; kg: number };
 
-const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
 
 export function lastBefore(weights: Weighing[] | undefined, date: string): Weighing | null {
     const list = (weights ?? []).filter((w) => w.on < date);

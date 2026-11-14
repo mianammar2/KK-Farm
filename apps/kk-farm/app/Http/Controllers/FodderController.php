@@ -39,14 +39,14 @@ class FodderController extends Controller
             'canRelease' => in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 'me' => $request->user()->name,
             'fields' => $enabled ? FodderField::orderBy('name')->get()->map(fn ($f) => ['id' => $f->id, 'name' => $f->name, 'acres' => $f->area_acres, 'location' => $f->location, 'soil' => $f->soil, 'irrigation' => $f->irrigation, 'active' => $f->active]) : [],
             'crops' => $crops->map(fn (FodderCrop $c) => [
-                'id' => $c->id, 'label' => $c->label(), 'crop' => $c->crop, 'field' => $c->field?->name, 'acres' => $c->area_acres, 'sown' => $c->sown_on->format('j M Y'), 'expected' => $c->expected_harvest_on?->format('j M Y'),
+                'id' => $c->id, 'label' => $c->label(), 'crop' => $c->crop, 'field' => $c->field?->name, 'acres' => $c->area_acres, 'sown' => $c->sown_on->format('d/m/Y'), 'expected' => $c->expected_harvest_on?->format('d/m/Y'),
                 'expectedKg' => $c->expected_yield_kg, 'status' => $c->status, 'cost' => (int) $c->inputs->sum('cost_minor'), 'harvestedKg' => (float) $c->lots->sum('fresh_kg'),
-                'safeFrom' => $c->inputs->where('kind', 'chemical')->max('safe_from')?->format('j M Y'),
+                'safeFrom' => $c->inputs->where('kind', 'chemical')->max('safe_from')?->format('d/m/Y'),
                 'phiOpen' => (bool) $c->inputs->where('kind', 'chemical')->first(fn ($i) => $i->safe_from && $i->safe_from->isFuture()),
-                'inputs' => $c->inputs->map(fn ($i) => ['id' => $i->id, 'kind' => $i->kind, 'on' => $i->applied_on->format('j M'), 'product' => $i->product, 'qty' => $i->qty, 'unit' => $i->unit, 'cost' => $i->cost_minor, 'safeFrom' => $i->safe_from?->format('j M Y')])->values(),
+                'inputs' => $c->inputs->map(fn ($i) => ['id' => $i->id, 'kind' => $i->kind, 'on' => $i->applied_on->format('d/m'), 'product' => $i->product, 'qty' => $i->qty, 'unit' => $i->unit, 'cost' => $i->cost_minor, 'safeFrom' => $i->safe_from?->format('d/m/Y')])->values(),
             ]),
             'lots' => $lots->map(fn (FodderLot $l) => [
-                'id' => $l->id, 'no' => $l->label(), 'crop' => $l->crop?->label(), 'on' => $l->harvested_on->format('j M Y'), 'form' => $l->form, 'kg' => $l->fresh_kg, 'final' => $l->final_cut,
+                'id' => $l->id, 'no' => $l->label(), 'crop' => $l->crop?->label(), 'on' => $l->harvested_on->format('d/m/Y'), 'form' => $l->form, 'kg' => $l->fresh_kg, 'final' => $l->final_cut,
                 'dm' => $l->dm_pct, 'dmMethod' => $l->dm_method, 'mould' => $l->mould, 'smellOk' => $l->smell_ok, 'nitrate' => $l->nitrate, 'aflatoxin' => $l->aflatoxin_ppb, 'cp' => $l->cp_pct, 'lab' => $l->test_lab,
                 'status' => $l->status, 'harvestedBy' => $l->harvested_by, 'decidedBy' => $l->decided_by, 'note' => $l->decision_note, 'blockers' => $l->status === 'quarantine' ? Fodder::releaseBlockers($l) : [],
                 'cost' => $l->cost_minor, 'perKg' => $l->cost_per_kg_minor, 'perKgDm' => $l->cost_per_kg_dm_minor, 'item' => $l->item?->name,

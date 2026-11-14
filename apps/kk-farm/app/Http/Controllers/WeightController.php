@@ -21,7 +21,7 @@ class WeightController extends Controller
             return $a->card() + [
                 'adg' => Farm::adg($weights),
                 'previous' => $weights->count() > 1 ? $weights[$weights->count() - 2]->weight_kg : null,
-                'weighedOn' => $weights->last()?->measured_on->format('j M'),
+                'weighedOn' => $weights->last()?->measured_on->format('d/m'),
                 'daysAgo' => $weights->last() ? (int) $weights->last()->measured_on->diffInDays(now()) : null,
                 'bodyScore' => $weights->last()?->body_score,
             ];
@@ -37,7 +37,7 @@ class WeightController extends Controller
             $days = $prev ? max(1, (int) $prev->measured_on->diffInDays($w->measured_on)) : null;
 
             return [
-                'id' => $w->id, 'goatId' => $w->animal_id, 'goat' => $w->animal->farm_number, 'on' => $w->measured_on->format('j M Y'), 'kg' => (float) $w->weight_kg,
+                'id' => $w->id, 'goatId' => $w->animal_id, 'goat' => $w->animal->farm_number, 'on' => $w->measured_on->format('d/m/Y'), 'kg' => (float) $w->weight_kg,
                 'previous' => $prev ? (float) $prev->weight_kg : null, 'days' => $days, 'gain' => $prev ? round($w->weight_kg - $prev->weight_kg, 2) : null,
                 'adg' => $prev ? (int) round(($w->weight_kg - $prev->weight_kg) * 1000 / $days) : null, 'score' => $w->body_score,
                 'heightIn' => $w->height_cm !== null ? round($w->height_cm / 2.54, 1) : null, 'context' => $w->context, 'by' => $w->measured_by,

@@ -99,7 +99,7 @@ function ScanPrompt() {
 function summary(job: NonNullable<Props['job']>, o: Options): string {
     const x = job.opts ?? {};
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    const date = x.on && x.on !== today ? `For ${new Date(`${x.on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ` : '';
+    const date = x.on && x.on !== today ? `For ${new Date(`${x.on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })} · ` : '';
     return date + body(job, o, x);
 }
 function body(job: NonNullable<Props['job']>, o: Options, x: Opts): string {

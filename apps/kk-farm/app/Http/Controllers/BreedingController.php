@@ -52,25 +52,25 @@ class BreedingController extends Controller
                 'scan' => $m->checks->last()?->ultrasound_status ?? 'NSC', 'day' => (int) $m->mated_on->diffInDays(now()), 'scanWindow' => PregnancyCheck::window((int) $m->mated_on->diffInDays(now())), // D-166
                 'dam' => ['id' => $m->dam_id, 'number' => $m->dam->farm_number, 'name' => $m->dam->name, 'coat' => $m->dam->coat, 'breed' => $m->dam->breed?->name, 'stage' => $m->dam->effectiveAge()],
                 'sire' => $m->sire ? ['id' => $m->sire_id, 'number' => $m->sire->farm_number, 'name' => $m->sire->name] : null,
-                'mated' => $m->mated_on->format('j M Y'), 'matedIso' => $m->mated_on->toDateString(), 'expected' => $m->expected_kidding_on?->format('j M Y'), 'checkDue' => $m->check_due_on?->format('j M Y'),
+                'mated' => $m->mated_on->format('d/m/Y'), 'matedIso' => $m->mated_on->toDateString(), 'expected' => $m->expected_kidding_on?->format('d/m/Y'), 'checkDue' => $m->check_due_on?->format('d/m/Y'),
                 'days' => $m->expected_kidding_on ? (int) $today->diffInDays($m->expected_kidding_on, false) : null,
                 'progress' => $m->expected_kidding_on ? min(100, max(0, (int) round($m->mated_on->diffInDays(now()) / max(1, $m->mated_on->diffInDays($m->expected_kidding_on)) * 100))) : 0,
                 'active' => in_array($m->status, ['open', 'pregnant', 'inconclusive'], true),
                 'checks' => $m->checks->map(fn (PregnancyCheck $c) => [
-                    'id' => $c->id, 'on' => $c->checked_on->format('j M Y'), 'method' => PregnancyCheck::METHODS[$c->method] ?? $c->method, 'result' => PregnancyCheck::RESULTS[$c->result] ?? $c->result,
+                    'id' => $c->id, 'on' => $c->checked_on->format('d/m/Y'), 'method' => PregnancyCheck::METHODS[$c->method] ?? $c->method, 'result' => PregnancyCheck::RESULTS[$c->result] ?? $c->result,
                     // D-166
                     'status' => $c->ultrasound_status, 'day' => $c->pregnancy_day, 'fetal' => PregnancyCheck::fetalLabel($c->fetuses), 'viability' => PregnancyCheck::VIABILITY[$c->viability] ?? null, 'action' => $c->action,
-                    'fetuses' => $c->fetuses, 'next' => $c->next_check_on?->format('j M Y'), 'by' => $c->examiner, 'notes' => $c->notes,
+                    'fetuses' => $c->fetuses, 'next' => $c->next_check_on?->format('d/m/Y'), 'by' => $c->examiner, 'notes' => $c->notes,
                 ])->values(),
             ]),
             'kiddings' => Kidding::with(['dam', 'kids'])->orderByDesc('kidded_on')->orderByDesc('id')->limit(30)->get()->map(fn (Kidding $k) => [
-                'id' => $k->id, 'goatId' => $k->dam_id, 'dam' => $k->dam->farm_number, 'on' => $k->kidded_on->format('j M Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn,
+                'id' => $k->id, 'goatId' => $k->dam_id, 'dam' => $k->dam->farm_number, 'on' => $k->kidded_on->format('d/m/Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn,
                 'total' => $k->born_alive + $k->stillborn, 'litter' => Kidding::litterType($k->born_alive + $k->stillborn), 'assisted' => Kidding::ASSISTED[$k->assisted] ?? $k->assisted,
                 'attendant' => $k->attendant ?? $k->recorded_by, 'notes' => $k->notes, 'kids' => $k->kids->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'weak' => $a->birth_outcome === 'BAW'])->values(),
                 // D-161
                 'outcome' => $k->outcome, 'method' => $k->delivery_method, 'mother' => $k->mother_status, 'premature' => $k->premature, 'gestation' => $k->gestation_days,
                 'liveMale' => $k->live_male, 'liveFemale' => $k->live_female, 'stillMale' => $k->still_male, 'stillFemale' => $k->still_female, 'weak' => $k->weak,
-                'cause' => $k->abortion_cause, 'diagnosis' => $k->diagnosis, 'vet' => $k->vet_officer, 'followUp' => $k->follow_up_on?->format('j M Y'), 'complications' => $k->complications,
+                'cause' => $k->abortion_cause, 'diagnosis' => $k->diagnosis, 'vet' => $k->vet_officer, 'followUp' => $k->follow_up_on?->format('d/m/Y'), 'complications' => $k->complications,
             ]),
             'weaning' => $this->weaningDue($org),
             'kpis' => Kidding::kpis(), // D-161
@@ -79,7 +79,7 @@ class BreedingController extends Controller
             'kidCareOptions' => ['kinds' => \App\Models\KidCareRecord::KINDS, 'sources' => \App\Models\KidCareRecord::SOURCES, 'suckling' => \App\Models\KidCareRecord::SUCKLING],
             'heatOptions' => ['intensity' => \App\Models\HeatRecord::INTENSITY, 'signs' => \App\Models\HeatRecord::SIGNS, 'cycle' => \App\Models\HeatRecord::CYCLE_DAYS],
             'weaned' => Weaning::with('kid')->where('status', 'completed')->orderByDesc('weaned_on')->limit(20)->get()->map(fn (Weaning $w) => [
-                'id' => $w->id, 'kidId' => $w->kid_id, 'kid' => $w->kid->farm_number, 'on' => $w->weaned_on->format('j M Y'),
+                'id' => $w->id, 'kidId' => $w->kid_id, 'kid' => $w->kid->farm_number, 'on' => $w->weaned_on->format('d/m/Y'),
                 'age' => $w->kid->birth_date ? (int) $w->kid->birth_date->diffInDays($w->weaned_on) : null, 'weight' => $w->weight_kg, 'method' => Weaning::METHODS[$w->method] ?? $w->method, 'by' => $w->handler,
             ]),
             'performance' => DB::table('kiddings')->join('animals', 'animals.id', '=', 'kiddings.dam_id')->groupBy('animals.id', 'animals.farm_number', 'animals.name')
@@ -114,9 +114,9 @@ class BreedingController extends Controller
 
             return [
                 'id' => $k->id, 'number' => $k->farm_number, 'name' => $k->name, 'coat' => $k->coat, 'breed' => $k->breed?->name, 'stage' => $k->effectiveAge(), 'sex' => $k->sex, 'dam' => $k->dam?->farm_number,
-                'age' => (int) $k->birth_date->diffInDays($today), 'target' => $target->format('j M Y'), 'penId' => $k->pen_id,
+                'age' => (int) $k->birth_date->diffInDays($today), 'target' => $target->format('d/m/Y'), 'penId' => $k->pen_id,
                 'state' => $until && $until->greaterThan($today) ? 'postponed' : ($target->lessThanOrEqualTo($today) ? 'due' : 'soon'),
-                'postponedTo' => $until?->format('j M Y'),
+                'postponedTo' => $until?->format('d/m/Y'),
             ];
         })->values()->all();
     }
@@ -169,7 +169,7 @@ class BreedingController extends Controller
         });
         Farm::log($request->user(), "Recorded a mating for {$dam->farm_number}", "/goats/{$dam->id}");
 
-        return back()->with('success', "Mating recorded. Pregnancy check due {$mated->copy()->addDays($org->pregnancy_check_days)->format('j M')}, expected kidding {$mated->copy()->addDays($org->gestation_days)->format('j M Y')}.");
+        return back()->with('success', "Mating recorded. Pregnancy check due {$mated->copy()->addDays($org->pregnancy_check_days)->format('d/m')}, expected kidding {$mated->copy()->addDays($org->gestation_days)->format('d/m/Y')}.");
     }
 
     /** A pregnancy examination by a veterinarian. Several per mating; the mating's outcome and the doe's status follow the latest. */
@@ -465,7 +465,7 @@ class BreedingController extends Controller
                 'weight_kg' => $data['weight_kg'] ?? null, 'method' => $data['method'] ?? null, 'handler' => $request->user()->name, 'notes' => $data['notes'] ?? null,
             ]);
             if ($data['status'] === 'postponed') {
-                Farm::event($kid, 'breeding', 'Weaning postponed to '.Carbon::parse($data['postponed_to'])->format('j M Y'), $request->user()->name);
+                Farm::event($kid, 'breeding', 'Weaning postponed to '.Carbon::parse($data['postponed_to'])->format('d/m/Y'), $request->user()->name);
 
                 return;
             }

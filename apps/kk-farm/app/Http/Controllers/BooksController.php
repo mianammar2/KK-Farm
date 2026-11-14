@@ -41,7 +41,7 @@ class BooksController extends Controller
             'from' => $from, 'to' => $to,
             'journal' => ! $tab('journal') ? [] : JournalEntry::with(['lines.account', 'lines.animal', 'reversal'])->whereBetween('posted_on', [$from, $to])
                 ->orderByDesc('posted_on')->orderByDesc('entry_no')->limit(200)->get()->map(fn (JournalEntry $j) => [
-                    'id' => $j->id, 'no' => $j->entry_no, 'on' => $j->posted_on->format('j M Y'), 'memo' => $j->memo, 'source' => JournalEntry::SOURCES[$j->source] ?? $j->source,
+                    'id' => $j->id, 'no' => $j->entry_no, 'on' => $j->posted_on->format('d/m/Y'), 'memo' => $j->memo, 'source' => JournalEntry::SOURCES[$j->source] ?? $j->source,
                     'reference' => $j->reference, 'by' => $j->recorded_by, 'reversed' => (bool) $j->reversal, 'isReversal' => (bool) $j->reverses_id,
                     'lines' => $j->lines->map(fn (JournalLine $l) => ['account' => $l->account->label(), 'accountId' => $l->account_id, 'debit' => $l->debit_minor / 100, 'credit' => $l->credit_minor / 100, 'goat' => $l->animal?->farm_number])->all(),
                 ]),

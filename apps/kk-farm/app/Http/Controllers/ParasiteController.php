@@ -36,9 +36,9 @@ class ParasiteController extends Controller
         return Inertia::render('Parasites', [
             'samples' => $samples->map(fn (ParasiteSample $s) => [
                 'id' => $s->id, 'no' => $s->label(), 'goat' => $s->animal ? ['id' => $s->animal_id, 'number' => $s->animal->farm_number] : null, 'pen' => $s->pen?->fullName(), 'penId' => $s->pen_id,
-                'on' => $s->sampled_on->format('j M Y'), 'reason' => $s->reason, 'epg' => $s->epg, 'famacha' => $s->famacha, 'bcs' => $s->bcs, 'lab' => $s->lab, 'cost' => $s->cost_minor,
+                'on' => $s->sampled_on->format('d/m/Y'), 'reason' => $s->reason, 'epg' => $s->epg, 'famacha' => $s->famacha, 'bcs' => $s->bcs, 'lab' => $s->lab, 'cost' => $s->cost_minor,
                 'retestOf' => $s->retestOf?->label(), 'preEpg' => $s->retestOf?->epg, 'reduction' => $s->reduction_pct, 'resistance' => $s->resistance_flag, 'aboveGuide' => Parasites::aboveGuide($s),
-                'decision' => $s->decision, 'decisionNote' => $s->decision_note, 'decidedBy' => $s->decided_by, 'treated' => $s->treated, 'retestDue' => $s->retest_due_on?->format('j M Y'),
+                'decision' => $s->decision, 'decisionNote' => $s->decision_note, 'decidedBy' => $s->decided_by, 'treated' => $s->treated, 'retestDue' => $s->retest_due_on?->format('d/m/Y'),
                 'retestOverdue' => $s->decision === 'treat' && $s->retest_due_on && $s->retest_due_on->lte(now()) && ! isset($retested[$s->id]), 'retested' => isset($retested[$s->id]), 'by' => $s->recorded_by,
             ]),
             'kpi' => Parasites::kpis(),

@@ -57,7 +57,7 @@ class AnimalPurchaseController extends Controller
             'lots' => $lots->map(fn (AnimalPurchaseLot $l) => [
                 'id' => $l->id, 'no' => $l->lot_no, 'kind' => $l->kind, 'supplier' => $l->supplier?->name, 'source' => $l->source, 'purpose' => $l->purpose, 'expected' => $l->expected_head,
                 'budget' => $l->budget_minor / 100, 'status' => $l->status, 'requestedBy' => $l->requested_by, 'approvedBy' => $l->approved_by, 'note' => $l->decision_note,
-                'requestedAt' => $l->created_at->format('j M Y'), 'receivedOn' => $l->received_on?->format('j M Y'), 'receivedBy' => $l->received_by, 'pen' => $l->quarantinePen?->fullName(),
+                'requestedAt' => $l->created_at->format('d/m/Y'), 'receivedOn' => $l->received_on?->format('d/m/Y'), 'receivedBy' => $l->received_by, 'pen' => $l->quarantinePen?->fullName(),
                 'paid' => $l->paid_minor !== null ? $l->paid_minor / 100 : null, 'transport' => $l->transport_minor !== null ? $l->transport_minor / 100 : null,
                 'discrepancy' => $l->discrepancy, 'reconciledBy' => $l->reconciled_by, 'reconciliation' => $l->reconciliation, 'billPosted' => $l->ledger_entry_id !== null,
                 'billStatus' => $l->ledger_entry_id ? LedgerEntry::find($l->ledger_entry_id)?->payment_status : null,

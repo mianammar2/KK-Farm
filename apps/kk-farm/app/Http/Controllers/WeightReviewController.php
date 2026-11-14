@@ -22,7 +22,7 @@ class WeightReviewController extends Controller
 
     public function index(Request $request): Response
     {
-        $row = fn (WeightRecord $w) => ['id' => $w->id, 'goatId' => $w->animal_id, 'goat' => $w->animal?->farm_number, 'animalId' => $w->animal?->animal_code, 'on' => $w->measured_on->format('j M Y'),
+        $row = fn (WeightRecord $w) => ['id' => $w->id, 'goatId' => $w->animal_id, 'goat' => $w->animal?->farm_number, 'animalId' => $w->animal?->animal_code, 'on' => $w->measured_on->format('d/m/Y'),
             'kg' => (float) $w->weight_kg, 'flag' => WeightCheck::FLAGS[$w->flag] ?? $w->flag, 'note' => $w->flag_note, 'by' => $w->measured_by, 'context' => $w->context,
             'status' => $w->review_status, 'reviewedBy' => $w->reviewed_by, 'reviewNote' => $w->review_note];
         $base = fn () => WeightRecord::withoutGlobalScope('counted')->with('animal')->whereNotNull('flag');

@@ -65,7 +65,7 @@ class HerdValueController extends Controller
             'rate' => ['now' => $general !== null ? $general / 100 : null, 'weekAgo' => $weekAgo !== null ? $weekAgo / 100 : null,
                 'byPurpose' => collect($trade)->keys()->mapWithKeys(fn ($p) => [$p => ($r = $hv->rates()->where('purpose', $p)->last()) ? $r->rate_minor_per_kg / 100 : null])->filter()->all(),
                 'history' => $hv->history(),
-                'recent' => $hv->rates()->reverse()->take(12)->values()->map(fn (MarketRate $r) => ['on' => $r->rate_on->format('j M Y'), 'purpose' => $r->purpose, 'rate' => $r->rate_minor_per_kg / 100, 'by' => $r->recorded_by, 'note' => $r->note])],
+                'recent' => $hv->rates()->reverse()->take(12)->values()->map(fn (MarketRate $r) => ['on' => $r->rate_on->format('d/m/Y'), 'purpose' => $r->purpose, 'rate' => $r->rate_minor_per_kg / 100, 'by' => $r->recorded_by, 'note' => $r->note])],
             'total' => $summary($rows),
             'purposes' => $rows->groupBy(fn ($r) => $r['purpose'] ?? 'none')->map(fn ($rs, $p) => ['key' => $p, 'label' => $purposes[$p] ?? 'Purpose Not Set'] + $summary($rs))->values(),
             'batches' => $rows->groupBy('batch')->map(fn ($rs, $b) => ['batch' => $b, 'breed' => $rs->pluck('breed')->filter()->unique()->implode(', '),

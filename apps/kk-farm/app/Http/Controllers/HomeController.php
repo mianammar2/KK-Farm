@@ -56,7 +56,7 @@ class HomeController extends Controller
         return Inertia::render('Home', [
             'role' => $u->roleLabel(),
             'numbers' => $numbers->values(),
-            'tasks' => $tasks->map(fn (Task $t) => ['id' => $t->id, 'title' => $t->title, 'due' => $t->due_on?->format('j M'), 'overdue' => $t->due_on?->lt(now()->startOfDay()), 'priority' => $t->priority])->values(),
+            'tasks' => $tasks->map(fn (Task $t) => ['id' => $t->id, 'title' => $t->title, 'due' => $t->due_on?->format('d/m'), 'overdue' => $t->due_on?->lt(now()->startOfDay()), 'priority' => $t->priority])->values(),
             'alerts' => $alerts->map(fn ($a) => ['key' => $a['key'], 'label' => $a['label'], 'count' => $a['count'], 'url' => $a['url'], 'severity' => $a['severity'], 'action' => $a['action']])->values(),
             'links' => collect($links)->filter(function ($l) use ($u) {
                 [$path, $qs] = array_pad(explode('?', $l[0], 2), 2, '');

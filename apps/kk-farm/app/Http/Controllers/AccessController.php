@@ -118,7 +118,7 @@ class AccessController extends Controller
 
         return Inertia::render('Settings/UserAccess', [
             'user' => ['id' => $u->id, 'name' => $u->name, 'login' => $u->email, 'role' => $u->role, 'active' => $u->active, 'department' => $u->department_id, 'me' => $u->is($request->user()),
-                'lastLogin' => $u->last_login_at?->format('j M Y, H:i')],
+                'lastLogin' => $u->last_login_at?->format('d/m/Y H:i')],
             'modules' => collect(Access::MODULE_LABELS)->map(fn ($label, $m) => ['key' => $m, 'label' => $label, 'role' => in_array($u->role, $roleModules[$m] ?? [], true),
                 'own' => $u->module_access[$m] ?? null, 'effective' => $u->canModule($m), 'locked' => $m === 'settings' && $u->role === 'ceo'])->values(),
             'gates' => collect(Access::GATE_LABELS)->map(fn ($label, $g) => ['key' => $g, 'label' => $label, 'role' => in_array($u->role, $roleGates[$g] ?? [], true),

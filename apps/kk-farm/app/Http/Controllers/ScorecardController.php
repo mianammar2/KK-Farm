@@ -18,7 +18,7 @@ class ScorecardController extends Controller
 
         return Inertia::render('Scorecard', [
             'groups' => Scorecard::build($goats, HerdStats::tagsFor($goats), $request->user()->canModule('finance')),
-            'asOf' => now()->format('j M Y g:i A'),
+            'asOf' => now()->format('d/m/Y g:i A'),
         ]);
     }
 }

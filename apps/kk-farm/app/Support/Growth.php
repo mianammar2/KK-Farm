@@ -91,7 +91,7 @@ final class Growth
         $birth = (float) ($a->birth_weight_kg ?: (self::plan($a->breed_id)[0] ?? 3.0));
         $adg = $ageAt > 0 ? (int) round(($w->weight_kg - $birth) / $ageAt * 1000) : null;
 
-        return ['weight' => $w->weight_kg, 'on' => $w->measured_on->format('j M Y'), 'age' => $age, 'target' => $target, 'pct' => $pct, 'adg' => $adg,
+        return ['weight' => $w->weight_kg, 'on' => $w->measured_on->format('d/m/Y'), 'age' => $age, 'target' => $target, 'pct' => $pct, 'adg' => $adg,
             'below' => $pct !== null && $pct < $alertPct, 'stale' => $w->measured_on->lt(now()->subDays(30))];
     }
 

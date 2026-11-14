@@ -70,7 +70,7 @@ final class Stores
         $med = MedicineMovement::with('medicine')->latest('id')->limit($limit)->get()->toBase()->map(fn ($m) => ['kind' => 'medicine', 'at' => $m->created_at, 'on' => $m->moved_on, 'item' => $m->medicine?->name, 'type' => MedicineMovement::TYPES[$m->type][0] ?? $m->type, 'qty' => (float) $m->qty, 'unit' => $m->medicine?->unit, 'party' => $m->party, 'reference' => $m->reference, 'by' => $m->recorded_by]);
         $gen = StoreMove::with('item')->latest('id')->limit($limit)->get()->toBase()->map(fn ($m) => ['kind' => 'store', 'at' => $m->created_at, 'on' => $m->moved_on, 'item' => $m->item?->name, 'type' => StoreMove::TYPES[$m->type][0] ?? $m->type, 'qty' => (float) $m->qty, 'unit' => StoreItem::UNITS[$m->item?->unit] ?? $m->item?->unit, 'party' => $m->party ?? $m->issued_to, 'reference' => $m->reference, 'by' => $m->recorded_by]);
 
-        return $feed->merge($med)->merge($gen)->sortByDesc('at')->take($limit)->map(fn ($m) => ['on' => $m['on']?->format('j M Y')] + $m)->map(fn ($m) => collect($m)->except('at')->all())->values()->all();
+        return $feed->merge($med)->merge($gen)->sortByDesc('at')->take($limit)->map(fn ($m) => ['on' => $m['on']?->format('d/m/Y')] + $m)->map(fn ($m) => collect($m)->except('at')->all())->values()->all();
     }
 
     /**

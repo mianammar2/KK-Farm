@@ -26,13 +26,13 @@ class MovementController extends Controller
 
         return Inertia::render('Movements', [
             'movements' => AnimalMovement::with(['animal', 'fromPen.shed', 'toPen.shed'])->orderByDesc('moved_on')->orderByDesc('id')->limit(200)->get()->map(fn (AnimalMovement $m) => [
-                'id' => $m->id, 'on' => $m->moved_on->format('j M Y'), 'type' => $m->type, 'typeLabel' => AnimalMovement::TYPES[$m->type][0] ?? $m->type,
+                'id' => $m->id, 'on' => $m->moved_on->format('d/m/Y'), 'type' => $m->type, 'typeLabel' => AnimalMovement::TYPES[$m->type][0] ?? $m->type,
                 'goatId' => $m->animal_id, 'goat' => $m->animal->farm_number, 'from' => $m->fromPen?->fullName(), 'to' => $m->toPen?->fullName() ?? $m->destination,
                 'reason' => $m->reason, 'by' => $m->authorized_by ?? $m->recorded_by, 'amount' => $m->amount_minor !== null ? $m->amount_minor / 100 : null, 'evidence' => $m->evidence_ref,
             ]),
             'goats' => Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => [
                 'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'pen' => $a->pen?->fullName(), 'penId' => $a->pen_id,
-                'withdrawal' => isset($withdrawal[$a->id]['meat']) && $withdrawal[$a->id]['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal[$a->id]['meat'])->format('j M') : null,
+                'withdrawal' => isset($withdrawal[$a->id]['meat']) && $withdrawal[$a->id]['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal[$a->id]['meat'])->format('d/m') : null,
             ]),
             'pens' => Pen::with('shed')->where('kind', 'pen')->whereHas('shed', fn ($q) => $q->where('status', 'active'))->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'types' => collect(AnimalMovement::TYPES)->except(['death', 'culling'])->map(fn ($t) => ['label' => $t[0], 'exit' => $t[1]]), // D-260

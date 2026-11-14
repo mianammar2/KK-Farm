@@ -69,7 +69,7 @@ class SaleToCashTest extends TestCase
     {
         Treatment::create(['health_case_id' => HealthCase::create(['case_no' => 1, 'animal_id' => $this->g['S-2']->id, 'onset_on' => now(), 'condition' => 'Fever', 'severity' => 'low', 'status' => 'recovered', 'recorded_by' => 'x'])->id,
             'animal_id' => $this->g['S-2']->id, 'given_on' => now(), 'product' => 'Oxytet', 'dose' => '5 ml', 'route' => 'injectable', 'meat_clear_on' => now()->addDays(20), 'recorded_by' => 'x']);
-        $this->quote(['S-2'])->assertSessionHasErrors(['lines.0.animal_id' => 'S-2: Meat withdrawal until '.now()->addDays(20)->format('j M Y').'. Resolve it first.']);
+        $this->quote(['S-2'])->assertSessionHasErrors(['lines.0.animal_id' => 'S-2: Meat withdrawal until '.now()->addDays(20)->format('d/m/Y').'. Resolve it first.']);
         $this->quote(['S-3'])->assertSessionHasErrors('lines.0.animal_id'); // no RFID tag
         $this->quote(['S-1'])->assertSessionHasNoErrors();
         $this->quote(['S-1'])->assertSessionHasErrors('lines.0.animal_id'); // already on an order

@@ -45,7 +45,7 @@ class MilkingController extends Controller
                 'month' => round($month->where('discarded', false)->sum('litres'), 1), 'monthDiscarded' => round($month->where('discarded', true)->sum('litres'), 1), 'monthName' => $today->format('F'),
                 'high' => $open->filter(fn ($l) => Milking::isHighYield($l->animal))->count(),
             ],
-            'chart' => $days->map(fn ($d) => ['day' => $d->format('j M'), 'kept' => round(($byDay[$d->toDateString()] ?? collect())->where('discarded', false)->sum('litres'), 1),
+            'chart' => $days->map(fn ($d) => ['day' => $d->format('d/m'), 'kept' => round(($byDay[$d->toDateString()] ?? collect())->where('discarded', false)->sum('litres'), 1),
                 'discarded' => round(($byDay[$d->toDateString()] ?? collect())->where('discarded', true)->sum('litres'), 1)])->values(),
             'does' => $open->map(function (Lactation $l) use ($week, $weights, $totals, $today, $org, $todayRows) {
                 $doe = $l->animal;
@@ -54,18 +54,18 @@ class MilkingController extends Controller
 
                 return [
                     'lactationId' => $l->id, 'id' => $doe->id, 'number' => $doe->farm_number, 'name' => $doe->name, 'breed' => $doe->breed?->name, 'pen' => $doe->pen?->fullName(),
-                    'lactation' => $l->number, 'started' => $l->started_on->format('j M Y'), 'startedIso' => $l->started_on->toDateString(), 'source' => $l->source,
+                    'lactation' => $l->number, 'started' => $l->started_on->format('d/m/Y'), 'startedIso' => $l->started_on->toDateString(), 'source' => $l->source,
                     'dim' => $l->daysInMilk(), 'avg7' => $week[$doe->id] ?? null, 'total' => round((float) ($totals[$l->id]->l ?? 0), 1),
-                    'last' => isset($totals[$l->id]) ? Carbon::parse($totals[$l->id]->last)->format('j M') : null,
+                    'last' => isset($totals[$l->id]) ? Carbon::parse($totals[$l->id]->last)->format('d/m') : null,
                     'todayBySession' => $todayRows->where('animal_id', $doe->id)->mapWithKeys(fn ($r) => [$r->session => $r->litres])->all(),
                     'epc' => \App\Models\RfidAssignment::where('animal_id', $doe->id)->whereNull('valid_to')->with('tag')->first()?->tag?->tag_code, // D-195: scan the doe in the milking round
                     'high' => Milking::isHighYield($doe), 'pregnant' => in_array($doe->repro_status, ['pregnant', 'expected_kidding'], true),
-                    'withdrawal' => $withdrawal?->format('j M Y'), 'standard' => $std?->name, 'cp' => $std?->range(),
+                    'withdrawal' => $withdrawal?->format('d/m/Y'), 'standard' => $std?->name, 'cp' => $std?->range(),
                     'dryDue' => $org->dry_off_days && $l->daysInMilk() >= $org->dry_off_days,
                 ];
             })->values(),
             'dried' => Lactation::with('animal')->whereNotNull('dried_on')->orderByDesc('dried_on')->orderByDesc('id')->limit(10)->get()->map(fn (Lactation $l) => [
-                'id' => $l->animal_id, 'number' => $l->animal?->farm_number, 'lactation' => $l->number, 'started' => $l->started_on->format('j M Y'), 'dried' => $l->dried_on->format('j M Y'),
+                'id' => $l->animal_id, 'number' => $l->animal?->farm_number, 'lactation' => $l->number, 'started' => $l->started_on->format('d/m/Y'), 'dried' => $l->dried_on->format('d/m/Y'),
                 'days' => $l->daysInMilk(), 'reason' => $l->dry_reason, 'by' => $l->dried_by, 'total' => round((float) MilkRecord::current()->where('lactation_id', $l->id)->sum('litres'), 1),
             ]),
             'settings' => ['highYield' => $org->high_yield_litres !== null ? (float) $org->high_yield_litres : null, 'dryOffDays' => $org->dry_off_days],

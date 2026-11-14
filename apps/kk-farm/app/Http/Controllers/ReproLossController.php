@@ -32,11 +32,11 @@ class ReproLossController extends Controller
         return Inertia::render('ReproLoss', [
             'cases' => $cases->map(fn (ReproLossCase $c) => [
                 'id' => $c->id, 'no' => $c->label(), 'damId' => $c->dam_id, 'dam' => $c->dam?->farm_number, 'sire' => $c->sire?->farm_number, 'pen' => $c->pen?->fullName(), 'type' => $c->loss_type,
-                'on' => $c->occurred_on->format('j M Y'), 'gestation' => $c->gestation_days, 'kidsLost' => $c->kids_lost, 'status' => $c->status, 'cluster' => $c->cluster,
-                'isolated' => $c->isolated_at?->format('j M g:i A'), 'containHours' => $c->isolated_at ? round($c->created_at->diffInMinutes($c->isolated_at) / 60, 1) : null,
-                'handledBy' => $c->material_handled_by, 'ppe' => $c->ppe_used, 'materialNote' => $c->material_note, 'sampled' => $c->sampled_on?->format('j M Y'), 'samples' => $c->samples, 'lab' => $c->lab,
+                'on' => $c->occurred_on->format('d/m/Y'), 'gestation' => $c->gestation_days, 'kidsLost' => $c->kids_lost, 'status' => $c->status, 'cluster' => $c->cluster,
+                'isolated' => $c->isolated_at?->format('d/m g:i A'), 'containHours' => $c->isolated_at ? round($c->created_at->diffInMinutes($c->isolated_at) / 60, 1) : null,
+                'handledBy' => $c->material_handled_by, 'ppe' => $c->ppe_used, 'materialNote' => $c->material_note, 'sampled' => $c->sampled_on?->format('d/m/Y'), 'samples' => $c->samples, 'lab' => $c->lab,
                 'labCost' => $c->lab_cost_minor, 'labResult' => $c->lab_result, 'zoonotic' => $c->zoonotic_suspected, 'diagnosis' => $c->diagnosis, 'diagnosedBy' => $c->diagnosed_by,
-                'breeding' => $c->breeding, 'breedAfter' => $c->breed_after?->format('j M Y'), 'prevention' => $c->prevention, 'closedBy' => $c->closed_by,
+                'breeding' => $c->breeding, 'breedAfter' => $c->breed_after?->format('d/m/Y'), 'prevention' => $c->prevention, 'closedBy' => $c->closed_by,
             ]),
             'kpi' => ReproLoss::kpis(),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),

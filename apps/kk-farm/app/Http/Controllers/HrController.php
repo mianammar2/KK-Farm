@@ -31,14 +31,14 @@ class HrController extends Controller
         $month = Attendance::where('work_on', '>=', $from)->get()->groupBy('employee_id');
 
         return Inertia::render('Hr', [
-            'day' => $day->toDateString(), 'dayLabel' => $day->format('l j M Y'),
+            'day' => $day->toDateString(), 'dayLabel' => $day->format('d/m/Y'),
             'register' => $employees->map(fn (Employee $e) => [
                 'id' => $e->id, 'name' => $e->name, 'code' => $e->code, 'role' => $e->role, 'shift' => $e->shift,
                 'status' => $marks[$e->id]->status ?? (isset($onLeave[$e->id]) ? 'leave' : null), 'in' => $marks[$e->id]->check_in ?? null, 'out' => $marks[$e->id]->check_out ?? null,
                 'onLeave' => isset($onLeave[$e->id]),
             ]),
             'leave' => LeaveRequest::with('employee')->where('to_on', '>=', now()->subDays(60))->orderByRaw("case status when 'pending' then 0 else 1 end")->orderByDesc('from_on')->get()->map(fn (LeaveRequest $l) => [
-                'id' => $l->id, 'employee' => $l->employee?->name, 'from' => $l->from_on->format('j M'), 'to' => $l->to_on->format('j M'), 'days' => $l->days(), 'kind' => $l->kind,
+                'id' => $l->id, 'employee' => $l->employee?->name, 'from' => $l->from_on->format('d/m'), 'to' => $l->to_on->format('d/m'), 'days' => $l->days(), 'kind' => $l->kind,
                 'reason' => $l->reason, 'status' => $l->status, 'by' => $l->requested_by, 'decidedBy' => $l->decided_by,
             ]),
             'report' => $employees->map(fn (Employee $e) => [

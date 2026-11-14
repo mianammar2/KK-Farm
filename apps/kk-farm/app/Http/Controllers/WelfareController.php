@@ -46,18 +46,18 @@ class WelfareController extends Controller
         return Inertia::render('Welfare', [
             'cases' => $cases->map(fn (WelfareCase $c) => [
                 'id' => $c->id, 'no' => $c->label(), 'goat' => $c->animal ? ['id' => $c->animal_id, 'number' => $c->animal->farm_number] : null, 'pen' => $c->pen?->fullName(),
-                'opened' => $c->opened_on->format('j M Y'), 'issue' => $c->issue, 'severity' => $c->severity, 'triage' => $c->triage, 'status' => $c->status, 'by' => $c->opened_by,
-                'referred' => $c->health_record_id !== null, 'closedBy' => $c->closed_by, 'closedAt' => $c->closed_at?->format('j M Y'), 'evidence' => $c->closure_evidence,
+                'opened' => $c->opened_on->format('d/m/Y'), 'issue' => $c->issue, 'severity' => $c->severity, 'triage' => $c->triage, 'status' => $c->status, 'by' => $c->opened_by,
+                'referred' => $c->health_record_id !== null, 'closedBy' => $c->closed_by, 'closedAt' => $c->closed_at?->format('d/m/Y'), 'evidence' => $c->closure_evidence,
                 'canClose' => $c->status === 'follow_up' || ($c->status === 'action' && $c->actions->where('kind', 'follow_up')->where('improved', true)->isNotEmpty()),
-                'steps' => $c->actions->map(fn (WelfareAction $a) => ['kind' => $a->kind, 'notes' => $a->notes, 'improved' => $a->improved, 'by' => $a->done_by, 'on' => $a->done_on->format('j M'),
-                    'assignee' => $a->assigned_user_id ? ($users[$a->assigned_user_id] ?? null) : null, 'due' => $a->due_on?->format('j M')])->values(),
+                'steps' => $c->actions->map(fn (WelfareAction $a) => ['kind' => $a->kind, 'notes' => $a->notes, 'improved' => $a->improved, 'by' => $a->done_by, 'on' => $a->done_on->format('d/m'),
+                    'assignee' => $a->assigned_user_id ? ($users[$a->assigned_user_id] ?? null) : null, 'due' => $a->due_on?->format('d/m')])->values(),
                 // D-199
                 'healthCase' => $c->healthCase ? ['label' => $c->healthCase->label(), 'condition' => $c->healthCase->condition, 'status' => $c->healthCase->status, 'active' => in_array($c->healthCase->status, HealthCase::ACTIVE, true)] : null,
                 'repeatOf' => $c->recurrenceOf?->label(), 'restricted' => WelfareCare::restricts($c), 'handlingClearedBy' => $c->handling_cleared_by,
                 'held' => Task::where('welfare_hold_case_id', $c->id)->where('status', 'blocked')->count(),
             ]),
             'checks' => WelfareCheck::with(['pen.shed', 'animal'])->where('checked_on', '>=', now()->subDays(14)->toDateString())->orderByDesc('checked_on')->orderByDesc('id')->limit(200)->get()->map(fn (WelfareCheck $w) => [
-                'id' => $w->id, 'on' => $w->checked_on->format('j M'), 'goat' => $w->animal?->farm_number, 'pen' => $w->pen?->fullName(),
+                'id' => $w->id, 'on' => $w->checked_on->format('d/m'), 'goat' => $w->animal?->farm_number, 'pen' => $w->pen?->fullName(),
                 'bcs' => $w->bcs, 'behaviour' => $w->behaviour, 'injury' => $w->injury, 'lameness' => $w->lameness, 'pain' => $w->pain, 'caseId' => $w->case_id, 'by' => $w->checked_by,
             ]),
             'due' => $latest->filter(fn ($l) => $l->next_on && $l->next_on <= now()->toDateString())->count(),

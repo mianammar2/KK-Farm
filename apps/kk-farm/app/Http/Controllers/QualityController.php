@@ -74,14 +74,14 @@ class QualityController extends Controller
             'cases' => $cases->map(fn (QualityCase $c) => $this->caseRow($c)),
             'holds' => QualityHold::with(['qualityCase'])->active()->orderByDesc('placed_at')->get()->map(fn (QualityHold $h) => [
                 'id' => $h->id, 'kind' => $h->kind, 'case' => $h->qualityCase?->label(), 'caseId' => $h->case_id, 'what' => $this->holdName($h),
-                'by' => $h->placed_by, 'at' => $h->placed_at->format('j M Y'), 'caseVerified' => in_array($h->qualityCase?->status, ['verified'], true),
+                'by' => $h->placed_by, 'at' => $h->placed_at->format('d/m/Y'), 'caseVerified' => in_array($h->qualityCase?->status, ['verified'], true),
             ]),
             'sops' => Sop::with('revisions')->orderBy('code')->get()->map(fn (Sop $s) => [
                 'id' => $s->id, 'code' => $s->code, 'title' => $s->title, 'area' => $s->area, 'version' => $s->version, 'active' => $s->active,
                 'review' => $s->review_on?->toDateString(), 'reviewDue' => $s->review_on && $s->review_on->lte(today()),
-                'current' => ($cur = $s->revisions->firstWhere('version', $s->version)) ? ['body' => $cur->body, 'by' => $cur->written_by, 'approvedBy' => $cur->approved_by, 'on' => $cur->approved_at?->format('j M Y')] : null,
+                'current' => ($cur = $s->revisions->firstWhere('version', $s->version)) ? ['body' => $cur->body, 'by' => $cur->written_by, 'approvedBy' => $cur->approved_by, 'on' => $cur->approved_at?->format('d/m/Y')] : null,
                 'pending' => ($p = $s->revisions->first(fn ($r) => $r->approved_at === null)) ? ['id' => $p->id, 'version' => $p->version, 'body' => $p->body, 'note' => $p->change_note, 'by' => $p->written_by] : null,
-                'history' => $s->revisions->whereNotNull('approved_at')->map(fn (SopRevision $r) => ['version' => $r->version, 'note' => $r->change_note, 'by' => $r->written_by, 'approvedBy' => $r->approved_by, 'on' => $r->approved_at?->format('j M Y')])->values(),
+                'history' => $s->revisions->whereNotNull('approved_at')->map(fn (SopRevision $r) => ['version' => $r->version, 'note' => $r->change_note, 'by' => $r->written_by, 'approvedBy' => $r->approved_by, 'on' => $r->approved_at?->format('d/m/Y')])->values(),
             ]),
             'register' => $register->map(fn (ComplianceItem $i) => [
                 'id' => $i->id, 'kind' => $i->kind, 'name' => $i->name, 'authority' => $i->authority, 'reference' => $i->reference, 'owner' => $i->owner, 'notes' => $i->notes,
@@ -89,8 +89,8 @@ class QualityController extends Controller
                 'state' => ! $i->expires_on ? 'ok' : ($i->expires_on->lt(today()) ? 'expired' : ($i->expires_on->lte(today()->addDays(ComplianceItem::DUE_DAYS)) ? 'due' : 'ok')),
             ]),
             'drills' => $drills->map(fn (EmergencyDrill $d) => [
-                'id' => $d->id, 'scenario' => $d->scenario, 'on' => $d->held_on->format('j M Y'), 'participants' => $d->participants, 'minutes' => $d->response_minutes,
-                'passed' => $d->passed, 'findings' => $d->findings, 'next' => $d->next_due_on?->format('j M Y'), 'by' => $d->recorded_by,
+                'id' => $d->id, 'scenario' => $d->scenario, 'on' => $d->held_on->format('d/m/Y'), 'participants' => $d->participants, 'minutes' => $d->response_minutes,
+                'passed' => $d->passed, 'findings' => $d->findings, 'next' => $d->next_due_on?->format('d/m/Y'), 'by' => $d->recorded_by,
                 'caseId' => $d->case_id, 'latest' => $lastDrill[$d->scenario]?->id === $d->id, 'due' => $lastDrill[$d->scenario]?->id === $d->id && $d->next_due_on && $d->next_due_on->lte(today()),
             ]),
             'kpi' => [
@@ -110,7 +110,7 @@ class QualityController extends Controller
                 'lots' => MilkLot::whereNotIn('status', ['rejected'])->where('created_at', '>=', now()->subDays(60))->orderByDesc('id')->get(['id', 'code', 'status']),
                 'feeds' => FeedItem::where('active', true)->orderBy('name')->get(['id', 'name']),
                 'medicines' => Medicine::orderBy('name')->get(['id', 'name']),
-                'incidents' => Incident::where('occurred_at', '>=', $from)->orderByDesc('occurred_at')->get()->map(fn (Incident $i) => ['id' => $i->id, 'name' => $i->occurred_at->format('j M').' · '.(Incident::KINDS[$i->kind] ?? $i->kind).' · '.mb_substr($i->description ?? '', 0, 40)]),
+                'incidents' => Incident::where('occurred_at', '>=', $from)->orderByDesc('occurred_at')->get()->map(fn (Incident $i) => ['id' => $i->id, 'name' => $i->occurred_at->format('d/m').' · '.(Incident::KINDS[$i->kind] ?? $i->kind).' · '.mb_substr($i->description ?? '', 0, 40)]),
                 'users' => $users->map(fn ($u) => ['id' => $u->id, 'name' => $u->name]),
             ],
             'options' => ['sources' => QualityCase::SOURCES, 'subjects' => QualityCase::SUBJECTS, 'severity' => QualityCase::SEVERITY, 'status' => QualityCase::STATUS,
@@ -127,10 +127,10 @@ class QualityController extends Controller
         return [
             'id' => $c->id, 'no' => $c->label(), 'source' => $c->source, 'title' => $c->title, 'description' => $c->description, 'subject' => $c->subject,
             'what' => $c->subjectName(), 'goatId' => $c->animal_id, 'risk' => $c->immediate_risk, 'severity' => $c->severity, 'status' => $c->status,
-            'rootCause' => $c->root_cause, 'evidence' => $c->evidence, 'learning' => $c->learning, 'by' => $c->opened_by, 'opened' => $c->opened_on->format('j M Y'),
-            'closedBy' => $c->closed_by, 'closedAt' => $c->closed_at?->format('j M Y'), 'incidentId' => $c->incident_id,
+            'rootCause' => $c->root_cause, 'evidence' => $c->evidence, 'learning' => $c->learning, 'by' => $c->opened_by, 'opened' => $c->opened_on->format('d/m/Y'),
+            'closedBy' => $c->closed_by, 'closedAt' => $c->closed_at?->format('d/m/Y'), 'incidentId' => $c->incident_id,
             'capas' => $c->capas->map(fn (QualityCapa $p) => [
-                'id' => $p->id, 'kind' => $p->kind, 'action' => $p->action, 'owner' => $p->owner, 'due' => $p->due_on->format('j M Y'), 'overdue' => in_array($p->status, ['planned', 'approved', 'executed'], true) && $p->due_on->lt(today()),
+                'id' => $p->id, 'kind' => $p->kind, 'action' => $p->action, 'owner' => $p->owner, 'due' => $p->due_on->format('d/m/Y'), 'overdue' => in_array($p->status, ['planned', 'approved', 'executed'], true) && $p->due_on->lt(today()),
                 'status' => $p->status, 'plannedBy' => $p->planned_by, 'approvedBy' => $p->approved_by, 'executedBy' => $p->executed_by, 'notes' => $p->execution_notes,
                 'verifiedBy' => $p->verified_by, 'verification' => $p->verification, 'replaced' => $c->capas->contains('replaces_id', $p->id),
             ])->values(),
@@ -158,25 +158,25 @@ class QualityController extends Controller
 
         return match ($c->subject) {
             'milk_lot' => $c->milkLot ? array_values(array_filter([
-                $c->milkLot->session ? 'From the '.$c->milkLot->session->session.' session of '.$c->milkLot->session->milked_on->format('j M Y') : 'Session not linked',
+                $c->milkLot->session ? 'From the '.$c->milkLot->session->session.' session of '.$c->milkLot->session->milked_on->format('d/m/Y') : 'Session not linked',
                 ($does = MilkRecord::with('animal')->where('session_id', $c->milkLot->session_id)->whereNotNull('session_id')->get()->map(fn ($r) => $r->animal?->farm_number)->filter()->unique()->implode(', ')) ? "Does: {$does}" : null,
                 'Status: '.(MilkLot::STATUS[$c->milkLot->status] ?? $c->milkLot->status).' · '.$c->milkLot->litres.' L',
-                ...$c->milkLot->dispatches()->with('customer')->get()->map(fn ($d) => 'Dispatched '.$d->dispatched_on->format('j M').": {$d->litres} L to ".($d->kind === 'processing' ? 'processing' : ($d->customer?->name ?? $d->buyer ?? 'unknown buyer')))->all(),
+                ...$c->milkLot->dispatches()->with('customer')->get()->map(fn ($d) => 'Dispatched '.$d->dispatched_on->format('d/m').": {$d->litres} L to ".($d->kind === 'processing' ? 'processing' : ($d->customer?->name ?? $d->buyer ?? 'unknown buyer')))->all(),
             ])) : [],
             'animal' => $c->animal ? [
                 'Pen: '.($c->animal->pen?->fullName() ?? 'none'),
                 ...Treatment::where('animal_id', $c->animal_id)->where('given_on', '>=', $since)->orderByDesc('given_on')->get()
-                    ->map(fn ($t) => 'Treated '.$t->given_on->format('j M').": {$t->product} {$t->dose}".($t->meat_clear_on ? ' · meat clear '.$t->meat_clear_on->format('j M') : '').($t->milk_clear_on ? ' · milk clear '.$t->milk_clear_on->format('j M') : ''))->all(),
+                    ->map(fn ($t) => 'Treated '.$t->given_on->format('d/m').": {$t->product} {$t->dose}".($t->meat_clear_on ? ' · meat clear '.$t->meat_clear_on->format('d/m') : '').($t->milk_clear_on ? ' · milk clear '.$t->milk_clear_on->format('d/m') : ''))->all(),
             ] : [],
             'feed_item' => $c->feedItem ? [
                 ...FeedUsage::with('pen.shed')->where('feed_item_id', $c->feed_item_id)->where('fed_on', '>=', $since)->whereNotIn('id', FeedUsage::whereNotNull('supersedes_id')->select('supersedes_id'))->get()->groupBy('pen_id')
-                    ->map(fn ($g) => 'Fed to '.($g->first()->pen?->fullName() ?? '?').': '.round($g->sum('offered_kg'), 1).' KG since '.$g->min('fed_on')->format('j M'))->values()->all(),
+                    ->map(fn ($g) => 'Fed to '.($g->first()->pen?->fullName() ?? '?').': '.round($g->sum('offered_kg'), 1).' KG since '.$g->min('fed_on')->format('d/m'))->values()->all(),
                 ...TmrBatch::whereIn('id', \App\Models\FeedStockMovement::where('feed_item_id', $c->feed_item_id)->whereNotNull('tmr_batch_id')->select('tmr_batch_id'))->where('mixed_on', '>=', $since)->get()->map(fn ($b) => "In TMR batch {$b->batch_no} ({$b->total_kg} KG)")->all(),
             ] : [],
             'medicine' => $c->medicine ? [
                 ...MedicineMovement::where('medicine_id', $c->medicine_id)->when($c->batch, fn ($q) => $q->where('batch', $c->batch))->where('type', 'issue')->where('moved_on', '>=', $since)->orderByDesc('moved_on')->limit(20)->get()
-                    ->map(fn ($m) => 'Issued '.$m->moved_on->format('j M').': '.abs((float) $m->qty).($m->batch ? " (batch {$m->batch})" : '').($m->reference ? " · {$m->reference}" : ''))->all(),
-                ...Treatment::with('animal')->where('product', 'ilike', $c->medicine->name.'%')->where('given_on', '>=', $since)->get()->map(fn ($t) => 'Given to '.($t->animal?->farm_number ?? '?').' on '.$t->given_on->format('j M'))->all(),
+                    ->map(fn ($m) => 'Issued '.$m->moved_on->format('d/m').': '.abs((float) $m->qty).($m->batch ? " (batch {$m->batch})" : '').($m->reference ? " · {$m->reference}" : ''))->all(),
+                ...Treatment::with('animal')->where('product', 'ilike', $c->medicine->name.'%')->where('given_on', '>=', $since)->get()->map(fn ($t) => 'Given to '.($t->animal?->farm_number ?? '?').' on '.$t->given_on->format('d/m'))->all(),
             ] : [],
             default => [],
         };
@@ -269,9 +269,9 @@ class QualityController extends Controller
         abort_if($capa->planned_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the planner approves the action.');
         $capa->update(['status' => 'approved', 'approved_by' => $request->user()->name, 'approved_at' => now()]);
         $case = $capa->qualityCase;
-        $this->task("CAPA {$case->label()}: ".mb_substr($capa->action, 0, 120), 'medium', 'Management', "Due {$capa->due_on->format('j M Y')}. Owner: {$capa->owner}.", $case, null, User::where('name', $capa->owner)->value('id'));
+        $this->task("CAPA {$case->label()}: ".mb_substr($capa->action, 0, 120), 'medium', 'Management', "Due {$capa->due_on->format('d/m/Y')}. Owner: {$capa->owner}.", $case, null, User::where('name', $capa->owner)->value('id'));
 
-        return back()->with('success', "Approved. {$capa->owner} executes it by {$capa->due_on->format('j M')}.");
+        return back()->with('success', "Approved. {$capa->owner} executes it by {$capa->due_on->format('d/m')}.");
     }
 
     /** Execute: the owner (or the lead) records what was done. */

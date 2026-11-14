@@ -42,7 +42,7 @@ class HeatTest extends TestCase
 
         $board = collect(HeatBoard::build())->keyBy('number');
         $this->assertSame(['in_heat', 'due'], [$board['D-1']['status'], $board['D-2']['status']]); // D-2: 19 days since heat, next due in 2 days
-        $this->assertSame(now()->addDays(21)->format('j M'), $board['D-1']['next']);
+        $this->assertSame(now()->addDays(21)->format('d/m'), $board['D-1']['next']);
         $this->assertFalse($board->has('D-3'));   // pregnant
         $this->assertFalse($board->has('K-1'));   // kid
         $this->assertSame('Tail flagging, Bleating', HeatRecord::where('dam_id', $doe->id)->value('signs'));

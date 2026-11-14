@@ -35,7 +35,7 @@ class SaleReadinessController extends Controller
             'rows' => $rows,
             'weights' => Lifecycle::marketWeights(),
             'history' => SaleClearance::latest('decided_on')->latest('id')->limit(30)->get()->map(fn ($c) => ['id' => $c->id, 'goatId' => $c->animal_id, 'number' => Animal::find($c->animal_id)?->farm_number,
-                'decision' => $c->decision, 'on' => $c->decided_on->format('j M Y'), 'by' => $c->decided_by, 'reason' => $c->reason]),
+                'decision' => $c->decision, 'on' => $c->decided_on->format('d/m/Y'), 'by' => $c->decided_by, 'reason' => $c->reason]),
             'canClear' => $request->user()->passes('manage_sales'),
         ]);
     }

@@ -36,7 +36,7 @@ final class HeatBoard
             };
             $rows[] = [
                 'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'breed' => $a->breed?->name, 'stage' => $a->effectiveAge(), 'pen' => $a->pen?->fullName(),
-                'last' => $lastOn?->format('j M'), 'next' => $next?->format('j M'), 'nextIso' => $next?->toDateString(), 'times' => (int) ($l->times ?? 0), 'status' => $status,
+                'last' => $lastOn?->format('d/m'), 'next' => $next?->format('d/m'), 'nextIso' => $next?->toDateString(), 'times' => (int) ($l->times ?? 0), 'status' => $status,
             ];
         }
         $order = ['in_heat' => 0, 'due' => 1, 'watch' => 2, 'unknown' => 3, 'mated' => 4];

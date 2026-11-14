@@ -86,7 +86,7 @@ final class Recovery
         if ($title === 'Checkup: Watch' && $r->severity !== 'high') {
             $c = (clone $checks)->first();
             if ($c && $c->outcome === 'healthy') {
-                return "checkup Healthy on {$c->checked_on->format('j M')} by {$c->examiner}";
+                return "checkup Healthy on {$c->checked_on->format('d/m')} by {$c->examiner}";
             }
             $then = Checkups::lastWeight($goat, $r->occurred_on->copy()->addDay()->toDateString()); // the weight on the day of the watch
             $w = $latestWeight();
@@ -95,7 +95,7 @@ final class Recovery
                 return null;
             }
 
-            return "weight up to {$w->weight_kg} KG on {$w->measured_on->format('j M')} (was {$then['kg']} KG at the watch)".($t ? ", temperature normal ({$t->temperature_f} °F)" : '');
+            return "weight up to {$w->weight_kg} KG on {$w->measured_on->format('d/m')} (was {$then['kg']} KG at the watch)".($t ? ", temperature normal ({$t->temperature_f} °F)" : '');
         }
 
         $needsWeight = str_contains($title, 'Weight down');
@@ -108,21 +108,21 @@ final class Recovery
             if (! $before || ! $w || (float) $w->weight_kg < $before['kg'] * (1 - self::TOLERANCE_PCT / 100)) {
                 return null;
             }
-            $reasons[] = "weight back to {$w->weight_kg} KG on {$w->measured_on->format('j M')} (was {$before['kg']} KG before the drop)";
+            $reasons[] = "weight back to {$w->weight_kg} KG on {$w->measured_on->format('d/m')} (was {$before['kg']} KG before the drop)";
         }
         if ($needsTemp) {
             $c = (clone $checks)->whereNotNull('temperature_f')->first();
             if (! $c || $c->temperature_f < $low || $c->temperature_f > $high) {
                 return null;
             }
-            $reasons[] = "temperature normal ({$c->temperature_f} °F on {$c->checked_on->format('j M')})";
+            $reasons[] = "temperature normal ({$c->temperature_f} °F on {$c->checked_on->format('d/m')})";
         }
         if ($needsHealthy) {
             $c = (clone $checks)->first();
             if (! $c || $c->outcome !== 'healthy') {
                 return null;
             }
-            $reasons[] = "checkup Healthy on {$c->checked_on->format('j M')} by {$c->examiner}";
+            $reasons[] = "checkup Healthy on {$c->checked_on->format('d/m')} by {$c->examiner}";
         }
 
         return $reasons ? implode('; ', $reasons) : null;
@@ -168,8 +168,8 @@ final class Recovery
         };
 
         return [
-            'state' => $state, 'since' => $first->occurred_on->format('j M'), 'title' => preg_replace('/^Checkup: /', '', $first->title),
-            'then' => $then['kg'] ?? null, 'now' => $w ? (float) $w->weight_kg : null, 'nowOn' => $w?->measured_on->format('j M'),
+            'state' => $state, 'since' => $first->occurred_on->format('d/m'), 'title' => preg_replace('/^Checkup: /', '', $first->title),
+            'then' => $then['kg'] ?? null, 'now' => $w ? (float) $w->weight_kg : null, 'nowOn' => $w?->measured_on->format('d/m'),
             'goal' => $before ? round($before['kg'] * (1 - self::TOLERANCE_PCT / 100), 1) : null, 'temp' => $c?->temperature_f,
         ];
     }

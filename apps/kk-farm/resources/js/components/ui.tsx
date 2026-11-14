@@ -24,7 +24,7 @@ export const pkrShort = (value: number): string => {
     return abs >= 1e3 ? `PKR ${Math.round(value / 1e3)}k` : `PKR ${value}`;
 };
 
-export const monthLabel = (ym: string): string => new Date(`${ym}-01`).toLocaleDateString('en-GB', { month: 'short' });
+export const monthLabel = (ym: string): string => new Date(`${ym}-01`).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' });
 
 export const HEALTH: Record<Health, { label: string; tile: string; chip: string; art: string }> = {
     healthy: { label: 'Healthy', tile: 'bg-cobalt-700', chip: 'bg-ok-100 text-ok-700', art: 'ic-healthy' },

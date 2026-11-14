@@ -24,7 +24,7 @@ const ABOUT: Record<Kind, string> = {
     height: 'Every height measured, by date: how many goats, the average, and how many grew.',
     move: 'Every move between pens, by date: how many goats and where they went.',
 };
-const fmt = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const fmt = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const signed = (n: number) => `${n > 0 ? '+' : ''}${n}`;
 const tone = (n: number | null | undefined, kind: Kind) => (kind === 'temp' || n === null || n === undefined || n === 0 ? '' : n > 0 ? 'text-ok-700' : 'text-crit-700');
 

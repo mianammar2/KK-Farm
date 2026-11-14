@@ -309,7 +309,7 @@ final class Accounting
             ->map(function (JournalLine $l) use (&$running, $sign) {
                 $running += $sign * ($l->debit_minor - $l->credit_minor);
 
-                return ['entryId' => $l->journal_entry_id, 'no' => $l->entry->entry_no, 'on' => $l->entry->posted_on->format('j M Y'), 'memo' => $l->entry->memo,
+                return ['entryId' => $l->journal_entry_id, 'no' => $l->entry->entry_no, 'on' => $l->entry->posted_on->format('d/m/Y'), 'memo' => $l->entry->memo,
                     'party' => $l->counterparty, 'goat' => $l->animal?->farm_number, 'goatId' => $l->animal_id,
                     'debit' => $l->debit_minor / 100, 'credit' => $l->credit_minor / 100, 'balance' => $running / 100];
             });

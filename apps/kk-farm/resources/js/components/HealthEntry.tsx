@@ -16,7 +16,7 @@ const KINDS = [
 
 /** Days between two ISO dates (b − a). */
 export const daysBetween = (a: string, b: string) => Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 86400000);
-const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 /**
  * D-100: one guided entry for every health event, in the order the vet works: the date, the goat, then what it is.
@@ -119,7 +119,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
                                 {Number(form.data.days_pregnant) > 0 ? (() => {
                                     const kid = new Date(`${form.data.date}T12:00:00`);
                                     kid.setDate(kid.getDate() - Number(form.data.days_pregnant) + data.gestation);
-                                    return <p className="text-xs font-semibold text-manganese-600">Day {form.data.days_pregnant} of about {data.gestation} · kidding about {kid.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>;
+                                    return <p className="text-xs font-semibold text-manganese-600">Day {form.data.days_pregnant} of about {data.gestation} · kidding about {kid.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>;
                                 })() : null}
                                 <div className="grid grid-cols-2 gap-2">
                                     <Field label="Fetuses seen"><input className="field" inputMode="numeric" value={form.data.fetuses} onChange={(x) => set('fetuses', x.target.value.replace(/[^0-9]/g, ''))} /></Field>

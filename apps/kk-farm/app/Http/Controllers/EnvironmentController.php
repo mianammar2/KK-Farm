@@ -56,7 +56,7 @@ class EnvironmentController extends Controller
             'sheds' => Shed::orderBy('name')->get()->map(fn (Shed $s) => [
                 'id' => $s->id, 'name' => $s->name, 'typeName' => $s->typeName(),
                 'points' => $points->where('shed_id', $s->id)->where('active', true)->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'kind' => $p->kind])->values(),
-                'last' => isset($latest[$s->id]) ? ['at' => $latest[$s->id]->round_at->format('j M g:i A'), 'thi' => $latest[$s->id]->thi, 'temp' => $latest[$s->id]->temperature_c,
+                'last' => isset($latest[$s->id]) ? ['at' => $latest[$s->id]->round_at->format('d/m g:i A'), 'thi' => $latest[$s->id]->thi, 'temp' => $latest[$s->id]->temperature_c,
                     'risk' => $latest[$s->id]->climate_risk, 'water' => $latest[$s->id]->water_ok, 'waste' => $latest[$s->id]->waste_ok] : null,
                 'openIssues' => EnvironmentIssue::where('shed_id', $s->id)->where('status', 'open')->count(),
             ]),
@@ -64,19 +64,19 @@ class EnvironmentController extends Controller
                 ->orderByRaw("case status when 'open' then 0 when 'resolved' then 1 else 2 end")->orderByRaw("case severity when 'critical' then 0 when 'high' then 1 else 2 end")->orderByDesc('id')->get()
                 ->map(fn (EnvironmentIssue $i) => [
                     'id' => $i->id, 'shed' => $i->shed?->name, 'kind' => $i->kind, 'severity' => $i->severity, 'description' => $i->description, 'status' => $i->status,
-                    'at' => $i->created_at->format('j M g:i A'), 'resolution' => $i->resolution, 'resolvedBy' => $i->resolved_by, 'verifiedBy' => $i->verified_by,
+                    'at' => $i->created_at->format('d/m g:i A'), 'resolution' => $i->resolution, 'resolvedBy' => $i->resolved_by, 'verifiedBy' => $i->verified_by,
                     'water' => $i->kind === 'water' && $i->started_at ? [ // D-198: the incident timeline
-                        'problem' => $i->problem, 'started' => $i->started_at->format('j M g:i A'), 'outage' => WaterIncident::outageMinutes($i),
-                        'supply' => $i->supply_at ? ['source' => $i->supply_source, 'at' => $i->supply_at->format('j M g:i A'), 'by' => $i->supply_by, 'cost' => $i->supply_cost_minor,
-                            'approvedBy' => $i->supply_approved_by, 'approvedAt' => $i->supply_approved_at?->format('j M g:i A')] : null,
-                        'restored' => $i->restored_at?->format('j M g:i A'), 'exposed' => $i->goats_exposed, 'ill' => $i->goats_ill, 'outcome' => $i->health_outcome,
+                        'problem' => $i->problem, 'started' => $i->started_at->format('d/m g:i A'), 'outage' => WaterIncident::outageMinutes($i),
+                        'supply' => $i->supply_at ? ['source' => $i->supply_source, 'at' => $i->supply_at->format('d/m g:i A'), 'by' => $i->supply_by, 'cost' => $i->supply_cost_minor,
+                            'approvedBy' => $i->supply_approved_by, 'approvedAt' => $i->supply_approved_at?->format('d/m g:i A')] : null,
+                        'restored' => $i->restored_at?->format('d/m g:i A'), 'exposed' => $i->goats_exposed, 'ill' => $i->goats_ill, 'outcome' => $i->health_outcome,
                         'checkedBy' => $i->health_checked_by, 'welfare' => $i->welfareCase ? ['label' => $i->welfareCase->label(), 'status' => $i->welfareCase->status] : null,
                         'jobs' => $i->jobs->map(fn ($j) => ['id' => $j->id, 'asset' => $j->asset?->name, 'status' => $j->status])->values(),
                         'cost' => WaterIncident::cost($i), 'blockers' => $i->status === 'resolved' ? WaterIncident::verifyBlockers($i) : [],
                     ] : null,
                 ]),
             'rounds' => EnvironmentRound::with('shed')->where('round_at', '>=', $since)->orderByDesc('round_at')->limit(150)->get()->map(fn (EnvironmentRound $r) => [
-                'id' => $r->id, 'at' => $r->round_at->format('j M g:i A'), 'shed' => $r->shed?->name, 'trigger' => $r->trigger, 'water' => $r->water_ok, 'temp' => $r->temperature_c,
+                'id' => $r->id, 'at' => $r->round_at->format('d/m g:i A'), 'shed' => $r->shed?->name, 'trigger' => $r->trigger, 'water' => $r->water_ok, 'temp' => $r->temperature_c,
                 'rh' => $r->humidity_pct, 'thi' => $r->thi, 'risk' => $r->climate_risk, 'waste' => $r->waste_ok, 'cost' => $r->utility_cost_minor ? $r->utility_cost_minor / 100 : null,
                 'utility' => $r->utility_kind, 'by' => $r->recorded_by,
             ]),
@@ -90,7 +90,7 @@ class EnvironmentController extends Controller
             ],
             'waterKpi' => WaterIncident::kpis(),
             'waterTests' => WaterTest::with('point.shed')->orderByDesc('sampled_on')->orderByDesc('id')->limit(60)->get()->map(fn (WaterTest $t) => [
-                'id' => $t->id, 'point' => $t->point?->name, 'shed' => $t->point?->shed?->name, 'on' => $t->sampled_on->format('j M Y'), 'lab' => $t->lab, 'ph' => $t->ph, 'tds' => $t->tds_ppm,
+                'id' => $t->id, 'point' => $t->point?->name, 'shed' => $t->point?->shed?->name, 'on' => $t->sampled_on->format('d/m/Y'), 'lab' => $t->lab, 'ph' => $t->ph, 'tds' => $t->tds_ppm,
                 'coliform' => $t->coliform_cfu, 'nitrate' => $t->nitrate_mg_l, 'verdict' => $t->verdict, 'cost' => $t->cost_minor, 'by' => $t->recorded_by, 'notes' => $t->notes]),
             'isVet' => $request->user()->passes('clinical'),
             'threshold' => $this->threshold(),

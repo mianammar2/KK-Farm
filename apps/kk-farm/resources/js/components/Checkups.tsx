@@ -108,7 +108,7 @@ export default function Checkups({ data }: { data: CheckupData }) {
                                 <td>{r.temp ?? '—'}</td><td>{r.score ?? '—'}</td><td>{r.weight ?? '—'}</td>
                                 <td>{r.ultrasound ? `${SOUND[r.ultrasound]}${r.fetuses ? ` (${r.fetuses})` : ''}` : '—'}</td>
                                 <td>{r.days ? <span className="font-semibold text-manganese-600">Day {r.days}</span> : '—'}</td>
-                                <td className="whitespace-nowrap text-sm">{r.followUp ? new Date(`${r.followUp}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</td>
+                                <td className="whitespace-nowrap text-sm">{r.followUp ? new Date(`${r.followUp}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }) : '—'}</td>
                                 <td className="text-sm text-ink-soft">{r.by}{r.edits ? <Chip className="ml-1 bg-cobalt-100 text-cobalt-800">corrected{r.edits > 1 ? ` ×${r.edits}` : ''}</Chip> : null}</td>
                                 <td>{r.canEdit ? <button type="button" onClick={() => { setEditing(r); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="inline-flex items-center gap-1 text-sm font-semibold text-turq-800 hover:underline"><Pencil size={14} aria-hidden /> Edit</button> : null}</td>
                             </tr>
@@ -163,7 +163,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
         }}>
             {existing ? (
                 <Field label="Checkup date" error={e.checked_on}><input type="date" className="field w-auto" max={TODAY} value={own} onChange={(x) => setOwn(x.target.value)} /></Field>
-            ) : <p className="flex items-center gap-2 text-sm font-semibold text-cobalt-900"><Stethoscope size={16} aria-hidden /> Checkup of {goat.number} on {new Date(`${date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+            ) : <p className="flex items-center gap-2 text-sm font-semibold text-cobalt-900"><Stethoscope size={16} aria-hidden /> Checkup of {goat.number} on {new Date(`${date}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>}
             <div className="grid gap-3 sm:grid-cols-3">
                 {num('temperature_f', 'Temperature', '°F')}
                 <Field label="Body condition (1–5, optional)"><select className="field" value={form.data.body_score} onChange={(x) => form.setData('body_score', x.target.value)}><option value="">Not set</option>{['1 · Very thin', '2 · Thin', '3 · Good', '4 · Fat', '5 · Very fat'].map((l, i) => <option key={l} value={i + 1}>{l}</option>)}</select></Field>
@@ -180,7 +180,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
                         {Number(form.data.days_pregnant) > 0 ? (() => {
                             const kid = new Date(`${checkDate}T12:00:00`);
                             kid.setDate(kid.getDate() - Number(form.data.days_pregnant) + data.gestation);
-                            return <p className="mt-1 text-xs font-semibold text-manganese-600">Day {form.data.days_pregnant} of about {data.gestation} · kidding about {kid.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>;
+                            return <p className="mt-1 text-xs font-semibold text-manganese-600">Day {form.data.days_pregnant} of about {data.gestation} · kidding about {kid.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>;
                         })() : null}
                     </div>
                     {num('fetuses', 'Fetuses seen', 'count')}

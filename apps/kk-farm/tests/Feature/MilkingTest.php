@@ -76,7 +76,7 @@ class MilkingTest extends TestCase
         $this->assertSame('lactating', $doe->repro_status);
         $this->assertSame('lactating_does', Feed::groupCode($doe));
         $this->assertSame('Lactating Female', Feed::standardFor($doe, 40)->name);
-        $this->assertTrue(\App\Models\AnimalEvent::where('animal_id', $doe->id)->where('summary', 'like', 'In milk: lactation 1 from 5 Nov 2026%')->exists());
+        $this->assertTrue(\App\Models\AnimalEvent::where('animal_id', $doe->id)->where('summary', 'like', 'In milk: lactation 1 from 05/11/2026%')->exists());
     }
 
     public function test_milk_is_recorded_per_session_once_and_a_correction_supersedes_it(): void
@@ -106,8 +106,8 @@ class MilkingTest extends TestCase
         $this->milk('2026-11-09', 'morning', 1.4)->assertSessionHasNoErrors();
         $r = MilkRecord::sole();
         $this->assertTrue($r->discarded);
-        $this->assertSame('Milk withdrawal until 12 Nov 2026', $r->discard_reason);
-        $this->actingAs($this->user('ceo'))->get('/milking')->assertInertia(fn ($page) => $page->where('does.0.withdrawal', '12 Nov 2026'));
+        $this->assertSame('Milk withdrawal until 12/11/2026', $r->discard_reason);
+        $this->actingAs($this->user('ceo'))->get('/milking')->assertInertia(fn ($page) => $page->where('does.0.withdrawal', '12/11/2026'));
     }
 
     public function test_a_high_producing_doe_moves_to_the_high_standard_and_drying_off_ends_the_lactation(): void

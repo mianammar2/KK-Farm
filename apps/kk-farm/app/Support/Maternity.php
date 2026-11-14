@@ -110,7 +110,7 @@ final class Maternity
         foreach ($near as $m) {
             $dam = $m->dam;
             if ($dam && $dam->status === 'active' && ! in_array((int) $dam->pen_id, $inUnit, true) && ! in_array($dam->id, $quarantined, true)) {
-                if (self::tryMove($dam, self::pen('PKU-01'), $system, 'Near kidding (expected '.$m->expected_kidding_on->format('j M Y').'): Pre-Kidding Unit')) {
+                if (self::tryMove($dam, self::pen('PKU-01'), $system, 'Near kidding (expected '.$m->expected_kidding_on->format('d/m/Y').'): Pre-Kidding Unit')) {
                     $moved['preKidding'][] = $dam->farm_number;
                 }
             }

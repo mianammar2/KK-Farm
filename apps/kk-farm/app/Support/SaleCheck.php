@@ -26,7 +26,7 @@ final class SaleCheck
             $out[] = 'Already left the farm';
         }
         if ($meat = Withdrawal::forAnimal($a->id)['meat']) {
-            $out[] = 'Meat withdrawal until '.$meat->format('j M Y');
+            $out[] = 'Meat withdrawal until '.$meat->format('d/m/Y');
         }
         if (! RfidAssignment::where('animal_id', $a->id)->whereNull('valid_to')->exists()) {
             $out[] = 'No RFID tag: assign one before sale';

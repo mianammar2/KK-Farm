@@ -45,7 +45,7 @@ final class CareCalendar
                 }
                 $rows[] = [
                     'id' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'stage' => $a->effectiveAge(), 'code' => $a->classCode(), 'breed' => $a->breed?->name, 'pen' => $a->pen?->fullName(),
-                    'due' => $dueOn->toDateString(), 'dueLabel' => $dueOn->format('j M'), 'overdue' => $dueOn->lessThan($today), 'last' => $lastOn?->format('j M Y'),
+                    'due' => $dueOn->toDateString(), 'dueLabel' => $dueOn->format('d/m'), 'overdue' => $dueOn->lessThan($today), 'last' => $lastOn?->format('d/m/Y'),
                 ];
             }
             usort($rows, fn ($x, $y) => strcmp($x['due'], $y['due']));

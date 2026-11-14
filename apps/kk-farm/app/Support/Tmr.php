@@ -107,7 +107,7 @@ final class Tmr
                 'lines' => $f->lines->map(fn ($l) => ['itemId' => $l->feed_item_id, 'name' => $l->item->name, 'pct' => $l->pct, 'cp' => $l->item->cp_pct, 'stock' => (float) ($stock[$l->feed_item_id] ?? 0)])->values(),
             ] + self::analyse($f->lines->map(fn ($l) => [$l->item, $l->pct]))),
             'batches' => TmrBatch::with('formula')->orderByDesc('mixed_on')->orderByDesc('id')->limit(30)->get()->map(fn (TmrBatch $b) => [
-                'id' => $b->id, 'no' => $b->batch_no, 'formula' => $b->formula->name, 'on' => $b->mixed_on->format('j M Y'), 'kg' => $b->total_kg, 'cost' => $b->cost_minor / 100, 'by' => $b->mixed_by,
+                'id' => $b->id, 'no' => $b->batch_no, 'formula' => $b->formula->name, 'on' => $b->mixed_on->format('d/m/Y'), 'kg' => $b->total_kg, 'cost' => $b->cost_minor / 100, 'by' => $b->mixed_by,
             ]),
         ];
     }

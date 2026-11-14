@@ -137,7 +137,7 @@ final class Sensors
             $drop = ($previous->weight_kg - $r->value) / $previous->weight_kg * 100;
             if ($drop >= $d->setting('weight_drop_pct', self::DEFAULTS['weight_drop_pct'])) {
                 self::alert($d, $r, 'weight_loss', $drop >= 20 ? 'critical' : 'warning', "{$goat->farm_number} lost ".round($drop, 1).'% of its weight',
-                    'From '.round($previous->weight_kg, 1).' KG on '.Carbon::parse($previous->measured_on)->format('j M').' to '.round($r->value, 1).' KG. A vet should examine the goat.', $goat, vetTask: true);
+                    'From '.round($previous->weight_kg, 1).' KG on '.Carbon::parse($previous->measured_on)->format('d/m').' to '.round($r->value, 1).' KG. A vet should examine the goat.', $goat, vetTask: true);
 
                 return 'weighing + weight loss alert';
             }

@@ -62,7 +62,7 @@ final class MilkTrace
             $case = QualityCases::open([
                 'source' => 'milk', 'subject' => 'animal', 'animal_id' => $doe->id, 'severity' => $gone->isNotEmpty() ? 'critical' : 'high', 'immediate_risk' => $onFarm->isNotEmpty(),
                 'title' => "Milk from {$doe->farm_number} suspect: {$why}",
-                'description' => "Milk from {$doe->farm_number} since ".Carbon::parse($from)->format('j M Y')." may be unsafe. Held: ".($onFarm->pluck('code')->implode(', ') ?: 'none').'. Already dispatched: '.($goneText ?: 'none').'.',
+                'description' => "Milk from {$doe->farm_number} since ".Carbon::parse($from)->format('d/m/Y')." may be unsafe. Held: ".($onFarm->pluck('code')->implode(', ') ?: 'none').'. Already dispatched: '.($goneText ?: 'none').'.',
             ], $by, $onFarm);
             if ($gone->isNotEmpty()) {
                 QualityCases::task("Decide milk recall ({$case->label()}): {$doe->farm_number}", 'critical', 'Management', "Lots with milk from {$doe->farm_number} have left the farm: {$goneText}. Recall them from the quality case if the vet confirms the risk.", $case);
@@ -108,7 +108,7 @@ final class MilkTrace
 
         return QualityCases::open([
             'source' => 'complaint', 'subject' => 'milk_lot', 'milk_lot_id' => $lot->id, 'severity' => $severity, 'immediate_risk' => $containment !== null, 'containment' => $containment,
-            'title' => "Complaint from {$buyer}: {$lot->code}", 'description' => "{$d->invoice_no} · {$d->litres} L on ".$d->dispatched_on->format('j M Y').". {$details}",
+            'title' => "Complaint from {$buyer}: {$lot->code}", 'description' => "{$d->invoice_no} · {$d->litres} L on ".$d->dispatched_on->format('d/m/Y').". {$details}",
         ], $by);
     }
 
@@ -170,17 +170,17 @@ final class MilkTrace
 
         return [
             'code' => $lot->code, 'status' => MilkLot::STATUS[$lot->status] ?? $lot->status, 'litres' => (float) $lot->litres, 'remaining' => $lot->remaining(), 'reason' => $lot->hold_reason,
-            'session' => $lot->session ? ['on' => $lot->session->milked_on->format('j M Y'), 'session' => $lot->session->session, 'by' => $lot->session->closed_by, 'operator' => $lot->session->operator ?? null] : null,
+            'session' => $lot->session ? ['on' => $lot->session->milked_on->format('d/m/Y'), 'session' => $lot->session->session, 'by' => $lot->session->closed_by, 'operator' => $lot->session->operator ?? null] : null,
             'does' => $records->map(fn ($r) => ['id' => $r->animal_id, 'number' => $r->animal?->farm_number, 'litres' => (float) $r->litres, 'held' => (bool) $r->discarded, 'reason' => $r->discard_reason])->values(),
-            'qa' => ['by' => $lot->tested_by, 'at' => $lot->tested_at?->format('j M Y g:i A'), 'residue' => $lot->residue, 'tank' => $lot->tank, 'temp' => $lot->storage_temp_c !== null ? (float) $lot->storage_temp_c : null,
-                'releasedBy' => $lot->released_by, 'releasedAt' => $lot->released_at?->format('j M Y g:i A')],
-            'temps' => MilkLotTemp::where('lot_id', $lot->id)->orderByDesc('id')->limit(10)->get()->map(fn ($t) => ['at' => $t->created_at->format('j M g:i A'), 'c' => $t->temp_c, 'excursion' => $t->excursion, 'by' => $t->recorded_by]),
+            'qa' => ['by' => $lot->tested_by, 'at' => $lot->tested_at?->format('d/m/Y g:i A'), 'residue' => $lot->residue, 'tank' => $lot->tank, 'temp' => $lot->storage_temp_c !== null ? (float) $lot->storage_temp_c : null,
+                'releasedBy' => $lot->released_by, 'releasedAt' => $lot->released_at?->format('d/m/Y g:i A')],
+            'temps' => MilkLotTemp::where('lot_id', $lot->id)->orderByDesc('id')->limit(10)->get()->map(fn ($t) => ['at' => $t->created_at->format('d/m g:i A'), 'c' => $t->temp_c, 'excursion' => $t->excursion, 'by' => $t->recorded_by]),
             'dispatches' => $lot->dispatches->map(fn (MilkDispatch $d) => [
-                'id' => $d->id, 'on' => $d->dispatched_on->format('j M Y'), 'kind' => $d->kind, 'to' => $d->kind === 'processing' ? 'Processing' : ($d->customer?->name ?? $d->buyer ?? '—'),
+                'id' => $d->id, 'on' => $d->dispatched_on->format('d/m/Y'), 'kind' => $d->kind, 'to' => $d->kind === 'processing' ? 'Processing' : ($d->customer?->name ?? $d->buyer ?? '—'),
                 'phone' => $d->customer?->phone, 'litres' => (float) $d->litres, 'invoice' => $d->invoice_no, 'order' => $d->order?->order_no, 'amount' => $d->price_per_litre_minor ? round($d->litres * $d->price_per_litre_minor / 100, 2) : null,
                 'paid' => (bool) $d->collected_at, 'adjustment' => $d->adjustment, 'adjusted' => $d->adjustment_minor !== null ? $d->adjustment_minor / 100 : null, 'returned' => $d->returned_l !== null ? (float) $d->returned_l : null,
             ])->values(),
-            'holds' => $holds->map(fn ($h) => ['kind' => $h->kind, 'case' => $h->qualityCase?->label(), 'caseId' => $h->case_id, 'title' => $h->qualityCase?->title, 'placed' => $h->placed_at?->format('j M Y'), 'released' => $h->released_at?->format('j M Y')])->values(),
+            'holds' => $holds->map(fn ($h) => ['kind' => $h->kind, 'case' => $h->qualityCase?->label(), 'caseId' => $h->case_id, 'title' => $h->qualityCase?->title, 'placed' => $h->placed_at?->format('d/m/Y'), 'released' => $h->released_at?->format('d/m/Y')])->values(),
             'recalled' => $lot->status === 'recalled',
         ];
     }

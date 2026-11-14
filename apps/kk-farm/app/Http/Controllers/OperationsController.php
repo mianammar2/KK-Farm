@@ -41,12 +41,12 @@ class OperationsController extends Controller
                     'verifiedBy' => $runs[$t->id]->verified_by, 'notes' => $runs[$t->id]->notes] : null,
             ]),
             'history' => ChecklistRun::with('template')->where('run_on', '>=', now()->subDays(7)->toDateString())->where('run_on', '<', $today)->orderByDesc('run_on')->get()->map(fn (ChecklistRun $r) => [
-                'on' => $r->run_on->format('D j M'), 'name' => $r->template?->name, 'done' => count($r->done), 'total' => count($r->template?->items ?? []), 'by' => $r->completed_by, 'verifiedBy' => $r->verified_by,
+                'on' => $r->run_on->format('d/m'), 'name' => $r->template?->name, 'done' => count($r->done), 'total' => count($r->template?->items ?? []), 'by' => $r->completed_by, 'verifiedBy' => $r->verified_by,
             ]),
             'incidents' => Incident::with(['pen.shed', 'animal', 'qualityCase', 'sop'])->where('occurred_at', '>=', now()->subDays(90))->orderByRaw("case status when 'open' then 0 else 1 end")->orderByDesc('occurred_at')->get()->map(fn (Incident $i) => [
-                'id' => $i->id, 'at' => $i->occurred_at->format('j M g:i A'), 'kind' => $i->kind, 'severity' => $i->severity, 'pen' => $i->pen?->fullName(),
+                'id' => $i->id, 'at' => $i->occurred_at->format('d/m g:i A'), 'kind' => $i->kind, 'severity' => $i->severity, 'pen' => $i->pen?->fullName(),
                 'goat' => $i->animal ? ['id' => $i->animal_id, 'number' => $i->animal->farm_number] : null, 'description' => $i->description, 'by' => $i->reported_by,
-                'status' => $i->status, 'resolution' => $i->resolution, 'resolvedBy' => $i->resolved_by, 'resolvedAt' => $i->resolved_at?->format('j M g:i A'),
+                'status' => $i->status, 'resolution' => $i->resolution, 'resolvedBy' => $i->resolved_by, 'resolvedAt' => $i->resolved_at?->format('d/m g:i A'),
                 'category' => $i->category, 'rootCause' => $i->root_cause, 'repeat' => $i->recurrence_of_id !== null,
                 'case' => $i->qualityCase ? ['label' => $i->qualityCase->label(), 'status' => $i->qualityCase->status] : null,
                 'sop' => $i->sop ? "{$i->sop->code} v{$i->sop_version}".($i->sop_version_after ? " → v{$i->sop_version_after}" : '') : null,
@@ -54,7 +54,7 @@ class OperationsController extends Controller
             'incidentKpi' => \App\Support\IncidentCapa::kpis(),
             'sops' => \App\Models\Sop::where('active', true)->orderBy('code')->get(['id', 'code', 'title']),
             'handovers' => ShiftHandover::where('handed_on', '>=', now()->subDays(14)->toDateString())->orderByDesc('id')->get()->map(fn (ShiftHandover $h) => [
-                'id' => $h->id, 'on' => $h->handed_on->format('D j M'), 'shift' => $h->shift, 'from' => $h->from_name, 'to' => $h->to_name, 'summary' => $h->summary, 'pending' => $h->pending,
+                'id' => $h->id, 'on' => $h->handed_on->format('d/m'), 'shift' => $h->shift, 'from' => $h->from_name, 'to' => $h->to_name, 'summary' => $h->summary, 'pending' => $h->pending,
             ]),
             'templates' => ChecklistTemplate::orderByDesc('active')->orderBy('shift')->get(['id', 'name', 'shift', 'items', 'active']),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),

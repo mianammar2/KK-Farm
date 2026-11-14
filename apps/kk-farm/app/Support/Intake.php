@@ -82,7 +82,7 @@ final class Intake
             $task = Task::where('animal_id', $animal->id)->where('title', "Intake clearance: {$animal->farm_number}")->whereIn('status', Task::OPEN)->first();
             $due = now()->addDays($days)->toDateString();
             $task ? $task->update(['due_on' => $due]) : null;
-            $case->update(['notes' => trim(($case->notes ? "{$case->notes}\n" : '')."Quarantine extended {$days} days (".now()->format('j M')."): {$reason}")]);
+            $case->update(['notes' => trim(($case->notes ? "{$case->notes}\n" : '')."Quarantine extended {$days} days (".now()->format('d/m')."): {$reason}")]);
             Farm::event($animal, 'health', "Intake quarantine extended by {$days} days: {$reason}", $by->name);
         });
     }
@@ -116,7 +116,7 @@ final class Intake
 
                 return [
                     'caseId' => $c->id, 'goatId' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'sex' => $a->sex, 'coat' => $a->coat, 'breed' => $a->breed?->name,
-                    'stage' => $a->effectiveAge(), 'origin' => $a->origin, 'arrived' => $c->onset_on->format('j M Y'), 'day' => $day, 'days' => $days, 'ready' => $day >= $days,
+                    'stage' => $a->effectiveAge(), 'origin' => $a->origin, 'arrived' => $c->onset_on->format('d/m/Y'), 'day' => $day, 'days' => $days, 'ready' => $day >= $days,
                     'pen' => $a->pen?->fullName(), 'rfid' => \App\Models\RfidAssignment::where('animal_id', $a->id)->whereNull('valid_to')->exists(),
                     'weighed' => $a->weights()->exists(), 'checked' => \App\Models\HealthCheckup::where('animal_id', $a->id)->where('checked_on', '>=', $c->onset_on)->exists(),
                 ];

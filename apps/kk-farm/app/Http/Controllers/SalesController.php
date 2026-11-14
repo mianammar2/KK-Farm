@@ -22,7 +22,7 @@ class SalesController extends Controller
 
         return Inertia::render('Sales', [
             'sales' => $sales->map(fn (Sale $s) => [
-                'id' => $s->id, 'on' => $s->sold_on->format('j M Y'), 'category' => Sale::CATEGORIES[$s->category] ?? $s->category, 'goatId' => $s->animal_id, 'goat' => $s->animal?->farm_number,
+                'id' => $s->id, 'on' => $s->sold_on->format('d/m/Y'), 'category' => Sale::CATEGORIES[$s->category] ?? $s->category, 'goatId' => $s->animal_id, 'goat' => $s->animal?->farm_number,
                 'item' => $s->item, 'buyer' => $s->customer?->name ?? $s->buyer, 'customerId' => $s->customer_id, 'gross' => $s->gross_minor / 100, 'fee' => $s->fee_minor / 100, 'net' => $s->netMinor() / 100, 'receipt' => $s->receipt_ref,
             ]),
             'kpis' => [

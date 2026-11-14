@@ -56,14 +56,14 @@ final class Fattening
 
         return [
             'id' => $m->id, 'goatId' => $a->id, 'number' => $a->farm_number, 'breed' => $a->breed?->name, 'sex' => $a->sex, 'status' => $m->status,
-            'joined' => $m->joined_on->format('j M'), 'days' => $days, 'entry' => $m->entry_weight_kg, 'current' => $current, 'gain' => $gain !== null ? round($gain, 1) : null,
-            'adg' => $adg, 'bcs' => $bcs, 'lastWeighed' => $latest?->measured_on?->format('j M'), 'kgDay' => round($kgDay, 2),
+            'joined' => $m->joined_on->format('d/m'), 'days' => $days, 'entry' => $m->entry_weight_kg, 'current' => $current, 'gain' => $gain !== null ? round($gain, 1) : null,
+            'adg' => $adg, 'bcs' => $bcs, 'lastWeighed' => $latest?->measured_on?->format('d/m'), 'kgDay' => round($kgDay, 2),
             'feedCost' => $feedCost, 'feedBasis' => $feedBasis, 'healthCost' => $healthCost, 'entryCost' => $m->entry_cost_minor, 'totalCost' => $totalCost,
             'revenue' => $revenue, 'profit' => $revenue !== null ? $revenue - $totalCost : null,
             'costPerKgGain' => $gain && $gain > 0 ? (int) round(($feedCost + $healthCost) / $gain) : null,
             'atTarget' => $current !== null && $current >= $b->target_weight_kg, 'exception' => $exception,
-            'meatHold' => $meat?->format('j M Y'), 'cleared' => $m->cleared_at !== null, 'clearedBy' => $m->cleared_by,
-            'health' => $a->health_status, 'saleId' => $m->sale_id, 'exitWeight' => $m->exit_weight_kg, 'exitReason' => $m->exit_reason, 'leftOn' => $m->left_on?->format('j M Y'),
+            'meatHold' => $meat?->format('d/m/Y'), 'cleared' => $m->cleared_at !== null, 'clearedBy' => $m->cleared_by,
+            'health' => $a->health_status, 'saleId' => $m->sale_id, 'exitWeight' => $m->exit_weight_kg, 'exitReason' => $m->exit_reason, 'leftOn' => $m->left_on?->format('d/m/Y'),
         ];
     }
 
@@ -89,9 +89,9 @@ final class Fattening
         $health = (int) $members->sum('healthCost');
 
         return [
-            'id' => $b->id, 'code' => $b->code, 'name' => $b->name, 'pen' => $b->pen?->fullName(), 'penId' => $b->pen_id, 'ration' => $b->ration ? ($b->ration->group?->name ?? 'Ration').' · from '.$b->ration->effective_from?->format('j M Y') : null, 'rationId' => $b->ration_plan_id,
-            'started' => $b->started_on->format('j M Y'), 'daysOnFeed' => (int) $b->started_on->diffInDays(now()), 'targetWeight' => $b->target_weight_kg, 'targetDays' => $b->target_days,
-            'targetDate' => $b->started_on->copy()->addDays($b->target_days)->format('j M Y'), 'status' => $b->status, 'notes' => $b->notes,
+            'id' => $b->id, 'code' => $b->code, 'name' => $b->name, 'pen' => $b->pen?->fullName(), 'penId' => $b->pen_id, 'ration' => $b->ration ? ($b->ration->group?->name ?? 'Ration').' · from '.$b->ration->effective_from?->format('d/m/Y') : null, 'rationId' => $b->ration_plan_id,
+            'started' => $b->started_on->format('d/m/Y'), 'daysOnFeed' => (int) $b->started_on->diffInDays(now()), 'targetWeight' => $b->target_weight_kg, 'targetDays' => $b->target_days,
+            'targetDate' => $b->started_on->copy()->addDays($b->target_days)->format('d/m/Y'), 'status' => $b->status, 'notes' => $b->notes,
             'headcount' => $live->count(), 'atTarget' => $live->where('atTarget', true)->count(), 'exceptions' => $live->whereNotNull('exception')->count(),
             'adg' => $live->whereNotNull('adg')->count() ? (int) round($live->whereNotNull('adg')->avg('adg')) : null,
             'feedCost' => $feed, 'healthCost' => $health, 'costPerKgGain' => $gainKg > 0 ? (int) round(($feed + $health) / $gainKg) : null,
@@ -165,7 +165,7 @@ final class Fattening
     {
         $b = $m->batch;
         $data = collect(self::batch($b)['members'])->firstWhere('id', $m->id);
-        $period = Carbon::parse($m->joined_on)->format('j M').' to '.now()->format('j M');
+        $period = Carbon::parse($m->joined_on)->format('d/m').' to '.now()->format('d/m');
         $basis = $data['feedBasis'] === 'actual'
             ? "Feed fed in its pens, shared per head per day ({$data['days']} days on feed, {$period})"
             : "Estimate: ration {$data['kgDay']} KG/day × feed price × {$data['days']} days on feed ({$period}); no feeding recorded";

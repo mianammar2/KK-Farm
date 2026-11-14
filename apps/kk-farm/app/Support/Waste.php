@@ -46,7 +46,7 @@ final class Waste
             $missed += max(0, intdiv($since - 1, $s->pickup_every_days));
         }
 
-        return ['missed' => $missed, 'overdue' => $since === null || $since > $s->pickup_every_days, 'last' => $last ? \Illuminate\Support\Carbon::parse($last)->format('j M Y') : null];
+        return ['missed' => $missed, 'overdue' => $since === null || $since > $s->pickup_every_days, 'last' => $last ? \Illuminate\Support\Carbon::parse($last)->format('d/m/Y') : null];
     }
 
     /** @return array<string, mixed> */
