@@ -173,16 +173,17 @@ class RbacAuditCrawlTest extends TestCase
         return $this->fillAgain($r, $uri, $types, $fixed);
     }
 
-    private function fillAgain(\Illuminate\Routing\Route $r, string $uri, array $types, array $fixed): ?string
+    private function fillAgain(\Illuminate\Routing\Route $route, string $uri, array $types, array $fixed): ?string
     {
-        $missing = false;
-        $url = preg_replace_callback('/\{(\w+)\??\}/', function ($m) use ($types, $fixed, &$missing) {
+        // D-266: a record that does not exist on the demo farm gets a made-up id. The action registry answers 403 before the
+        // record is looked up (refused role), so refused and allowed roles still tell apart: 403 against 404 or a validation answer.
+        return preg_replace_callback('/\{(\w+)\??\}/', function ($m) use ($types, $fixed) {
             $name = $m[1];
             if (isset($types[$name]) && is_subclass_of($types[$name], \Illuminate\Database\Eloquent\Model::class)) {
-                $id = $types[$name]::query()->value((new $types[$name])->getKeyName());
-                $missing = $missing || $id === null;
+                $model = new $types[$name];
+                $id = $model->newQuery()->value($model->getKeyName());
 
-                return (string) $id;
+                return (string) ($id ?? ($model->getKeyType() === 'string' ? '00000000-0000-0000-0000-000000000000' : '999999'));
             }
             if ($name === 'id' || $name === 'user') {
                 return (string) User::where('role', 'caretaker')->value('id');
@@ -190,7 +191,5 @@ class RbacAuditCrawlTest extends TestCase
 
             return $fixed[$name] ?? (string) (DB::table('animals')->value('id') ?? '1');
         }, $uri);
-
-        return $missing ? null : $url;
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnforceAction;
 use App\Http\Middleware\EnsureModule;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetTenant;
@@ -24,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: SetTenant::class);
         // D-266 F-27: the module check runs before route-model binding, so a refused user never learns whether a record exists
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnsureModule::class);
+        // D-266 F-01: every write route declares its rule (config/kkfarm_actions.php); enforced before binding, deny by default
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnforceAction::class);
+        $middleware->web(append: [EnforceAction::class]);
         // D-266 F-27: the module check runs before route-model binding, so a refused user never learns whether a record exists
         $middleware->alias(['module' => EnsureModule::class]);
     })

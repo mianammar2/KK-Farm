@@ -96,7 +96,7 @@ class WorkerTest extends TestCase
 
         $jobs = fn ($u) => array_keys($this->actingAs($u)->get('/worker')->viewData('page')['props']['jobs']);
         $this->assertEqualsCanonicalizing(['weigh', 'heat', 'mating', 'milk', 'move', 'lookup'], $jobs($care));
-        $this->assertEqualsCanonicalizing(['temp', 'health', 'heat', 'mating', 'care', 'teeth', 'height', 'move', 'lookup'], $jobs($vet)); // D-262: teeth and height
+        $this->assertEqualsCanonicalizing(['temp', 'health', 'heat', 'mating', 'care', 'teeth', 'height', 'lookup'], $jobs($vet)); // D-262: teeth and height; D-266 (Q10): the vet does not move goats
         $this->actingAs($care)->post('/worker/start', ['job' => 'care', 'care_kind' => 'vaccination', 'care_title' => 'PPR'])->assertForbidden();
         $this->actingAs($care)->post('/breeding/heat', ['dam_id' => $doe->id, 'observed_on' => now()->toDateString(), 'intensity' => 'strong'])->assertSessionHasNoErrors();
 

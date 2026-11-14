@@ -70,6 +70,13 @@ for row in rows:
             cells.append(mark)
         md.append(f"| {row['module']} | {row['label']} | `{r['key']}` | " + ' | '.join(cells) + ' |')
 extra = [r for r in reg if r['key'] not in used]
+# D-266: the spec's page marks per registry key, for the permanent test (tests/Feature/SpecMatrixTest.php). S-1: a shared page takes the most generous of its rows.
+SP = {}
+for row in rows:
+    for r in find(row):
+        cur = SP.setdefault(r['key'], {x: False for x in ROLES})
+        for x in ROLES: cur[x] = cur[x] or row['marks'][x] != '-'
+json.dump(SP, open(os.path.join(APP, 'tests/Feature/rbac/spec_pages.json'), 'w'), indent=1, sort_keys=True)
 json.dump({'diffs': diffs, 'spec_rows_without_registry_key': unmatched, 'registry_keys_without_spec_row': [{'key': r['key'], 'label': r['label'], 'path': r['path'], 'query': r['query'], 'roles': r['roles'], 'lock': r['lock']} for r in extra],
            'counts': {'spec_rows': len(rows), 'registry': len(reg), 'diffs': len(diffs)}}, open(os.path.join(OUT, 'pages-diff.json'), 'w'), indent=1, ensure_ascii=False)
 open(os.path.join(OUT, 'pages-matrix.md'), 'w').write('# D-261 Page × role matrix (generated)\n\nCell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bold** = disagreement (spec "-" but the page opens = OVER; spec F/v/s but refused = UNDER). v and s cannot be told apart from F by status code: see the report for view-only and scope findings.\n\n' + '\n'.join(md) + '\n')

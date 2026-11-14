@@ -89,7 +89,7 @@ class RbacTest extends TestCase
     public function test_cleaning_sees_cleaning_work_only(): void
     {
         $c = $this->user('cleaning');
-        $this->assertEqualsCanonicalizing(['dashboard', 'sheds', 'tasks', 'inventory', 'environment', 'maintenance'], $this->modules($c));
+        $this->assertEqualsCanonicalizing(['dashboard', 'sensors', 'sheds', 'tasks', 'inventory', 'environment', 'maintenance'], $this->modules($c));
         foreach (['/goats', '/health', '/finance', '/feeding', '/sheds', '/activity'] as $url) {
             $this->actingAs($c)->get($url)->assertForbidden();
         }

@@ -244,7 +244,7 @@ class QualityController extends Controller
         abort_if($case->status === 'closed', 422, 'This case is closed.');
         $data = $request->validate([
             'kind' => ['required', Rule::in(array_keys(QualityCapa::KINDS))], 'action' => ['required', 'string', 'max:1000'],
-            'owner_id' => ['required', 'exists:users,id'], 'due_on' => ['required', 'date', 'after_or_equal:today'], 'replaces_id' => ['nullable', 'exists:quality_capas,id'],
+            'owner_id' => ['required', \Illuminate\Validation\Rule::exists('users', 'id')->where('org_id', $request->user()->org_id)], 'due_on' => ['required', 'date', 'after_or_equal:today'], 'replaces_id' => ['nullable', 'exists:quality_capas,id'],
         ], [], ['owner_id' => 'owner']);
         if (! $case->root_cause) {
             throw ValidationException::withMessages(['action' => 'Record the root cause and evidence before designing the CAPA.']);
@@ -253,7 +253,7 @@ class QualityController extends Controller
             $old = QualityCapa::where('case_id', $case->id)->findOrFail($data['replaces_id']);
             abort_unless($old->status === 'failed', 422, 'Only a failed action is replanned.');
         }
-        $owner = User::findOrFail($data['owner_id']);
+        $owner = User::where('org_id', $request->user()->org_id)->findOrFail($data['owner_id']); // D-266 F-17: a person of this farm business only
         QualityCapa::create(['case_id' => $case->id, 'kind' => $data['kind'], 'action' => $data['action'], 'owner' => $owner->name, 'due_on' => $data['due_on'],
             'status' => 'planned', 'planned_by' => $request->user()->name, 'replaces_id' => $data['replaces_id'] ?? null]);
         $case->update(['status' => 'capa']);

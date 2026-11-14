@@ -15,6 +15,7 @@ type Props = {
     sires: Array<{ id: string; number: string; name: string | null; offspring: number }>;
     costs: Array<{ name: string; value: number }> | null;
     allowed: string[]; // D-243: the reports this person may open
+    links?: Array<{ label: string; href: string }>; // D-266 F-13: the views of their own work for a person with no report section
 };
 
 /** D-273: every report table is a spreadsheet (sort, filter, totals, export). */
@@ -33,7 +34,7 @@ const BAND_COLS: Col<{ band: string; value: number }>[] = [{ key: 'band', label:
 
 const TITLES: Record<string, string> = { herd: 'Herd by Breed and Sex', age: 'Herd by Age', breeds: 'Breed Summary', sires: 'Most Used Sires', exits: 'Exits from the Herd', spending: 'Spending, Last 12 Months' };
 
-export default function Reports({ breeds, ages, teeth, exits, breeding, sires, costs, allowed }: Props) {
+export default function Reports({ breeds, ages, teeth, exits, breeding, sires, costs, allowed, links = [] }: Props) {
     // D-215: a menu link opens one report on its own (?section=); /reports without it is the master page with all of them.
     const section = new URLSearchParams(usePage().url.split('?')[1] ?? '').get('section');
     const solo = section && TITLES[section] ? section : null;
@@ -73,6 +74,9 @@ export default function Reports({ breeds, ages, teeth, exits, breeding, sires, c
                 <Stat label="Kids per kidding" value={breeding.perKidding} />
                 <Stat label="Stillborn" value={breeding.stillborn} />
             </StatRow>}
+            {links.length && !solo ? <Panel title="Feeding reports" description="Feed offered, refused and wasted, and the feeding history. Costs are not shown." flush>
+                <ul className="divide-y divide-rule text-sm">{links.map((l) => <li key={l.href}><Link href={l.href} className="flex justify-between px-4 py-2 font-semibold text-forest"><span>{l.label}</span><span aria-hidden>→</span></Link></li>)}</ul>
+            </Panel> : null}
             <div className={solo ? 'max-w-3xl' : 'grid gap-4 lg:grid-cols-2'}>
                 {show('herd') ? <Panel id="herd" title="Herd by breed and sex"><Chart option={breedChart} label="Goats by breed and sex" height={250} /></Panel> : null}
                 {show('age') ? <Panel id="age" title="Herd by age"><Chart option={ageChart} label="Goats by age band" height={250} /></Panel> : null}

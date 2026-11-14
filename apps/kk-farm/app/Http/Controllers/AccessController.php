@@ -33,7 +33,7 @@ class AccessController extends Controller
 
         return Inertia::render('Settings/Access', [
             'modules' => Access::roleModules($org), 'gates' => Access::roleGates($org),
-            'moduleLabels' => Access::MODULE_LABELS, 'gateLabels' => Access::GATE_LABELS, 'protected' => Access::PROTECTED_GATES,
+            'moduleLabels' => Access::MODULE_LABELS, 'gateLabels' => Access::labels(), 'protected' => Access::PROTECTED_GATES,
             'overrides' => User::where('org_id', $org)->get()->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'count' => count($u->module_access ?? []) + count($u->gate_access ?? []) + count(Pages::userTicks($u))])
                 ->filter(fn ($o) => $o['count'] > 0)->values(),
             'canEdit' => $request->user()->role === 'ceo',
@@ -121,7 +121,7 @@ class AccessController extends Controller
                 'lastLogin' => $u->last_login_at?->format('d/m/Y H:i')],
             'modules' => collect(Access::MODULE_LABELS)->map(fn ($label, $m) => ['key' => $m, 'label' => $label, 'role' => in_array($u->role, $roleModules[$m] ?? [], true),
                 'own' => $u->module_access[$m] ?? null, 'effective' => $u->canModule($m), 'locked' => $m === 'settings' && $u->role === 'ceo'])->values(),
-            'gates' => collect(Access::GATE_LABELS)->map(fn ($label, $g) => ['key' => $g, 'label' => $label, 'role' => in_array($u->role, $roleGates[$g] ?? [], true),
+            'gates' => collect(Access::labels())->map(fn ($label, $g) => ['key' => $g, 'label' => $label, 'role' => in_array($u->role, $roleGates[$g] ?? [], true),
                 'own' => $u->gate_access[$g] ?? null, 'effective' => $u->passes($g), 'locked' => false, 'vetLocked' => in_array($g, Access::PROTECTED_GATES, true)])->values(), // D-241: the administrator may grant a vet-locked action to one person
             'departments' => Department::orderBy('name')->get(['id', 'name']),
             'canEdit' => $request->user()->role === 'ceo',

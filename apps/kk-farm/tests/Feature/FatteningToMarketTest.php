@@ -67,9 +67,9 @@ class FatteningToMarketTest extends TestCase
         $manager = $this->user('manager');
 
         // Propose: a pregnant doe is refused; the barren doe is proposed by the caretaker.
-        $this->actingAs($care)->post('/fattening/selections', ['animal_id' => $pregnant->id, 'reason' => 'cull_breeder'])->assertSessionHasErrors('animal_id');
-        $this->actingAs($care)->post('/fattening/selections', ['animal_id' => $doe->id, 'reason' => 'cull_breeder', 'notes' => '3 failed matings'])->assertSessionHasNoErrors();
-        $this->actingAs($care)->post('/fattening/selections', ['animal_id' => $doe->id, 'reason' => 'cull_breeder'])->assertSessionHasErrors('animal_id'); // already open
+        $this->actingAs($manager)->post('/fattening/selections', ['animal_id' => $pregnant->id, 'reason' => 'cull_breeder'])->assertSessionHasErrors('animal_id');
+        $this->actingAs($manager)->post('/fattening/selections', ['animal_id' => $doe->id, 'reason' => 'cull_breeder', 'notes' => '3 failed matings'])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/fattening/selections', ['animal_id' => $doe->id, 'reason' => 'cull_breeder'])->assertSessionHasErrors('animal_id'); // already open
         $sel = MeatSelection::sole();
 
         // Breeding stock cannot join a batch before approval.
@@ -80,8 +80,8 @@ class FatteningToMarketTest extends TestCase
 
         // Only the owner or manager decides, and never the proposer.
         $this->actingAs($care)->post("/fattening/selections/{$sel->id}/decide", ['decision' => 'approved'])->assertForbidden();
-        $this->actingAs($manager)->post("/fattening/selections/{$sel->id}/decide", ['decision' => 'rejected'])->assertSessionHasErrors('note');
-        $this->actingAs($manager)->post("/fattening/selections/{$sel->id}/decide", ['decision' => 'approved'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->post("/fattening/selections/{$sel->id}/decide", ['decision' => 'rejected'])->assertSessionHasErrors('note');
+        $this->actingAs($this->user('ceo'))->post("/fattening/selections/{$sel->id}/decide", ['decision' => 'approved'])->assertSessionHasNoErrors(); // D-266: the manager proposes (the caretaker only sees selections), the Administrator decides
         $this->assertSame('fattening', $doe->fresh()->animal_purpose);
         $this->actingAs($manager)->post('/fattening/selections', ['animal_id' => $feeder->id, 'reason' => 'feeder'])->assertSessionHasNoErrors();
         $own = MeatSelection::where('animal_id', $feeder->id)->sole();

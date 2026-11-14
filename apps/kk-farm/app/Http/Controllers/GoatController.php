@@ -379,7 +379,7 @@ class GoatController extends Controller
     {
         $animal->load(['breed', 'pen.shed', 'latestWeight', 'photos']);
         $u = $request->user();
-        $seeHealth = in_array($u->role, ['ceo', 'manager', 'vet'], true) || ($u->module_access['health'] ?? false) === true;
+        $seeHealth = $u->passes('see_health_history'); // D-266 F-15: a right the Access Rights screen controls
         $w = $animal->latestWeight;
 
         return response()->json($animal->card() + [
@@ -399,7 +399,8 @@ class GoatController extends Controller
         $offspring = Animal::with(['breed', 'pen', 'latestWeight', 'photos'])->where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->orderBy('birth_date')->get();
         $canFinance = $request->user()->canModule('finance');
         // D-241 (RBAC §7): health history, diagnoses and treatments for the vet, owner and manager; others see the status flag only
-        $seeHealth = in_array($request->user()->role, ['ceo', 'manager', 'vet'], true) || ($request->user()->module_access['health'] ?? false) === true;
+        $seeHealth = $request->user()->passes('see_health_history'); // D-266 F-15
+        $pedigree = $request->user()->passes('see_goat_pedigree'); // D-266 F-14: the feeding staff see tag, pen and feeding group, not parentage or records
         $weightDays = $weights->count() > 1 ? max(1, $weights->first()->measured_on->diffInDays($weights->last()->measured_on)) : null;
 
         return Inertia::render('Goats/Show', [
@@ -419,14 +420,14 @@ class GoatController extends Controller
                 'dental' => ['code' => \App\Support\Teeth::code($animal->teethCode()), 'fromAge' => ! $animal->teeth && $animal->teethCode() !== null, 'condition' => \App\Support\Teeth::CONDITIONS[$animal->dental_condition] ?? null, 'checkedOn' => $animal->teeth_checked_on?->format('d/m/Y'),
                     'history' => $animal->dentalExams()->limit(10)->get()->map(fn ($e) => ['on' => $e->examined_on->format('d/m/Y'), 'code' => \App\Support\Teeth::code($e->dental_code), 'condition' => \App\Support\Teeth::CONDITIONS[$e->condition] ?? null, 'by' => $e->recorded_by, 'source' => $e->source])->all()],
                 'classification' => $animal->classification(),
-                'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null),
-                'dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null),
+                'sire' => ! $pedigree ? null : ($animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : ($animal->sire_tag ? ['id' => null, 'number' => $animal->sire_tag] : null)),
+                'dam' => ! $pedigree ? null : ($animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null)),
             ],
             'photos' => $animal->photos->map(fn (AnimalPhoto $p) => ['id' => $p->id, 'notes' => $p->notes, 'isProfile' => $p->is_profile, 'by' => $p->added_by, 'on' => $p->created_at->format('d/m/Y')]),
             'tags' => RfidAssignment::with('tag')->where('animal_id', $animal->id)->orderByDesc('valid_from')->get()
                 ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('d/m/Y'), 'to' => $r->valid_to?->format('d/m/Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
-            'records' => $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
+            'records' => ! $pedigree ? [] : $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
             'death' => $this->death($animal, $seeHealth), // D-260: the vet's death report, and the review once it is approved
             // D-251: how it is doing since a watch began, or when it last came off Watch
             'recovery' => $seeHealth || in_array($request->user()->role, ['caretaker'], true) ? ((($p = \App\Support\Recovery::progress($animal)) ? ($seeHealth ? $p : ['title' => 'Health watch', 'temp' => null] + $p) : null) ?? (($e = \App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(30))->latest('occurred_at')->first())
@@ -440,7 +441,7 @@ class GoatController extends Controller
             ]),
             'health' => ! $seeHealth ? [] : $animal->healthRecords()->limit(40)->get()->map(fn ($h) => ['id' => $h->id, 'kind' => $h->kind, 'title' => $h->title, 'notes' => $h->notes, 'severity' => $h->severity, 'by' => $h->recorded_by, 'role' => $h->recorded_role, 'on' => $h->occurred_on->format('d/m/Y'), 'next' => $h->next_due_on?->format('d/m/Y'), 'status' => $h->status]),
             'pedigree' => Farm::pedigree($animal),
-            'offspring' => $offspring->map(fn (Animal $a) => $a->card()),
+            'offspring' => ! $pedigree ? [] : $offspring->map(fn (Animal $a) => $a->card()),
             'matings' => Mating::with(['sire', 'dam'])->where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->orderByDesc('mated_on')->limit(12)->get()
                 ->map(fn (Mating $m) => ['id' => $m->id, 'on' => $m->mated_on->format('d/m/Y'), 'partner' => ($animal->sex === 'male' ? $m->dam : $m->sire)?->farm_number, 'status' => $m->status, 'expected' => $m->expected_kidding_on?->format('d/m/Y')]),
             'kiddings' => Kidding::where('dam_id', $animal->id)->orderByDesc('kidded_on')->get()->map(fn (Kidding $k) => ['id' => $k->id, 'on' => $k->kidded_on->format('d/m/Y'), 'alive' => $k->born_alive, 'stillborn' => $k->stillborn]),

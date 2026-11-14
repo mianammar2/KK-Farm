@@ -33,10 +33,16 @@ class Access
         'edit_goats' => 'Edit goat details', 'remove_goats' => 'Remove or restore goat entries', 'health_checkup' => 'Routine health checkups', 'manage_market' => 'Market rates',
         'record_milk' => 'Record milk', 'manage_milking' => 'Milking settings', 'open_cases' => 'Open health cases', 'approve_breeding' => 'Approve goats for breeding',
         'health_entry' => 'New health entry', 'report_concern' => 'Report concern',
-        'manage_books' => 'Post to the books (journals, accounts)', 'manage_staff' => 'Add staff, record attendance and leave', 'request_end_of_life' => 'Ask for a humane end-of-life review', 'request_goat_purchase' => 'Raise a goat purchase',
+        'see_health_history' => 'See a goat\'s health history and treatments', 'see_goat_pedigree' => 'See a goat\'s parentage, offspring and records', 'manage_books' => 'Post to the books (journals, accounts)', 'manage_staff' => 'Add staff, record attendance and leave', 'request_end_of_life' => 'Ask for a humane end-of-life review', 'request_goat_purchase' => 'Raise a goat purchase',
         'record_heat' => 'Record heat', 'record_mating' => 'Record mating', 'give_care' => 'Give vaccines and deworming', 'move_goats' => 'Move goats between pens',
         'report_death' => 'Report a death', 'approve_death' => 'Approve a death (the goat leaves the farm)', 'cull_breeding' => 'Cull from breeding', 'check_teeth' => 'Check teeth', 'record_height' => 'Measure height',
     ];
+
+    /** D-266: every action's label: the built-in ones and those the action registry adds. */
+    public static function labels(): array
+    {
+        return self::GATE_LABELS + (config('kkfarm_action_gates.labels') ?? []);
+    }
 
     /** The farm business's saved role settings, cached for the request (Tenant::memo is cleared per request). */
     private static function org(?string $orgId): ?Organization

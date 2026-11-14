@@ -53,6 +53,11 @@ class ReportController extends Controller
             }
         }
 
-        return Inertia::render('Reports', $props + ['allowed' => $allowed]);
+        // D-266 F-13: a person with no report section of their own (the feeding staff) gets the usage and waste views of their work, with no costs
+        $links = $allowed->isNotEmpty() ? collect() : collect(['feeding.feed_offered_refused_wasted', 'feeding.feeding_history'])
+            ->filter(fn ($k) => \App\Support\Pages::allowsKey($request->user(), $k))
+            ->map(fn ($k) => ['label' => \App\Support\Pages::registry()[$k]['label'], 'href' => \App\Support\Pages::registry()[$k]['path'].'?'.http_build_query(\App\Support\Pages::registry()[$k]['query'] ?? [])])->values();
+
+        return Inertia::render('Reports', $props + ['allowed' => $allowed, 'links' => $links]);
     }
 }

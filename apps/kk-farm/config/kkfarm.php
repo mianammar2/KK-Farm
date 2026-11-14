@@ -44,7 +44,7 @@ return [
         'milking' => ['ceo', 'manager', 'vet', 'caretaker', 'finance'],
         'reports' => ['ceo', 'manager', 'vet', 'feeding', 'finance'],
         'settings' => ['ceo'],
-        'sensors' => ['ceo', 'manager'],
+        'sensors' => ['ceo', 'manager', 'cleaning'], // D-266 F-18: cleaning opens the alarms tab only (pages narrow it)
         'inventory' => $all,
         'purchase' => ['ceo', 'manager', 'vet', 'feeding', 'finance'],
         'sales' => ['ceo', 'manager', 'finance'],
@@ -73,7 +73,9 @@ return [
         'record_heat' => ['ceo', 'manager', 'vet', 'caretaker'],
         'record_mating' => ['ceo', 'manager', 'vet', 'caretaker'],
         'give_care' => ['ceo', 'vet'], // vaccination, deworming and other preventive care given
-        'move_goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
+        'move_goats' => ['ceo', 'manager', 'caretaker'], // D-266 F-10 (Q10): not the vet or the feeding staff
+        'see_health_history' => ['ceo', 'manager', 'vet'], // D-266 F-15: health history, cases and treatments on a goat (was a hard-coded role list)
+        'see_goat_pedigree' => ['ceo', 'manager', 'vet', 'caretaker'], // D-266 F-14: sire, dam, offspring and the day-by-day records; the feeding staff see tag, pen and group only
         // D-260: a death is the vet's finding, approved by the administrator; culling takes a goat out of breeding
         'report_death' => ['vet'],
         'approve_death' => ['ceo'],
@@ -98,6 +100,7 @@ return [
         'manage_market' => ['ceo', 'manager', 'finance'],
         'manage_devices' => ['ceo'],
         // D-266 (audit F-02, F-03, F-04, F-06): the books, staff records, end-of-life requests and goat purchases
+        ...(require __DIR__.'/kkfarm_action_gates.php')['gates'], // D-266: the actions the action registry adds
         'manage_books' => ['ceo', 'finance'],
         'manage_staff' => ['ceo', 'manager'],
         'request_end_of_life' => ['ceo', 'manager', 'vet'],

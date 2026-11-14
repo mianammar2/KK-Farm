@@ -59,15 +59,15 @@ class BirthToBreederTest extends TestCase
         $kid = $this->goat('K-1', 92, 10.0); // ~15 KG target at 90 days: 67%
         $this->actingAs($this->user('caretaker'))->get('/growth')->assertInertia(fn (AssertableInertia $p) => $p->component('BirthToBreeder')->where('growth.0.below', true)->where('growth.0.pct', 67));
 
-        $this->actingAs($this->user('caretaker'))->post("/growth/{$kid->id}/intervene", ['kind' => 'veterinary', 'action' => 'Faecal egg count', 'follow_up_on' => now()->addDays(14)->toDateString()])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post("/growth/{$kid->id}/intervene", ['kind' => 'veterinary', 'action' => 'Faecal egg count', 'follow_up_on' => now()->addDays(14)->toDateString()])->assertSessionHasNoErrors();
         $this->assertTrue(HealthRecord::where('title', 'Poor growth: veterinary review')->exists());
         $this->assertSame(2, Task::where('animal_id', $kid->id)->count()); // the vet's task and the follow-up weighing
-        $this->actingAs($this->user('caretaker'))->post("/growth/{$kid->id}/intervene", ['kind' => 'nutrition', 'action' => 'x', 'follow_up_on' => now()->addDays(7)->toDateString()])->assertStatus(422);
+        $this->actingAs($this->user('vet'))->post("/growth/{$kid->id}/intervene", ['kind' => 'nutrition', 'action' => 'x', 'follow_up_on' => now()->addDays(7)->toDateString()])->assertStatus(422);
 
         $i = GrowthIntervention::sole();
         $this->actingAs($this->user('caretaker'))->post("/growth/interventions/{$i->id}/follow-up", ['weight_kg' => 11])->assertSessionHasNoErrors();
         $this->assertSame('not_improved', $i->fresh()->status);
-        $this->actingAs($this->user('caretaker'))->post("/growth/{$kid->id}/intervene", ['kind' => 'nutrition', 'action' => 'Creep feed', 'follow_up_on' => now()->addDays(7)->toDateString()])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post("/growth/{$kid->id}/intervene", ['kind' => 'nutrition', 'action' => 'Creep feed', 'follow_up_on' => now()->addDays(7)->toDateString()])->assertSessionHasNoErrors();
         $this->actingAs($this->user('caretaker'))->post('/growth/interventions/'.GrowthIntervention::latest('id')->first()->id.'/follow-up', ['weight_kg' => 15])->assertSessionHasNoErrors();
         $this->assertSame('improved', GrowthIntervention::latest('id')->first()->status);
     }

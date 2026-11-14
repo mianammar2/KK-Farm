@@ -116,13 +116,13 @@ class UserController extends Controller
         $roleGates = Access::roleGates($u->org_id);
         $custom = collect()
             ->merge(collect($u->module_access ?? [])->map(fn ($v, $m) => ['kind' => 'App', 'label' => Access::MODULE_LABELS[$m] ?? $m, 'given' => (bool) $v]))
-            ->merge(collect($u->gate_access ?? [])->map(fn ($v, $g) => ['kind' => 'Action', 'label' => Access::GATE_LABELS[$g] ?? $g, 'given' => (bool) $v]))
+            ->merge(collect($u->gate_access ?? [])->map(fn ($v, $g) => ['kind' => 'Action', 'label' => Access::labels()[$g] ?? $g, 'given' => (bool) $v]))
             ->merge(collect(Pages::userTicks($u))->map(fn ($v, $k) => ['kind' => 'Page', 'label' => Pages::registry()[$k]['label'] ?? $k, 'given' => (bool) $v]))
             ->values();
 
         return response()->json([
             'apps' => collect(Access::MODULE_LABELS)->filter(fn ($label, $m) => $u->canModule($m))->values(),
-            'actions' => collect(Access::GATE_LABELS)->filter(fn ($label, $g) => $u->passes($g))->values(),
+            'actions' => collect(Access::labels())->filter(fn ($label, $g) => $u->passes($g))->values(),
             'pagesOpen' => $open->count(), 'pagesTotal' => $pages->count(),
             'custom' => $custom,
             'roleApps' => collect($roleMods)->filter(fn ($roles) => in_array($u->role, $roles, true))->count(),

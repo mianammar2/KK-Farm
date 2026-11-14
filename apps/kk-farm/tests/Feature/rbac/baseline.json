@@ -1,4 +1,13 @@
 {
+    "DELETE /breeding/eligibility/rules/{rule}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "DELETE /farms/{farm}": {
         "ceo": 302,
         "manager": 302,
@@ -26,6 +35,15 @@
         "cleaning": 404,
         "finance": 404
     },
+    "DELETE /settings/automation/rules/{rule}": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "DELETE /settings/breeds/{breed}": {
         "ceo": 302,
         "manager": 403,
@@ -37,6 +55,24 @@
     },
     "DELETE /settings/departments/{department}": {
         "ceo": 302,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "DELETE /settings/stages/{stage}": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "DELETE /settings/teeth/{stage}": {
+        "ceo": 404,
         "manager": 403,
         "vet": 403,
         "caretaker": 403,
@@ -413,6 +449,15 @@
         "cleaning": 200,
         "finance": 403
     },
+    "GET /media/{photo}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "GET /milking": {
         "ceo": 200,
         "manager": 200,
@@ -545,7 +590,7 @@
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
-        "cleaning": 403,
+        "cleaning": 200,
         "finance": 403
     },
     "GET /settings": {
@@ -1181,7 +1226,7 @@
     "PAGE feeding.feed_pens  /feeding?tab=now": {
         "ceo": 200,
         "manager": 200,
-        "vet": 200,
+        "vet": 403,
         "caretaker": 200,
         "feeding": 200,
         "cleaning": 403,
@@ -1244,7 +1289,7 @@
     "PAGE feeding.tmr_mixing_batches  /feeding?tab=tmr": {
         "ceo": 200,
         "manager": 200,
-        "vet": 200,
+        "vet": 403,
         "caretaker": 403,
         "feeding": 200,
         "cleaning": 403,
@@ -2057,7 +2102,7 @@
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
-        "cleaning": 403,
+        "cleaning": 200,
         "finance": 403
     },
     "PAGE sensors.sensor_readings  /sensors?tab=readings": {
@@ -2084,7 +2129,7 @@
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
-        "cleaning": 403,
+        "cleaning": 200,
         "finance": 403
     },
     "PAGE settings.settings_every_settings_page  /settings": {
@@ -2456,6 +2501,87 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /dairy/dispatches/{dispatch}/collect": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /dairy/dispatches/{dispatch}/complaint": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /dairy/dispatches/{dispatch}/settle": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /dairy/lots/{lot}/dispatch": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /dairy/lots/{lot}/hold": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /dairy/lots/{lot}/recall": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /dairy/lots/{lot}/release": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /dairy/lots/{lot}/temperature": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /dairy/lots/{lot}/test": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
     "POST /dairy/orders": {
         "ceo": 302,
         "manager": 302,
@@ -2464,6 +2590,15 @@
         "feeding": 403,
         "cleaning": 403,
         "finance": 302
+    },
+    "POST /dairy/orders/{order}/cancel": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
     },
     "POST /dairy/processing": {
         "ceo": 302,
@@ -2474,14 +2609,68 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /dairy/processing/{batch}/decide": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
     "POST /dairy/sessions": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
         "feeding": 403,
         "cleaning": 403,
-        "finance": 302
+        "finance": 403
+    },
+    "POST /death-reports/{report}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /disease/cases/{case}/clear": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /disease/cases/{case}/extend": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /disease/cases/{case}/lab": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /disease/outbreaks/{outbreak}/close": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
     },
     "POST /disease/settings": {
         "ceo": 302,
@@ -2510,10 +2699,55 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /environment/issues/{issue}/approve-supply": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
+    "POST /environment/issues/{issue}/health-check": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
+    "POST /environment/issues/{issue}/resolve": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
+    "POST /environment/issues/{issue}/supply": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
+    "POST /environment/issues/{issue}/verify": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
     "POST /environment/rounds": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
         "feeding": 403,
         "cleaning": 302,
@@ -2531,7 +2765,16 @@
     "POST /environment/water-points": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /environment/water-points/{point}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
@@ -2540,7 +2783,7 @@
     "POST /environment/water/report": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
         "feeding": 403,
         "cleaning": 302,
@@ -2550,9 +2793,9 @@
         "ceo": 302,
         "manager": 302,
         "vet": 302,
-        "caretaker": 302,
+        "caretaker": 403,
         "feeding": 403,
-        "cleaning": 302,
+        "cleaning": 403,
         "finance": 403
     },
     "POST /farms": {
@@ -2573,12 +2816,75 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /fattening/batches/{batch}/add": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fattening/batches/{batch}/plan": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fattening/batches/{batch}/weigh": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fattening/members/{member}/clear": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fattening/members/{member}/reserve": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fattening/members/{member}/sell": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /fattening/selections": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
-        "caretaker": 302,
-        "feeding": 302,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fattening/selections/{selection}/decide": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
         "cleaning": 403,
         "finance": 403
     },
@@ -2627,12 +2933,30 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /feeding/items/{item}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /feeding/leftover": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
-        "caretaker": 302,
+        "vet": 403,
+        "caretaker": 403,
         "feeding": 302,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /feeding/lots/items/{item}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
         "cleaning": 403,
         "finance": 403
     },
@@ -2645,6 +2969,24 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /feeding/lots/{lot}/decide": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /feeding/lots/{lot}/test": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /feeding/plans": {
         "ceo": 302,
         "manager": 302,
@@ -2654,11 +2996,20 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /feeding/plans/{plan}/approve": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /feeding/record": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
-        "caretaker": 302,
+        "vet": 403,
+        "caretaker": 403,
         "feeding": 302,
         "cleaning": 403,
         "finance": 403
@@ -2717,6 +3068,24 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /feeding/tmr/{formula}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /feeding/tmr/{formula}/mix": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /finance/accounts": {
         "ceo": 302,
         "manager": 403,
@@ -2737,7 +3106,7 @@
     },
     "POST /finance/entries": {
         "ceo": 302,
-        "manager": 302,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -2746,7 +3115,7 @@
     },
     "POST /finance/entries/{entry}/paid": {
         "ceo": 422,
-        "manager": 422,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -2755,7 +3124,7 @@
     },
     "POST /finance/entries/{entry}/reverse": {
         "ceo": 302,
-        "manager": 302,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -2782,7 +3151,7 @@
     },
     "POST /finance/sales": {
         "ceo": 302,
-        "manager": 302,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -2798,8 +3167,53 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /fodder/crops/{crop}/harvest": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fodder/crops/{crop}/inputs": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /fodder/fields": {
         "ceo": 302,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fodder/fields/{field}": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fodder/lots/{lot}/decide": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /fodder/lots/{lot}/test": {
+        "ceo": 404,
         "manager": 403,
         "vet": 403,
         "caretaker": 403,
@@ -2848,7 +3262,7 @@
         "manager": 302,
         "vet": 302,
         "caretaker": 302,
-        "feeding": 302,
+        "feeding": 403,
         "cleaning": 403,
         "finance": 403
     },
@@ -2920,7 +3334,16 @@
         "manager": 302,
         "vet": 302,
         "caretaker": 302,
-        "feeding": 302,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /goats/{animal}/photos/{photo}/profile": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
         "cleaning": 403,
         "finance": 403
     },
@@ -2978,6 +3401,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /growth/interventions/{intervention}/follow-up": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /growth/plan": {
         "ceo": 302,
         "manager": 302,
@@ -3000,8 +3432,8 @@
         "ceo": 302,
         "manager": 302,
         "vet": 302,
-        "caretaker": 302,
-        "feeding": 302,
+        "caretaker": 403,
+        "feeding": 403,
         "cleaning": 403,
         "finance": 403
     },
@@ -3010,6 +3442,15 @@
         "manager": 302,
         "vet": 302,
         "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /health/antimicrobials/{medicine}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
@@ -3023,11 +3464,38 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /health/cases/{case}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /health/cases/{case}/treatments": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /health/checkups": {
         "ceo": 302,
         "manager": 403,
         "vet": 302,
         "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /health/checkups/{checkup}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
@@ -3050,6 +3518,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /health/diseases/{disease}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /health/medicine-stock": {
         "ceo": 302,
         "manager": 403,
@@ -3064,6 +3541,15 @@
         "manager": 403,
         "vet": 302,
         "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /health/medicines/{medicine}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
@@ -3104,6 +3590,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /health/protocols/{protocol}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /health/records/{record}/close": {
         "ceo": 403,
         "manager": 403,
@@ -3113,12 +3608,30 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /housing/cleanings/{cleaning}/finish": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
+    "POST /housing/cleanings/{cleaning}/verify": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 403
+    },
     "POST /housing/pens/{pen}/clean": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
-        "feeding": 302,
+        "feeding": 403,
         "cleaning": 302,
         "finance": 403
     },
@@ -3158,9 +3671,27 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /hr/leave/{leave}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /hr/skills": {
         "ceo": 302,
         "manager": 302,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /hr/skills/{skill}/revoke": {
+        "ceo": 404,
+        "manager": 404,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -3185,6 +3716,24 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /intake/{case}/clear": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /intake/{case}/extend": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /inventory/items": {
         "ceo": 302,
         "manager": 302,
@@ -3193,6 +3742,15 @@
         "feeding": 403,
         "cleaning": 302,
         "finance": 403
+    },
+    "POST /inventory/items/{item}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
     },
     "POST /inventory/moves": {
         "ceo": 302,
@@ -3212,6 +3770,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /maintenance/assets/{asset}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 403
+    },
     "POST /maintenance/jobs": {
         "ceo": 302,
         "manager": 302,
@@ -3219,6 +3786,15 @@
         "caretaker": 302,
         "feeding": 302,
         "cleaning": 302,
+        "finance": 403
+    },
+    "POST /maintenance/jobs/{job}/close": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
         "finance": 403
     },
     "POST /milking/lactations/{lactation}/dry-off": {
@@ -3266,6 +3842,15 @@
         "cleaning": 302,
         "finance": 403
     },
+    "POST /operations/checklists/{template}/tick": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
+    },
     "POST /operations/handovers": {
         "ceo": 302,
         "manager": 302,
@@ -3273,7 +3858,7 @@
         "caretaker": 302,
         "feeding": 302,
         "cleaning": 302,
-        "finance": 302
+        "finance": 403
     },
     "POST /operations/incidents": {
         "ceo": 302,
@@ -3284,6 +3869,33 @@
         "cleaning": 302,
         "finance": 302
     },
+    "POST /operations/incidents/{incident}/escalate": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
+    },
+    "POST /operations/incidents/{incident}/resolve": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
+    },
+    "POST /operations/runs/{run}/verify": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
+    },
     "POST /operations/templates": {
         "ceo": 302,
         "manager": 302,
@@ -3292,6 +3904,15 @@
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
+    },
+    "POST /operations/templates/{template}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
     },
     "POST /parasites/guide": {
         "ceo": 403,
@@ -3311,13 +3932,22 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /parasites/samples/{sample}/decide": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /presence": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
-        "feeding": 302,
-        "cleaning": 302,
+        "feeding": 403,
+        "cleaning": 403,
         "finance": 403
     },
     "POST /purchase/animals": {
@@ -3329,6 +3959,42 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /purchase/animals/{lot}/cancel": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /purchase/animals/{lot}/decide": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /purchase/animals/{lot}/receive": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /purchase/animals/{lot}/reconcile": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
     "POST /purchase/orders": {
         "ceo": 302,
         "manager": 302,
@@ -3337,6 +4003,24 @@
         "feeding": 403,
         "cleaning": 403,
         "finance": 302
+    },
+    "POST /purchase/orders/{order}/receive": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /purchase/orders/{order}/status": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 404
     },
     "POST /purchase/suppliers": {
         "ceo": 302,
@@ -3347,10 +4031,82 @@
         "cleaning": 403,
         "finance": 302
     },
+    "POST /purchase/suppliers/{supplier}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /quality/capas/{capa}/approve": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/capas/{capa}/execute": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/capas/{capa}/verify": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /quality/cases": {
         "ceo": 302,
         "manager": 302,
         "vet": 302,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/cases/{case}/capa": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/cases/{case}/close": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/cases/{case}/hold": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/cases/{case}/investigate": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
@@ -3365,10 +4121,37 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /quality/holds/{hold}/release": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /quality/register": {
         "ceo": 302,
         "manager": 302,
         "vet": 302,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/register/{item}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /quality/sop-revisions/{revision}/approve": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
@@ -3383,11 +4166,65 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /quality/sops/{sop}/revise": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /repro-loss/staff/{user}/train": {
         "ceo": 302,
         "manager": 302,
         "vet": 403,
         "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /repro-loss/{case}/close": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /repro-loss/{case}/contain": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /repro-loss/{case}/diagnose": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /repro-loss/{case}/material": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /repro-loss/{case}/sample": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
@@ -3401,6 +4238,24 @@
         "cleaning": 403,
         "finance": 302
     },
+    "POST /sales/customers/{customer}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /sales/order-lines/{line}/remove": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
     "POST /sales/orders": {
         "ceo": 302,
         "manager": 302,
@@ -3409,6 +4264,60 @@
         "feeding": 403,
         "cleaning": 403,
         "finance": 302
+    },
+    "POST /sales/orders/{order}/approve": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /sales/orders/{order}/cancel": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /sales/orders/{order}/checklist": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /sales/orders/{order}/collect": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /sales/orders/{order}/dispatch": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /sales/orders/{order}/scan": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
     },
     "POST /sales/products": {
         "ceo": 302,
@@ -3437,6 +4346,15 @@
         "cleaning": 403,
         "finance": 302
     },
+    "POST /sales/{sale}/customer": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 404
+    },
     "POST /scan/assign": {
         "ceo": 302,
         "manager": 302,
@@ -3455,6 +4373,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /sensors/alerts/{alert}": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /sensors/devices": {
         "ceo": 302,
         "manager": 403,
@@ -3462,6 +4389,33 @@
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
+        "finance": 403
+    },
+    "POST /sensors/devices/{device}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
+    "POST /sensors/devices/{device}/key": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 404,
+        "finance": 403
+    },
+    "POST /sensors/devices/{device}/test": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 404,
         "finance": 403
     },
     "POST /settings/access": {
@@ -3590,8 +4544,26 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /settings/stages/{stage}": {
+        "ceo": 404,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /settings/teeth": {
         "ceo": 302,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /settings/teeth/{stage}": {
+        "ceo": 404,
         "manager": 403,
         "vet": 403,
         "caretaker": 403,
@@ -3665,9 +4637,9 @@
     "POST /sheds/transfer": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
-        "feeding": 302,
+        "feeding": 403,
         "cleaning": 403,
         "finance": 403
     },
@@ -3707,6 +4679,24 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /transport/claims/{claim}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 404
+    },
+    "POST /transport/lines/{line}/fitness": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 404
+    },
     "POST /transport/trips": {
         "ceo": 302,
         "manager": 302,
@@ -3716,6 +4706,24 @@
         "cleaning": 403,
         "finance": 302
     },
+    "POST /transport/trips/{trip}/check": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /transport/trips/{trip}/deliver": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /transport/vehicles": {
         "ceo": 302,
         "manager": 302,
@@ -3724,6 +4732,15 @@
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
+    },
+    "POST /transport/vehicles/{vehicle}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 404
     },
     "POST /value/batch": {
         "ceo": 302,
@@ -3755,10 +4772,19 @@
     "POST /waste/disposals": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
         "feeding": 403,
         "cleaning": 302,
+        "finance": 403
+    },
+    "POST /waste/disposals/{disposal}/audit": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
         "finance": 403
     },
     "POST /waste/streams": {
@@ -3768,6 +4794,15 @@
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
+        "finance": 403
+    },
+    "POST /waste/streams/{stream}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 404,
         "finance": 403
     },
     "POST /weights": {
@@ -3806,6 +4841,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /welfare/cases/{case}/step": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /welfare/checks": {
         "ceo": 302,
         "manager": 302,
@@ -3819,6 +4863,42 @@
         "ceo": 302,
         "manager": 302,
         "vet": 302,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /welfare/end-of-life/{review}/assess": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /welfare/end-of-life/{review}/authorise": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /welfare/end-of-life/{review}/perform": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /welfare/end-of-life/{review}/withdraw": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
@@ -3845,9 +4925,9 @@
     "POST /worker/move": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 302,
-        "feeding": 302,
+        "feeding": 403,
         "cleaning": 403,
         "finance": 403
     },

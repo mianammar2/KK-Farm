@@ -23,24 +23,27 @@ class SensorsController extends Controller
     public function index(Request $request): Response
     {
         $offlineAfter = now()->subHours(Sensors::DEFAULTS['offline_hours']);
+        // D-266 F-18: every tab's data is sent only to a person who may open that tab; the cleaning staff see the air, temperature and water alarms only
+        $see = fn (string $key) => \App\Support\Pages::allowsKey($request->user(), $key);
+        $everything = $see('sensors.sensors_devices');
 
         return Inertia::render('Sensors', [
-            'devices' => Device::with(['pen.shed', 'shed', 'keys' => fn ($q) => $q->whereNull('revoked_at')])->orderBy('code')->get()->map(fn (Device $d) => [
+            'devices' => ! $everything ? [] : Device::with(['pen.shed', 'shed', 'keys' => fn ($q) => $q->whereNull('revoked_at')])->orderBy('code')->get()->map(fn (Device $d) => [
                 'id' => $d->id, 'code' => $d->code, 'name' => $d->name, 'type' => $d->type, 'typeLabel' => Sensors::TYPES[$d->type][0] ?? $d->type,
                 'vendor' => $d->vendor, 'model' => $d->model, 'place' => $d->placeName(), 'shedId' => $d->shed_id, 'penId' => $d->pen_id,
                 'status' => $d->status === 'active' && $d->last_seen_at && $d->last_seen_at->lt($offlineAfter) ? 'offline' : $d->status,
                 'lastSeen' => $d->last_seen_at?->diffForHumans(short: true), 'keyHint' => $d->keys->first()?->hint, 'settings' => $d->settings ?? [], 'notes' => $d->notes,
             ]),
-            'alerts' => SensorAlert::with(['device', 'animal', 'pen.shed'])->orderByRaw("status = 'open' desc")->orderByDesc('id')->limit(100)->get()->map(fn (SensorAlert $a) => [
+            'alerts' => SensorAlert::with(['device', 'animal', 'pen.shed'])->when(! $everything, fn ($q) => $q->where('kind', 'environment'))->orderByRaw("status = 'open' desc")->orderByDesc('id')->limit(100)->get()->map(fn (SensorAlert $a) => [
                 'id' => $a->id, 'kind' => SensorAlert::KINDS[$a->kind] ?? $a->kind, 'severity' => $a->severity, 'title' => $a->title, 'detail' => $a->detail, 'status' => $a->status,
                 'device' => $a->device?->name, 'goat' => $a->animal?->farm_number, 'goatId' => $a->animal_id, 'pen' => $a->pen?->fullName(), 'taskId' => $a->task_id,
                 'on' => $a->created_at->format('d/m g:i A'), 'by' => $a->resolved_by ?? $a->acknowledged_by,
             ]),
-            'readings' => SensorReading::with(['device', 'animal'])->orderByDesc('read_at')->orderByDesc('id')->limit(100)->get()->map(fn (SensorReading $r) => [
+            'readings' => ! $see('sensors.sensor_readings') ? [] : SensorReading::with(['device', 'animal'])->orderByDesc('read_at')->orderByDesc('id')->limit(100)->get()->map(fn (SensorReading $r) => [
                 'id' => $r->id, 'at' => $r->read_at->format('d/m g:i:s A'), 'device' => $r->device->name, 'metric' => $r->metric, 'value' => $r->value, 'unit' => $r->unit,
                 'rfid' => $r->rfid_epc, 'goat' => $r->animal?->farm_number, 'goatId' => $r->animal_id, 'result' => $r->result,
             ]),
-            'out' => Sensors::outNow()->map(fn ($p) => ['goatId' => $p->animal_id, 'goat' => $p->animal->farm_number, 'area' => $p->area?->fullName(), 'since' => $p->at->diffForHumans(short: true), 'hours' => round($p->at->diffInMinutes(now()) / 60, 1)])->values(),
+            'out' => ! $everything ? [] : Sensors::outNow()->map(fn ($p) => ['goatId' => $p->animal_id, 'goat' => $p->animal->farm_number, 'area' => $p->area?->fullName(), 'since' => $p->at->diffForHumans(short: true), 'hours' => round($p->at->diffInMinutes(now()) / 60, 1)])->values(),
             'types' => collect(Sensors::TYPES)->map(fn ($t, $k) => ['key' => $k, 'label' => $t[0], 'metrics' => collect($t[1])->map(fn ($m, $mk) => ['key' => $mk, 'label' => $m[0], 'unit' => $m[1]])->values(), 'help' => $t[2]])->values(),
             'defaults' => Sensors::DEFAULTS,
             'places' => Shed::with(['pens' => fn ($q) => $q->orderBy('name')])->orderBy('name')->get()->map(fn (Shed $s) => ['id' => $s->id, 'name' => $s->name, 'pens' => $s->pens->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'kind' => $p->kind])]),

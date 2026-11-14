@@ -1,0 +1,22 @@
+{
+  "employees.departments_staff|finance": {
+    "direction": "over",
+    "reason": "S-1: /employees is one page. Spec Employees → Employees & Departments gives Finance v (view); the Operations → Departments & Staff row says —. The most generous row wins; payroll fields are Finance's anyway."
+  },
+  "feeding.feed_master|finance": {
+    "direction": "under",
+    "reason": "S-3: Finance sees stock valuation on /inventory; the Feed Inventory tab of /feeding is not Finance's page. The spec rows for FIN v on the store tabs are to be dropped."
+  },
+  "health.medicines_vaccines|finance": {
+    "direction": "under",
+    "reason": "S-3: Finance sees stock valuation on /inventory; the Medicine Inventory tab of /health is not Finance's page. The spec row for FIN v is to be dropped."
+  },
+  "sheds.animal_exit|finance": {
+    "direction": "under",
+    "reason": "F-12 / S-1: the sale side of an exit is Finance's Sales page; /movements is the Housing and exit page and Finance holds no Housing app."
+  },
+  "sheds.maternity_unit|feeding": {
+    "direction": "over",
+    "reason": "S-1: /sheds is one page. Housing → Farms, Units & Pens gives the feeding staff v (view of pen occupancy); the Maternity → Maternity Unit row says —. The most generous row wins."
+  }
+}

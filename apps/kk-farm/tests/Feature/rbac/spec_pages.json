@@ -1,0 +1,1397 @@
+{
+ "animal_purchase.goat_purchase_lots": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "animal_purchase.goat_purchase_request": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "breeding.breeding_eligibility_approval": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.doe_performance": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.genetics_family_tree": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.gestation_check_days": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.heat_detection": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.inbreeding_check": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.kid_care": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.kidding_pregnancy_outcomes": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.mating_pregnancy_ultrasound": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.pregnancy_calendar": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.pregnancy_loss_investigation": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.replacement_review_genetic_merit": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "breeding.weaning": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "dashboard.activity_log": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "dashboard.alerts_action_center": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "dashboard.ceo_scorecard": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": false,
+  "vet": false
+ },
+ "dashboard.executive_dashboard": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "dashboard.weight_gain_loss": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "employees.attendance_register": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "employees.attendance_report": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "employees.departments_staff": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "employees.leave_requests": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "employees.shift_roster": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "employees.skills_authorisations": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "employees.skills_compliance": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "employees.training_compliance": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "environment.round_records": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "environment.shed_rounds": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "environment.waste_routes_adviser_set": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "environment.waste_safe_disposal": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "environment.water_heat_waste_issues": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "environment.water_lab_tests": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "environment.water_points_heat_limit": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "fattening.batch_profitability": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "fattening.finishing_batches": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "fattening.meat_selection": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "fattening.new_batch_select_feeders": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "feed_cost.feed_true_cost_per_goat_kg_gain": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "feed_cost.stock_count_shrinkage": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "feeding.feed_master": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "feeding.feed_offered_refused_wasted": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "feeding.feed_pens": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "feeding.feed_safety_lots_tests_holds": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "feeding.feeding_history": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "feeding.feeding_plans_rations": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "feeding.feeding_times": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "feeding.nutrition_standards": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "feeding.tmr_mixing_batches": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "finance.balance_sheet": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "finance.general_ledger": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": false,
+  "vet": false
+ },
+ "finance.income_farm_expenses": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "finance.journal_entries": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": false,
+  "vet": false
+ },
+ "finance.profit_loss": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "finance.purchase_accounts": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": false,
+  "vet": false
+ },
+ "finance.trial_balance": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": false,
+  "vet": false
+ },
+ "fodder.crops_fields": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "fodder.field_registry": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "fodder.fodder_settings": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "fodder.harvest_lots_test_release": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "fodder.yield_cost_per_kg_dm": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "goats.all_goats": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "goats.goats_without_a_pen": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "goats.intake_quarantine": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "goats.missing_data": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "goats.need_attention": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "goats.newborns_to_complete": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "goats.no_weight_yet": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "goats.pregnant_does": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "goats.register_purchased_goat": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "health.antimicrobial_use": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.daily_health_checkups": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.disease_control_recovery": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.disease_master": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": false,
+  "vet": true
+ },
+ "health.medical_cases": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.medicines_vaccines": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "health.mortality_postmortem": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.outbreak_reports": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.parasite_testing_control": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.preventive_care_given": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.reported_concerns": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.restricted_pens": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.triage_reported_symptoms": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.vaccination_deworming_due": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "health.vaccine_deworming_protocols": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": false,
+  "vet": true
+ },
+ "health.withdrawal_biosecurity": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "inventory.all_stock": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "inventory.general_store": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "inventory.reorder_list": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "inventory.stock_moves": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "maintenance.asset_register": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "maintenance.open_jobs_breakdowns": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "maintenance.preventive_services_due": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "maintenance.repair_history_cost": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "milking.close_am_pm_sessions": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "milking.dispatch_trace": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "milking.milk_invoices_profit": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "milking.milk_lots_qa_release": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "milking.milk_orders": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "milking.milk_processing_batches": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "milking.mother_care_lactation": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "purchase.purchase_orders": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "purchase.suppliers": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "quality.cases_capa": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "quality.closed_cases_learning": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "quality.emergency_readiness": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "quality.holds_isolation_recall": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "quality.quality_dashboard": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "quality.raise_a_quality_alarm": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "quality.regulatory_register": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "quality.sop_library": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "reports.buck_performance": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "reports.farm_reports": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "reports.feed_spending": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "reports.herd_census": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "sales.all_sales": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "sales.approved_vehicles": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "sales.customers": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "sales.invoices_collections": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "sales.monthly_sales": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "sales.new_price_quote": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "sales.sale_orders_dispatch": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "sales.sale_readiness_clearance": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "sales.transport_delivery": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "scan.choose_a_job": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "scan.gun_app_settings": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "scan.rfid_scan": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "sensors.connect_a_device": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": false,
+  "vet": false
+ },
+ "sensors.sensor_alerts": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "sensors.sensor_readings": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "sensors.sensors_devices": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "sheds.animal_exit": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "sheds.maternity_unit": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "sheds.pen_status_capacity_cleaning": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "tasks.checklist_history": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "tasks.checklist_setup": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "tasks.delayed_tasks": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "tasks.done_this_week": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "tasks.incident_register": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "tasks.my_tasks": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": true,
+  "manager": true,
+  "vet": true
+ },
+ "tasks.shift_handover": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": true,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "value.herd_value_pricing": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": true,
+  "manager": true,
+  "vet": false
+ },
+ "weights.growth_plans_selection_age": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": false
+ },
+ "weights.held_weights_to_review": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "weights.kid_growth_vs_plan": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "weights.nutrition_vet_interventions": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": true,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "weights.record_weights": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "weights.replacement_breeder_selection": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "weights.selection_records": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "welfare.check_records": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "welfare.closed_cases": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "welfare.daily_welfare_mobility_check": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "welfare.humane_end_of_life_review": {
+  "caretaker": false,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "welfare.welfare_cases": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ }
+}

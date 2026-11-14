@@ -145,20 +145,20 @@ class PageAccessTest extends TestCase
     public function test_reset_to_defaults_restores_the_d241_behaviour(): void
     {
         $vet = $this->user('vet');
-        $this->saveRoles(['feeding.feed_pens' => ['vet' => false]])->assertSessionHasNoErrors();
-        $this->actingAs($this->fresh($vet))->get('/feeding?tab=now')->assertForbidden();
-        $default = Pages::registry()['feeding.feed_pens'];
-        $this->saveRoles(['feeding.feed_pens' => collect(array_keys(config('kkfarm.roles')))->mapWithKeys(fn ($r) => [$r => Pages::defaultFor($r, $default)])->all()])->assertSessionHasNoErrors();
+        $this->saveRoles(['feeding.feeding_history' => ['vet' => false]])->assertSessionHasNoErrors();
+        $this->actingAs($this->fresh($vet))->get('/feeding?tab=history')->assertForbidden();
+        $default = Pages::registry()['feeding.feeding_history'];
+        $this->saveRoles(['feeding.feeding_history' => collect(array_keys(config('kkfarm.roles')))->mapWithKeys(fn ($r) => [$r => Pages::defaultFor($r, $default)])->all()])->assertSessionHasNoErrors();
         $this->assertSame(0, DB::table('role_page_access')->count());
-        $this->actingAs($this->fresh($vet))->get('/feeding?tab=now')->assertOk();
+        $this->actingAs($this->fresh($vet))->get('/feeding?tab=history')->assertOk();
     }
 
     public function test_the_access_screen_lists_pages_by_app_with_defaults_and_custom(): void
     {
-        $this->saveRoles(['feeding.feed_pens' => ['vet' => false]]);
+        $this->saveRoles(['feeding.feeding_history' => ['vet' => false]]);
         Tenant::flush();
         $this->actingAs($this->user('ceo'))->get('/settings/access')->assertInertia(fn (AssertableInertia $p) => $p->component('Settings/Access')
-            ->where('pages', fn ($rows) => ($r = collect($rows)->firstWhere('key', 'feeding.feed_pens')) && $r['value']['vet'] === false && $r['default']['vet'] === true && $r['group'] !== ''
+            ->where('pages', fn ($rows) => ($r = collect($rows)->firstWhere('key', 'feeding.feeding_history')) && $r['value']['vet'] === false && $r['default']['vet'] === true && $r['group'] !== ''
                 && collect($rows)->firstWhere('key', 'dashboard.ceo_scorecard')['lock'] === 'admin'
                 && ! collect($rows)->contains(fn ($x) => in_array($x['lock'], ['opening', 'always'], true))));
         $this->actingAs($this->user('manager'))->post('/settings/access', ['modules' => [], 'gates' => [], 'pages' => []])->assertForbidden();
