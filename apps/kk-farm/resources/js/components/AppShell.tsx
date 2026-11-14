@@ -5,7 +5,7 @@ import { canOpen, currentApp, GROUPS, isHere, masterHref, menuHref, rememberApp,
 import { AppStripContext, type StripData } from './AppStrip';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
-    BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
+    BarChart3, Beef, CalendarCheck, ChevronDown, ChevronRight, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -66,6 +66,53 @@ function Brand() {
     );
 }
 
+/**
+ * D-278: an app's menu as folders: only the headings (Overview, Operations, Records, Reporting …) show, each closed;
+ * click one to open it. The heading of the page you are on opens by itself. What you open is remembered on this device.
+ */
+function AppMenu({ appKey, sections, active, onNavigate }: { appKey: string; sections: ReturnType<typeof sectionsFor>; active: number; onNavigate?: () => void }) {
+    const store = `kk.menu.${appKey}`;
+    const activeGroup = active >= 0 ? sections[active]?.group : undefined;
+    const [open, setOpen] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(store) ?? '[]') as string[]; } catch { return []; } });
+    const toggle = (g: string) => {
+        const next = open.includes(g) ? open.filter((x) => x !== g) : [...open, g];
+        setOpen(next);
+        try { localStorage.setItem(store, JSON.stringify(next)); } catch { /* private window */ }
+    };
+    return (
+        <ul className="space-y-1">
+            {GROUPS.map((g) => {
+                const items = sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
+                if (!items.length) return null;
+                const isOpen = open.includes(g) || g === activeGroup;
+                const id = `menu-${appKey}-${g.replace(/\W+/g, '-')}`;
+                return (
+                    <li key={g}>
+                        <button type="button" onClick={() => toggle(g)} aria-expanded={isOpen} aria-controls={id}
+                            className={cx('flex min-h-10 w-full items-center gap-2 rounded-tile px-2.5 text-start text-sm font-medium transition-colors duration-150 hover:bg-cobalt-800', isOpen ? 'text-white' : 'text-cobalt-100')}>
+                            <ChevronRight size={16} aria-hidden className={cx('shrink-0 transition-transform duration-150', isOpen && 'rotate-90')} />
+                            <span className="flex-1">{g}</span>
+                            <span className="rounded-full bg-white/10 px-1.5 text-xs text-cobalt-200">{items.length}</span>
+                        </button>
+                        {isOpen ? (
+                            <ul id={id} className="mt-0.5 mb-1 ms-4 space-y-0.5 border-s border-white/15 ps-2">
+                                {items.map((x) => (
+                                    <li key={`${x.group}${x.href}`}>
+                                        <Link href={menuHref(x.href)} onClick={() => { rememberApp(appKey); onNavigate?.(); }} aria-current={x.i === active ? 'page' : undefined}
+                                            className={cx('flex min-h-9 items-center rounded-tile px-2.5 py-1.5 text-sm transition-colors duration-150', x.i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
+                                            {x.label}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}
+
 function NavList({ path, url, modules, onNavigate }: { path: string; url: string; modules: string[]; onNavigate?: () => void }) {
     // D-170: inside an app, only that app's sections and the apps its records link to (Odoo style).
     const app = currentApp(url, modules);
@@ -84,26 +131,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                     <ArtIcon name={app.art} size={38} />
                     <span className="min-w-0 text-base leading-tight font-bold text-white">{app.label}</span>
                 </Link>
-                {GROUPS.map((g) => {
-                    const items = sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
-                    if (!items.length) return null;
-                    return (
-                        <div key={g} className="mt-3 first:mt-1">
-                            <div className="px-2.5 pb-1 text-xs font-semibold tracking-wide text-cobalt-200/80 uppercase">{g}</div>
-                            <ul className="space-y-0.5">
-                                {items.map((x) => (
-                                    <li key={`${x.group}${x.href}`}>
-                                        <Link href={menuHref(x.href)} onClick={() => { rememberApp(app.key); onNavigate?.(); }} aria-current={x.i === active ? 'page' : undefined}
-                                            className={cx('flex min-h-9 items-center gap-2.5 rounded-tile px-3 py-1.5 text-sm font-medium transition-colors duration-150', x.i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
-                                            <span className={cx('size-1.5 shrink-0 rounded-full', x.i === active ? 'bg-turq-600' : 'bg-cobalt-200/50')} aria-hidden />
-                                            {x.label}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    );
-                })}
+                <AppMenu appKey={app.key} sections={sections} active={active} onNavigate={onNavigate} />
             </nav>
         );
     }
