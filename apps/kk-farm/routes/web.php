@@ -27,6 +27,7 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->group(function (): void {
+    Route::get('/reports/operations', [\App\Http\Controllers\OperationsLogController::class, 'index']); // D-307/D-308: each app's Operations Log (the controller checks the app)
     Route::get('/lookup/goat', [GoatController::class, 'lookup']); // D-305: an app's scanner opens one goat's card (right "Scan goats"), without the Goats pages
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/switch-role', [AuthController::class, 'login']); // demo login only (D-044)
@@ -257,7 +258,6 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/goats/{animal}/day/{on}', [GoatController::class, 'day']);
         Route::get('/goats/{animal}/profile', [GoatController::class, 'profile']); // D-300: the full profile card, JSON // D-270: one day's records, JSON
         Route::get('/reports/sheet', [\App\Http\Controllers\HerdSheetController::class, 'index']); // D-288: the Herd Sheet
-        Route::get('/reports/operations', [\App\Http\Controllers\OperationsLogController::class, 'index']); // D-307: every operation, one sheet
         Route::get('/reports/records', [\App\Http\Controllers\RecordsReportController::class, 'index']); // D-270
         Route::get('/reports/records/day', [\App\Http\Controllers\RecordsReportController::class, 'day']); // D-270, JSON
         Route::post('/goats/{animal}/cull', [\App\Http\Controllers\DeathController::class, 'cull']); // D-260: out of breeding, not off the farm

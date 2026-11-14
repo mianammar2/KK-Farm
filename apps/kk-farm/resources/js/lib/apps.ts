@@ -45,7 +45,6 @@ export const APPS: ErpApp[] = [
         S('Operations', '/movements?kind=transfer', 'PEN Movements'), // D-285: moves and exits are separate
         S('Operations', '/movements?kind=exit', 'Animal Exit'),
         S('Reporting', '/reports/sheet', 'Herd Sheet'), // D-288: one sheet for all reporting
-        S('Reporting', '/reports/operations', 'Operations Log'), // D-307: every operation from every app
         // D-287: no Records section for now; the registry's filter cards show pregnant, attention and missing data
         S('Configuration', '/settings/breeds', 'Breed Master'),
         S('Configuration', '/settings/ages', 'Age Groups'),
@@ -306,6 +305,10 @@ export const APPS: ErpApp[] = [
 /** D-241: the person's page rules (shared by the server), so a menu only lists pages the server will open. */
 type Rule = [string, Record<string, string> | null, boolean];
 let RULES: Rule[] = [];
+// D-308: every app's Reporting has its own Operations Log (that app's operations, calendar and date filter)
+const OPS_LOG_APPS = ['livestock', 'breeding', 'maternity', 'veterinary', 'feeding', 'housing', 'growth', 'operations', 'inventory', 'purchase', 'sales', 'accounting', 'employees', 'maintenance', 'dairy', 'fattening', 'welfare', 'environment', 'quality', 'fodder', 'settings'];
+for (const a of APPS) if (OPS_LOG_APPS.includes(a.key)) a.sections.push(S('Reporting', `/reports/operations?app=${a.key}`, 'Operations Log'));
+
 export const setPageRules = (rules: Rule[] | undefined) => { RULES = rules ?? []; };
 
 /** Same matching as App\Support\Pages::rule: exact path with the most matching query values, else the nearest parent path. */

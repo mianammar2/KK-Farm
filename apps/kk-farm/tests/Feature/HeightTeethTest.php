@@ -200,4 +200,16 @@ class HeightTeethTest extends TestCase
         $finance->update(['gate_access' => ['see_health_history' => false]]);
         $this->actingAs($finance->fresh())->get('/reports/operations')->assertOk()->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => ! collect($rows)->contains('op', 'case')));
     }
+
+    /** D-308: every app has its own Operations Log; it opens only for those who can open the app. */
+    public function test_each_app_has_its_own_operations_log(): void
+    {
+        $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/height", ['measured_on' => now()->toDateString(), 'height_in' => 24])->assertSessionHasNoErrors();
+        foreach (array_keys(\App\Support\OpsLog::APPS) as $app) {
+            $this->actingAs($this->user('ceo'))->get("/reports/operations?app=$app")->assertOk();
+        }
+        $this->actingAs($this->user('ceo'))->get('/reports/operations?app=growth')->assertInertia(fn ($p) => $p->where('app', 'Growth')
+            ->where('rows', fn ($rows) => collect($rows)->contains('op', 'height') && ! collect($rows)->contains('op', 'register')));
+        $this->actingAs($this->user('cleaning'))->get('/reports/operations?app=accounting')->assertForbidden();
+    }
 }

@@ -19,16 +19,25 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const fmt = (on: string) => `${on.slice(8, 10)}/${on.slice(5, 7)}/${on.slice(0, 4)}`;
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 1000) / 10}%` : '0%');
 
-export default function Operations({ rows, ops }: { rows: Row[]; ops: Op[] }) {
+export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[]; app: string | null }) {
     const [picked, setPicked] = useState<string[]>([]); // operation keys; none = all
     const [day, setDay] = useState<string | null>(null);
+    const [from, setFrom] = useState(''); // D-308: date range (with the calendar's day on top)
+    const [to, setTo] = useState('');
+    const inRange = (on: string) => (day ? on === day : (!from || on >= from) && (!to || on <= to));
+    const preset = (days: number | 'month' | null) => {
+        setDay(null);
+        if (days === null) { setFrom(''); setTo(''); return; }
+        const t = new Date(); setTo(iso(t));
+        setFrom(days === 'month' ? iso(new Date(t.getFullYear(), t.getMonth(), 1)) : iso(new Date(t.getFullYear(), t.getMonth(), t.getDate() - days + 1)));
+    };
     const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
 
-    const cols = useMemo<Col<Row>[]>(() => [
+    const cols = useMemo<Col<Row>[]>(() => { const all: Col<Row>[] = [
         { key: 'on', label: 'Date', type: 'date', render: (r) => fmt(r.on) },
         { key: 'entered', label: 'Entered on', type: 'text' },
         { key: 'number', label: 'Goat', type: 'text', total: 'count', render: (r) => (r.goatId ? <Link href={`/goats/${r.goatId}`} className="font-mono text-cobalt-800 hover:underline">{r.number}</Link> : '—') },
-        { key: 'app', label: 'App', type: 'enum' },
+        ...(app ? [] : [{ key: 'app', label: 'App', type: 'enum' as const }]),
         { key: 'operation', label: 'Operation', type: 'enum' },
         { key: 'detail', label: 'Details', type: 'text', wrap: true },
         { key: 'by', label: 'By', type: 'enum' },
@@ -37,14 +46,14 @@ export default function Operations({ rows, ops }: { rows: Row[]; ops: Op[] }) {
         { key: 'sex', label: 'Sex', type: 'enum' },
         { key: 'pen', label: 'PEN now', type: 'enum' },
         { key: 'status', label: 'Status', type: 'enum' },
-    ], []);
+    ]; return all.filter((c) => !['number', 'breed', 'sex', 'pen', 'status'].includes(c.key) || rows.some((r) => r.goatId)); }, [rows, app]); // no goat in this app: no goat columns
     const { rows: gridRows, bar, api } = useGridFilters('operations-log', cols, rows);
     const byOp = useMemo(() => gridRows.filter((r) => !picked.length || picked.includes(r.op)), [gridRows, picked]);
-    const byDay = useMemo(() => gridRows.filter((r) => !day || r.on === day), [gridRows, day]);
-    const shown = useMemo(() => byOp.filter((r) => !day || r.on === day), [byOp, day]);
+    const byDay = useMemo(() => gridRows.filter((r) => inRange(r.on)), [gridRows, day, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+    const shown = useMemo(() => byOp.filter((r) => inRange(r.on)), [byOp, day, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // the calendar counts what the operation buttons pick; the buttons count what the calendar picks
-    const perDay = useMemo(() => { const m = new Map<string, number>(); byOp.forEach((r) => m.set(r.on, (m.get(r.on) ?? 0) + 1)); return m; }, [byOp]);
+    const perDay = useMemo(() => { const m = new Map<string, number>(); byOp.filter((r) => (!from || r.on >= from) && (!to || r.on <= to)).forEach((r) => m.set(r.on, (m.get(r.on) ?? 0) + 1)); return m; }, [byOp, from, to]);
     const perOp = useMemo(() => { const m = new Map<string, number>(); byDay.forEach((r) => m.set(r.op, (m.get(r.op) ?? 0) + 1)); return m; }, [byDay]);
     const max = Math.max(1, ...[...perDay.values()]);
     const cells = useMemo(() => {
@@ -59,8 +68,20 @@ export default function Operations({ rows, ops }: { rows: Row[]; ops: Op[] }) {
 
     return (
         <>
-            <Head title="Operations Log" />
-            <PageHeader title="Operations Log" description="Every operation done on a goat, in every app: who did what, to which goat, on which day. Pick a day on the calendar, pick operations, or filter any column." />
+            <Head title={app ? `${app} Operations Log` : 'Operations Log'} />
+            <PageHeader title={app ? `${app} Operations Log` : 'Operations Log: all apps'} description={`Every operation done ${app ? `in ${app}` : 'in every app'}: who did what, on which day. Pick dates, a day on the calendar, operations, or filter any column.`} />
+            <Panel className="mb-4">
+                <div className="flex flex-wrap items-end gap-3">
+                    <label className="text-sm text-ink-soft">From<input type="date" className="field mt-1 block w-44" value={from} max={to || undefined} onChange={(e) => { setDay(null); setFrom(e.target.value); }} /></label>
+                    <label className="text-sm text-ink-soft">To<input type="date" className="field mt-1 block w-44" value={to} min={from || undefined} onChange={(e) => { setDay(null); setTo(e.target.value); }} /></label>
+                    <div className="flex flex-wrap gap-2">
+                        {([['Today', 1], ['Last 7 days', 7], ['Last 30 days', 30], ['This month', 'month'], ['All dates', null]] as const).map(([label, d]) => (
+                            <button key={label} type="button" onClick={() => preset(d)} className="h-11 rounded-md border border-rule bg-tile px-3 text-sm text-cobalt-900 hover:bg-glaze">{label}</button>
+                        ))}
+                    </div>
+                    <span className="ml-auto text-sm text-ink-soft">{day ? fmt(day) : from || to ? `${from ? fmt(from) : 'start'} to ${to ? fmt(to) : 'today'}` : 'All dates'} · {shown.length} operations</span>
+                </div>
+            </Panel>
             <div className="mb-4 grid gap-4 lg:grid-cols-[22rem_1fr]">
                 <Panel>
                     <div className="mb-2 flex items-center justify-between">
@@ -83,25 +104,25 @@ export default function Operations({ rows, ops }: { rows: Row[]; ops: Op[] }) {
                         })}
                     </div>
                     <div className="mt-3 flex items-center justify-between text-sm text-ink-soft">
-                        <span>{day ? `${fmt(day)} · ${shown.length} operations` : 'All dates'}</span>
+                        <span>{day ? `${fmt(day)} · ${shown.length} operations` : 'Click a day to see only it'}</span>
                         {day ? <button type="button" onClick={() => setDay(null)} className="text-cobalt-800 hover:underline">Show all dates</button> : <button type="button" onClick={() => { setDay(today); setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); }} className="text-cobalt-800 hover:underline">Today</button>}
                     </div>
                 </Panel>
                 <Panel>
                     <div className="mb-3 flex items-center justify-between">
-                        <span className="text-base text-cobalt-900">Operations{day ? ` on ${fmt(day)}` : ''} · {byDay.length}</span>
+                        <span className="text-base text-cobalt-900">Operations · {byDay.length}</span>
                         {picked.length ? <button type="button" onClick={() => setPicked([])} className="text-sm text-cobalt-800 hover:underline">Show all operations</button> : null}
                     </div>
                     <div className="space-y-3">
-                        {apps.filter((app) => ops.some((o) => o.app === app && (perOp.get(o.key) || picked.includes(o.key)))).map((app) => (
-                            <div key={app}>
-                                <div className="mb-1.5 text-xs uppercase tracking-wide text-ink-soft">{app}</div>
+                        {apps.map((a) => ( // D-308: every operation shows, those with none greyed
+                            <div key={a}>
+                                {apps.length > 1 ? <div className="mb-1.5 text-xs uppercase tracking-wide text-ink-soft">{a}</div> : null}
                                 <div className="flex flex-wrap gap-2">
-                                    {ops.filter((o) => o.app === app && (perOp.get(o.key) || picked.includes(o.key))).map((o) => { // zero: hidden
+                                    {ops.filter((o) => o.app === a).map((o) => {
                                         const n = perOp.get(o.key) ?? 0; const on = picked.includes(o.key);
                                         return (
                                             <button key={o.key} type="button" onClick={() => toggle(o.key)} aria-pressed={on}
-                                                className={cx('inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm', on ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:bg-glaze')}>
+                                                className={cx('inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm', on ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:bg-glaze', !n && !on && 'text-ink-faint')}>
                                                 {o.label}<span className={cx('rounded px-1.5 text-xs', on ? 'bg-white/20' : 'bg-glaze text-ink-soft')}>{n} · {pct(n, byDay.length)}</span>
                                             </button>
                                         );
@@ -114,7 +135,7 @@ export default function Operations({ rows, ops }: { rows: Row[]; ops: Op[] }) {
             </div>
             <Panel flush>
                 {bar}
-                <DataGrid<Row> id="operations-log-grid" name="Operations Log" cols={cols} rows={shown} rowKey={(r) => r.key} filterable={false} filterApi={api} pageSize={50} empty="No operation matches" />
+                <DataGrid<Row> id="operations-log-grid" name={app ? `${app} Operations Log` : 'Operations Log'} cols={cols} rows={shown} rowKey={(r) => r.key} filterable={false} filterApi={api} pageSize={50} empty="No operation matches" />
             </Panel>
         </>
     );
