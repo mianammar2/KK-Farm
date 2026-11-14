@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
 import { Button, cx, Empty, Field, GoatLabel, monthLabel, PageHeader, Panel, Stat, StatRow } from '../components/ui';
+import { usePaged } from '../components/Pager';
 import type { GoatCard } from '../types';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
@@ -13,10 +14,10 @@ type LogRow = { id: number; goatId: string; goat: string; on: string; kg: number
 type Props = { goats: Row[]; log: LogRow[]; byBreed: Array<{ breed: string; month: string; kg: number }> };
 
 export default function Weights({ goats, log, byBreed }: Props) {
+    const { rows: logPage, pager: logPager } = usePaged(log, { size: 25, id: 'weights' }); // D-263
     const [query, setQuery] = useState('');
     const [view, setView] = useState('all');
     const form = useForm({ animal_id: goats[0]?.id ?? '', weight_kg: '', body_score: '', height_in: '', measured_on: new Date().toLocaleDateString('en-CA') });
-    const [logShown, setLogShown] = useState(10);
     const [adding, setAdding] = useState(false); // D-127
     const [fixing, setFixing] = useState<number | null>(null); // D-099: correcting a weighing
 
@@ -109,7 +110,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
                         <table className="data-table min-w-[720px]">
                             <thead><tr><th>Date</th><th>Goat</th><th>Weight</th><th>Previous</th><th>Days</th><th>Gain</th><th>ADG (g/day)</th><th>Body Score</th><th>Height</th><th>By</th><th /></tr></thead>
                             <tbody>
-                                {log.slice(0, logShown).map((w) => (
+                                {logPage.map((w) => (
                                     <Fragment key={w.id}>
                                     <tr>
                                         <td className="whitespace-nowrap">{w.on}</td><td><a href={`/goats/${w.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{w.goat}</a></td>
@@ -124,7 +125,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
                                 ))}
                             </tbody>
                         </table>
-                        {log.length > logShown ? <button type="button" onClick={() => setLogShown(logShown + 25)} className="w-full px-4 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">Show more</button> : null}
+                        {logPager}
                     </div>
                 ) : <p className="p-4 text-sm text-ink-soft">Weighings appear here.</p>}
             </Panel>

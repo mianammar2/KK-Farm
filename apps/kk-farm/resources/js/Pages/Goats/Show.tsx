@@ -9,6 +9,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
 import GoatPortrait from '../../components/GoatPortrait';
+import { usePaged } from '../../components/Pager';
 import PregnancyOutcomeForm, { type OutcomeOptions } from '../../components/PregnancyOutcomeForm';
 import UltrasoundForm, { type UltrasoundOptions } from '../../components/UltrasoundForm';
 import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
@@ -641,10 +642,9 @@ const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean;
     { key: 'by', label: 'By', has: (r) => r.by.length > 0, cell: (r) => <span className="text-ink-soft">{r.by.join(', ')}</span> },
 ];
 function RecordsTable({ rows }: { rows: GoatRecord[] }) {
-    const [all, setAll] = useState(false);
+    const { rows: shown, pager } = usePaged(rows, { size: 10, id: 'goat-records' }); // D-263: numbered pages
     if (!rows.length) return null;
     const cols = COLS.filter((c) => rows.some(c.has)); // a column with nothing in it is not shown
-    const shown = all ? rows : rows.slice(0, 10);
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     return (
         <div className="mt-4 border-t border-rule pt-3">
@@ -657,7 +657,7 @@ function RecordsTable({ rows }: { rows: GoatRecord[] }) {
                     ))}</tbody>
                 </table>
             </div>
-            {rows.length > 10 ? <button type="button" className="mt-2 min-h-10 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length} days`}</button> : null}
+            <div className="-mx-4 sm:mx-0">{pager}</div>
         </div>
     );
 }

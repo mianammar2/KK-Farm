@@ -3,6 +3,7 @@ import { LIVE_MS } from '../lib/live';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow } from '../components/ui';
+import { usePaged } from '../components/Pager';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 
@@ -21,8 +22,8 @@ export default function Movements({ movements, goats, pens, types, month, canExi
     usePoll(LIVE_MS, { only: ['movements', 'goats', 'pens', 'month'] }); // D-086: live
     const [adding, setAdding] = useState(false); // D-127: the movement form opens from a + button
     const [filter, setFilter] = useState('');
-    const [shown, setShown] = useState(20);
-    const list = movements.filter((m) => !filter || m.type === filter);
+    const list = useMemo(() => movements.filter((m) => !filter || m.type === filter), [movements, filter]);
+    const { rows: listPage, pager: listPager } = usePaged(list, { size: 25, id: 'movements' }); // D-263
     const exits = Object.entries(month).filter(([t]) => t !== 'transfer').reduce((s, [, n]) => s + n, 0);
 
     return (
@@ -48,7 +49,7 @@ export default function Movements({ movements, goats, pens, types, month, canExi
                             <table className="w-full min-w-[46rem] text-sm">
                                 <thead className="text-left text-ink-soft"><tr>{['Date', 'Goat', 'Movement', 'From', 'To / destination', 'Reason', 'Amount', 'Authorised by'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
                                 <tbody className="divide-y divide-rule">
-                                    {list.slice(0, shown).map((m) => (
+                                    {listPage.map((m) => (
                                         <tr key={m.id}>
                                             <td className="px-3 py-2">{m.on}</td>
                                             <td className="px-3 py-2"><Link href={`/goats/${m.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{m.goat}</Link></td>
@@ -61,7 +62,7 @@ export default function Movements({ movements, goats, pens, types, month, canExi
                                     ))}
                                 </tbody>
                             </table>
-                            {list.length > shown ? <button type="button" onClick={() => setShown(shown + 50)} className="w-full px-4 py-2 text-sm font-semibold text-cobalt-800 hover:bg-glaze">Show {Math.min(50, list.length - shown)} more</button> : null}
+                            {listPager}
                         </div>
                     ) : <Empty title="No movements yet" />}
                 </Panel>

@@ -2,6 +2,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, LayoutGrid, List, Search } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useHideAppStrip } from '../../components/AppStrip';
+import { usePaged } from '../../components/Pager';
 import { inScannerApp } from '../../lib/native';
 import GoatPortrait from '../../components/GoatPortrait';
 import { RfidAttachSheet, RfidButton } from '../../components/RfidAttach';
@@ -32,7 +33,7 @@ const TONES = {
 type Tone = keyof typeof TONES;
 const toneOf = (g: Goat): Tone => g.status !== 'active' ? 'left' : g.health !== 'healthy' ? g.health : g.repro === 'pregnant' ? 'pregnant' : g.repro === 'lactating' ? 'lactating' : 'healthy';
 const LITE = inScannerApp();
-const PAGE = LITE ? 25 : 60; // rows drawn at once; the gun draws fewer (D-089)
+const PAGE = 25; // D-263: rows per page (the person can choose 10–100)
 /** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
 const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
 
@@ -57,7 +58,6 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
     });
     const setView = (v: 'table' | 'cards') => { setViewState(v); try { localStorage.setItem('kk.goats.view', v); } catch { /* storage off */ } };
     const [tone, setTone] = useState<Tone | ''>(() => (params.get('tone') as Tone | null) ?? ''); // D-165: ?tone=healthy from the dashboard
-    const [limit, setLimit] = useState(PAGE);
     const [sort, setSort] = useState<{ key: SortKey; up: boolean }>({ key: 'number', up: true });
     const [adding, setAdding] = useState(false);
 
@@ -80,7 +80,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
     // D-259: health cards split the goats on the farm (each in one); the others count every goat they fit (pregnant, lactating …)
     const onFarm = goats.filter((g) => g.status === 'active');
     const tagged = (t: string) => onFarm.filter((g) => (g.tags ?? []).includes(t)).length;
-    const only = (next: () => void) => () => { setTone(''); setShow(''); setSex(''); setStatus('active'); setLimit(PAGE); next(); };
+    const only = (next: () => void) => () => { setTone(''); setShow(''); setSex(''); setStatus('active'); next(); };
     const cards: Array<{ key: string; label: string; n: number; on: boolean; pick: () => void; dot: string; art?: string; always?: boolean }> = [
         { key: 'all', label: 'On the farm', n: onFarm.length, on: !tone && !show && !sex && status === 'active', pick: only(() => undefined), dot: 'bg-cobalt-600', always: true },
         { key: 'female', label: 'Females', n: onFarm.filter((g) => g.sex === 'female').length, on: sex === 'female' && !tone && !show, pick: sex === 'female' ? only(() => undefined) : only(() => setSex('female')), dot: 'bg-[#e5739a]' },
@@ -92,8 +92,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
         { key: 'missing', label: 'Missing data', n: tagged('missing'), on: show === 'missing', pick: show === 'missing' ? only(() => undefined) : only(() => setShow('missing')), dot: 'bg-watch-400' },
         { key: 'left', label: 'Left the farm', n: goats.length - onFarm.length, on: tone === 'left', pick: tone === 'left' ? only(() => undefined) : only(() => { setTone('left'); setStatus('all'); }), dot: TONES.left.bar, art: CHIP_ART.left },
     ];
-    const shown = rows.slice(0, limit);
-    const pickTone = (t: Tone | '') => { setTone(t); setLimit(PAGE); if (t === 'left') setStatus('all'); };
+    const { rows: shown, pager } = usePaged(rows, { size: PAGE, id: 'goats' }); // D-263: numbered pages
+    const pickTone = (t: Tone | '') => { setTone(t); if (t === 'left') setStatus('all'); };
 
     const sortBy = (key: SortKey) => setSort((s) => ({ key, up: s.key === key ? !s.up : true }));
     const Th = ({ id, label }: { id: SortKey; label: string }) => (
@@ -241,11 +241,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                         })}
                     </div>
                 )}
-                {rows.length > shown.length ? (
-                    <button type="button" onClick={() => setLimit((l) => l + PAGE)} className="w-full border-t border-rule px-4 py-3 text-sm font-semibold text-cobalt-800 hover:bg-glaze">
-                        Show {Math.min(PAGE, rows.length - shown.length)} more <span className="font-normal text-ink-soft">({rows.length - shown.length} left)</span>
-                    </button>
-                ) : null}
+                {pager}
             </Panel>
             {tagging ? <RfidAttachSheet goat={tagging} onClose={() => setTagging(null)} /> : null}
         </>
