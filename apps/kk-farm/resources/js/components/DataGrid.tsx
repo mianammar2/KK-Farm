@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Download, Filter, Plus, Search, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Download, Filter, ListFilter, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePaged } from './Pager';
 import { cx } from './ui';
@@ -20,7 +20,9 @@ export type Col<T> = {
     width?: string;
     wrap?: boolean; // long text wraps instead of widening the table
 };
-type Filter = { id: number; col: string; op: string; a: string; b: string };
+type Filter = { id: number; col: string; op: string; a: string; b: string; quick?: boolean }; // quick: set from a column heading (D-289)
+export type GridFilterApi<T> = { filters: Filter[]; setFilters: (f: Filter[]) => void; source: T[]; cols: Col<T>[] };
+const BLANK = '(blank)';
 
 const OPS: Record<ColType, Array<[string, string]>> = {
     text: [['has', 'contains'], ['not_has', 'does not contain'], ['is', 'is'], ['not', 'is not'], ['starts', 'starts with'], ['empty', 'is empty'], ['filled', 'is not empty']],
@@ -32,6 +34,7 @@ const NO_VALUE = ['empty', 'filled'];
 
 function test(v: string | number | null | undefined, type: ColType, f: Filter): boolean {
     const empty = v === null || v === undefined || v === '';
+    if (f.op === 'in') { const list = JSON.parse(f.a || '[]') as string[]; return !list.length || list.includes(empty ? BLANK : String(v)); }
     if (f.op === 'empty') return empty;
     if (f.op === 'filled') return !empty;
     if (f.a === '' && f.op !== 'between') return true; // a filter still being typed does not hide anything
@@ -61,24 +64,33 @@ export function useGridFilters<T>(id: string, cols: Col<T>[], rows: T[], extra?:
         && (!q || cols.some((c) => String(val(c, r) ?? '').toLowerCase().includes(q.toLowerCase())))), [rows, filters, q, cols]); // eslint-disable-line react-hooks/exhaustive-deps
     const bar = <FilterBar cols={cols} rows={rows} filters={filters} setFilters={setFilters} q={q} setQ={setQ} shown={out.length} total={rows.length} extra={extra} />;
 
-    return { rows: out, bar, filters };
+    const api: GridFilterApi<T> = { filters, setFilters, source: rows, cols };
+
+    return { rows: out, bar, filters, api };
 }
 
 function FilterBar<T>({ cols, rows, filters, setFilters, q, setQ, shown, total, extra }: { cols: Col<T>[]; rows: T[]; filters: Filter[]; setFilters: (f: Filter[]) => void; q: string; setQ: (s: string) => void; shown: number; total: number; extra?: ReactNode }) {
     const set = (id: number, patch: Partial<Filter>) => setFilters(filters.map((f) => (f.id === id ? { ...f, ...patch } : f)));
     const add = () => { const c = cols[0]; setFilters([...filters, { id: Date.now(), col: c.key, op: OPS[c.type ?? 'text'][0][0], a: '', b: '' }]); };
+    const quick = filters.filter((f) => f.quick);
     const field = 'h-9 rounded-md border border-rule bg-tile px-2 text-sm text-ink focus:border-cobalt-600 focus:outline-none';
     return (
         <div className="space-y-2 border-b border-rule bg-glaze/50 px-3 py-3">
             <div className="flex flex-wrap items-center gap-2">
                 <label className="relative min-w-52 flex-1 sm:max-w-xs"><Search size={15} aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft" />
                     <input className={cx(field, 'w-full ps-8')} placeholder="Search every column" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" /></label>
-                <button type="button" onClick={add} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-cobalt-800 bg-tile px-3 text-sm font-semibold text-cobalt-800 hover:bg-cobalt-800 hover:text-white"><Plus size={15} aria-hidden /> Add filter</button>
+                <span className="inline-flex items-center gap-1.5 text-sm text-ink-soft"><ListFilter size={15} aria-hidden className="text-cobalt-800" /> Filter: click <ListFilter size={13} aria-hidden /> in any column heading</span>
+                <button type="button" onClick={add} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule bg-tile px-3 text-sm text-cobalt-800 hover:bg-glaze"><SlidersHorizontal size={15} aria-hidden /> Advanced filter</button>
                 {filters.length || q ? <button type="button" onClick={() => { setFilters([]); setQ(''); }} className="h-9 px-2 text-sm font-semibold text-ink-soft hover:text-crit-700">Clear all</button> : null}
                 <span className="ms-auto text-sm text-ink-soft"><b className="text-ink tabular-nums">{shown.toLocaleString('en-PK')}</b> of {total.toLocaleString('en-PK')} rows{filters.length ? ` · ${filters.length} ${filters.length === 1 ? 'filter' : 'filters'}` : ''}</span>
                 {extra}
             </div>
-            {filters.map((f, i) => {
+            {quick.length ? <div className="flex flex-wrap items-center gap-1.5">{quick.map((f) => {
+                const c = cols.find((x) => x.key === f.col);
+                return <span key={f.id} className="inline-flex items-center gap-1 rounded-full bg-cobalt-800 py-1 ps-3 pe-1 text-sm text-white">{c?.label ?? f.col}: {chipText(f)}
+                    <button type="button" onClick={() => setFilters(filters.filter((x) => x.id !== f.id))} aria-label={`Remove the ${c?.label} filter`} className="grid size-6 place-items-center rounded-full hover:bg-white/20"><X size={14} /></button></span>;
+            })}</div> : null}
+            {filters.filter((f) => !f.quick).map((f, i) => {
                 const c = cols.find((x) => x.key === f.col) ?? cols[0];
                 const type = c.type ?? 'text';
                 const input = type === 'number' ? 'number' : type === 'date' && f.op !== 'last' ? 'date' : f.op === 'last' ? 'number' : 'text';
@@ -100,6 +112,71 @@ function FilterBar<T>({ cols, rows, filters, setFilters, q, setQ, shown, total, 
     );
 }
 
+const fmtIso = (d: string) => (d ? d.split('-').reverse().join('/') : '');
+function chipText(f: Filter): string {
+    if (f.op === 'in') { const l = JSON.parse(f.a || '[]') as string[]; return l.length > 3 ? `${l.slice(0, 3).join(', ')} +${l.length - 3}` : l.join(', '); }
+    if (f.op === 'between') {
+        const date = /^\d{4}-/.test(f.a) || /^\d{4}-/.test(f.b);
+        const a = date ? fmtIso(f.a) : f.a, b = date ? fmtIso(f.b) : f.b;
+        return a && b ? `${a} to ${b}` : a ? `from ${a}` : `up to ${b}`;
+    }
+    return f.a;
+}
+
+/** D-289: a column heading's filter, like Excel: tick values (with counts), or a lowest / highest number or date. */
+function HeaderFilter<T>({ col, api, at, onClose }: { col: Col<T>; api: GridFilterApi<T>; at: { x: number; y: number }; onClose: () => void }) {
+    const type = col.type ?? 'text';
+    const current = api.filters.find((f) => f.quick && f.col === col.key);
+    const val = (r: T) => (col.value ? col.value(r) : (r as Record<string, unknown>)[col.key] as string | number | null);
+    const counts = useMemo(() => {
+        if (type === 'number' || type === 'date') return [];
+        const m = new Map<string, number>();
+        for (const r of api.source) { const v = val(r); const k = v === null || v === undefined || v === '' ? BLANK : String(v); m.set(k, (m.get(k) ?? 0) + 1); }
+        return [...m.entries()].sort((a, b) => (a[0] === BLANK ? 1 : b[0] === BLANK ? -1 : a[0].localeCompare(b[0], undefined, { numeric: true })));
+    }, [api.source, col.key]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [picked, setPicked] = useState<string[]>(() => (current?.op === 'in' ? JSON.parse(current.a || '[]') : []));
+    const [q, setQ] = useState('');
+    const [lo, setLo] = useState(current?.op === 'between' ? current.a : '');
+    const [hi, setHi] = useState(current?.op === 'between' ? current.b : '');
+    const apply = () => {
+        const rest = api.filters.filter((f) => !(f.quick && f.col === col.key));
+        const range = type === 'number' || type === 'date';
+        const f: Filter | null = range ? (lo || hi ? { id: Date.now(), col: col.key, op: 'between', a: lo, b: hi, quick: true } : null) : picked.length ? { id: Date.now(), col: col.key, op: 'in', a: JSON.stringify(picked), b: '', quick: true } : null;
+        api.setFilters(f ? [...rest, f] : rest);
+        onClose();
+    };
+    const shown = counts.filter(([k]) => !q || k.toLowerCase().includes(q.toLowerCase()));
+    const field = 'h-9 w-full rounded-md border border-rule bg-tile px-2 text-sm text-ink focus:border-cobalt-600 focus:outline-none';
+    const left = Math.max(8, Math.min(at.x, window.innerWidth - 296));
+    return (
+        <>
+            <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
+            <div role="dialog" aria-label={`Filter ${col.label}`} className="fixed z-50 w-72 rounded-tile border border-rule bg-tile p-3 text-sm shadow-xl" style={{ left, top: Math.min(at.y + 4, window.innerHeight - 380) }}>
+                <p className="mb-2 font-medium text-cobalt-900">{col.label}</p>
+                {type === 'number' || type === 'date' ? (
+                    <div className="grid grid-cols-2 gap-2">
+                        <label className="text-xs text-ink-soft">{type === 'date' ? 'From' : 'Lowest'}<input className={field} type={type === 'date' ? 'date' : 'number'} value={lo} onChange={(e) => setLo(e.target.value)} autoFocus /></label>
+                        <label className="text-xs text-ink-soft">{type === 'date' ? 'To' : 'Highest'}<input className={field} type={type === 'date' ? 'date' : 'number'} value={hi} onChange={(e) => setHi(e.target.value)} /></label>
+                    </div>
+                ) : <>
+                    {counts.length > 8 ? <input className={cx(field, 'mb-2')} placeholder="Search values" value={q} onChange={(e) => setQ(e.target.value)} autoFocus /> : null}
+                    <div className="mb-1 flex gap-3 text-xs"><button type="button" className="text-cobalt-800 hover:underline" onClick={() => setPicked([...new Set([...picked, ...shown.map(([k]) => k)])])}>Select all</button><button type="button" className="text-cobalt-800 hover:underline" onClick={() => setPicked([])}>Clear</button></div>
+                    <div className="max-h-56 space-y-0.5 overflow-y-auto">{shown.map(([k, n]) => (
+                        <label key={k} className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 hover:bg-glaze">
+                            <input type="checkbox" checked={picked.includes(k)} onChange={() => setPicked(picked.includes(k) ? picked.filter((x) => x !== k) : [...picked, k])} />
+                            <span className={cx('flex-1 truncate', k === BLANK && 'text-ink-soft')}>{k}</span><span className="text-xs text-ink-soft tabular-nums">{n}</span>
+                        </label>
+                    ))}</div>
+                </>}
+                <div className="mt-3 flex gap-2">
+                    <button type="button" onClick={apply} className="h-9 flex-1 rounded-md bg-cobalt-800 text-sm text-white hover:bg-cobalt-900">Apply</button>
+                    {current ? <button type="button" onClick={() => { api.setFilters(api.filters.filter((f) => f !== current)); onClose(); }} className="h-9 rounded-md border border-rule px-3 text-sm text-ink-soft hover:text-crit-700">Remove</button> : null}
+                </div>
+            </div>
+        </>
+    );
+}
+
 /** Export exactly these rows and columns as a file Excel opens (UTF-8 CSV). */
 export function exportCsv<T>(name: string, cols: Col<T>[], rows: T[]) {
     const cell = (v: unknown) => { const s = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
@@ -113,13 +190,16 @@ export function exportCsv<T>(name: string, cols: Col<T>[], rows: T[]) {
 }
 
 /** The grid itself. Pass rows already filtered (useGridFilters) or let it filter (filterable). */
-export default function DataGrid<T>({ id, cols, rows, name, filterable = true, expand, rowKey, pageSize = 25, toolbar, empty = 'No rows' }: {
+export default function DataGrid<T>({ id, cols, rows, name, filterable = true, expand, rowKey, pageSize = 25, toolbar, empty = 'No rows', filterApi }: {
     id: string; cols: Col<T>[]; rows: T[]; name: string; filterable?: boolean; expand?: (row: T) => ReactNode; rowKey?: (row: T, i: number) => string; pageSize?: number; toolbar?: ReactNode; empty?: string;
+    filterApi?: GridFilterApi<T>; // filters kept by the page (useGridFilters) that the column headings set
 }) {
+    const [headFilter, setHeadFilter] = useState<{ key: string; x: number; y: number } | null>(null);
     const [exportRows, setExportRows] = useState<T[]>([]);
     const exportBtn = <button type="button" onClick={() => exportCsv(name, cols, exportRows)} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-ok-700 bg-tile px-3 text-sm font-semibold text-ok-700 hover:bg-ok-700 hover:text-white"><Download size={15} aria-hidden /> Export to Excel</button>;
     const own = useGridFilters(id, cols, rows, toolbar ? undefined : exportBtn);
     const list = filterable ? own.rows : rows;
+    const api = filterable ? own.api : filterApi;
     const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(() => load(`kk.grid.${id}.sort`, null));
     useEffect(() => save(`kk.grid.${id}.sort`, sort), [id, sort]);
     const [open, setOpen] = useState<string | null>(null);
@@ -162,9 +242,16 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
                                 const on = sort?.key === c.key;
                                 return (
                                     <th key={c.key} className={cx(head, num(c) ? 'text-end' : 'text-start')} style={c.width ? { width: c.width } : undefined} aria-sort={on ? (sort!.dir === 1 ? 'ascending' : 'descending') : 'none'}>
-                                        <button type="button" className={cx('inline-flex items-center gap-1 hover:text-cobalt-800', num(c) && 'flex-row-reverse')} onClick={() => setSort(on && sort!.dir === -1 ? null : { key: c.key, dir: on ? -1 : 1 })}>
-                                            {c.label}{on ? (sort!.dir === 1 ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />) : <ArrowUpDown size={13} aria-hidden className="text-ink-faint" />}
-                                        </button>
+                                        <span className={cx('inline-flex items-center gap-1', num(c) && 'flex-row-reverse')}>
+                                            <button type="button" className={cx('inline-flex items-center gap-1 hover:text-cobalt-800', num(c) && 'flex-row-reverse')} onClick={() => setSort(on && sort!.dir === -1 ? null : { key: c.key, dir: on ? -1 : 1 })}>
+                                                {c.label}{on ? (sort!.dir === 1 ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />) : <ArrowUpDown size={13} aria-hidden className="text-ink-faint" />}
+                                            </button>
+                                            {api ? (() => {
+                                                const active = api.filters.some((f) => f.quick && f.col === c.key);
+                                                return <button type="button" aria-label={`Filter ${c.label}`} title={`Filter ${c.label}`} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHeadFilter({ key: c.key, x: r.left, y: r.bottom }); }}
+                                                    className={cx('grid size-6 place-items-center rounded', active ? 'bg-cobalt-800 text-white' : 'text-ink-soft hover:bg-white hover:text-cobalt-800')}><ListFilter size={13} aria-hidden /></button>;
+                                            })() : null}
+                                        </span>
                                     </th>
                                 );
                             })}
@@ -190,6 +277,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
                 </div>
             )}
             {pager}
+            {headFilter && api ? (() => { const c = api.cols.find((x) => x.key === headFilter.key) ?? cols.find((x) => x.key === headFilter.key); return c ? <HeaderFilter col={c} api={api} at={headFilter} onClose={() => setHeadFilter(null)} /> : null; })() : null}
         </div>
     );
 }

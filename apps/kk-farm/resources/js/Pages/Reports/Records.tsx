@@ -55,7 +55,7 @@ export default function Records({ kind, kinds, rows }: Props) {
         { key: 'status', label: 'Status', type: 'enum' },
         { key: 'by', label: 'By', type: 'enum' },
     ], [kind, unit]);
-    const { rows: filtered, bar } = useGridFilters(`records-${kind}`, recordCols, rows);
+    const { rows: filtered, bar, api } = useGridFilters(`records-${kind}`, recordCols, rows);
 
     // "By date": the day's numbers from the filtered records
     const days = useMemo<Day[]>(() => {
@@ -108,7 +108,7 @@ export default function Records({ kind, kinds, rows }: Props) {
                         toolbar={<ViewSwitch view={view} setView={setView} seg={seg} />}
                         expand={(d) => <DataGrid<Row> id={`records-${kind}-day`} name={`${TITLE[kind]} ${d.on}`} cols={inner} rows={d.list} filterable={false} pageSize={50} />} />
                 ) : (
-                    <DataGrid<Row> id={`records-${kind}-all`} name={`${TITLE[kind]} all records`} cols={recordCols} rows={filtered} filterable={false} empty="Nothing recorded"
+                    <DataGrid<Row> id={`records-${kind}-all`} name={`${TITLE[kind]} all records`} cols={recordCols} rows={filtered} filterable={false} filterApi={api} empty="Nothing recorded"
                         toolbar={<ViewSwitch view={view} setView={setView} seg={seg} />} />
                 )}
             </Panel>

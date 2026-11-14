@@ -84,7 +84,7 @@ export default function Sheet({ rows, seeHealth }: Props) {
     const [picking, setPicking] = useState(false);
     useEffect(() => save('kk.sheet.cols', shown), [shown]);
     useEffect(() => save('kk.sheet.group', groupBy), [groupBy]);
-    const { rows: filtered, bar } = useGridFilters('herd-sheet', defs, rows);
+    const { rows: filtered, bar, api } = useGridFilters('herd-sheet', defs, rows);
     const visible = defs.filter((c) => shown.includes(c.key));
     const sections = [...new Set(defs.map((c) => c.section))];
     const groupCol = defs.find((c) => c.key === groupBy);
@@ -155,7 +155,7 @@ export default function Sheet({ rows, seeHealth }: Props) {
                     <DataGrid<Group> id={`herd-sheet-group-${groupBy}`} name={`Herd sheet by ${groupCol.label.toLowerCase()}`} cols={groupCols} rows={groups} filterable={false} rowKey={(g) => g.key} toolbar={toolbar}
                         expand={(g) => <DataGrid<Row> id="herd-sheet-group-rows" name={`Herd sheet ${groupCol.label} ${g.value}`} cols={visible} rows={g.list} filterable={false} rowKey={(r) => r.id} pageSize={50} />} />
                 ) : (
-                    <DataGrid<Row> id="herd-sheet" name="Herd sheet" cols={visible} rows={filtered} filterable={false} rowKey={(r) => r.id} pageSize={50} toolbar={toolbar} />
+                    <DataGrid<Row> id="herd-sheet" name="Herd sheet" cols={visible} rows={filtered} filterable={false} rowKey={(r) => r.id} pageSize={50} toolbar={toolbar} filterApi={api} />
                 )}
             </Panel>
         </>
