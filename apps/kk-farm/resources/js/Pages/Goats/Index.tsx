@@ -90,7 +90,6 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
         { key: 'pregnant', label: 'Pregnant', n: tagged('pregnant'), on: show === 'pregnant', pick: show === 'pregnant' ? only(() => undefined) : only(() => setShow('pregnant')), dot: TONES.pregnant.bar, art: CHIP_ART.pregnant },
         { key: 'lactating', label: 'Lactating', n: tagged('lactating'), on: show === 'lactating', pick: show === 'lactating' ? only(() => undefined) : only(() => setShow('lactating')), dot: TONES.lactating.bar, art: CHIP_ART.lactating },
         { key: 'missing', label: 'Missing data', n: tagged('missing'), on: show === 'missing', pick: show === 'missing' ? only(() => undefined) : only(() => setShow('missing')), dot: 'bg-watch-400' },
-        { key: 'left', label: 'Left the farm', n: goats.length - onFarm.length, on: tone === 'left', pick: tone === 'left' ? only(() => undefined) : only(() => { setTone('left'); setStatus('all'); }), dot: TONES.left.bar, art: CHIP_ART.left },
     ];
     const { rows: shown, pager } = usePaged(rows, { size: PAGE, id: 'goats' }); // D-263: numbered pages
     const pickTone = (t: Tone | '') => { setTone(t); if (t === 'left') setStatus('all'); };
@@ -150,10 +149,11 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                         className={cx('kk-lift relative flex min-h-[4.25rem] flex-col items-start justify-between overflow-hidden rounded-tile border px-3 py-2 text-start shadow-tile transition-colors',
                             c.on ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:border-cobalt-200')}>
                         <span className="flex w-full items-center justify-between gap-2">
-                            <span className="text-xl leading-none font-bold tabular-nums">{c.n.toLocaleString('en-PK')}</span>
-                            {c.art ? <img src={`/icons/${c.art}.png`} alt="" aria-hidden className={cx('size-6 rounded-md bg-white object-contain', c.key === 'critical' && 'kk-beat')} /> : <span aria-hidden className={cx('size-2.5 rounded-full', c.dot)} />}
+                            <span className="flex items-baseline gap-1.5"><span className="text-xl leading-none font-bold tabular-nums">{c.n.toLocaleString('en-PK')}</span>
+                                {c.key !== 'all' && onFarm.length ? <span className={cx('text-xs font-semibold tabular-nums', c.on ? 'text-white/85' : 'text-ink-soft')} title={`${c.n} of ${onFarm.length} goats on the farm`}>{Math.round((c.n / onFarm.length) * 1000) / 10}%</span> : null}</span>
+                            {c.art ? <img src={`/icons/${c.art}.png`} alt="" aria-hidden className={cx('size-6 shrink-0 rounded-md bg-white object-contain', c.key === 'critical' && 'kk-beat')} /> : <span aria-hidden className={cx('size-2.5 rounded-full', c.dot)} />}
                         </span>
-                        <span className={cx('truncate text-xs font-semibold max-w-full', c.on ? 'text-white/85' : 'text-ink-soft')} title={c.label}>{c.label}</span>
+                        <span className={cx('max-w-full truncate text-xs font-semibold', c.on ? 'text-white/85' : 'text-ink-soft')} title={c.label}>{c.label}</span>
                         {!c.on ? <span aria-hidden className={cx('absolute inset-x-0 bottom-0 h-1', c.dot)} /> : null}
                     </button>
                 ))}
