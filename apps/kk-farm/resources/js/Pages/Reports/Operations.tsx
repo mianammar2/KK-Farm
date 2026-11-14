@@ -13,7 +13,7 @@ import Sheet from '../../components/Sheet';
  */
 type Row = {
     key: string; op: string; app: string; operation: string; on: string; entered: string | null; sort: string; goatId: string | null; number: string | null;
-    detail: string | null; by: string | null; source: string; fix: (Record<string, string | number | null> & { id: number }) | null; breed: string | null; sex: string | null; pen: string | null; status: string | null;
+    detail: string | null; by: string | null; source: string; fix: (Record<string, unknown> & { id: number; link?: string; fields?: { key: string; label: string; type: 'date' | 'number' | 'text'; value: string | number | null }[] }) | null; breed: string | null; sex: string | null; pen: string | null; status: string | null;
 };
 type Op = { key: string; app: string; label: string };
 
@@ -37,7 +37,7 @@ export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[];
     const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
 
     const cols = useMemo<Col<Row>[]>(() => { const all: Col<Row>[] = [
-        ...(rows.some((r) => r.fix) ? [{ key: 'fixIt', label: 'Correct', type: 'text' as const, value: () => '', render: (r: Row) => (r.fix ? <button type="button" onClick={() => setFixing(r)} className="h-8 rounded-md border border-rule bg-tile px-2.5 text-sm text-cobalt-800 hover:bg-glaze">Correct</button> : null) }] : []), // D-311
+        ...(rows.some((r) => r.fix) ? [{ key: 'fixIt', label: 'Correct', type: 'text' as const, value: () => '', render: (r: Row) => (r.fix?.link ? <Link href={r.fix.link} className="inline-flex h-8 items-center rounded-md border border-rule bg-tile px-2.5 text-sm text-cobalt-800 hover:bg-glaze">Correct</Link> : r.fix ? <button type="button" onClick={() => setFixing(r)} className="h-8 rounded-md border border-rule bg-tile px-2.5 text-sm text-cobalt-800 hover:bg-glaze">Correct</button> : null) }] : []), // D-311
         { key: 'on', label: 'Date', type: 'date', render: (r) => fmt(r.on) },
         { key: 'entered', label: 'Entered on', type: 'text' },
         { key: 'number', label: 'Goat', type: 'text', total: 'count', render: (r) => (r.goatId ? <Link href={`/goats/${r.goatId}`} className="font-mono text-cobalt-800 hover:underline">{r.number}</Link> : '—') },
@@ -137,7 +137,7 @@ export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[];
                     </div>
                 </Panel>
             </div>
-            {fixing?.fix ? <Sheet onClose={() => setFixing(null)}><CorrectRecord op={fixing.op} goat={fixing.number} fix={fixing.fix} onDone={() => setFixing(null)} /></Sheet> : null}
+            {fixing?.fix ? <Sheet onClose={() => setFixing(null)}><CorrectRecord op={fixing.op} label={fixing.operation} goat={fixing.number} fix={fixing.fix} onDone={() => setFixing(null)} /></Sheet> : null}
             <Panel flush>
                 {bar}
                 <DataGrid<Row> id="operations-log-grid" name={app ? `${app} Operations Log` : 'Operations Log'} cols={cols} rows={shown} rowKey={(r) => r.key} filterable={false} filterApi={api} pageSize={50} empty="No operation matches" />

@@ -124,6 +124,7 @@ return [
     'POST /goats/{animal}/death' => ['inline' => 'the action checks report_death', 'module' => 'goats'],
     'POST /goats/{animal}/edit' => ['inline' => 'the action checks edit_goats', 'module' => 'goats'],
     'POST /goats/{animal}/exit' => ['inline' => 'the action checks exit_animal', 'module' => 'goats'],
+    'POST /reports/operations/correct' => ['inline' => 'the action checks the app, who recorded it and correct_health_records', 'open' => 'every app\'s log: the action checks the operation\'s app itself'], // D-313
     'POST /heights/{record}' => ['inline' => 'the action checks record_height and who measured', 'module' => 'goats'], // D-311
     'POST /goats/{animal}/height' => ['inline' => 'the action checks record_height', 'module' => 'goats'],
     'POST /goats/{animal}/photos' => ['gate' => 'add_goat_photos', 'module' => 'goats'],

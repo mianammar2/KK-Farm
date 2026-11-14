@@ -139,6 +139,89 @@ class OpsLog
         ];
     }
 
+    /**
+     * D-313: what Correct may change for every other operation (column => label). The record itself changes, so every
+     * page and report shows it; the old values stay as a revision. Fields that feed other records are left to their own
+     * screens (a move's PENs, a sale's amount, stock rates), and the books are corrected with a reversing entry.
+     */
+    public const FIX = [
+        'move' => ['moved_on' => 'Date', 'reason' => 'Reason', 'notes' => 'Notes'],
+        'exit' => ['moved_on' => 'Date', 'reason' => 'Reason', 'destination' => 'Destination', 'notes' => 'Notes'],
+        'photo' => ['notes' => 'Notes'],
+        'case' => ['onset_on' => 'Started on', 'condition' => 'Condition', 'diagnosis' => 'Diagnosis', 'notes' => 'Notes'],
+        'treatment' => ['given_on' => 'Date given', 'dose' => 'Dose', 'meat_clear_on' => 'Meat clear on', 'milk_clear_on' => 'Milk clear on', 'notes' => 'Notes'],
+        'dose' => ['notes' => 'Notes'],
+        'care' => ['occurred_on' => 'Date', 'title' => 'What was given', 'batch_lot' => 'Batch', 'notes' => 'Notes'],
+        'teeth' => ['examined_on' => 'Date', 'dental_code' => 'Teeth code', 'notes' => 'Notes'],
+        'death' => ['died_at' => 'Date of death', 'cause' => 'Cause', 'circumstances' => 'Circumstances'],
+        'parasite' => ['sampled_on' => 'Date', 'epg' => 'EPG', 'famacha' => 'FAMACHA', 'notes' => 'Notes'],
+        'outbreak' => ['opened_on' => 'Opened on', 'condition' => 'Condition'],
+        'heat' => ['observed_on' => 'Date', 'signs' => 'Signs', 'notes' => 'Notes'],
+        'mating' => ['mated_on' => 'Mating date', 'notes' => 'Notes'],
+        'ultrasound' => ['checked_on' => 'Date', 'fetuses' => 'Fetuses', 'notes' => 'Notes'],
+        'breeding_ok' => ['reason' => 'Reason'],
+        'selection' => ['reason' => 'Reason'],
+        'kidding' => ['kidded_on' => 'Kidding date', 'complications' => 'Complications', 'notes' => 'Notes'],
+        'kid_care' => ['amount_ml' => 'Amount (ml)', 'notes' => 'Notes'],
+        'weaning' => ['weaned_on' => 'Weaning date', 'weight_kg' => 'Weight (KG)', 'notes' => 'Notes'],
+        'repro_loss' => ['occurred_on' => 'Date', 'kids_lost' => 'Kids lost'],
+        'feed_given' => ['refused_kg' => 'Refused (KG)', 'wasted_kg' => 'Wasted (KG)'],
+        'feeding_round' => ['fed_on' => 'Date'],
+        'feed_stock' => ['moved_on' => 'Date', 'qty_kg' => 'Quantity (KG)', 'party' => 'Party', 'reference' => 'Reference', 'notes' => 'Notes'],
+        'feed_count' => ['notes' => 'Notes'],
+        'tmr' => ['output_kg' => 'Output (KG)', 'notes' => 'Notes'],
+        'feed_lot' => ['moisture_pct' => 'Moisture %', 'sample_ref' => 'Sample'],
+        'ration' => ['notes' => 'Notes'],
+        'pen_clean' => ['disinfectant' => 'Disinfectant', 'notes' => 'Notes'],
+        'growth_case' => ['reason' => 'Reason', 'action' => 'Action'],
+        'task_done' => ['notes' => 'Notes'],
+        'checklist' => ['notes' => 'Notes'],
+        'incident' => ['description' => 'What happened', 'resolution' => 'Resolution'],
+        'handover' => ['summary' => 'Summary', 'pending' => 'Pending'],
+        'medicine_stock' => ['moved_on' => 'Date', 'qty' => 'Quantity', 'batch' => 'Batch', 'party' => 'Party', 'reference' => 'Reference', 'notes' => 'Notes'],
+        'store_move' => ['moved_on' => 'Date', 'qty' => 'Quantity', 'party' => 'Party', 'issued_to' => 'Issued to', 'reference' => 'Reference', 'notes' => 'Notes'],
+        'purchase_order' => ['expected_on' => 'Expected on', 'notes' => 'Notes'],
+        'goat_lot' => ['expected_head' => 'Goats expected'],
+        'sale' => ['buyer' => 'Buyer', 'notes' => 'Notes'],
+        'sale_order' => ['buyer' => 'Buyer', 'notes' => 'Notes'],
+        'clearance' => ['reason' => 'Reason'],
+        'trip' => ['destination' => 'Destination', 'driver' => 'Driver', 'distance_km' => 'Distance (km)'],
+        'attendance' => ['notes' => 'Notes'],
+        'leave' => ['reason' => 'Reason'],
+        'training' => ['title' => 'Title', 'trainer' => 'Trainer', 'certificate_ref' => 'Certificate'],
+        'skill' => ['evidence' => 'Evidence'],
+        'repair' => ['problem' => 'Problem', 'work_done' => 'Work done'],
+        'milking' => ['litres' => 'Litres', 'discard_reason' => 'Discard reason'],
+        'milk_session' => ['notes' => 'Notes'],
+        'milk_dispatch' => ['litres' => 'Litres', 'buyer' => 'Buyer', 'invoice_no' => 'Invoice'],
+        'processing' => ['output_qty' => 'Output', 'notes' => 'Notes'],
+        'lactation' => ['dry_reason' => 'Dry reason'],
+        'fattening_batch' => ['name' => 'Name', 'notes' => 'Notes'],
+        'fattening_goat' => ['entry_weight_kg' => 'Entry weight (KG)'],
+        'welfare_check' => ['bcs' => 'BCS', 'notes' => 'Notes'],
+        'welfare_case' => ['handling_note' => 'Handling note'],
+        'welfare_action' => ['notes' => 'Notes'],
+        'end_of_life' => ['details' => 'Details'],
+        'env_round' => ['temperature_c' => 'Temperature (°C)', 'humidity_pct' => 'Humidity %', 'notes' => 'Notes'],
+        'env_issue' => ['description' => 'Description', 'resolution' => 'Resolution'],
+        'waste' => ['qty' => 'Quantity', 'notes' => 'Notes'],
+        'water_test' => ['ph' => 'pH', 'tds_ppm' => 'TDS (ppm)', 'notes' => 'Notes'],
+        'quality_case' => ['title' => 'Title', 'description' => 'Description', 'root_cause' => 'Root cause', 'learning' => 'Learning'],
+        'capa' => ['action' => 'Action', 'execution_notes' => 'Execution notes'],
+        'hold' => ['release_note' => 'Release note'],
+        'fodder_crop' => ['variety' => 'Variety', 'notes' => 'Notes'],
+        'fodder_input' => ['product' => 'Product', 'qty' => 'Quantity'],
+        'fodder_lot' => ['fresh_kg' => 'Fresh (KG)', 'decision_note' => 'Note'],
+    ];
+
+    private const NUMBER = ['epg', 'famacha', 'fetuses', 'amount_ml', 'weight_kg', 'kids_lost', 'refused_kg', 'wasted_kg', 'qty_kg', 'output_kg', 'moisture_pct', 'qty', 'expected_head',
+        'distance_km', 'litres', 'output_qty', 'entry_weight_kg', 'bcs', 'temperature_c', 'humidity_pct', 'ph', 'tds_ppm', 'fresh_kg'];
+
+    public static function fieldType(string $col): string
+    {
+        return in_array($col, self::NUMBER, true) ? 'number' : (preg_match('/(_on|_at)$/', $col) ? 'date' : 'text');
+    }
+
     /** D-311: operations whose record can be corrected from the log, with the values the correction form starts from. */
     public static function fixValues(string $op, object $r): ?array
     {
@@ -150,7 +233,9 @@ class OpsLog
             'checkup' => ['id' => $r->id, 'checked_on' => $d($r->checked_on), 'temperature_f' => $r->temperature_f, 'weight_kg' => $r->weight_kg, 'body_score' => $r->body_score,
                 'findings' => $r->findings, 'outcome' => $r->outcome, 'ultrasound' => $r->ultrasound, 'fetuses' => $r->fetuses, 'ultrasound_status' => $r->ultrasound_status,
                 'viability' => $r->viability, 'days_pregnant' => $r->days_pregnant, 'follow_up_on' => $d($r->follow_up_on), 'follow_up_note' => $r->follow_up_note],
-            default => null,
+            'register' => ['id' => $r->id, 'link' => "/goats/{$r->id}/edit"], // the goat's details: the edit page (Administrator)
+            default => isset(self::FIX[$op]) ? ['id' => $r->id, 'fields' => collect(self::FIX[$op])->filter(fn ($l, $c) => property_exists($r, $c))
+                ->map(fn ($label, $col) => ['key' => $col, 'label' => $label, 'type' => self::fieldType($col), 'value' => self::fieldType($col) === 'date' ? $d($r->{$col}) : $r->{$col}])->values()->all()] : null,
         };
     }
 

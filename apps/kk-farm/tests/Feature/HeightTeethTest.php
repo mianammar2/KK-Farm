@@ -235,4 +235,20 @@ class HeightTeethTest extends TestCase
         $other = $this->user('caretaker');
         $this->actingAs($other)->post("/heights/{$h->id}", ['measured_on' => now()->toDateString(), 'height_in' => 30])->assertForbidden();
     }
+
+    /** D-313: every operation can be corrected from the log; what follows from it is updated; the old value stays. */
+    public function test_any_operation_is_corrected_from_the_log(): void
+    {
+        $vet = $this->user('vet');
+        $m = \App\Models\Mating::create(['dam_id' => $this->goat->id, 'mated_on' => now()->subDays(20)->toDateString(), 'method' => 'natural', 'status' => 'pending', 'recorded_by' => $vet->name]);
+        $this->actingAs($vet)->get('/reports/operations?app=breeding')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => ! empty(collect($rows)->firstWhere('op', 'mating')['fix']['fields'])));
+        $on = now()->subDays(25)->toDateString();
+        $this->actingAs($vet)->post('/reports/operations/correct', ['op' => 'mating', 'id' => $m->id, 'values' => ['mated_on' => $on], 'reason' => 'wrong day'])->assertSessionHasNoErrors();
+        $m->refresh();
+        $this->assertSame($on, $m->mated_on->toDateString());
+        $this->assertSame(now()->subDays(25)->addDays(150)->toDateString(), \Illuminate\Support\Carbon::parse($m->expected_kidding_on)->toDateString(), 'the expected kidding follows');
+        $this->assertTrue(\App\Models\RecordRevision::where('record_type', 'mating')->where('record_id', $m->id)->exists());
+        $this->actingAs($this->user('caretaker'))->post('/reports/operations/correct', ['op' => 'mating', 'id' => $m->id, 'values' => ['notes' => 'x']])->assertForbidden();
+        $this->actingAs($vet)->post('/reports/operations/correct', ['op' => 'money', 'id' => 1, 'values' => []])->assertNotFound(); // the books: a reversing entry
+    }
 }
