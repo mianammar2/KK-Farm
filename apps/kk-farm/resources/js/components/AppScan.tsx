@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { currentApp } from '../lib/apps';
 import type { SharedProps } from '../types';
 import GoatProfileCard from './GoatProfileCard';
-import Sheet from './Sheet';
+import { X } from 'lucide-react';
 
 /**
  * D-301: a scanner in every app. The Scan button (or the RFID gun, while inside an app) finds the goat by its RFID
@@ -45,7 +45,7 @@ const ACTIONS: Record<string, Action[]> = {
 const DEFAULT: Action[] = [{ label: 'Add weight', href: goat('weight'), gate: 'record_weights' }, { label: 'Health checkup', href: goat('checkup'), gate: 'health_checkup' }, { label: 'Move PEN', href: goat('move'), gate: 'move_goats' }];
 
 // D-302: how the scanner shows: a box in the top bar, a big button in the app menu, or a small button (phone bar)
-export default function AppScan({ listen = true, variant = 'button' }: { listen?: boolean; variant?: 'field' | 'menu' | 'button' }) { // listen: the one instance that takes RFID gun reads
+export default function AppScan({ listen = true, variant = 'bar' }: { listen?: boolean; variant?: 'bar' | 'field' | 'menu' | 'button' }) { // listen: the one instance that takes RFID gun reads
     const { auth } = usePage<SharedProps>().props;
     const pageUrl = usePage().url;
     const app = currentApp(pageUrl, auth?.modules ?? []);
@@ -76,14 +76,21 @@ export default function AppScan({ listen = true, variant = 'button' }: { listen?
     }, [app, lookUp, listen]);
     useEffect(() => { if (open && !found) setTimeout(() => input.current?.focus(), 50); }, [open, found]);
 
-    if (!auth) return null;
+    if (!auth || !app) return null; // D-303: only inside an app
     const gates = auth.gates ?? [];
     const actions = (app ? ACTIONS[app.key] ?? DEFAULT : DEFAULT).filter((a) => (!a.gate || gates.includes(a.gate)) && (!a.female || found?.sex === 'female'));
     const close = () => { setOpen(false); setFound(null); setError(''); setCode(''); };
 
     return (
         <>
-            {variant === 'field' ? (
+            {variant === 'bar' ? (
+                <form onSubmit={(e) => { e.preventDefault(); const v = (e.currentTarget.elements.namedItem('scan') as HTMLInputElement).value; if (v.trim()) { setCode(v); setOpen(true); lookUp(v); e.currentTarget.reset(); } }}
+                    className="mb-4 flex items-center gap-2 rounded-tile border border-cobalt-800/30 bg-tile p-2 shadow-tile">
+                    <span className="hidden shrink-0 items-center gap-1.5 ps-2 text-sm text-cobalt-900 sm:inline-flex"><ScanLine size={18} aria-hidden /> {app.label}</span>
+                    <input name="scan" className="field min-w-0 flex-1" placeholder="Scan RFID or type Tag ID" autoComplete="off" autoCapitalize="characters" aria-label={`Scan RFID or type Tag ID for ${app.label}`} />
+                    <button type="submit" className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-tile bg-cobalt-800 px-4 text-sm text-white hover:bg-cobalt-900"><ScanLine size={16} aria-hidden /> Scan</button>
+                </form>
+            ) : variant === 'field' ? (
                 <form onSubmit={(e) => { e.preventDefault(); const v = (e.currentTarget.elements.namedItem('scan') as HTMLInputElement).value; if (v.trim()) { setCode(v); setOpen(true); lookUp(v); e.currentTarget.reset(); } }}
                     className="relative w-full max-w-xs" title={app ? `Scan a goat for ${app.label}` : 'Scan a goat'}>
                     <ScanLine size={17} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-cobalt-800" />
@@ -100,7 +107,7 @@ export default function AppScan({ listen = true, variant = 'button' }: { listen?
                 </button>
             )}
             {open ? createPortal(
-                <Sheet onClose={close}>
+                <PopCard onClose={close}>
                     <div className="space-y-4 p-4 sm:p-5">
                         <div>
                             <h2 className="text-lg text-cobalt-900">{app ? `${app.label}: scan a goat` : 'Scan a goat'}</h2>
@@ -129,8 +136,21 @@ export default function AppScan({ listen = true, variant = 'button' }: { listen?
                             </>
                         ) : null}
                     </div>
-                </Sheet>, document.body, // above everything, also when its top bar is hidden (phone / computer)
+                </PopCard>, document.body, // above everything
             ) : null}
         </>
+    );
+}
+
+/** D-303: the scan result as a card in the middle of the screen (Escape or the background closes it). */
+function PopCard({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+    useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
+    return (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-cobalt-950/45 p-3 sm:p-6" onClick={onClose} role="dialog" aria-modal="true">
+            <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-tile shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 grid size-9 place-items-center rounded-full bg-glaze text-ink-soft hover:text-ink"><X size={18} /></button>
+                {children}
+            </div>
+        </div>
     );
 }

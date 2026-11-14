@@ -134,7 +134,6 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                     <ArtIcon name={app.art} size={38} />
                     <span className="min-w-0 text-base leading-tight font-bold text-white">{app.label}</span>
                 </Link>
-                <AppScan variant="menu" listen={false} />
                 <AppMenu appKey={app.key} sections={sections} active={active} onNavigate={onNavigate} />
             </nav>
         );
@@ -304,7 +303,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 ) : null}
             </AnimatePresence>
 
-            <AppBar path={path} items={NAV.flatMap((g) => g.items)} right={<div className="flex items-center gap-1"><AppScan listen={false} /><NotificationBell path={path} onDark /><RoleSwitcher auth={auth} roles={roles} compact /></div>} />
+            <AppBar path={path} items={NAV.flatMap((g) => g.items)} right={<div className="flex items-center gap-1"><NotificationBell path={path} onDark /><RoleSwitcher auth={auth} roles={roles} compact /></div>} />
             <header className="sticky top-0 z-20 hidden items-center gap-2 border-b border-rule bg-tile/95 px-3 py-2 backdrop-blur sm:px-5 lg:flex">
                 <button type="button" aria-label="Open menu" onClick={() => setDrawer(true)} className="grid size-11 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100 lg:hidden">
                     <Menu size={21} />
@@ -320,7 +319,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search goats" aria-label="Search goats by number, name or tag" className="field pl-9" />
                     </form>
                 )}
-                <AppScan variant="field" />
                 {page.props.demo ? (
                     <span className="ml-auto hidden items-center gap-1.5 rounded-[4px] bg-watch-100 px-2 py-1 text-xs font-semibold text-watch-700 md:inline-flex">
                         Synthetic demo data
@@ -338,6 +336,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 transition={reduced ? { duration: 0.15 } : { type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
                 className="kk-page mx-auto max-w-[1440px] px-3 pt-4 pb-28 sm:px-5 lg:py-5"
             >
+                <AppScan variant="bar" />{/* D-303: the scanner inside each app, at the top of its pages */}
                 <AppStripContext.Provider value={stripState}>{children}</AppStripContext.Provider>
             </motion.main>
 
