@@ -24,6 +24,9 @@ class OpsLog
         'quality' => ['Quality', ['quality']], 'fodder' => ['Fodder', ['fodder']], 'settings' => ['Settings', ['settings']],
     ];
 
+    /** D-314: the transaction ID of each operation: this code and the record's number (WT-1523). */
+    public const CODES = ['register' => 'RG', 'weight' => 'WT', 'height' => 'HT', 'move' => 'MV', 'exit' => 'EX', 'photo' => 'PH', 'edit' => 'ED', 'rfid' => 'RF', 'checkup' => 'CK', 'case' => 'HC', 'treatment' => 'TR', 'dose' => 'DS', 'care' => 'VC', 'teeth' => 'TT', 'death' => 'DR', 'parasite' => 'PS', 'outbreak' => 'OB', 'heat' => 'HE', 'mating' => 'MT', 'ultrasound' => 'US', 'breeding_ok' => 'BA', 'selection' => 'RS', 'kidding' => 'KD', 'kid_care' => 'KC', 'weaning' => 'WN', 'repro_loss' => 'PL', 'feed_given' => 'FG', 'feeding_round' => 'FR', 'feed_stock' => 'FS', 'feed_count' => 'FC', 'tmr' => 'TM', 'feed_lot' => 'FL', 'ration' => 'RP', 'pen_clean' => 'PC', 'growth_case' => 'GF', 'task_done' => 'TK', 'checklist' => 'CL', 'incident' => 'IN', 'handover' => 'SH', 'medicine_stock' => 'MS', 'store_move' => 'SM', 'purchase_order' => 'PO', 'goat_lot' => 'GL', 'sale' => 'SL', 'sale_order' => 'SO', 'clearance' => 'SC', 'trip' => 'TP', 'journal' => 'JE', 'money' => 'MN', 'attendance' => 'AT', 'leave' => 'LV', 'training' => 'TN', 'skill' => 'SK', 'repair' => 'MJ', 'sensor_alert' => 'SA', 'milking' => 'MK', 'milk_session' => 'MSS', 'milk_dispatch' => 'MD', 'processing' => 'MP', 'lactation' => 'LC', 'fattening_batch' => 'FB', 'fattening_goat' => 'FA', 'welfare_check' => 'WC', 'welfare_case' => 'WCS', 'welfare_action' => 'WA', 'end_of_life' => 'EL', 'env_round' => 'ER', 'env_issue' => 'EI', 'waste' => 'WD', 'water_test' => 'WTT', 'quality_case' => 'QC', 'capa' => 'CA', 'hold' => 'QH', 'fodder_crop' => 'CR', 'fodder_input' => 'CI', 'fodder_lot' => 'HV', 'access' => 'AC'];
+
     /** Health operations: only for the right to see health history (F-15). */
     public const HEALTH = ['checkup', 'case', 'treatment', 'dose', 'care', 'teeth', 'death', 'parasite', 'outbreak', 'repro_loss'];
 
@@ -273,7 +276,8 @@ class OpsLog
                 $goatId = $goatCol ? ($r->{$goatCol} ?? null) : null;
                 $g = $goatId ? $l->animal($goatId) : null;
                 $out->push([
-                    'key' => "$op-".($r->id ?? $out->count()), 'op' => $op, 'app' => self::APPS[$apps[0]][0], 'operation' => $label, 'on' => $on,
+                    'key' => "$op-".($r->id ?? $out->count()), 'op' => $op,
+                    'txn' => (self::CODES[$op] ?? strtoupper(substr($op, 0, 2))).'-'.(is_numeric($r->id ?? null) ? $r->id : strtoupper(substr((string) ($r->id ?? ''), -6))), // D-314 'app' => self::APPS[$apps[0]][0], 'operation' => $label, 'on' => $on,
                     'entered' => $entered?->format('d/m/Y g:i A'), 'sort' => $on.' '.($entered?->format('H:i:s') ?? '00:00:00'),
                     'goatId' => $goatId, 'number' => $g?->farm_number, 'detail' => $detail($r, $l) ?: null, 'by' => $byCol ? ($r->{$byCol} ?? null) : ($op === 'register' ? $l->registeredBy($r->id) : null),
                     'source' => isset($r->source) && $r->source ? ucfirst((string) $r->source) : 'Manual',

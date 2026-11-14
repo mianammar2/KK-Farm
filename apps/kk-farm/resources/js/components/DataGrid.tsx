@@ -56,7 +56,8 @@ const load = <V,>(key: string, fallback: V): V => { try { const v = localStorage
 const save = (key: string, v: unknown) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* private window */ } };
 
 export function useGridFilters<T>(id: string, cols: Col<T>[], rows: T[], extra?: ReactNode) {
-    const [filters, setFilters] = useState<Filter[]>(() => load(`kk.grid.${id}.filters`, []));
+    // D-314: an advanced filter without a value is not kept between visits and does not count
+    const [filters, setFilters] = useState<Filter[]>(() => load<Filter[]>(`kk.grid.${id}.filters`, []).filter((f) => f.quick || NO_VALUE.includes(f.op) || f.a !== ''));
     const [q, setQ] = useState('');
     useEffect(() => save(`kk.grid.${id}.filters`, filters), [id, filters]);
     const val = (c: Col<T>, r: T) => (c.value ? c.value(r) : (r as Record<string, unknown>)[c.key] as string | number | null);
@@ -73,6 +74,7 @@ function FilterBar<T>({ cols, rows, filters, setFilters, q, setQ, shown, total, 
     const set = (id: number, patch: Partial<Filter>) => setFilters(filters.map((f) => (f.id === id ? { ...f, ...patch } : f)));
     const add = () => { const c = cols[0]; setFilters([...filters, { id: Date.now(), col: c.key, op: OPS[c.type ?? 'text'][0][0], a: '', b: '' }]); };
     const quick = filters.filter((f) => f.quick);
+    const active = filters.filter((f) => f.quick || NO_VALUE.includes(f.op) || f.a !== '').length; // D-314: empty ones do not count
     const field = 'h-9 rounded-md border border-rule bg-tile px-2 text-sm text-ink focus:border-cobalt-600 focus:outline-none';
     return (
         <div className="space-y-2 border-b border-rule bg-glaze/50 px-3 py-3">
@@ -82,7 +84,7 @@ function FilterBar<T>({ cols, rows, filters, setFilters, q, setQ, shown, total, 
                 <span className="inline-flex items-center gap-1.5 text-sm text-ink-soft"><ListFilter size={15} aria-hidden className="text-cobalt-800" /> Filter: click <ListFilter size={13} aria-hidden /> in any column heading</span>
                 <button type="button" onClick={add} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule bg-tile px-3 text-sm text-cobalt-800 hover:bg-glaze"><SlidersHorizontal size={15} aria-hidden /> Advanced filter</button>
                 {filters.length || q ? <button type="button" onClick={() => { setFilters([]); setQ(''); }} className="h-9 px-2 text-sm font-semibold text-ink-soft hover:text-crit-700">Clear all</button> : null}
-                <span className="ms-auto text-sm text-ink-soft"><b className="text-ink tabular-nums">{shown.toLocaleString('en-PK')}</b> of {total.toLocaleString('en-PK')} rows{filters.length ? ` · ${filters.length} ${filters.length === 1 ? 'filter' : 'filters'}` : ''}</span>
+                <span className="ms-auto text-sm text-ink-soft"><b className="text-ink tabular-nums">{shown.toLocaleString('en-PK')}</b> of {total.toLocaleString('en-PK')} rows{active ? ` · ${active} ${active === 1 ? 'filter' : 'filters'}` : ''}</span>
                 {extra}
             </div>
             {quick.length ? <div className="flex flex-wrap items-center gap-1.5">{quick.map((f) => {

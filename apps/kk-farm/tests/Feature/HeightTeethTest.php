@@ -251,4 +251,12 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('caretaker'))->post('/reports/operations/correct', ['op' => 'mating', 'id' => $m->id, 'values' => ['notes' => 'x']])->assertForbidden();
         $this->actingAs($vet)->post('/reports/operations/correct', ['op' => 'money', 'id' => 1, 'values' => []])->assertNotFound(); // the books: a reversing entry
     }
+
+    /** D-314: every entry in the Operations Log carries its transaction ID. */
+    public function test_operations_log_rows_have_transaction_ids(): void
+    {
+        $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/height", ['measured_on' => now()->toDateString(), 'height_in' => 24])->assertSessionHasNoErrors();
+        $id = \App\Models\HeightRecord::sole()->id;
+        $this->actingAs($this->user('ceo'))->get('/reports/operations?app=livestock')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => collect($rows)->contains('txn', "HT-$id")));
+    }
 }
