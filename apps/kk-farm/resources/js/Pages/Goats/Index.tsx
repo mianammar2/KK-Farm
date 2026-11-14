@@ -211,7 +211,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                         <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors hover:bg-glaze', TONES[t].row)}>
                                             <td className="relative">
                                                 <span aria-hidden className={cx('absolute inset-y-1.5 left-0 w-1 rounded-r-full', TONES[t].bar)} />
-                                                <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<button type="button" onClick={() => setProfile(g.id)} title={`Profile of ${g.number}`} className="inline-flex h-6 items-center gap-1 rounded-full border border-rule px-2 text-xs text-cobalt-800 hover:bg-white"><IdCard size={12} aria-hidden /> Profile</button>{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
+                                                <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
                                             </td>
                                             <td><BreedBadge breed={g.breed} withName /></td>
                                             <td><SexIcon sex={g.sex} label /></td>
