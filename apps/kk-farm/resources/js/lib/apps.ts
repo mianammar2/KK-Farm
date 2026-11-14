@@ -52,7 +52,6 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings/fields', 'Register Fields'),
     ] },
     { key: 'breeding', no: '03', label: 'Breeding', art: 'app-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
-        S('Operations', '/breeding?tab=heat', 'Heat Detection'),
         S('Operations', '/breeding?tab=cycle', 'Mating Records'), // D-294/D-296: the farm's matings and the pregnancies to check, one page
         S('Operations', '/genetics?tab=review', 'Replacement Review (Genetic Merit)'),
         S('Reporting', '/genetics?tab=progeny', 'Sire & Dam Progeny Performance'),

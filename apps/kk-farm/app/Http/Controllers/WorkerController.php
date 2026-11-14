@@ -31,7 +31,6 @@ class WorkerController extends Controller
         'weigh' => ['Weigh Goats', 'weights', 'record_weights'],
         'temp' => ['Temp Check', 'health', 'health_checkup'],
         'health' => ['Health Round', 'health', 'report_concern'],
-        'heat' => ['Heat Detection', 'breeding', 'record_heat'],
         'mating' => ['Record Mating', 'breeding', 'record_mating'],
         'milk' => ['Milk Recording', 'milking', 'record_milk'],
         'care' => ['Vaccinate / Deworm', 'health', 'give_care'],

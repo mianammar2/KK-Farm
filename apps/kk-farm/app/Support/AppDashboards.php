@@ -174,7 +174,6 @@ final class AppDashboards
         return ['kpis' => [
             self::k('Weighed today', $weighed, '/weights'),
             self::k('Checkups today', $checks, '/health?tab=checkups'),
-            self::k('Heats seen today', DB::table('heat_records')->whereDate('observed_on', $today)->count(), '/breeding?tab=heat'),
             self::k('Matings today', DB::table('matings')->whereDate('mated_on', $today)->count(), '/breeding?tab=cycle'),
             self::k('Milk today (L)', round((float) DB::table('milk_records')->whereDate('milked_on', $today)->whereNull('supersedes_id')->sum('litres'), 1), '/milking'),
             self::k('Care given today', DB::table('health_records')->whereDate('occurred_on', $today)->whereIn('kind', ['vaccination', 'deworming', 'hoof_care', 'examination', 'other_care'])->count(), '/health?tab=care'),
@@ -214,7 +213,6 @@ final class AppDashboards
             self::k('Confirmed pregnant', DB::table('matings')->where('status', 'pregnant')->count(), '/goats?show=pregnant'),
             self::k('Waiting for a pregnancy check', DB::table('matings')->where('status', 'open')->count(), '/breeding?tab=cycle'),
             self::k('Check overdue', DB::table('matings')->where('status', 'open')->whereDate('check_due_on', '<', $today)->count(), '/breeding?tab=cycle', 'warning'),
-            self::k('In heat (last 2 days)', DB::table('heat_records')->whereDate('observed_on', '>=', now()->subDays(2))->distinct()->count('dam_id'), '/breeding?tab=heat'),
             self::k('Matings this month', DB::table('matings')->whereDate('mated_on', '>=', $month)->count(), '/breeding?tab=cycle'),
             self::k('Kidding in the next 30 days', DB::table('matings')->where('status', 'pregnant')->whereBetween('expected_kidding_on', [$today, now()->addDays(30)->toDateString()])->count(), '/breeding?tab=calendar'),
         ], 'charts' => [self::chart('Matings per month', 'bar', $labels, [['name' => 'Matings', 'data' => $m]])]];

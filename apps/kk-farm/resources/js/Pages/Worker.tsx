@@ -26,7 +26,7 @@ const HINT: Record<Job, string> = {
     move: 'Choose a PEN, then scan each goat', lookup: 'Scan to see a goat',
 };
 /** D-255: jobs that need something chosen once for the whole round */
-const SETUP: Job[] = ['weigh', 'temp', 'health', 'heat', 'mating', 'milk', 'care', 'teeth', 'height', 'move']; // every job but Look Up asks its date first (D-255)
+const SETUP: Job[] = ['weigh', 'temp', 'health', 'mating', 'milk', 'care', 'teeth', 'height', 'move']; // every job but Look Up asks its date first (D-255)
 const CONCERNS = ['Not eating', 'Limping', 'Coughing', 'Diarrhoea', 'Fever / hot', 'Weak / dull', 'Wound', 'Nasal discharge', 'Swollen udder', 'Other'];
 
 /**

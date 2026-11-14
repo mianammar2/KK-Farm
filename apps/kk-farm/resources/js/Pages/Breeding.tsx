@@ -84,7 +84,6 @@ export default function Breeding(props: Props) {
             {adding ? <Sheet onClose={() => { setAdding(false); setPresetDam(null); }}><MatingForm {...props} presetDam={presetDam} onDone={() => { setAdding(false); setPresetDam(null); }} /></Sheet> : null}
             {/* D-296: no number row on every tab: the app's numbers show once, on its main page (the app strip), like the other apps */}
             <Tabs value={tab} onChange={setTab} tabs={[
-                { id: 'heat', label: 'Heat Detection', count: props.heat.filter((h) => h.status === 'in_heat').length || undefined },
                 { id: 'cycle', label: 'Mating Records', count: active.length },
                 { id: 'calendar', label: 'Pregnancy Calendar' },
                 { id: 'kidding', label: 'Kidding', count: kiddings.length },
@@ -95,10 +94,9 @@ export default function Breeding(props: Props) {
                 ...(canSettings ? [{ id: 'settings', label: 'Settings' }] : []),
             ]} />
 
-            {tab === 'heat' ? <HeatDetection rows={props.heat} options={props.heatOptions} onMate={(id) => { setPresetDam(id); setAdding(true); }} /> : null}
             {tab === 'calendar' ? <PregnancyCalendar matings={matings} /> : null}
             {tab === 'kidcare' ? <KidCare kids={props.kidCare} options={props.kidCareOptions} does={props.does.map((d) => ({ id: String(d.id), farm_number: d.farm_number ?? '' }))} /> : null}
-            {tab === 'cycle' || tab === 'matings' ? (
+            {tab === 'cycle' || tab === 'matings' || tab === 'heat' ? ( /* D-297: Heat Detection is gone; old links land here */
                 <div className="space-y-4">
                     <MatingSheet rows={matingRecords} />
                     <Panel title="Pregnancies to follow" description="Open matings and pregnancies: the pregnancy check, the ultrasound and the expected kidding. Done ones move to the sheet above." flush={!active.length}>
