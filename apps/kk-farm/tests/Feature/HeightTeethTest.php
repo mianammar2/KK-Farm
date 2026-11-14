@@ -257,6 +257,7 @@ class HeightTeethTest extends TestCase
     {
         $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/height", ['measured_on' => now()->toDateString(), 'height_in' => 24])->assertSessionHasNoErrors();
         $id = \App\Models\HeightRecord::sole()->id;
-        $this->actingAs($this->user('ceo'))->get('/reports/operations?app=livestock')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => collect($rows)->contains('txn', "HT-$id")));
+        $this->actingAs($this->user('ceo'))->get('/reports/operations?app=livestock')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => collect($rows)->contains('txn', "HT-$id")
+            && collect($rows)->every(fn ($r) => isset($r['on'], $r['app'], $r['operation'], $r['txn'])))); // every entry keeps its date, app and operation
     }
 }

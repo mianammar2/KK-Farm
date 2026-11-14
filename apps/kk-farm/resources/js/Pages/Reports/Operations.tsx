@@ -18,7 +18,7 @@ type Row = {
 type Op = { key: string; app: string; label: string };
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const fmt = (on: string) => `${on.slice(8, 10)}/${on.slice(5, 7)}/${on.slice(0, 4)}`;
+const fmt = (on?: string | null) => (on ? `${on.slice(8, 10)}/${on.slice(5, 7)}/${on.slice(0, 4)}` : '—');
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 1000) / 10}%` : '0%');
 
 export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[]; app: string | null }) {

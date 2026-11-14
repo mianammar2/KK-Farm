@@ -277,7 +277,8 @@ class OpsLog
                 $g = $goatId ? $l->animal($goatId) : null;
                 $out->push([
                     'key' => "$op-".($r->id ?? $out->count()), 'op' => $op,
-                    'txn' => (self::CODES[$op] ?? strtoupper(substr($op, 0, 2))).'-'.(is_numeric($r->id ?? null) ? $r->id : strtoupper(substr((string) ($r->id ?? ''), -6))), // D-314 'app' => self::APPS[$apps[0]][0], 'operation' => $label, 'on' => $on,
+                    'txn' => (self::CODES[$op] ?? strtoupper(substr($op, 0, 2))).'-'.(is_numeric($r->id ?? null) ? $r->id : strtoupper(substr((string) ($r->id ?? ''), -6))), // D-314
+                    'app' => self::APPS[$apps[0]][0], 'operation' => $label, 'on' => $on,
                     'entered' => $entered?->format('d/m/Y g:i A'), 'sort' => $on.' '.($entered?->format('H:i:s') ?? '00:00:00'),
                     'goatId' => $goatId, 'number' => $g?->farm_number, 'detail' => $detail($r, $l) ?: null, 'by' => $byCol ? ($r->{$byCol} ?? null) : ($op === 'register' ? $l->registeredBy($r->id) : null),
                     'source' => isset($r->source) && $r->source ? ucfirst((string) $r->source) : 'Manual',
