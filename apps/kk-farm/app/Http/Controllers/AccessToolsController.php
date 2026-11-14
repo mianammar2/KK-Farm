@@ -7,6 +7,8 @@ use App\Support\Access;
 use App\Support\AccessChanges;
 use App\Support\AccessTrace;
 use App\Support\Farm;
+use App\Support\Levels;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,10 +27,18 @@ class AccessToolsController extends Controller
     public function index(Request $request): Response
     {
         $this->owner($request);
-        $tab = in_array($request->query('tab'), ['history', 'why', 'health'], true) ? $request->query('tab') : 'history';
+        $tab = in_array($request->query('tab'), ['levels', 'history', 'why', 'health'], true) ? $request->query('tab') : 'history';
         $org = $request->user()->org_id;
-        $props = ['tab' => $tab, 'history' => null, 'why' => null, 'health' => null];
-        if ($tab === 'history') {
+        $props = ['tab' => $tab, 'levels' => null, 'history' => null, 'why' => null, 'health' => null];
+        if ($tab === 'levels') {
+            $roles = collect(config('kkfarm.roles'))->except('ceo');
+            $props['levels'] = [
+                'roles' => $roles->map(fn ($l, $k) => ['key' => $k, 'label' => $l])->values(),
+                'areas' => collect(Levels::areas())->map(fn ($l, $a) => ['key' => $a, 'label' => $l, 'actions' => count(Levels::gatesOf($a)),
+                    'cells' => $roles->mapWithKeys(fn ($rl, $r) => [$r => Levels::current($org, $r, $a)])])->values(),
+                'labels' => Levels::LABELS, 'meaning' => Levels::MEANING,
+            ];
+        } elseif ($tab === 'history') {
             $props['history'] = AccessChanges::batches();
         } elseif ($tab === 'why') {
             $people = User::where('org_id', $org)->orderBy('name')->get(['id', 'name', 'role'])->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'role' => config("kkfarm.roles.{$u->role}", $u->role)]);
@@ -45,6 +55,37 @@ class AccessToolsController extends Controller
         }
 
         return Inertia::render('Settings/AccessTools', $props);
+    }
+
+    /** What picking a level would change, before it is saved. */
+    public function levelPreview(Request $request): JsonResponse
+    {
+        $this->owner($request);
+        [$role, $area, $level] = [(string) $request->query('role'), (string) $request->query('area'), (string) $request->query('level')];
+        abort_unless(Levels::settable($role, $area, $level), 422);
+        $org = $request->user()->org_id;
+        $plan = collect(Levels::plan($org, $role, $area, $level));
+        $people = User::where('org_id', $org)->where('role', $role)->where('active', true)->get();
+        $keys = $plan->pluck('key');
+        $own = $people->filter(fn ($u) => $keys->contains(fn ($k) => array_key_exists($k, $u->module_access ?? []) || array_key_exists($k, $u->gate_access ?? [])));
+
+        return response()->json([
+            'gain' => $plan->where('new', true)->pluck('label')->values(), 'lose' => $plan->where('new', false)->pluck('label')->values(),
+            'people' => $people->count(), 'own' => $own->pluck('name')->values(), 'role' => config("kkfarm.roles.$role"), 'area' => Levels::areas()[$area], 'level' => Levels::LABELS[$level],
+        ]);
+    }
+
+    public function setLevel(Request $request): RedirectResponse
+    {
+        $this->owner($request);
+        $d = $request->validate(['role' => ['required', 'string'], 'area' => ['required', 'string'], 'level' => ['required', 'string']]);
+        abort_unless(Levels::settable($d['role'], $d['area'], $d['level']), 422);
+        $n = Levels::apply($request->user(), $d['role'], $d['area'], $d['level']);
+        if ($n > 0) {
+            Farm::log($request->user(), 'Set the level of '.config("kkfarm.roles.{$d['role']}").' in '.Levels::areas()[$d['area']].' to '.Levels::LABELS[$d['level']]." ($n settings)", '/settings/access/tools?tab=levels', 'security');
+        }
+
+        return back()->with('success', $n === 0 ? 'Already at that level: nothing changed.' : "Level set: $n ".($n === 1 ? 'setting' : 'settings').' changed. It is in the history and can be undone.');
     }
 
     public function rollback(Request $request, string $batch): RedirectResponse

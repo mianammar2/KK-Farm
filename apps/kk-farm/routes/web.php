@@ -487,6 +487,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/settings/{section}', [SettingsController::class, 'index'])->whereIn('section', ['breeds', 'ages', 'system']); // D-215
         Route::get('/settings/access', [\App\Http\Controllers\AccessController::class, 'roles']);
         Route::get('/settings/access/tools', [\App\Http\Controllers\AccessToolsController::class, 'index']); // D-266: history, Why?, health
+        Route::get('/settings/access/levels/preview', [\App\Http\Controllers\AccessToolsController::class, 'levelPreview']); // D-266 step 5c
+        Route::post('/settings/access/levels', [\App\Http\Controllers\AccessToolsController::class, 'setLevel']);
         Route::post('/settings/access/history/{batch}/rollback', [\App\Http\Controllers\AccessToolsController::class, 'rollback']);
         Route::post('/settings/access', [\App\Http\Controllers\AccessController::class, 'saveRoles']);
         Route::get('/settings/users/{id}', [\App\Http\Controllers\AccessController::class, 'user'])->whereNumber('id');

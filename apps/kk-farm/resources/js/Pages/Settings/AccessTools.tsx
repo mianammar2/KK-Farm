@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, Check, History, Search, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Check, History, Layers, Search, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirm } from '../../components/Confirm';
 import { Button, Note, PageHeader, Panel } from '../../components/ui';
@@ -9,8 +9,12 @@ type Batch = { batch: string; actor: string; at: string; count: number; rollback
 type Step = { text: string; says: string | null; decides: boolean };
 type Trace = { label: string; decision: boolean; steps: Step[]; person: string; role: string };
 type Check = { label: string; status: 'ok' | 'warn' | 'info'; detail: string; items: string[] };
+type Cell = { level: string; differs: string[] };
+type LevelData = { roles: Array<{ key: string; label: string }>; areas: Array<{ key: string; label: string; actions: number; cells: Record<string, Cell> }>; labels: Record<string, string>; meaning: Record<string, string> };
+type Preview = { gain: string[]; lose: string[]; people: number; own: string[]; role: string; area: string; level: string };
 type Props = {
-    tab: 'history' | 'why' | 'health';
+    tab: 'levels' | 'history' | 'why' | 'health';
+    levels: LevelData | null;
     history: Batch[] | null;
     why: { people: Array<{ id: number; name: string; role: string }>; items: Array<{ value: string; label: string }>; trace: Trace | null; user: string; item: string } | null;
     health: Check[] | null;
@@ -18,14 +22,23 @@ type Props = {
 
 const KIND: Record<string, string> = { role_module: 'Role · app', role_gate: 'Role · action', role_page: 'Role · page', user_module: 'Person · app', user_gate: 'Person · action', user_page: 'Person · page' };
 const show = (v: string | null, person: boolean) => (v === null ? (person ? 'follows role' : '—') : v === '1' ? 'allowed' : 'refused');
-const TABS = [{ id: 'history', label: 'History', icon: History }, { id: 'why', label: 'Why?', icon: Search }, { id: 'health', label: 'Health checks', icon: ShieldCheck }] as const;
+const TABS = [{ id: 'levels', label: 'Levels', icon: Layers }, { id: 'history', label: 'History', icon: History }, { id: 'why', label: 'Why?', icon: Search }, { id: 'health', label: 'Health checks', icon: ShieldCheck }] as const;
 
-export default function AccessTools({ tab, history, why, health }: Props) {
+export default function AccessTools({ tab, levels, history, why, health }: Props) {
     const [ask, confirmBox] = useConfirm();
     const [user, setUser] = useState(why?.user ?? '');
     const [item, setItem] = useState(why?.item ?? '');
     const undo = async (b: Batch) => {
         if (await ask({ title: 'Undo this change?', message: `${b.count} ${b.count === 1 ? 'setting goes' : 'settings go'} back to what ${b.count === 1 ? 'it' : 'they'} were before ${b.at}. This is written to the history too.`, confirm: 'Undo', danger: false })) router.post(`/settings/access/history/${b.batch}/rollback`, {}, { preserveScroll: true });
+    };
+    const pick = async (role: { key: string; label: string }, area: { key: string; label: string }, level: string) => {
+        const q = new URLSearchParams({ role: role.key, area: area.key, level });
+        const res = await fetch(`/settings/access/levels/preview?${q}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        if (!res.ok) return;
+        const p: Preview = await res.json();
+        const lines = [`${p.role} in ${p.area}: ${p.level}.`, p.gain.length ? `Gains: ${p.gain.slice(0, 8).join(', ')}${p.gain.length > 8 ? ` and ${p.gain.length - 8} more` : ''}.` : '', p.lose.length ? `Loses: ${p.lose.slice(0, 8).join(', ')}${p.lose.length > 8 ? ` and ${p.lose.length - 8} more` : ''}.` : '',
+            p.gain.length + p.lose.length === 0 ? 'Nothing changes.' : `${p.people} active ${p.people === 1 ? 'person follows' : 'people follow'} this role.`, p.own.length ? `Their own ticks stay: ${p.own.join(', ')}.` : ''].filter(Boolean);
+        if (await ask({ title: `Set ${p.role} to ${p.level} in ${p.area}?`, message: lines.join(' '), confirm: 'Set level', danger: false })) router.post('/settings/access/levels', { role: role.key, area: area.key, level }, { preserveScroll: true });
     };
     return (
         <>
@@ -36,6 +49,21 @@ export default function AccessTools({ tab, history, why, health }: Props) {
                 {TABS.map((t) => <Link key={t.id} href={`/settings/access/tools?tab=${t.id}`} aria-current={tab === t.id ? 'page' : undefined}
                     className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold ${tab === t.id ? 'border-forest text-forest' : 'border-transparent text-ink-soft hover:text-ink'}`}><t.icon size={15} aria-hidden /> {t.label}</Link>)}
             </nav>
+
+            {tab === 'levels' && levels ? (
+                <Panel title="Level of each role in each app" description="None closes the app. View opens it. Contribute records their own work. Edit changes what others recorded. Manage approves, deletes and configures. Picking a level ticks exactly the actions it means; a cell reading Custom has ticks that match no level (hover to see which)." flush>
+                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>App</th>{levels.roles.map((r) => <th key={r.key}>{r.label}</th>)}</tr></thead><tbody>
+                        {levels.areas.map((a) => <tr key={a.key}><td className="font-semibold">{a.label}<span className="ml-1 text-xs font-normal text-ink-soft">{a.actions ? `${a.actions} actions` : 'pages only'}</span></td>
+                            {levels.roles.map((r) => { const c = a.cells[r.key]; return (
+                                <td key={r.key} title={c.level === 'custom' ? `Differs from the nearest level: ${c.differs.join(', ')}` : levels.meaning[c.level]}>
+                                    <select className={`field py-1 text-sm ${c.level === 'custom' ? 'border-amber-400' : ''}`} value={c.level} aria-label={`${r.label} in ${a.label}`} onChange={(e) => pick(r, a, e.target.value)}>
+                                        {c.level === 'custom' ? <option value="custom" disabled>Custom</option> : null}
+                                        {(['none', 'view', 'contribute', 'edit', 'manage'] as const).map((l) => <option key={l} value={l}>{levels.labels[l]}</option>)}
+                                    </select>
+                                </td>); })}
+                        </tr>)}
+                    </tbody></table></div>
+                </Panel>) : null}
 
             {tab === 'history' && history ? (history.length === 0 ? <Note>No access-rights change has been saved yet. Every save from now on is listed here and can be undone.</Note> : (
                 <div className="space-y-3">{history.map((b) => (

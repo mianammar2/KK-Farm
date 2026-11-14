@@ -248,6 +248,7 @@ return [
     'POST /sensors/devices/{device}/test' => ['inline' => 'the action checks manage_devices', 'module' => 'sensors'],
     'POST /settings/access' => ['inline' => 'the action checks the person\'s role or a right', 'module' => 'settings'],
     'POST /settings/access/history/{batch}/rollback' => ['inline' => 'the action checks the person\'s role or a right', 'module' => 'settings'],
+    'POST /settings/access/levels' => ['inline' => 'the action checks the person\'s role or a right', 'module' => 'settings'],
     'POST /settings/ages' => ['module' => 'settings', 'why' => 'Settings is the Administrator\'s alone (Access::module)'],
     'POST /settings/automation/codes' => ['module' => 'settings', 'why' => 'Settings is the Administrator\'s alone (Access::module)'],
     'POST /settings/automation/codes/{code}' => ['module' => 'settings', 'why' => 'Settings is the Administrator\'s alone (Access::module)'],

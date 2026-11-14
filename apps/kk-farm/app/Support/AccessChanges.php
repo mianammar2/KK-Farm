@@ -86,6 +86,12 @@ final class AccessChanges
         }
     }
 
+    /** Set one tick directly (used by a level pick); the history row is written by the caller. */
+    public static function set(?string $org, string $kind, string $subject, string $key, ?bool $value): void
+    {
+        self::apply($org, $kind, $subject, $key, $value);
+    }
+
     private static function apply(?string $org, string $kind, string $subject, string $key, ?bool $value): void
     {
         switch ($kind) {
