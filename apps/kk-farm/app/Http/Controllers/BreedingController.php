@@ -58,6 +58,17 @@ class BreedingController extends Controller
 
         return Inertia::render('Breeding', [
             'farmBorn' => $farmBorn,
+            // D-294: every mating ever recorded, as a sheet (Breeding → Mating Records), newest first
+            'matingRecords' => \App\Support\Pages::allowsKey($request->user(), 'breeding.mating_records') ? Mating::with(['dam.breed', 'sire.breed'])->orderByDesc('mated_on')->orderByDesc('id')->get()->map(fn (Mating $m) => [
+                'id' => $m->id, 'matedIso' => $m->mated_on->toDateString(), 'mated' => $m->mated_on->format('d/m/Y'),
+                'dam' => $m->dam?->farm_number, 'damId' => $m->dam_id, 'damBreed' => $m->dam?->breed?->name,
+                'sire' => $m->sire?->farm_number, 'sireId' => $m->sire_id, 'sireBreed' => $m->sire?->breed?->name,
+                'method' => Mating::METHODS[$m->method] ?? $m->method, 'heat' => $m->heat_observed ? ucfirst($m->heat_observed) : null,
+                'status' => Mating::OUTCOMES[$m->status] ?? ucfirst((string) $m->status),
+                'checkDueIso' => $m->check_due_on?->toDateString(), 'checkDue' => $m->check_due_on?->format('d/m/Y'),
+                'expectedIso' => $m->expected_kidding_on?->toDateString(), 'expected' => $m->expected_kidding_on?->format('d/m/Y'),
+                'handler' => $m->handler, 'by' => $m->recorded_by, 'entered' => $m->created_at?->setTimezone('Asia/Karachi')->format('d/m/Y g:i A'),
+            ])->values() : [],
             'matings' => $matings->map(fn (Mating $m) => [
                 'id' => $m->id, 'status' => $m->status, 'outcome' => Mating::OUTCOMES[$m->status] ?? $m->status, 'method' => Mating::METHODS[$m->method] ?? $m->method,
                 'heat' => $m->heat_observed, 'cycle' => $m->service_cycle, 'handler' => $m->handler, 'notes' => $m->notes, 'alert' => $m->alert($org->kidding_alert_days),
