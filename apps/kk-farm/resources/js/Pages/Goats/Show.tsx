@@ -18,7 +18,7 @@ import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
 type Dental = { code: string; fromAge?: boolean; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
-type Goat = GoatCard & { inBreeding?: boolean; ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Goat = GoatCard & { arrivedOn?: string | null; arrivedEntered?: boolean; sourceFarm?: string | null; inBreeding?: boolean; ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
@@ -249,7 +249,9 @@ export default function GoatShow(props: Props) {
                                 {castration ? fact('Castration', <Castration goatId={goat.id} c={castration} onFarm={onFarm} />) : null}
                                 {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit || !!auth?.gates.includes('health_checkup') || !!auth?.gates.includes('check_teeth')} options={dentalOptions} />) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
-                                {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
+                                {fact('Origin', <span>{goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm'}
+                                    {goat.origin === 'born_on_farm' ? (goat.birthDate ? <span className="block text-sm font-normal text-ink-soft">on {goat.birthDate}</span> : null)
+                                        : goat.arrivedOn ? <span className="block text-sm font-normal text-ink-soft">on {goat.arrivedOn}{goat.arrivedEntered ? '' : ' (date registered)'}{goat.sourceFarm ? ` · from ${goat.sourceFarm}` : ''}</span> : null}</span>)}
                                 {fact('Sire', parentLink(goat.sire))}
                                 {fact('Dam', parentLink(goat.dam))}
                                 {fact('Feeding group', goat.feedingGroup)}

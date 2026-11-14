@@ -407,6 +407,8 @@ class GoatController extends Controller
                 'origin' => $animal->origin, 'birthDate' => $animal->birth_date?->format('j M Y'), 'estimated' => $animal->birth_date_is_estimate, 'height' => $animal->height_cm !== null ? round((float) $animal->height_cm / 2.54, 1) : null, // inches (D-065)
                 'shed' => $animal->pen?->shed?->name, 'penPurpose' => $animal->pen?->purpose, 'feedingGroup' => $animal->feedingGroup?->name ?? FeedingGroup::where('code', \App\Support\Feed::groupCode($animal))->value('name'), // D-054: automatic group
                 'withdrawal' => \App\Support\Withdrawal::summary($animal), // D-073
+                // D-267: when it came to the farm: the purchase or transfer date (the registration date when none was entered), and from where
+                'arrivedOn' => ($animal->acquired_on ?? ($animal->origin !== 'born_on_farm' ? $animal->created_at : null))?->format('j M Y'), 'arrivedEntered' => (bool) $animal->acquired_on, 'sourceFarm' => $animal->source_farm,
                 'inBreeding' => in_array($animal->effectiveCategory(), ['breeding_male', 'breeding_female', 'replacement_male', 'replacement_female'], true), // D-260: can be culled
                 'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('j M Y'), 'adg' => Farm::adg($weights),
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
