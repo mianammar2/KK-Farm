@@ -628,32 +628,53 @@ export type GoatRecord = {
     temp: number | null; tempFlag: boolean; heart: number | null; breaths: number | null; teeth: string | null; ultrasound: string | null;
     care: string[]; treatments: string[]; actions: string[]; result: string | null; by: string[]; // D-262: care = what was found, actions = what was done
 };
-const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean; cell: (r: GoatRecord) => ReactNode; num?: boolean; always?: boolean }> = [
-    { key: 'weight', label: 'Weight', num: true, always: true, has: (r) => r.weight !== null, cell: (r) => (r.weight !== null ? `${r.weight} KG` : <span className="text-ink-faint">—</span>) },
-    { key: 'change', label: 'Change', num: true, has: (r) => r.change !== null, cell: (r) => (r.change === null ? '' : <Ticker kg={r.change} pct={r.pct} days={r.days} perDay={r.adg ?? undefined} small />) },
-    { key: 'bcs', label: 'Body score', num: true, has: (r) => r.bcs !== null, cell: (r) => r.bcs ?? '' },
-    { key: 'height', label: 'Height', num: true, always: true, has: (r) => r.height !== null, cell: (r) => (r.height !== null ? `${r.height} in` : <span className="text-ink-faint">—</span>) },
-    { key: 'temp', label: 'Temp °F', num: true, always: true, has: (r) => r.temp !== null, cell: (r) => (r.temp === null ? <span className="text-ink-faint">—</span> : <span className={r.tempFlag ? 'rounded bg-crit-100 px-1 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span>) },
-    { key: 'heart', label: 'Heart /min', num: true, has: (r) => r.heart !== null, cell: (r) => (r.heart === null ? '' : <span className={r.heart < 60 || r.heart > 100 ? 'rounded bg-watch-100 px-1 text-watch-700' : ''} title={r.heart < 60 || r.heart > 100 ? 'Outside the usual 60–100' : undefined}>{r.heart}</span>) },
-    { key: 'breaths', label: 'Breaths /min', num: true, has: (r) => r.breaths !== null, cell: (r) => (r.breaths === null ? '' : <span className={r.breaths < 12 || r.breaths > 40 ? 'rounded bg-watch-100 px-1 text-watch-700' : ''} title={r.breaths < 12 || r.breaths > 40 ? 'Outside the usual 12–40' : undefined}>{r.breaths}</span>) },
-    { key: 'teeth', label: 'Teeth', has: (r) => !!r.teeth, cell: (r) => r.teeth ?? '' },
-    { key: 'ultrasound', label: 'Ultrasound', has: (r) => !!r.ultrasound, cell: (r) => r.ultrasound ?? '' },
-    { key: 'care', label: 'Found', has: (r) => r.care.length > 0, cell: (r) => r.care.join('; ') },
-    { key: 'actions', label: 'Action taken', has: (r) => (r.actions ?? []).length > 0, cell: (r) => <ul className="space-y-0.5">{(r.actions ?? []).map((a, i) => <li key={i} className="flex gap-1.5"><span aria-hidden className="text-ok-700">✓</span><span>{a}</span></li>)}</ul> },
-    { key: 'result', label: 'Checkup', has: (r) => !!r.result, cell: (r) => (r.result ? <span className={r.result === 'Sick' ? 'font-semibold text-crit-700' : r.result === 'Watch' ? 'text-watch-700' : 'text-ok-700'}>{r.result}</span> : '') },
-];
+/** D-266: what was done that day, as short chips (the full detail on hover). */
+type Done = { label: string; tone: string; detail?: string };
+const DONE_TONE = { measure: 'bg-cobalt-100 text-cobalt-800', vet: 'bg-turq-100 text-turq-800', care: 'bg-ok-100 text-ok-700', move: 'bg-glaze text-ink ring-1 ring-rule', off: 'bg-ok-100 text-ok-700' };
+function performed(r: GoatRecord): Done[] {
+    const out: Done[] = [];
+    if (r.weight !== null) out.push({ label: 'Weighed', tone: DONE_TONE.measure });
+    if (r.height !== null) out.push({ label: 'Height', tone: DONE_TONE.measure });
+    if (r.result !== null) out.push({ label: 'Checkup', tone: DONE_TONE.vet });
+    else if (r.temp !== null) out.push({ label: 'Temp check', tone: DONE_TONE.vet });
+    if (r.teeth) out.push({ label: 'Teeth check', tone: DONE_TONE.vet, detail: r.teeth });
+    if (r.ultrasound) out.push({ label: 'Ultrasound', tone: DONE_TONE.vet, detail: r.ultrasound });
+    for (const a of r.actions ?? []) {
+        const [label, tone] = a.startsWith('Treated') ? ['Treatment', DONE_TONE.care] : /^Vaccination/i.test(a) ? ['Vaccinated', DONE_TONE.care] : /^Deworming/i.test(a) ? ['Dewormed', DONE_TONE.care]
+            : a.startsWith('Moved') ? ['Moved', DONE_TONE.move] : a.startsWith('Taken off Watch') ? ['Off Watch', DONE_TONE.off] : [a.split(':')[0], DONE_TONE.care];
+        out.push({ label, tone, detail: a });
+    }
+    return out;
+}
+const dash = <span className="text-ink-faint">—</span>;
+
+/** D-249/D-266: one row per day: what was done, the measurements, what was found and the checkup's result. */
 function RecordsTable({ rows }: { rows: GoatRecord[] }) {
     const { rows: shown, pager } = usePaged(rows, { size: 10, id: 'goat-records' }); // D-263: numbered pages
     if (!rows.length) return null;
-    const cols = COLS.filter((c) => c.always || rows.some(c.has)); // a column with nothing in it is not shown (D-264: weight, height and temperature always are)
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const resultTone = (x: string) => (x === 'Sick' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
+    const th = 'px-2.5 py-2.5 text-xs font-semibold whitespace-nowrap text-ink-soft';
+    const td = 'px-2.5 py-3 align-middle';
     return (
         <div>
-            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-                <table className="data-table min-w-[560px] text-sm">
-                    <thead><tr><th className="text-start">Date</th>{cols.map((c) => <th key={c.key} className={c.num ? 'text-end' : 'text-start'}>{c.label}</th>)}</tr></thead>
-                    <tbody>{shown.map((r) => (
-                        <tr key={r.on}><td className="whitespace-nowrap font-medium">{date(r.on)}{r.by.length ? <span className="block text-xs font-normal text-ink-soft">{r.by.join(', ')}</span> : null}</td>{cols.map((c) => <td key={c.key} className={c.num ? 'text-end tabular-nums whitespace-nowrap' : 'min-w-[10rem] max-w-[16rem]'}>{c.cell(r)}</td>)}</tr>
+            <div className="-mx-4 overflow-x-auto sm:mx-0">
+                <table className="w-full min-w-[680px] border-collapse text-sm">
+                    <thead className="border-b border-rule bg-glaze/60">
+                        <tr><th className={`${th} text-start`}>Date</th><th className={`${th} text-start`}>Performed</th><th className={`${th} text-end`}>Weight</th><th className={`${th} text-end`}>Change</th>
+                            <th className={`${th} text-end`}>Height</th><th className={`${th} text-end`}>Temp °F</th><th className={`${th} text-start`}>Found</th><th className={`${th} text-start`}>Result</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-rule">{shown.map((r) => (
+                        <tr key={r.on} className="hover:bg-glaze/40">
+                            <td className={`${td} font-semibold whitespace-nowrap text-cobalt-900`}>{date(r.on)}</td>
+                            <td className={td}><span className="flex flex-wrap gap-1">{performed(r).map((d, i) => <span key={i} title={d.detail} className={`rounded px-1.5 py-0.5 text-xs font-semibold ${d.tone}`}>{d.label}</span>)}</span></td>
+                            <td className={`${td} text-end font-semibold tabular-nums whitespace-nowrap`}>{r.weight !== null ? `${r.weight} KG` : dash}</td>
+                            <td className={`${td} text-end whitespace-nowrap`}>{r.change !== null ? <Ticker kg={r.change} pct={r.pct} days={r.days} perDay={r.adg ?? undefined} small /> : dash}</td>
+                            <td className={`${td} text-end tabular-nums whitespace-nowrap`}>{r.height !== null ? `${r.height} in` : dash}</td>
+                            <td className={`${td} text-end tabular-nums`}>{r.temp !== null ? <span className={r.tempFlag ? 'rounded bg-crit-100 px-1.5 py-0.5 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span> : dash}</td>
+                            <td className={`${td} min-w-[9rem] text-ink`}>{r.care.length ? r.care.join('; ') : dash}</td>
+                            <td className={td}>{r.result ? <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${resultTone(r.result)}`}>{r.result}</span> : dash}</td>
+                        </tr>
                     ))}</tbody>
                 </table>
             </div>
