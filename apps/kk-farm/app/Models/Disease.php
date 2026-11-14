@@ -23,4 +23,11 @@ class Disease extends Model
 
         return $names ?: HealthCase::CONDITIONS;
     }
+
+    /** D-292: the symptoms associated with this disease (Symptom Master). */
+    public function symptoms()
+    {
+        return $this->belongsToMany(Symptom::class, 'disease_symptom');
+    }
+
 }

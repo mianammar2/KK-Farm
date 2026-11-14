@@ -111,3 +111,49 @@ function DiseaseForm({ d, categories, onDone }: { d: DiseaseRow | null; categori
         </Panel>
     );
 }
+
+/** D-292: the Symptom Master: what the vet ticks on a case, by body system, and the diseases each sign points to. */
+export type SymptomRow = { id: number; code: string | null; system: string; name: string; local: string | null; urgency: string | null; active: boolean; diseaseIds: number[]; diseases: string[] };
+export function SymptomMaster({ symptoms, diseases, canEdit }: { symptoms: SymptomRow[]; diseases: Array<{ id: number; name: string; code?: string | null }>; canEdit: boolean }) {
+    const [editing, setEditing] = useState<SymptomRow | 'new' | null>(null);
+    return (
+        <div className="space-y-3">
+            <Panel flush title="Symptom Master" description="What the vet ticks on a health case, by body system, with the local term. Each sign lists the diseases it is associated with: these rank the possible diseases on a case (the vet decides)."
+                actions={canEdit ? <Button onClick={() => setEditing('new')}>+ New Symptom</Button> : undefined}>
+                <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Code</th><th>Symptom</th><th>Local term</th><th>System</th><th>Urgency</th><th>Diseases</th><th /></tr></thead><tbody>
+                    {symptoms.map((s) => (
+                        <tr key={s.id} className={s.active ? '' : 'opacity-60'}>
+                            <td className="whitespace-nowrap text-ink-soft">{s.code ?? '—'}</td><td>{s.name}</td><td className="text-ink-soft">{s.local ?? '—'}</td><td>{s.system}</td>
+                            <td className="max-w-56 text-ink-soft">{s.urgency ?? ''}</td><td className="max-w-72 text-ink-soft">{s.diseases.join(', ') || '—'}</td>
+                            <td className="whitespace-nowrap">{canEdit ? <><Button variant="quiet" onClick={() => setEditing(s)}>Edit</Button><DeleteButton type="symptom" id={s.id} name={s.name} /></> : null}</td>
+                        </tr>
+                    ))}
+                </tbody></table></div>
+            </Panel>
+            {editing ? <SymptomForm s={editing === 'new' ? null : editing} diseases={diseases} onDone={() => setEditing(null)} /> : null}
+        </div>
+    );
+}
+
+function SymptomForm({ s, diseases, onDone }: { s: SymptomRow | null; diseases: Array<{ id: number; name: string; code?: string | null }>; onDone: () => void }) {
+    const form = useForm({ name: s?.name ?? '', local_name: s?.local ?? '', system: s?.system ?? 'General', urgency: s?.urgency ?? '', active: s?.active ?? true, disease_ids: s?.diseaseIds ?? ([] as number[]) });
+    const e = form.errors as Record<string, string>;
+    const toggle = (id: number) => form.setData('disease_ids', form.data.disease_ids.includes(id) ? form.data.disease_ids.filter((x) => x !== id) : [...form.data.disease_ids, id]);
+    return (
+        <Panel title={s ? `Edit ${s.name}` : 'New Symptom'}>
+            <form className="grid gap-3 p-4 sm:grid-cols-2" onSubmit={(ev) => { ev.preventDefault(); form.post(s ? `/health/symptoms/${s.id}` : '/health/symptoms', { preserveScroll: true, onSuccess: onDone }); }}>
+                <Field label="Symptom" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
+                <Field label="Local term (Roman Urdu)" error={e.local_name}><input className="field" value={form.data.local_name} onChange={(x) => form.setData('local_name', x.target.value)} /></Field>
+                <Field label="Body system" error={e.system}><input className="field" list="symptom-systems" value={form.data.system} onChange={(x) => form.setData('system', x.target.value)} />
+                    <datalist id="symptom-systems">{['General', 'Respiratory', 'Oral', 'Gastrointestinal', 'Mobility', 'Skin', 'Hoof', 'Hematologic', 'Neurological', 'Urinary', 'Udder', 'Reproductive'].map((x) => <option key={x} value={x} />)}</datalist></Field>
+                <Field label="Urgency / notes" error={e.urgency}><input className="field" value={form.data.urgency} onChange={(x) => form.setData('urgency', x.target.value)} /></Field>
+                <div className="sm:col-span-2"><p className="mb-1 text-sm text-ink">Associated diseases</p>
+                    <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto rounded-tile border border-rule p-2">{diseases.map((d) => (
+                        <button key={d.id} type="button" onClick={() => toggle(d.id)} aria-pressed={form.data.disease_ids.includes(d.id)} className={`rounded-full border px-2.5 py-1 text-sm ${form.data.disease_ids.includes(d.id) ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile'}`}>{d.code ? `${d.code} · ` : ''}{d.name}</button>
+                    ))}</div></div>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> In use</label>
+                <div className="flex gap-2 sm:col-span-2"><Button type="submit" disabled={form.processing}>Save</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
+            </form>
+        </Panel>
+    );
+}

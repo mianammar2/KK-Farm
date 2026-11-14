@@ -4,6 +4,7 @@ import { readingWarnings } from '../lib/readings';
 import { CalendarClock } from 'lucide-react';
 import { Button, cx, Field, Panel } from './ui';
 import { coarseUltrasound, UltrasoundPick, type CheckupData } from './Checkups';
+import SymptomPicker, { type DiseaseLink, type SymptomDef, type TriageRule } from './SymptomPicker';
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const KINDS = [
@@ -23,7 +24,7 @@ const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-
  * A checkup or a pregnancy check becomes a checkup (a pregnancy updates Breeding); a disease, injury or other problem
  * opens a health case. A doe already pregnant gets her day of pregnancy counted from the mating for the chosen date.
  */
-export default function HealthEntry({ data, severities, onDone, goatId, kind }: { data: CheckupData & { conditions: string[] }; severities: Record<string, string>; onDone: () => void; goatId?: string; kind?: string }) {
+export default function HealthEntry({ data, severities, onDone, goatId, kind }: { data: CheckupData & { conditions: string[]; symptomMaster?: SymptomDef[]; diseaseLinks?: DiseaseLink[]; triage?: TriageRule[] }; severities: Record<string, string>; onDone: () => void; goatId?: string; kind?: string }) {
     // D-102: opened from a goat's page or a scan: the goat (and what to do) are already chosen.
     const start = goatId ? data.goats.find((g) => g.id === goatId) : undefined;
     const startDay = start?.matedOn ? daysBetween(start.matedOn, TODAY) : null;
@@ -31,7 +32,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
         date: TODAY, animal_id: goatId ?? '', kind: kind ?? '',
         temperature_f: '', body_score: '', weight_kg: '', findings: '', outcome: 'healthy', follow_up_on: '', follow_up_note: '',
         ultrasound: kind === 'pregnancy' && start?.matedOn ? 'pregnant' : '', ultrasound_status: kind === 'pregnancy' && start?.matedOn ? 'PCF' : '', viability: 'HBD', days_pregnant: kind === 'pregnancy' && startDay && startDay > 0 ? String(startDay) : '', fetuses: '', sire_id: '',
-        condition: '', other_condition: '', symptoms: '', severity: 'moderate', isolated: false, diagnosis: '',
+        condition: '', other_condition: '', symptoms: '', severity: 'moderate', isolated: false, diagnosis: '', symptom_ids: [] as number[], // D-292
     });
     const e = form.errors as Record<string, string>;
     const goat = data.goats.find((g) => g.id === form.data.animal_id);
@@ -54,7 +55,8 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
         if (isCase) {
             form.transform((d) => ({
                 animal_id: d.animal_id, onset_on: d.date, condition: d.condition === '__other' || d.kind === 'other' ? d.other_condition : d.condition,
-                symptoms: [d.symptoms, d.temperature_f ? `Temperature ${d.temperature_f} °F` : ''].filter(Boolean).join('. '), severity: d.severity, isolated: d.isolated, diagnosis: d.diagnosis,
+                symptoms: [(data.symptomMaster ?? []).filter((x) => d.symptom_ids.includes(x.id)).map((x) => x.name).join(', '), d.symptoms, d.temperature_f ? `Temperature ${d.temperature_f} °F` : ''].filter(Boolean).join('. '),
+                symptom_ids: d.symptom_ids, severity: d.severity, isolated: d.isolated, diagnosis: d.diagnosis,
             }));
             form.post('/health/cases', { preserveScroll: true, onSuccess: onDone });
             return;
@@ -166,6 +168,10 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
 
                 {isCase ? (
                     <div className="space-y-3">
+                        {data.symptomMaster?.length ? (
+                            <SymptomPicker symptoms={data.symptomMaster} diseases={data.diseaseLinks ?? []} rules={data.triage ?? []} picked={form.data.symptom_ids} onChange={(ids) => form.setData('symptom_ids', ids)}
+                                fever={Number(form.data.temperature_f) > 103.5} condition={form.data.condition} onCondition={(name) => form.setData((d) => ({ ...d, kind: 'disease', condition: name }))} />
+                        ) : null}
                         {form.data.kind === 'disease' ? (
                             <Field label="Condition" error={e.condition}>
                                 <select className="field" value={form.data.condition} onChange={(x) => set('condition', x.target.value)}>
@@ -177,7 +183,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
                         ) : null}
                         {form.data.kind === 'injury' ? <Field label="Injury"><select className="field" value={form.data.condition} onChange={(x) => set('condition', x.target.value)}><option>Wound / injury</option><option>Fracture</option><option value="__other">Something else (type it)</option></select></Field> : null}
                         {form.data.kind === 'other' || form.data.condition === '__other' ? <Field label="What is it?" error={e.condition}><input className="field" value={form.data.other_condition} onChange={(x) => set('other_condition', x.target.value)} /></Field> : null}
-                        <Field label="Symptoms / what you saw"><textarea className="field min-h-16" value={form.data.symptoms} onChange={(x) => set('symptoms', x.target.value)} /></Field>
+                        <Field label={data.symptomMaster?.length ? 'Anything else you saw (optional)' : 'Symptoms / what you saw'}><textarea className="field min-h-16" value={form.data.symptoms} onChange={(x) => set('symptoms', x.target.value)} /></Field>
                         <div className="grid grid-cols-2 gap-2">
                             <Field label="Severity"><select className="field" value={form.data.severity} onChange={(x) => set('severity', x.target.value)}>{Object.entries(severities).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                             <Field label="Temperature (°F, optional)"><input className="field" inputMode="decimal" value={form.data.temperature_f} onChange={(x) => set('temperature_f', x.target.value)} /></Field>

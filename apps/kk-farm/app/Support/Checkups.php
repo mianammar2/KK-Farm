@@ -106,6 +106,7 @@ final class Checkups
             'recent' => [], 'interval' => self::interval(), 'normal' => HealthCheckup::NORMAL, 'gestation' => (int) (Tenant::org()?->gestation_days ?: 150),
             'sires' => Animal::active()->where('sex', 'male')->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->all(),
             'conditions' => \App\Models\Disease::names(), 'severities' => HealthCase::SEVERITIES,
+            ...self::symptomData(), // D-292: Symptom Master, the diseases they point to, and the triage rules
             'ultrasound' => PregnancyCheck::STATUSES, 'viability' => PregnancyCheck::VIABILITY, // D-167
             'canCheck' => $user->passes('health_checkup'), 'canOpenCase' => $user->passes('open_cases'),
             'canEntry' => $user->passes('health_entry'), // D-252: New health entry
@@ -442,4 +443,26 @@ final class Checkups
         };
         $animal->update(['health_flag' => $flag]);
     }
+
+    /**
+     * D-292: what the vet's entry needs to tick symptoms: the Symptom Master (by body system), each disease with its
+     * associated symptoms (to rank possible diseases; suggestions only) and the triage rules as symptom ids.
+     */
+    public static function symptomData(): array
+    {
+        $symptoms = \App\Models\Symptom::where('active', true)->orderBy('system')->orderBy('code')->get();
+        $byCode = $symptoms->pluck('id', 'code');
+        $links = \Illuminate\Support\Facades\DB::table('disease_symptom')->get()->groupBy('disease_id')->map(fn ($g) => $g->pluck('symptom_id')->all());
+
+        return [
+            'symptomMaster' => $symptoms->map(fn ($s) => ['id' => $s->id, 'code' => $s->code, 'system' => $s->system, 'name' => $s->name, 'local' => $s->local_name, 'urgency' => $s->urgency])->values()->all(),
+            'diseaseLinks' => \App\Models\Disease::where('active', true)->whereIn('id', $links->keys())->get()->map(fn ($d) => [
+                'id' => $d->id, 'name' => $d->name, 'code' => $d->code, 'local' => $d->local_name, 'priority' => $d->priority, 'isolation' => $d->isolation, 'symptomIds' => $links[$d->id] ?? [],
+            ])->values()->all(),
+            'triage' => collect(config('kkfarm_symptoms.triage'))->map(fn ($t) => ['code' => $t['code'], 'trigger' => $t['trigger'], 'level' => $t['level'], 'action' => $t['action'],
+                'all' => collect($t['all'])->map(fn ($c) => $byCode[$c] ?? null)->filter()->values()->all(), 'any' => collect($t['any'])->map(fn ($c) => $byCode[$c] ?? null)->filter()->values()->all(),
+                'fever' => in_array('SYM-001', $t['any'], true) || in_array('SYM-001', $t['all'], true)])->values()->all(),
+        ];
+    }
+
 }

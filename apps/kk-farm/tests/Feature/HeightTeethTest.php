@@ -122,4 +122,24 @@ class HeightTeethTest extends TestCase
         $m = \App\Models\AnimalMovement::where('animal_id', $this->goat->id)->where('type', 'sale')->sole();
         $this->assertSame(['sick', $ppr->id, 'Sold: Sick (Peste des Petits Ruminants (PPR))'], [$m->sale_reason, $m->disease_id, $m->reason]);
     }
+
+    /** D-292: the vet ticks symptoms from the master; the case keeps them and its disease; triage rules come with the form. */
+    public function test_a_case_keeps_the_ticked_symptoms_and_its_disease(): void
+    {
+        $ppr = \App\Models\Disease::create(['name' => 'Peste des Petits Ruminants (PPR)', 'code' => 'DIS-001', 'category' => 'infectious', 'active' => true]);
+        $ulcer = \App\Models\Symptom::create(['code' => 'SYM-007', 'system' => 'Oral', 'name' => 'Mouth ulcers', 'local_name' => 'Munh ke chhalay']);
+        $diarrhea = \App\Models\Symptom::create(['code' => 'SYM-009', 'system' => 'Gastrointestinal', 'name' => 'Diarrhea', 'local_name' => 'Dast']);
+        $ppr->symptoms()->attach([$ulcer->id, $diarrhea->id]);
+        $this->actingAs($this->user('vet'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p
+            ->where('healthEntry.symptomMaster.1.name', 'Mouth ulcers')->where('healthEntry.diseaseLinks.0.symptomIds', [$ulcer->id, $diarrhea->id])->where('healthEntry.triage.7.code', 'AL-008'));
+        $this->actingAs($this->user('vet'))->post('/health/cases', ['animal_id' => $this->goat->id, 'onset_on' => now()->toDateString(), 'condition' => 'Peste des Petits Ruminants (PPR)',
+            'symptoms' => 'Mouth ulcers, Diarrhea', 'symptom_ids' => [$ulcer->id, $diarrhea->id], 'severity' => 'high', 'isolated' => true])->assertSessionHasNoErrors();
+        $case = \App\Models\HealthCase::where('animal_id', $this->goat->id)->sole();
+        $this->assertSame($ppr->id, $case->disease_id);
+        $this->assertEqualsCanonicalizing([$ulcer->id, $diarrhea->id], \Illuminate\Support\Facades\DB::table('health_case_symptoms')->where('health_case_id', $case->id)->pluck('symptom_id')->all());
+        $this->assertSame($ppr->id, \App\Support\Movements::saleHint($this->goat->fresh())['diseaseId'], 'the sale form fills in the case disease');
+        $this->actingAs($this->user('vet'))->post('/health/symptoms', ['name' => 'Sneezing', 'system' => 'Respiratory', 'local_name' => 'Cheenk', 'disease_ids' => [$ppr->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertTrue($ppr->symptoms()->where('name', 'Sneezing')->exists());
+        $this->actingAs($this->user('caretaker'))->post('/health/symptoms', ['name' => 'Cough 2', 'system' => 'Respiratory'])->assertForbidden();
+    }
 }

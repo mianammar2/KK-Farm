@@ -50,7 +50,7 @@ final class Movements
             return null;
         }
         $name = trim((string) ($case->diagnosis ?: $case->condition));
-        $disease = \App\Models\Disease::where('active', true)->where(fn ($q) => $q->whereRaw('lower(name) = lower(?)', [$name])->orWhereRaw('lower(local_name) = lower(?)', [$name])->orWhere('code', $name))->first()
+        $disease = ($case->disease_id ? \App\Models\Disease::find($case->disease_id) : null) ?? \App\Models\Disease::where('active', true)->where(fn ($q) => $q->whereRaw('lower(name) = lower(?)', [$name])->orWhereRaw('lower(local_name) = lower(?)', [$name])->orWhere('code', $name))->first()
             ?? \App\Models\Disease::where('active', true)->whereRaw('lower(?) like lower(concat(\'%\', name, \'%\'))', [$name])->first();
 
         return ['reason' => 'sick', 'diseaseId' => $disease?->id, 'note' => $disease ? null : $name, 'from' => "Open health case {$case->label()}: {$name}"];

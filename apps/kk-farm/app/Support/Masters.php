@@ -17,6 +17,7 @@ final class Masters
     /** type => [model, module, gate (null = module is enough, array = roles), label column] */
     public const TYPES = [
         'disease' => [\App\Models\Disease::class, 'health', 'clinical', 'name'],
+        'symptom' => [\App\Models\Symptom::class, 'health', 'clinical', 'name'], // D-292
         'protocol' => [\App\Models\CareProtocol::class, 'health', 'clinical', 'name'],
         'medicine' => [\App\Models\Medicine::class, 'health', 'manage_medicine_store', 'name'],
         'feed-item' => [\App\Models\FeedItem::class, 'feeding', 'manage_feed_store', 'name'],

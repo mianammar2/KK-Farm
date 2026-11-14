@@ -99,6 +99,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/health?tab=mortality', 'Mortality by Cause'),
         S('Configuration', '/health?tab=protocols', 'Vaccine & Deworming Protocols'),
         S('Configuration', '/health?tab=diseases', 'Disease Master'),
+        S('Configuration', '/health?tab=symptoms', 'Symptom Master'), // D-292
         S('Configuration', '/health?tab=store', 'Medicines & Vaccines'),
     ] },
     { key: 'feeding', no: '06', label: 'Feeding', art: 'app-feeding', modules: ['feeding'], linked: ['housing', 'growth', 'inventory', 'accounting'], sections: [

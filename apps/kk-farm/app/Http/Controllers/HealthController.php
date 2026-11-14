@@ -103,7 +103,10 @@ class HealthController extends Controller
             ]),
             'applies' => \App\Models\CareProtocol::applies(),
             // D-174: disease master and mortality register
-            'diseases' => \App\Models\Disease::orderByDesc('active')->orderBy('name')->get(['id', 'name', 'category', 'zoonotic', 'notifiable', 'contagious', 'notes', 'active']),
+            'diseases' => \App\Models\Disease::orderByDesc('active')->orderByRaw('code is null')->orderBy('code')->orderBy('name')->get(['id', 'code', 'name', 'local_name', 'priority', 'category', 'zoonotic', 'notifiable', 'contagious', 'notes', 'active']),
+            'symptomList' => \App\Models\Symptom::with('diseases:id,name')->orderByDesc('active')->orderBy('system')->orderBy('code')->get()->map(fn ($s) => [ // D-292
+                'id' => $s->id, 'code' => $s->code, 'system' => $s->system, 'name' => $s->name, 'local' => $s->local_name, 'urgency' => $s->urgency, 'active' => $s->active,
+                'diseaseIds' => $s->diseases->pluck('id')->all(), 'diseases' => $s->diseases->pluck('name')->all()])->values(),
             'diseaseCategories' => \App\Models\Disease::CATEGORIES,
             'mortality' => $tab('mortality') ? $this->mortality() : null,
             'severities' => HealthCase::SEVERITIES, 'statuses' => HealthCase::STATUSES, 'routes' => Treatment::ROUTES,
@@ -253,6 +256,25 @@ class HealthController extends Controller
         return back()->with('success', "{$data['name']} saved.");
     }
 
+    /** D-292: the Symptom Master, kept by the vet: what can be ticked on a case, and the diseases each sign points to. */
+    public function symptom(Request $request, ?\App\Models\Symptom $symptom = null): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical') || $request->user()->passes('keep_vet_masters'), 403, 'The symptom master is kept by the veterinarian.');
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120', Rule::unique('symptoms', 'name')->ignore($symptom?->id)], 'system' => ['required', 'string', 'max:40'],
+            'local_name' => ['nullable', 'string', 'max:120'], 'urgency' => ['nullable', 'string', 'max:200'], 'active' => ['boolean'],
+            'disease_ids' => ['nullable', 'array'], 'disease_ids.*' => ['integer', 'exists:diseases,id'],
+        ]);
+        $diseases = $data['disease_ids'] ?? [];
+        unset($data['disease_ids']);
+        DB::transaction(function () use (&$symptom, $data, $diseases) {
+            $symptom ? $symptom->update($data) : $symptom = \App\Models\Symptom::create($data);
+            $symptom->diseases()->sync($diseases);
+        });
+
+        return back()->with('success', "{$data['name']} saved.");
+    }
+
     /** D-174: the vet's postmortem for a goat that died: suspected cause (from the disease master) and findings. */
     public function postmortem(Request $request): RedirectResponse
     {
@@ -347,12 +369,19 @@ class HealthController extends Controller
             'severity' => ['required', Rule::in(array_keys(HealthCase::SEVERITIES))], 'isolated' => ['boolean'],
             'diagnosis' => ['nullable', 'string', 'max:1000'], 'notes' => ['nullable', 'string', 'max:1000'],
             'report_id' => ['nullable', 'exists:health_records,id'],
+            'symptom_ids' => ['nullable', 'array', 'max:40'], 'symptom_ids.*' => ['integer', 'exists:symptoms,id'], // D-292
         ]);
+        $symptomIds = $data['symptom_ids'] ?? [];
+        unset($data['symptom_ids']);
+        $data['disease_id'] = \App\Models\Disease::whereRaw('lower(name) = lower(?)', [$data['condition']])->value('id'); // D-292: linked to the Disease Master
         $animal = Animal::findOrFail($data['animal_id']);
 
-        $case = DB::transaction(function () use ($data, $animal, $request) {
+        $case = DB::transaction(function () use ($data, $animal, $request, $symptomIds) {
             DB::statement('LOCK TABLE health_cases IN SHARE ROW EXCLUSIVE MODE');
             $case = HealthCase::create($data + ['case_no' => (int) HealthCase::max('case_no') + 1, 'vet' => $request->user()->name, 'recorded_by' => $request->user()->name, 'isolated' => (bool) ($data['isolated'] ?? false)]);
+            foreach (array_unique($symptomIds) as $sid) { // D-292: the symptoms the vet ticked
+                DB::table('health_case_symptoms')->insert(['health_case_id' => $case->id, 'symptom_id' => $sid, 'created_at' => now(), 'updated_at' => now()]);
+            }
             if (! empty($data['report_id'])) {
                 HealthRecord::whereKey($data['report_id'])->update(['status' => 'closed']);
             }

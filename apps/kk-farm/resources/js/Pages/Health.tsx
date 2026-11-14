@@ -11,7 +11,7 @@ import { titleCase } from '../lib/titleCase';
 import AddButton from '../components/AddButton';
 import { useTabParam } from '../lib/useTabParam';
 import { CareCalendar, Protocols, type CalendarRow, type Protocol } from '../components/CareCalendar';
-import { DiseaseMaster, Mortality, type DiseaseRow, type MortalityData } from '../components/Mortality';
+import { DiseaseMaster, Mortality, SymptomMaster, type DiseaseRow, type MortalityData, type SymptomRow } from '../components/Mortality';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
 type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
@@ -30,6 +30,7 @@ type Props = {
     medicines: Medicine[]; medicineMoves: MedMove[]; medicineCategories: Record<string, string>; medicineUnits: Record<string, string>;
     medicineTypes: Record<string, { label: string; direction: number }>; medicineAlerts: number; canMedicine: boolean;
     calendar: CalendarRow[]; protocols: Protocol[]; applies: Record<string, string>; careTypes: Record<string, string>; // D-173
+    symptomList?: SymptomRow[]; // D-292
     diseases: DiseaseRow[]; diseaseCategories: Record<string, string>; mortality: MortalityData | null; // D-174; null when the tab is closed to this person (D-241)
 };
 
@@ -96,11 +97,13 @@ export default function Health(props: Props) {
                         { id: 'protocols', label: 'Protocols', count: props.protocols.length || undefined },
                         { id: 'mortality', label: 'Mortality', count: props.mortality?.rows.length || undefined },
                         { id: 'diseases', label: 'Disease Master' },
+                        { id: 'symptoms', label: 'Symptom Master' },
                         { id: 'store', label: 'Medicine store', count: props.medicineAlerts || undefined },
                     ]} />
                     {tab === 'store' ? <MedicineStore {...props} /> : null}
                     {tab === 'mortality' && props.mortality ? <Mortality data={props.mortality} causes={props.diseases.filter((d) => d.active).map((d) => d.name)} isVet={isVet} /> : null}
                     {tab === 'diseases' ? <DiseaseMaster diseases={props.diseases} categories={props.diseaseCategories} canEdit={isVet || auth?.role === 'ceo'} /> : null}
+                    {tab === 'symptoms' ? <SymptomMaster symptoms={props.symptomList ?? []} diseases={props.diseases} canEdit={isVet || auth?.role === 'ceo'} /> : null}
                     {tab === 'calendar' ? <CareCalendar calendar={props.calendar} isVet={!!auth?.gates.includes('give_care')} /> : null}
                     {tab === 'protocols' ? <Protocols protocols={props.protocols} careTypes={props.careTypes} applies={props.applies} medicines={props.medicines} canEdit={isVet || auth?.role === 'ceo'} /> : null}
                     {tab === 'checkups' ? <Checkups data={props.checkups} /> : null}

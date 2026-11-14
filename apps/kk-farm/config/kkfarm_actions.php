@@ -146,6 +146,8 @@ return [
     'POST /health/clinical' => ['inline' => 'the action checks clinical', 'module' => 'health'],
     'POST /health/diseases' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'],
     'POST /health/diseases/{disease}' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'],
+    'POST /health/symptoms' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'], // D-292
+    'POST /health/symptoms/{symptom}' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'],
     'POST /health/medicine-stock' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'health'],
     'POST /health/medicines' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'health'],
     'POST /health/medicines/{medicine}' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'health'],
