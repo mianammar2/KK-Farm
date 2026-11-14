@@ -30,10 +30,10 @@ const ACTIONS: Record<string, Action[]> = {
     ],
     breeding: [
         { label: 'Record a mating', href: (id) => `/breeding?tab=cycle&mate=${id}`, gate: 'record_mating', female: true, primary: true },
-        { label: 'Pregnancy check', href: goat('pregnancy'), gate: 'health_checkup', female: true, record: true, alt: vetEntry('pregnancy') }, { label: 'Cull from breeding', href: goat('cull'), gate: 'cull_breeding', record: true },
+        { label: 'Ultrasound (pregnancy check)', href: (id) => `/breeding?tab=ultrasound&doe=${id}`, gate: 'clinical', female: true }, { label: 'Cull from breeding', href: goat('cull'), gate: 'cull_breeding', record: true },
     ],
     maternity: [
-        { label: 'Pregnancy check', href: goat('pregnancy'), gate: 'health_checkup', female: true, primary: true, record: true, alt: vetEntry('pregnancy') },
+        { label: 'Ultrasound (pregnancy check)', href: (id) => `/breeding?tab=ultrasound&doe=${id}`, gate: 'clinical', female: true, primary: true },
         { label: 'Record a mating', href: (id) => `/breeding?tab=cycle&mate=${id}`, gate: 'record_mating', female: true }, { label: 'Add weight', href: goat('weight'), gate: 'record_weights', record: true },
     ],
     growth: [{ label: 'Add weight', href: goat('weight'), gate: 'record_weights', primary: true, record: true }, { label: 'Add height', href: goat('height'), gate: 'record_height', record: true }],

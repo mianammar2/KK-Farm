@@ -1,7 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import { AlertTriangle, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
 import PedigreeTree, { type PedigreeNode } from '../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -364,8 +364,11 @@ function MatingSheet({ rows: matingRecords }: { rows: NonNullable<Props['matingR
 
 /** D-298: Breeding → Ultrasound: every mating still waiting for a clear ultrasound, by the day it is due (the vet's task opens here). */
 function UltrasoundList({ rows, isVet, options, does }: { rows: NonNullable<Props['ultrasound']>; isVet: boolean; options: UltrasoundOptions; does: Props['does'] }) {
-    const [open, setOpen] = useState<number | null>(null);
-    const add = useForm({ dam_id: '', days: '' });
+    // D-306: from an app's scan (?doe=…): her open pregnancy's ultrasound form opens, else she is chosen below
+    const doe = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('doe') : null;
+    const [open, setOpen] = useState<number | null>(() => (doe ? rows.find((r) => r.damId === doe)?.id ?? null : null));
+    const add = useForm({ dam_id: doe && !rows.some((r) => r.damId === doe) ? doe : '', days: '' });
+    useEffect(() => { if (doe) document.getElementById(open ? `us-${open}` : 'us-add')?.scrollIntoView({ block: 'center' }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const due = rows.filter((r) => r.isDue);
     const later = rows.filter((r) => !r.isDue);
     const row = (r: NonNullable<Props['ultrasound']>[number]) => (
@@ -377,7 +380,7 @@ function UltrasoundList({ rows, isVet, options, does }: { rows: NonNullable<Prop
                 {r.last ? <span className="text-xs text-ink-soft">Last: {r.last}</span> : null}
                 {isVet ? <Button variant="secondary" className="ml-auto" onClick={() => setOpen(open === r.id ? null : r.id)}>{open === r.id ? 'Close' : 'Record ultrasound'}</Button> : null}
             </div>
-            {open === r.id ? <div className="mt-3"><UltrasoundForm matingId={r.id} damNumber={r.dam ?? ''} matedOn={r.matedIso} options={options} onDone={() => setOpen(null)} /></div> : null}
+            {open === r.id ? <div id={`us-${r.id}`} className="mt-3"><UltrasoundForm matingId={r.id} damNumber={r.dam ?? ''} matedOn={r.matedIso} options={options} onDone={() => setOpen(null)} /></div> : null}
         </li>
     );
     return (
