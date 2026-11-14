@@ -392,7 +392,7 @@ final class Checkups
                 $mating = Mating::create([
                     'dam_id' => $doe->id, 'sire_id' => $data['sire_id'] ?? null, 'mated_on' => $mated, 'method' => 'natural', 'status' => 'pregnant',
                     'expected_kidding_on' => $mated->copy()->addDays($gestation), 'recorded_by' => $by->name,
-                    'notes' => 'Found pregnant at the health checkup on '.$on->format('d/m/Y').($days ? ", about {$days} days pregnant" : '').'.',
+                    'notes' => 'Found pregnant at the health checkup on '.$on->format('d/m/Y').($days ? ", about {$days} days pregnant" : '').'.', 'source' => 'checkup', // D-295: a pregnancy found, not a mating recorded
                 ]);
             } else {
                 $update = ['status' => 'pregnant'];

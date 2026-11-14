@@ -312,7 +312,7 @@ final class GoatRegistration
         Mating::create([
             'dam_id' => $animal->id, 'sire_id' => null, 'mated_on' => $mated, 'method' => 'natural', 'status' => 'pregnant',
             'expected_kidding_on' => $mated->copy()->addDays($gestation), 'recorded_by' => $user->name,
-            'notes' => "Pregnant when she came to the farm; sire unknown. Mating date estimated from about {$days} days pregnant.",
+            'notes' => "Pregnant when she came to the farm; sire unknown. Mating date estimated from about {$days} days pregnant.", 'source' => 'arrival', // D-295
         ]);
         $animal->update(['repro_status' => 'pregnant', 'repro_state' => Classification::LEGACY_REPRO['pregnant'] ?? 'pregnant']);
         Farm::event($animal, 'breeding', 'Pregnant on arrival. Expected kidding about '.$mated->copy()->addDays($gestation)->format('d/m/Y'), $user->name);
