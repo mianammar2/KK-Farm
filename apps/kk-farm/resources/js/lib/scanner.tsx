@@ -80,7 +80,8 @@ export function ScanCapture({ disabled }: { disabled?: boolean }) {
                 if (ref.current) {
                     ref.current.value = '';
                 }
-                if (tag.length >= 4) {
+                // D-301: inside an app, its scan popup takes the read (it cancels the event); elsewhere the RFID Scan page opens
+                if (tag.length >= 4 && window.dispatchEvent(new CustomEvent('kk:scan', { detail: tag, cancelable: true }))) {
                     router.visit(`/scan?tag=${encodeURIComponent(tag)}`);
                 }
             }}

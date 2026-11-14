@@ -71,8 +71,9 @@ export default function Breeding(props: Props) {
     const { farmBorn = [], matingRecords = [], ultrasound = [], matings, kiddings, weaning, weaned, performance, focus, goats, settings, kpis, options } = props;
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useTabParam('cycle'); // D-170
-    const [adding, setAdding] = useState(false); // D-127
-    const [presetDam, setPresetDam] = useState<string | null>(null); // D-175: mate a doe straight from Heat Detection
+    const mateId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('mate') : null; // D-301: from an app's scan
+    const [adding, setAdding] = useState(!!mateId); // D-127
+    const [presetDam, setPresetDam] = useState<string | null>(mateId); // D-175: mate a doe straight from Heat Detection
     const isVet = !!auth?.gates.includes('clinical');
     const canSettings = !!auth?.modules.includes('settings');
     const active = matings.filter((m) => m.active);

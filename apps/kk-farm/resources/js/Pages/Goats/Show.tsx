@@ -70,7 +70,7 @@ export default function GoatShow(props: Props) {
     const [tab, setTab] = useState('overview');
     // D-102: opened from a scan with ?do=checkup|pregnancy|entry|weight|move|concern, the right form is already open.
     const todo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('do') : null;
-    const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern', 'temp'].includes(todo ?? '') ? todo : null);
+    const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern', 'temp', 'height', 'cull', 'death', 'exit', 'birth', 'photo'].includes(todo ?? '') ? todo : null); // D-301: every form an app's scan can open
     const [entry, setEntry] = useState<string | null>(['checkup', 'pregnancy', 'entry'].includes(todo ?? '') && healthEntry ? (todo === 'entry' ? '' : todo) : null);
     const profile = photos.find((p) => p.isProfile);
     const onFarm = goat.status === 'active';
