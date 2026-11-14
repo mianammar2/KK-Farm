@@ -429,8 +429,6 @@ export default function Register({ registered = [], epc, fields, lookups, classS
 const REG_COLS: Col<RegRow>[] = [
     { key: 'number', label: 'Tag ID', type: 'text', total: 'count', render: (r) => <Link href={`/goats/${r.id}`} className="font-mono text-cobalt-800 hover:underline">{r.number}</Link> },
     { key: 'arrived', label: 'Arrived / born on', type: 'text' },
-    { key: 'enteredIso', label: 'Entered on', type: 'date', render: (r) => r.entered ?? '—' },
-    { key: 'by', label: 'Entered by', type: 'enum' },
     { key: 'origin', label: 'Entry type', type: 'enum' },
     { key: 'breed', label: 'Breed', type: 'enum' },
     { key: 'sex', label: 'Sex', type: 'enum' },
@@ -438,6 +436,8 @@ const REG_COLS: Col<RegRow>[] = [
     { key: 'role', label: 'Role', type: 'enum' },
     { key: 'pen', label: 'Pen', type: 'enum' },
     { key: 'source', label: 'From farm', type: 'enum' },
+    { key: 'enteredIso', label: 'Entered on', type: 'date', render: (r) => r.entered ?? '—' },
+    { key: 'by', label: 'Entered by', type: 'enum' },
     { key: 'status', label: 'Status', type: 'enum' },
 ];
 function RegisteredGoats({ rows }: { rows: RegRow[] }) {
