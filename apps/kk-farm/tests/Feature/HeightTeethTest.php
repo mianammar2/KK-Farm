@@ -142,4 +142,16 @@ class HeightTeethTest extends TestCase
         $this->assertTrue($ppr->symptoms()->where('name', 'Sneezing')->exists());
         $this->actingAs($this->user('caretaker'))->post('/health/symptoms', ['name' => 'Cough 2', 'system' => 'Respiratory'])->assertForbidden();
     }
+
+    /** D-300: a goat's full profile: identity, growth, breeding; health only with the health right. */
+    public function test_the_goat_profile_has_everything_and_health_only_for_those_who_see_it(): void
+    {
+        \App\Models\WeightRecord::create(['animal_id' => $this->goat->id, 'measured_on' => now()->subDays(10), 'weight_kg' => 30, 'measured_by' => 'x', 'source' => 'manual']);
+        \App\Models\WeightRecord::create(['animal_id' => $this->goat->id, 'measured_on' => now(), 'weight_kg' => 32, 'measured_by' => 'x', 'source' => 'manual']);
+        \App\Models\HealthCheckup::create(['animal_id' => $this->goat->id, 'checked_on' => now(), 'temperature_f' => 104.2, 'outcome' => 'monitor', 'examiner' => 'Dr Sana']);
+        $this->actingAs($this->user('vet'))->getJson("/goats/{$this->goat->id}/profile")->assertOk()
+            ->assertJsonPath('number', 'H-1')->assertJsonPath('growth.latestKg', 32)->assertJsonPath('growth.gain.kg', 2)->assertJsonPath('healthDetail.lastCheck.temp', 104.2)->assertJsonPath('healthDetail.lastCheck.fever', true);
+        $care = $this->actingAs($this->user('caretaker'))->getJson("/goats/{$this->goat->id}/profile")->assertOk();
+        $this->assertNull($care->json('healthDetail'));
+    }
 }

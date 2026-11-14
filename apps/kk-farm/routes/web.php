@@ -253,7 +253,8 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);
         Route::post('/goats/{animal}/death', [\App\Http\Controllers\DeathController::class, 'store']); // D-260: the vet reports
         Route::post('/goats/{animal}/height', [GoatController::class, 'height']); // D-262
-        Route::get('/goats/{animal}/day/{on}', [GoatController::class, 'day']); // D-270: one day's records, JSON
+        Route::get('/goats/{animal}/day/{on}', [GoatController::class, 'day']);
+        Route::get('/goats/{animal}/profile', [GoatController::class, 'profile']); // D-300: the full profile card, JSON // D-270: one day's records, JSON
         Route::get('/reports/sheet', [\App\Http\Controllers\HerdSheetController::class, 'index']); // D-288: the Herd Sheet
         Route::get('/reports/records', [\App\Http\Controllers\RecordsReportController::class, 'index']); // D-270
         Route::get('/reports/records/day', [\App\Http\Controllers\RecordsReportController::class, 'day']); // D-270, JSON

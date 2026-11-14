@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useScannerDevice } from '../lib/scanner';
 import { haptic } from '../lib/native';
 import GoatPortrait from '../components/GoatPortrait';
+import GoatProfileCard from '../components/GoatProfileCard';
 import { Button, Chip, Field, HealthChip, Note, PageHeader, Panel, ReproChip } from '../components/ui';
 import type { GoatCard, Option, SharedProps } from '../types';
 import { AttachPrompt } from '../components/RfidAttach';
@@ -107,20 +108,12 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
     const [confirmLost, setConfirmLost] = useState(false);
     return (
         <Panel title="Goat found" description={`Tag ${result.code}, on this goat since ${result.since}`}>
-            <div className="flex flex-col gap-4 sm:flex-row">
-                <motion.div initial={{ scale: 0.6, opacity: 0, rotate: -6 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 18 }} className="shrink-0 self-center sm:self-start">
-                    {goat.photo ? <img src={`/media/${goat.photo}`} alt="" className="size-36 rounded-3xl object-cover shadow-float" /> : <GoatPortrait number={goat.number} sex={goat.sex} stage={goat.stage} repro={goat.repro} size={144} />}
-                </motion.div>
+            {/* D-300: the goat's full profile card first, then what to do */}
+            <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
+                <GoatProfileCard id={goat.id} />
+            </motion.div>
+            <div className="mt-4">
                 <div className="min-w-0">
-                    <h2 className="font-mono text-xl font-bold text-cobalt-900">{goat.number}</h2>
-                    <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">{goat.name ? <span>{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName /><span>·</span><AgeBadge stage={goat.stage} code={goat.ageCode} withLabel />{goat.roles?.length ? <span className="font-mono text-xs font-semibold text-cobalt-800">{goat.roles.join(" · ")}</span> : null}<span>{goat.age}</span></p>
-                    <p className="text-ink-soft">{goat.pen}{goat.weight ? ` · ${goat.weight} KG` : ''}</p>
-                    <div className="mt-1 flex flex-wrap gap-1"><HealthChip health={goat.health} /><ReproChip repro={goat.repro} until={goat.monitorUntil} />{goat.pregnancyDay ? <span className="rounded-[4px] bg-manganese-100 px-1.5 py-0.5 text-xs font-semibold text-manganese-600">Day {goat.pregnancyDay} of pregnancy</span> : null}</div>
-                    {goat.withdrawal ? (
-                        <p role="alert" className="mt-2 rounded-tile bg-crit-100 px-2.5 py-1.5 text-sm font-semibold text-crit-700">
-                            Under withdrawal{goat.withdrawal.meat ? ` · no sale before ${goat.withdrawal.meat}` : ''}{goat.withdrawal.milk ? ` · no milk before ${goat.withdrawal.milk}` : ''}
-                        </p>
-                    ) : null}
                     {/* D-102: after a scan, what to do with this goat; each opens on the goat's own page. */}
                     <p className="mt-3 text-sm font-semibold text-cobalt-900">What do you want to do?</p>
                     <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">

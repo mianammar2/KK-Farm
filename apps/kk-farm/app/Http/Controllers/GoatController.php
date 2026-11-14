@@ -412,6 +412,64 @@ class GoatController extends Controller
         ]);
     }
 
+    /**
+     * D-300: the goat's full profile for the card shown after a scan or wherever a goat is looked at: identity, age,
+     * PEN, weight and growth, health (problems, temperature, withdrawal, care due; for those with the health right),
+     * breeding, family and what is missing. One JSON, read-only.
+     */
+    public function profile(Request $request, Animal $animal): \Illuminate\Http\JsonResponse
+    {
+        $animal->load(['breed', 'pen.shed', 'photos', 'dam', 'sire', 'latestWeight']);
+        $seeHealth = $request->user()->passes('see_health_history');
+        $d = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : null;
+        $weights = \App\Models\WeightRecord::where('animal_id', $animal->id)->orderBy('measured_on')->orderBy('id')->get(['measured_on', 'weight_kg', 'body_score']);
+        $last = $weights->last(); $prev = $weights->count() > 1 ? $weights[$weights->count() - 2] : null; $first = $weights->first();
+        $gain = $last && $prev ? ['kg' => round($last->weight_kg - $prev->weight_kg, 1), 'pct' => $prev->weight_kg > 0 ? round(($last->weight_kg - $prev->weight_kg) / $prev->weight_kg * 100, 1) : null,
+            'days' => max(1, (int) $prev->measured_on->diffInDays($last->measured_on))] : null;
+        $height = \App\Models\HeightRecord::where('animal_id', $animal->id)->orderByDesc('measured_on')->orderByDesc('id')->first();
+        $tag = $animal->openAssignment?->tag?->tag_code;
+        $origin = ['purchased' => 'Purchased', 'transferred_in' => 'Transferred in', 'born_on_farm' => 'Born on the farm'];
+        $mating = \App\Models\Mating::with('sire')->where('dam_id', $animal->id)->latest('mated_on')->first();
+        $health = null;
+        if ($seeHealth) {
+            $cases = \App\Models\HealthCase::with('disease')->where('animal_id', $animal->id)->whereIn('status', \App\Models\HealthCase::ACTIVE)->orderByDesc('onset_on')->get();
+            $check = \App\Models\HealthCheckup::where('animal_id', $animal->id)->orderByDesc('checked_on')->orderByDesc('id')->first();
+            $treat = \App\Models\Treatment::where('animal_id', $animal->id)->orderByDesc('given_on')->orderByDesc('id')->first();
+            $due = \App\Models\HealthRecord::where('animal_id', $animal->id)->whereNotNull('next_due_on')->orderBy('next_due_on')->where('next_due_on', '>=', now()->subDays(60))->first();
+            $health = [
+                'cases' => $cases->map(fn ($c) => ['label' => $c->label(), 'condition' => $c->condition, 'disease' => $c->disease?->name, 'code' => $c->disease?->code,
+                    'severity' => \App\Models\HealthCase::SEVERITIES[$c->severity] ?? $c->severity, 'since' => $d($c->onset_on), 'isolated' => (bool) $c->isolated,
+                    'symptoms' => \Illuminate\Support\Facades\DB::table('health_case_symptoms')->join('symptoms', 'symptoms.id', '=', 'health_case_symptoms.symptom_id')->where('health_case_id', $c->id)->pluck('symptoms.name')->all()])->values(),
+                'lastCheck' => $check ? ['on' => $d($check->checked_on), 'temp' => $check->temperature_f !== null ? (float) $check->temperature_f : null, 'fever' => (bool) $check->flags(),
+                    'result' => \App\Models\HealthCheckup::OUTCOMES[$check->outcome] ?? $check->outcome, 'by' => $check->examiner, 'findings' => $check->findings] : null,
+                'watch' => \App\Support\Recovery::progress($animal),
+                'withdrawal' => \App\Support\Withdrawal::summary($animal),
+                'lastTreatment' => $treat ? ['on' => $d($treat->given_on), 'product' => $treat->product, 'dose' => $treat->dose] : null,
+                'careDue' => $due ? ['what' => ucfirst(str_replace('_', ' ', $due->kind)).': '.$due->title, 'on' => $d($due->next_due_on), 'overdue' => $due->next_due_on->isPast()] : null,
+            ];
+        }
+
+        return response()->json($animal->card() + [
+            'rfid' => $tag, 'shed' => $animal->pen?->shed?->name, 'origin' => $origin[$animal->origin] ?? $animal->origin,
+            'arrived' => $d($animal->origin === 'born_on_farm' ? $animal->birth_date : $animal->acquired_on), 'born' => $d($animal->birth_date), 'bornEstimated' => (bool) $animal->birth_date_is_estimate,
+            'from' => $animal->source_farm, 'purpose' => $animal->animal_purpose ? ucfirst($animal->animal_purpose) : null,
+            'roleLabels' => \App\Support\Designations::labels(\App\Support\Designations::codes($animal)),
+            'growth' => ['latestKg' => $last ? (float) $last->weight_kg : null, 'latestOn' => $d($last?->measured_on), 'gain' => $gain, 'weighings' => $weights->count(),
+                'totalGain' => $first && $last && $weights->count() > 1 ? round($last->weight_kg - $first->weight_kg, 1) : null,
+                'adg' => $first && $last && $weights->count() > 1 ? (int) round(($last->weight_kg - $first->weight_kg) * 1000 / max(1, $first->measured_on->diffInDays($last->measured_on))) : null,
+                'bcs' => $weights->whereNotNull('body_score')->last()?->body_score, 'heightIn' => $height ? round($height->height_cm / 2.54, 1) : ($animal->height_cm ? round($animal->height_cm / 2.54, 1) : null)],
+            'breeding' => ['repro' => $animal->repro_status ? ucfirst(str_replace('_', ' ', $animal->repro_status)) : null, 'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, now()->toDateString()),
+                'lastMating' => $mating ? ['on' => $d($mating->mated_on), 'buck' => $mating->sire?->farm_number, 'status' => \App\Models\Mating::OUTCOMES[$mating->status] ?? $mating->status,
+                    'expected' => in_array($mating->status, ['pregnant', 'open', 'inconclusive'], true) ? $d($mating->expected_kidding_on) : null] : null,
+                'kids' => Animal::where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->whereNull('voided_at')->count(),
+                'kiddings' => $animal->sex === 'female' ? \App\Models\Kidding::where('dam_id', $animal->id)->count() : null],
+            'family' => ['dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : null, 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : null],
+            'missing' => collect(\App\Support\HerdStats::tags($animal, $weights->isNotEmpty()))->intersect(['no_pen', 'no_weight', 'age_conflict', 'no_stage'])
+                ->map(fn ($t) => \App\Support\HerdStats::LABELS[$t] ?? $t)->values(),
+            'seeHealth' => $seeHealth, 'healthDetail' => $health,
+        ]);
+    }
+
     /** D-293: the goat for a typed Tag ID or a scanned RFID chip, for the goat fields of every form. */
     public function find(Request $request): \Illuminate\Http\JsonResponse
     {

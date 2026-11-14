@@ -8,6 +8,9 @@ import type { Cls } from '../lib/shedSim';
 import type { ShedEngine } from '../lib/shedEngine';
 import { hoverGoat, type HoverGoat } from './FarmScene';
 import { Link } from '@inertiajs/react';
+import { createPortal } from 'react-dom';
+import GoatProfileCard from './GoatProfileCard';
+import Sheet from './Sheet';
 import GoatPortrait from './GoatPortrait';
 import { X } from 'lucide-react';
 
@@ -196,6 +199,7 @@ type Peek = {
 function GoatCard({ card, onClose }: { card: { x: number; y: number; info: HoverGoat; pen: string }; onClose: () => void }) {
     const [d, setD] = useState<Peek | null>(null);
     const [failed, setFailed] = useState(false);
+    const [full, setFull] = useState(false); // D-300: the full profile card
     useEffect(() => {
         setD(null); setFailed(false);
         const c = new AbortController();
@@ -230,7 +234,11 @@ function GoatCard({ card, onClose }: { card: { x: number; y: number; info: Hover
                     {d.withdrawal ? row('Withdrawal', [d.withdrawal.meat ? `meat to ${d.withdrawal.meat}` : null, d.withdrawal.milk ? `milk to ${d.withdrawal.milk}` : null].filter(Boolean).join(' · ')) : null}
                 </> : failed ? <p className="text-ink-soft">The record could not be loaded.</p> : <div className="space-y-1.5" aria-busy="true">{[0, 1, 2].map((k) => <div key={k} className="h-3 animate-pulse rounded bg-glaze" />)}</div>}
             </dl>
-            <Link href={`/goats/${i.id}`} className="mt-3 flex min-h-10 items-center justify-center rounded-tile bg-cobalt-800 text-sm font-semibold text-white hover:bg-cobalt-900">Open goat record</Link>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setFull(true)} className="flex min-h-10 items-center justify-center rounded-tile border border-cobalt-800 text-sm text-cobalt-800 hover:bg-glaze">Full profile</button>
+                <Link href={`/goats/${i.id}`} className="flex min-h-10 items-center justify-center rounded-tile bg-cobalt-800 text-sm text-white hover:bg-cobalt-900">Open record</Link>
+            </div>
+            {full ? createPortal(<Sheet onClose={() => setFull(false)}><div className="p-4 sm:p-5"><GoatProfileCard id={String(i.id)} /></div></Sheet>, document.body) : null}
         </div>
     );
 }

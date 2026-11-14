@@ -455,3 +455,10 @@ main { min-width: 0; }
 
 /* D-271: numbers and codes line up (even-width digits) wherever the code style is used */
 .font-mono { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+/* D-300: Print on a goat's profile card prints the card alone */
+@media print {
+    body:has(.kk-print-card) * { visibility: hidden; }
+    .kk-print-card, .kk-print-card * { visibility: visible; }
+    .kk-print-card { position: absolute; inset: 0 auto auto 0; width: 100%; border: 0; }
+}
