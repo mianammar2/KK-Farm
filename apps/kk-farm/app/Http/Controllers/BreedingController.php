@@ -44,7 +44,20 @@ class BreedingController extends Controller
         $matings = Mating::with(['dam', 'sire', 'checks'])->where(fn ($q) => $q->whereIn('status', ['open', 'pregnant', 'inconclusive'])->orWhere('updated_at', '>=', now()->subDays(60)))
             ->orderByRaw("case status when 'pregnant' then 0 when 'inconclusive' then 1 when 'open' then 2 else 3 end")->orderBy('expected_kidding_on')->get();
 
+        // D-283: every kid born on the farm, as a spreadsheet on Kidding & Pregnancy Outcomes (the register page lists only bought and transferred goats)
+        $enteredBy = \App\Models\AnimalEvent::where('type', 'origin')->orderBy('occurred_at')->get(['animal_id', 'recorded_by'])->keyBy('animal_id');
+        $farmBorn = Animal::with(['breed', 'pen', 'dam', 'sire'])->whereNull('voided_at')->where('origin', 'born_on_farm')->orderByDesc('birth_date')->orderByDesc('created_at')->get()
+            ->map(fn (Animal $a) => [
+                'id' => $a->id, 'number' => $a->farm_number, 'born' => $a->birth_date?->format('d/m/Y'), 'bornIso' => $a->birth_date?->format('Y-m-d'),
+                'dam' => $a->dam?->farm_number, 'damId' => $a->dam_id, 'sire' => $a->sire?->farm_number, 'sireId' => $a->sire_id,
+                'breed' => $a->breed?->name, 'sex' => $a->sex === 'female' ? 'Female' : ($a->sex === 'male' ? 'Male' : null),
+                'birthKg' => $a->birth_weight_kg !== null ? (float) $a->birth_weight_kg : null, 'code' => $a->classCode(), 'role' => \App\Support\Designations::main($a),
+                'pen' => $a->pen?->name, 'status' => $a->status === 'active' ? 'On farm' : 'Left',
+                'entered' => $a->created_at?->setTimezone('Asia/Karachi')->format('d/m/Y g:i A'), 'by' => $enteredBy[$a->id]->recorded_by ?? null,
+            ])->values();
+
         return Inertia::render('Breeding', [
+            'farmBorn' => $farmBorn,
             'matings' => $matings->map(fn (Mating $m) => [
                 'id' => $m->id, 'status' => $m->status, 'outcome' => Mating::OUTCOMES[$m->status] ?? $m->status, 'method' => Mating::METHODS[$m->method] ?? $m->method,
                 'heat' => $m->heat_observed, 'cycle' => $m->service_cycle, 'handler' => $m->handler, 'notes' => $m->notes, 'alert' => $m->alert($org->kidding_alert_days),

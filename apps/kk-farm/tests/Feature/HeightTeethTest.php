@@ -91,4 +91,12 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/goats/register')->assertOk()->assertInertia(fn ($p) => $p
             ->where('registered.0.number', 'H-1')->where('registered.0.origin', 'Purchased')->where('registered.0.status', 'On farm')->has('registered.0.entered'));
     }
+
+    /** D-282/D-283: farm-born kids are not on the register page; they are listed in Maternity with mother and father. */
+    public function test_farm_born_kids_are_listed_in_maternity_not_on_the_register(): void
+    {
+        $kid = Animal::create(['farm_number' => 'K-1', 'sex' => 'female', 'breed_id' => $this->goat->breed_id, 'origin' => 'born_on_farm', 'dam_id' => $this->goat->id, 'pen_id' => $this->goat->pen_id, 'birth_date' => now()->subDays(20)]);
+        $this->actingAs($this->user('ceo'))->get('/goats/register')->assertInertia(fn ($p) => $p->has('registered', 1)->where('registered.0.number', 'H-1'));
+        $this->actingAs($this->user('ceo'))->get('/breeding?tab=kidding')->assertInertia(fn ($p) => $p->has('farmBorn', 1)->where('farmBorn.0.number', 'K-1')->where('farmBorn.0.dam', 'H-1'));
+    }
 }

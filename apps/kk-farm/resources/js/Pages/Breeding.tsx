@@ -38,6 +38,7 @@ type Props = {
     matings: MatingRow[]; kiddings: KiddingRow[]; weaning: Due[]; kpis: Kpis; heat: HeatRow[]; heatOptions: HeatOptions; // D-175
     kidCare: KidRow[]; kidCareOptions: KidCareOptions; // D-176
     weaned: Array<{ id: number; kidId: string; kid: string; on: string; age: number | null; weight: number | null; method: string | null; by: string }>;
+    farmBorn?: Array<{ id: string; number: string; born: string | null; bornIso: string | null; dam: string | null; damId: string | null; sire: string | null; sireId: string | null; breed: string | null; sex: string | null; birthKg: number | null; code: string | null; role: string | null; pen: string | null; status: string; entered: string | null; by: string | null }>;
     performance: Array<{ id: string; number: string; name: string | null; kiddings: number; alive: number; stillborn: number; litter: number }>;
     focus: { id: string; number: string; tree: PedigreeNode } | null; pairCheck: { shared: number; sire: string; dam: string; coi: number; limit: number } | null;
     does: Option[]; bucks: Option[]; goats: Option[]; pens: Array<{ id: number; name: string }>;
@@ -64,7 +65,7 @@ const OUTCOME_CLASS: Record<string, string> = { open: 'bg-cobalt-100 text-cobalt
 
 /** D-075: workbook "Breeding", "Pregnancy Checks", "Kidding" and "Weaning". */
 export default function Breeding(props: Props) {
-    const { matings, kiddings, weaning, weaned, performance, focus, goats, settings, kpis, options } = props;
+    const { farmBorn = [], matings, kiddings, weaning, weaned, performance, focus, goats, settings, kpis, options } = props;
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useTabParam('cycle'); // D-170
     const [adding, setAdding] = useState(false); // D-127
@@ -134,6 +135,31 @@ export default function Breeding(props: Props) {
                             </table>
                         </div>
                     ) : <Empty title="No kiddings yet">Record a kidding from a mating in the Breeding cycle tab.</Empty>}
+                </Panel>
+            ) : null}
+            {tab === 'kidding' && farmBorn.length ? (
+                <Panel flush title="Farm-Born Kids" description="Every kid born on the farm, created from the kidding record: born on, mother and father, and when it was entered and by whom." className="mt-4">
+                    <div className="flex flex-wrap gap-2 border-b border-rule px-3 py-3 text-sm">
+                        <span className="rounded-md bg-cobalt-100 px-2.5 py-1 text-cobalt-800">All: {farmBorn.length}</span>
+                        <span className="rounded-md bg-glaze px-2.5 py-1 ring-1 ring-rule">Female: {farmBorn.filter((k) => k.sex === 'Female').length}</span>
+                        <span className="rounded-md bg-glaze px-2.5 py-1 ring-1 ring-rule">Male: {farmBorn.filter((k) => k.sex === 'Male').length}</span>
+                        <span className="rounded-md bg-glaze px-2.5 py-1 ring-1 ring-rule">On farm: {farmBorn.filter((k) => k.status === 'On farm').length}</span>
+                    </div>
+                    <DataGrid id="farm-born-kids" name="Farm-born kids" rows={farmBorn} rowKey={(k) => k.id} cols={[
+                        { key: 'bornIso', label: 'Born on', type: 'date', render: (k) => k.born ?? '—' },
+                        { key: 'number', label: 'Tag ID', type: 'text', total: 'count', render: (k) => <Link href={`/goats/${k.id}`} className="font-mono text-cobalt-800 hover:underline">{k.number}</Link> },
+                        { key: 'dam', label: 'Mother', type: 'text', render: (k) => (k.damId ? <Link href={`/goats/${k.damId}`} className="font-mono text-cobalt-800 hover:underline">{k.dam}</Link> : '—') },
+                        { key: 'sire', label: 'Father', type: 'text', render: (k) => (k.sireId ? <Link href={`/goats/${k.sireId}`} className="font-mono text-cobalt-800 hover:underline">{k.sire}</Link> : '—') },
+                        { key: 'breed', label: 'Breed', type: 'enum' },
+                        { key: 'sex', label: 'Sex', type: 'enum' },
+                        { key: 'birthKg', label: 'Birth weight (KG)', type: 'number', total: 'avg', unit: 'KG' },
+                        { key: 'code', label: 'Class code', type: 'enum' },
+                        { key: 'role', label: 'Role', type: 'enum' },
+                        { key: 'pen', label: 'Pen', type: 'enum' },
+                        { key: 'status', label: 'Status', type: 'enum' },
+                        { key: 'by', label: 'Entered by', type: 'enum' },
+                        { key: 'entered', label: 'Entered on', type: 'text' },
+                    ]} />
                 </Panel>
             ) : null}
 
