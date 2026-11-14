@@ -156,6 +156,7 @@ return [
     'POST /health/protocols' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'],
     'POST /health/protocols/{protocol}' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'],
     'POST /health/records/{record}/close' => ['inline' => 'the action checks clinical', 'module' => 'health'],
+    'POST /health/doses/{dose}' => ['inline' => 'the action checks give_doses', 'module' => 'health'], // D-304
     'POST /health/symptoms' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'],
     'POST /health/symptoms/{symptom}' => ['inline' => 'the action checks clinical, keep_vet_masters', 'module' => 'health'],
     'POST /housing/cleanings/{cleaning}/finish' => ['gate' => 'record_cleaning', 'module' => 'sheds'],

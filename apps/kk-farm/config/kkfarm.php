@@ -73,6 +73,7 @@ return [
         'record_heat' => ['ceo', 'manager', 'vet', 'caretaker'],
         'record_mating' => ['ceo', 'manager', 'vet', 'caretaker'],
         'give_care' => ['ceo', 'vet'], // vaccination, deworming and other preventive care given
+        'give_doses' => ['ceo', 'vet', 'caretaker'], // D-304: give the doses a vet prescribed (given / missed / held)
         'move_goats' => ['ceo', 'manager', 'caretaker'], // D-266 F-10 (Q10): not the vet or the feeding staff
         'see_health_history' => ['ceo', 'manager', 'vet'], // D-266 F-15: health history, cases and treatments on a goat (was a hard-coded role list)
         'see_goat_pedigree' => ['ceo', 'manager', 'vet', 'caretaker'], // D-266 F-14: sire, dam, offspring and the day-by-day records; the feeding staff see tag, pen and group only

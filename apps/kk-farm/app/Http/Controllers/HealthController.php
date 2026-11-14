@@ -103,6 +103,12 @@ class HealthController extends Controller
             ]),
             'applies' => \App\Models\CareProtocol::applies(),
             // D-174: disease master and mortality register
+            // D-304: doses due today or overdue, and the doses of the last 14 days
+            'dosesDue' => \App\Models\TreatmentDose::with(['treatment', 'animal.pen'])->where('status', 'due')->whereDate('due_on', '<=', now()->toDateString())
+                ->whereHas('animal', fn ($q) => $q->where('status', 'active'))->orderBy('due_on')->orderByRaw("case slot when 'morning' then 0 when 'midday' then 1 else 2 end")->get()->map(fn ($d) => self::doseRow($d))->values(),
+            'dosesDone' => \App\Models\TreatmentDose::with(['treatment', 'animal.pen'])->where('status', '<>', 'due')->where('done_at', '>=', now()->subDays(14))->orderByDesc('done_at')->limit(500)->get()->map(fn ($d) => self::doseRow($d))->values(),
+            'frequencies' => collect(\App\Support\Doses::FREQUENCIES)->map(fn ($f) => $f[0]),
+            'canGiveDoses' => $request->user()->passes('give_doses'),
             'diseases' => \App\Models\Disease::orderByDesc('active')->orderByRaw('code is null')->orderBy('code')->orderBy('name')->get(['id', 'code', 'name', 'local_name', 'priority', 'category', 'zoonotic', 'notifiable', 'contagious', 'notes', 'active']),
             'symptomList' => \App\Models\Symptom::with('diseases:id,name')->orderByDesc('active')->orderBy('system')->orderBy('code')->get()->map(fn ($s) => [ // D-292
                 'id' => $s->id, 'code' => $s->code, 'system' => $s->system, 'name' => $s->name, 'local' => $s->local_name, 'urgency' => $s->urgency, 'active' => $s->active,
@@ -157,7 +163,8 @@ class HealthController extends Controller
             'withdrawal' => $withdrawal ? ['meat' => $withdrawal['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal['meat'])->format('d/m') : null, 'milk' => $withdrawal['milk'] ? \Illuminate\Support\Carbon::parse($withdrawal['milk'])->format('d/m') : null] : null,
             'treatments' => $c->treatments->map(fn (Treatment $t) => [
                 'id' => $t->id, 'on' => $t->given_on->format('d/m/Y'), 'product' => $t->product, 'dose' => $t->dose, 'route' => Treatment::ROUTES[$t->route] ?? $t->route,
-                'frequency' => $t->frequency, 'days' => $t->days_prescribed, 'next' => $t->next_dose_on?->format('d/m/Y'),
+                'frequency' => \App\Support\Doses::FREQUENCIES[$t->frequency][0] ?? $t->frequency, 'days' => $t->days_prescribed, 'next' => $t->next_dose_on?->format('d/m/Y'),
+                'doses' => \App\Support\Doses::progress($t->id), // D-304
                 'meat' => $t->meat_clear_on?->format('d/m/Y'), 'milk' => $t->milk_clear_on?->format('d/m/Y'), 'cost' => $t->cost_minor !== null ? $t->cost_minor / 100 : null, 'by' => $t->recorded_by, 'notes' => $t->notes,
             ])->values(),
         ];
@@ -273,6 +280,34 @@ class HealthController extends Controller
         });
 
         return back()->with('success', "{$data['name']} saved.");
+    }
+
+    /** D-304: one dose for the Doses Due list and its history. */
+    private static function doseRow(\App\Models\TreatmentDose $d): array
+    {
+        $t = $d->treatment;
+
+        return ['id' => $d->id, 'goatId' => $d->animal_id, 'goat' => $d->animal?->farm_number, 'pen' => $d->animal?->pen?->name, 'dueIso' => $d->due_on->toDateString(), 'due' => $d->due_on->format('d/m/Y'),
+            'slot' => $d->slot ? ucfirst($d->slot) : null, 'number' => $d->number, 'of' => \App\Models\TreatmentDose::where('treatment_id', $d->treatment_id)->count(),
+            'product' => $t->product, 'dose' => $t->dose, 'route' => Treatment::ROUTES[$t->route] ?? $t->route, 'qty' => $t->qty_per_dose ?? $t->qty_used, 'stock' => (bool) $t->medicine_id,
+            'status' => $d->status, 'doneAt' => $d->done_at?->setTimezone('Asia/Karachi')->format('d/m/Y g:i A'), 'by' => $d->done_by, 'batch' => $d->batch, 'adverse' => $d->adverse, 'notes' => $d->notes,
+            'vet' => $t->recorded_by, 'overdue' => $d->status === 'due' && $d->due_on->lt(today())];
+    }
+
+    /** D-304: a dose given (from stock), missed or held, by whoever gives medicine (the right "Give medicine doses"). */
+    public function dose(Request $request, \App\Models\TreatmentDose $dose): RedirectResponse
+    {
+        abort_unless($request->user()->passes('give_doses'), 403);
+        $data = $request->validate(['action' => ['required', Rule::in(['given', 'missed', 'held'])], 'qty' => ['nullable', 'numeric', 'gt:0', 'max:100000'],
+            'adverse' => ['boolean'], 'notes' => ['nullable', 'required_unless:action,given', 'string', 'max:300']], ['notes.required_unless' => 'Say why the dose was not given.']);
+        if ($data['action'] === 'given') {
+            $short = \App\Support\Doses::give($dose, $request->user(), isset($data['qty']) ? (float) $data['qty'] : null, (bool) ($data['adverse'] ?? false), $data['notes'] ?? null);
+
+            return back()->with('success', "Dose {$dose->number} given to {$dose->animal->farm_number}.".($short > 0 ? " Stock was short by $short." : ''));
+        }
+        \App\Support\Doses::skip($dose, $request->user(), $data['action'], $data['notes']);
+
+        return back()->with('success', "Dose {$dose->number} recorded as {$data['action']}. The vet is told.");
     }
 
     /** D-174: the vet's postmortem for a goat that died: suspected cause (from the disease master) and findings. */
@@ -429,7 +464,8 @@ class HealthController extends Controller
         $data = $request->validate([
             'medicine_id' => ['nullable', 'integer', 'exists:medicines,id'], 'qty_used' => ['nullable', 'required_with:medicine_id', 'numeric', 'gt:0', 'max:100000'],
             'given_on' => ['required', 'date', 'before_or_equal:today'], 'product' => ['nullable', 'required_without:medicine_id', 'string', 'max:120'], 'dose' => ['required', 'string', 'max:40'],
-            'route' => ['required', Rule::in(array_keys(Treatment::ROUTES))], 'frequency' => ['nullable', 'string', 'max:60'],
+            'route' => ['required', Rule::in(array_keys(Treatment::ROUTES))], 'frequency' => ['nullable', Rule::in(array_keys(\App\Support\Doses::FREQUENCIES))], // D-304
+            'qty_per_dose' => ['nullable', 'numeric', 'gt:0', 'max:100000'], 'review_on' => ['nullable', 'date', 'after_or_equal:given_on'],
             'days_prescribed' => ['nullable', 'integer', 'between:1,365'], 'next_dose_on' => ['nullable', 'date', 'after_or_equal:given_on'],
             'meat_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'], 'milk_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'],
             'no_withdrawal' => ['boolean'], 'cost' => ['nullable', 'numeric', 'min:0', 'max:10000000'], 'notes' => ['nullable', 'string', 'max:500'],
@@ -454,6 +490,11 @@ class HealthController extends Controller
                 $short = \App\Support\MedicineStock::issue($medicine, (float) $data['qty_used'], [
                     'moved_on' => $data['given_on'], 'treatment_id' => $treatment->id, 'reference' => $case->label(), 'recorded_by' => $request->user()->name,
                 ]);
+            }
+            \App\Support\Doses::plan($treatment, $request->user()); // D-304: every dose, the first one given now
+            if (! empty($data['review_on'])) { // workbook Vet_Orders: the vet's review date
+                \App\Models\Task::create(['title' => mb_substr("Treatment review: {$case->animal->farm_number} · {$data['product']}", 0, 190), 'type' => 'health', 'priority' => 'medium', 'status' => 'open',
+                    'due_on' => $data['review_on'], 'animal_id' => $case->animal_id, 'user_id' => $request->user()->id]);
             }
             if ($case->status === 'open') {
                 $case->update(['status' => 'under_treatment']);

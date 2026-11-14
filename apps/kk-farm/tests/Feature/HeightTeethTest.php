@@ -156,4 +156,24 @@ class HeightTeethTest extends TestCase
         $care = $this->actingAs($this->user('caretaker'))->getJson("/goats/{$this->goat->id}/profile")->assertOk();
         $this->assertNull($care->json('healthDetail'));
     }
+
+    /** D-304: a prescription plans every dose; given takes stock; missed tells the vet. */
+    public function test_a_prescription_plans_doses_and_each_is_given_or_missed(): void
+    {
+        $med = \App\Models\Medicine::create(['code' => 'MED-1', 'name' => 'Oxytetracycline LA', 'category' => 'antibiotic', 'unit' => 'ml', 'active' => true]);
+        \App\Models\MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now()->subDay(), 'type' => 'receipt', 'qty' => 100, 'batch' => 'B1', 'expiry_on' => now()->addYear(), 'recorded_by' => 'x']);
+        $case = \App\Models\HealthCase::create(['case_no' => 1, 'animal_id' => $this->goat->id, 'onset_on' => now(), 'condition' => 'Pneumonia', 'severity' => 'moderate', 'status' => 'open', 'recorded_by' => 'Test vet']);
+        $this->actingAs($this->user('vet'))->post("/health/cases/{$case->id}/treatments", ['medicine_id' => $med->id, 'qty_used' => 5, 'given_on' => now()->toDateString(), 'dose' => '5 ml', 'route' => 'injectable',
+            'frequency' => 'bid', 'days_prescribed' => 3, 'meat_clear_on' => now()->addDays(28)->toDateString(), 'milk_clear_on' => now()->addDays(7)->toDateString()])->assertSessionHasNoErrors();
+        $t = \App\Models\Treatment::sole();
+        $this->assertSame(['given' => 1, 'missed' => 0, 'held' => 0, 'due' => 5, 'total' => 6], \App\Support\Doses::progress($t->id), 'twice a day for 3 days, the first given');
+        $second = \App\Models\TreatmentDose::where('treatment_id', $t->id)->where('number', 2)->sole();
+        $this->actingAs($this->user('caretaker'))->post("/health/doses/{$second->id}", ['action' => 'given', 'qty' => 5])->assertSessionHasNoErrors();
+        $this->assertSame('given', $second->fresh()->status);
+        $this->assertEqualsWithDelta(90, (float) \App\Support\MedicineStock::quantities()[$med->id], 0.01, 'two doses of 5 ml taken from stock');
+        $third = \App\Models\TreatmentDose::where('treatment_id', $t->id)->where('number', 3)->sole();
+        $this->actingAs($this->user('caretaker'))->post("/health/doses/{$third->id}", ['action' => 'missed'])->assertSessionHasErrors('notes');
+        $this->actingAs($this->user('caretaker'))->post("/health/doses/{$third->id}", ['action' => 'missed', 'notes' => 'Goat ran off'])->assertSessionHasNoErrors();
+        $this->assertTrue(\App\Models\Task::where('title', 'like', 'Medicine: H-1 · Missed dose 3%')->exists(), 'the vet is told (AL-012)');
+    }
 }

@@ -35,7 +35,7 @@ class Access
         'health_entry' => 'New health entry', 'report_concern' => 'Report concern',
         'see_health_history' => 'See a goat\'s health history and treatments', 'see_goat_pedigree' => 'See a goat\'s parentage, offspring and records', 'manage_books' => 'Post to the books (journals, accounts)', 'manage_staff' => 'Add staff, record attendance and leave', 'request_end_of_life' => 'Ask for a humane end-of-life review', 'request_goat_purchase' => 'Raise a goat purchase',
         'record_heat' => 'Record heat', 'record_mating' => 'Record mating', 'give_care' => 'Give vaccines and deworming', 'move_goats' => 'Move goats between PENs',
-        'report_death' => 'Report a death', 'approve_death' => 'Approve a death (the goat leaves the farm)', 'cull_breeding' => 'Cull from breeding', 'check_teeth' => 'Check teeth', 'record_height' => 'Measure height',
+        'report_death' => 'Report a death', 'approve_death' => 'Approve a death (the goat leaves the farm)', 'cull_breeding' => 'Cull from breeding', 'check_teeth' => 'Check teeth', 'give_doses' => 'Give medicine doses', 'record_height' => 'Measure height',
     ];
 
     /** D-266: every action's label: the built-in ones and those the action registry adds. */

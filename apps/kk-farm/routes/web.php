@@ -323,6 +323,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/health/diseases', [HealthController::class, 'disease']); // D-174
         Route::post('/health/diseases/{disease}', [HealthController::class, 'disease']);
         Route::post('/health/symptoms', [HealthController::class, 'symptom']); // D-292
+        Route::post('/health/doses/{dose}', [HealthController::class, 'dose']); // D-304
         Route::post('/health/symptoms/{symptom}', [HealthController::class, 'symptom']);
         Route::post('/health/postmortem', [HealthController::class, 'postmortem']);
         Route::post('/health/protocols/{protocol}', [HealthController::class, 'protocol']);

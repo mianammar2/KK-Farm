@@ -12,10 +12,11 @@ import { titleCase } from '../lib/titleCase';
 import AddButton from '../components/AddButton';
 import { useTabParam } from '../lib/useTabParam';
 import { CareCalendar, Protocols, type CalendarRow, type Protocol } from '../components/CareCalendar';
+import DosesDue, { type DoseRow } from '../components/DosesDue';
 import { DiseaseMaster, Mortality, SymptomMaster, type DiseaseRow, type MortalityData, type SymptomRow } from '../components/Mortality';
 
 type Row = { id: number; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; health: HealthState; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; overdue?: boolean };
-type Dose = { id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
+type Dose = { doses?: { given: number; missed: number; held: number; due: number; total: number }; id: number; on: string; product: string; dose: string; route: string; frequency: string | null; days: number | null; next: string | null; meat: string | null; milk: string | null; cost: number | null; by: string; notes: string | null };
 type Case = {
     id: number; label: string; goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female';
     onset: string; condition: string; symptoms: string | null; severity: string; isolated: boolean; status: string; active: boolean; vet: string | null; diagnosis: string | null; notes: string | null;
@@ -32,6 +33,7 @@ type Props = {
     medicineTypes: Record<string, { label: string; direction: number }>; medicineAlerts: number; canMedicine: boolean;
     calendar: CalendarRow[]; protocols: Protocol[]; applies: Record<string, string>; careTypes: Record<string, string>; // D-173
     symptomList?: SymptomRow[]; // D-292
+    dosesDue?: DoseRow[]; dosesDone?: DoseRow[]; canGiveDoses?: boolean; frequencies?: Record<string, string>; // D-304
     diseases: DiseaseRow[]; diseaseCategories: Record<string, string>; mortality: MortalityData | null; // D-174; null when the tab is closed to this person (D-241)
 };
 
@@ -89,6 +91,7 @@ export default function Health(props: Props) {
             <div>
                 <div className="min-w-0">
                     <Tabs value={tab} onChange={setTab} tabs={[
+                        { id: 'doses', label: 'Doses Due', count: (props.dosesDue ?? []).length || undefined }, // D-304
                         { id: 'checkups', label: 'Checkups', count: props.checkups.goats.filter((g) => g.due).length || undefined },
                         { id: 'cases', label: 'Cases', count: counts.active },
                         { id: 'reports', label: 'Reported concerns', count: reports.length },
@@ -104,6 +107,7 @@ export default function Health(props: Props) {
                     {tab === 'store' ? <MedicineStore {...props} /> : null}
                     {tab === 'mortality' && props.mortality ? <Mortality data={props.mortality} causes={props.diseases.filter((d) => d.active).map((d) => d.name)} isVet={isVet} /> : null}
                     {tab === 'diseases' ? <DiseaseMaster diseases={props.diseases} categories={props.diseaseCategories} canEdit={isVet || auth?.role === 'ceo'} /> : null}
+                    {tab === 'doses' ? <DosesDue due={props.dosesDue ?? []} done={props.dosesDone ?? []} canGive={!!props.canGiveDoses} /> : null}
                     {tab === 'symptoms' ? <SymptomMaster symptoms={props.symptomList ?? []} diseases={props.diseases} canEdit={isVet || auth?.role === 'ceo'} /> : null}
                     {tab === 'calendar' ? <CareCalendar calendar={props.calendar} isVet={!!auth?.gates.includes('give_care')} /> : null}
                     {tab === 'protocols' ? <Protocols protocols={props.protocols} careTypes={props.careTypes} applies={props.applies} medicines={props.medicines} canEdit={isVet || auth?.role === 'ceo'} /> : null}
@@ -221,7 +225,7 @@ function CaseCard({ c, isVet, statuses, routes, medicines }: { c: Case; isVet: b
                                     <tbody className="divide-y divide-rule">
                                         {c.treatments.map((t) => (
                                             <tr key={t.id}>
-                                                <td className="py-1.5 pr-3">{t.on}</td><td className="pr-3 font-medium">{t.product}</td><td className="pr-3">{t.dose}{t.frequency ? ` · ${t.frequency}` : ''}{t.days ? ` · ${t.days} days` : ''}</td>
+                                                <td className="py-1.5 pr-3">{t.on}</td><td className="pr-3 font-medium">{t.product}</td><td className="pr-3">{t.dose}{t.frequency ? ` · ${t.frequency}` : ''}{t.days ? ` · ${t.days} days` : ''}{t.doses && t.doses.total > 1 ? <span className="block text-xs text-ink-soft">{t.doses.given} of {t.doses.total} doses given{t.doses.missed ? ` · ${t.doses.missed} missed` : ''}{t.doses.held ? ` · ${t.doses.held} held` : ''}</span> : null}</td>
                                                 <td className="pr-3">{t.route}</td><td className="pr-3">{t.next ?? '—'}</td><td className="pr-3">{t.meat ?? '—'}</td><td className="pr-3">{t.milk ?? '—'}</td><td className="pr-3 text-ink-soft">{t.by}</td>
                                             </tr>
                                         ))}
@@ -245,7 +249,8 @@ function CaseCard({ c, isVet, statuses, routes, medicines }: { c: Case; isVet: b
 }
 
 function DoseForm({ c, routes, medicines, onDone }: { c: Case; routes: Record<string, string>; medicines: Medicine[]; onDone: () => void }) {
-    const form = useForm({ medicine_id: '', qty_used: '', given_on: today(), product: '', dose: '', route: 'injectable', frequency: '', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, cost: '', notes: '' });
+    const { frequencies = {} } = usePage<{ frequencies?: Record<string, string> }>().props; // D-304
+    const form = useForm({ medicine_id: '', qty_used: '', qty_per_dose: '', review_on: '', given_on: today(), product: '', dose: '', route: 'injectable', frequency: 'once', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, cost: '', notes: '' });
     const e = form.errors as Record<string, string>;
     return (
         <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/health/cases/${c.id}/treatments`, { preserveScroll: true, onSuccess: onDone }); }} className="grid gap-3 rounded-tile border border-rule p-3 sm:grid-cols-2">
@@ -263,9 +268,10 @@ function DoseForm({ c, routes, medicines, onDone }: { c: Case; routes: Record<st
             <Field label="Dose + unit" error={e.dose} hint="e.g. 5 ml, 2 tablets"><input className="field" value={form.data.dose} onChange={(x) => form.setData('dose', x.target.value)} /></Field>
             <Field label="Route" error={e.route}><select className="field" value={form.data.route} onChange={(x) => form.setData('route', x.target.value)}>{Object.entries(routes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Date given" error={e.given_on}><input type="date" className="field" max={today()} value={form.data.given_on} onChange={(x) => form.setData('given_on', x.target.value)} /></Field>
-            <Field label="Frequency" error={e.frequency} hint="e.g. once a day"><input className="field" value={form.data.frequency} onChange={(x) => form.setData('frequency', x.target.value)} /></Field>
-            <Field label="Days prescribed" error={e.days_prescribed}><input type="number" min={1} className="field" value={form.data.days_prescribed} onChange={(x) => form.setData('days_prescribed', x.target.value)} /></Field>
-            <Field label="Next dose" error={e.next_dose_on}><input type="date" className="field" value={form.data.next_dose_on} onChange={(x) => form.setData('next_dose_on', x.target.value)} /></Field>
+            <Field label="How often" error={e.frequency} hint="Every dose is planned; the first is this one"><select className="field" value={form.data.frequency} onChange={(x) => form.setData('frequency', x.target.value)}>{Object.entries(frequencies).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            {form.data.frequency !== 'once' ? <Field label="For how many days" error={e.days_prescribed}><input type="number" min={1} className="field" value={form.data.days_prescribed} onChange={(x) => form.setData('days_prescribed', x.target.value)} required /></Field> : null}
+            {form.data.medicine_id && form.data.frequency !== 'once' ? <Field label="Amount per later dose" error={e.qty_per_dose} hint="Taken from stock each time (blank = same as this one)"><input type="number" min={0} step="0.1" className="field" value={form.data.qty_per_dose} onChange={(x) => form.setData('qty_per_dose', x.target.value)} /></Field> : null}
+            <Field label="Review date (optional)" error={e.review_on} hint="The vet re-checks the goat"><input type="date" className="field" min={form.data.given_on} value={form.data.review_on} onChange={(x) => form.setData('review_on', x.target.value)} /></Field>
             <Field label="Cost PKR" error={e.cost}><input type="number" min={0} className="field" value={form.data.cost} onChange={(x) => form.setData('cost', x.target.value)} /></Field>
             <div className="rounded-tile bg-watch-100 p-3 sm:col-span-2">
                 <p className="mb-2 text-sm font-semibold text-watch-700">Withdrawal: from the product label, decided by you. The app never calculates it.</p>

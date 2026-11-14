@@ -23,8 +23,8 @@ const ACTIONS: Record<string, Action[]> = {
     ],
     veterinary: [
         { label: 'Health checkup', href: goat('checkup'), gate: 'health_checkup', primary: true }, { label: 'New health entry', href: goat('entry'), gate: 'health_entry' },
-        { label: 'Temp check', href: goat('temp'), gate: 'health_checkup' }, { label: 'Report concern', href: goat('concern'), gate: 'report_concern' },
-        { label: 'Report death', href: goat('death'), gate: 'report_death' },
+        { label: 'Temp check', href: goat('temp'), gate: 'health_checkup' }, { label: 'Give a dose', href: (id) => `/health?tab=doses&goat=${id}`, gate: 'give_doses' },
+        { label: 'Report concern', href: goat('concern'), gate: 'report_concern' }, { label: 'Report death', href: goat('death'), gate: 'report_death' },
     ],
     breeding: [
         { label: 'Record a mating', href: (id) => `/breeding?tab=cycle&mate=${id}`, gate: 'record_mating', female: true, primary: true },
