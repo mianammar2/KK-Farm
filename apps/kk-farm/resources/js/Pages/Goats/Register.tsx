@@ -445,7 +445,7 @@ function RegisteredGoats({ rows }: { rows: RegRow[] }) {
     const today = new Date().toLocaleDateString('en-CA');
     const todayN = rows.filter((r) => r.enteredIso === today).length;
     return (
-        <Panel flush title="Registered Goats" description="Every goat in the register: how it came to the farm, when it arrived, and when it was entered and by whom." className="mt-6">
+        <Panel flush title="Purchased & Transferred Goats" description="The goats registered here: when they arrived, and when they were entered and by whom. Farm-born kids are added from the kidding record in Maternity." className="mt-6">
             <div className="flex flex-wrap gap-2 border-b border-rule px-3 py-3 text-sm">
                 <span className="rounded-md bg-cobalt-100 px-2.5 py-1 text-cobalt-800">All: {rows.length}</span>
                 {Object.entries(counts).map(([k, n]) => <span key={k} className="rounded-md bg-glaze px-2.5 py-1 text-ink ring-1 ring-rule">{k}: {n}</span>)}

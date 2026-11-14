@@ -63,7 +63,8 @@ class GoatController extends Controller
         $by = \App\Models\AnimalEvent::where('type', 'origin')->orderBy('occurred_at')->get(['animal_id', 'recorded_by'])->keyBy('animal_id');
         $origin = ['purchased' => 'Purchased', 'transferred_in' => 'Transferred in', 'born_on_farm' => 'Born on the farm'];
 
-        return Animal::with(['breed', 'pen'])->whereNull('voided_at')->orderByDesc('created_at')->get()->map(fn (Animal $a) => [
+        // D-282: only the goats this panel registers (bought or transferred in); farm-born kids come from the kidding record
+        return Animal::with(['breed', 'pen'])->whereNull('voided_at')->whereIn('origin', ['purchased', 'transferred_in'])->orderByDesc('created_at')->get()->map(fn (Animal $a) => [
             'id' => $a->id, 'number' => $a->farm_number, 'origin' => $origin[$a->origin] ?? ucfirst((string) $a->origin),
             'breed' => $a->breed?->name, 'sex' => $a->sex === 'female' ? 'Female' : ($a->sex === 'male' ? 'Male' : null), 'code' => $a->classCode(),
             'role' => \App\Support\Designations::main($a), 'pen' => $a->pen?->name, 'arrived' => ($a->origin === 'born_on_farm' ? $a->birth_date : $a->acquired_on)?->format('d/m/Y'),
