@@ -42,7 +42,8 @@ export const APPS: ErpApp[] = [
         S('Operations', '/intake', 'Intake & Quarantine'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
         S('Operations', '/scan', 'RFID Scan'),
-        S('Operations', '/movements', 'Animal Exit'),
+        S('Operations', '/movements?kind=transfer', 'Pen Movements'), // D-285: moves and exits are separate
+        S('Operations', '/movements?kind=exit', 'Animal Exit'),
         S('Records', '/goats?show=pregnant', 'Pregnant Does'),
         S('Records', '/goats?show=attention', 'Need Attention'),
         S('Records', '/goats?show=missing', 'Missing Data'),
@@ -127,7 +128,7 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'housing', no: '07', label: 'Housing', art: 'app-housing', modules: ['sheds'], linked: ['livestock', 'feeding', 'maternity', 'maintenance'], sections: [
         S('Overview', '/sheds', 'Farms, Units & Pens'),
-        S('Operations', '/movements', 'Animal Movements'),
+        S('Operations', '/movements?kind=transfer', 'Pen Movements'),
         S('Records', '/goats?show=no_pen', 'Goats Without a Pen'),
         S('Operations', '/housing', 'Pen Status, Capacity & Cleaning'),
         S('Reporting', '/housing', 'Pen Occupancy'),
@@ -188,7 +189,7 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/transport?tab=vehicles', 'Approved Vehicles'),
         S('Operations', '/sales/orders?tab=new', 'New Price Quote'),
         S('Records', '/sales/orders?tab=done', 'Invoices & Collections'),
-        S('Operations', '/movements', 'Other Exits'),
+        S('Operations', '/movements?kind=exit', 'Other Exits'),
         S('Operations', '/sales', 'Sell Products'),
         S('Records', '/sales?tab=customers', 'Customers'),
         S('Records', '/value', 'Herd Value & Pricing'),

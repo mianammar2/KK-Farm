@@ -178,7 +178,7 @@ final class AppDashboards
             self::k('Matings today', DB::table('matings')->whereDate('mated_on', $today)->count(), '/breeding?tab=cycle'),
             self::k('Milk today (L)', round((float) DB::table('milk_records')->whereDate('milked_on', $today)->whereNull('supersedes_id')->sum('litres'), 1), '/milking'),
             self::k('Care given today', DB::table('health_records')->whereDate('occurred_on', $today)->whereIn('kind', ['vaccination', 'deworming', 'hoof_care', 'examination', 'other_care'])->count(), '/health?tab=care'),
-            self::k('Moves today', DB::table('animal_movements')->whereDate('moved_on', $today)->where('type', 'transfer')->count(), '/movements'),
+            self::k('Moves today', DB::table('animal_movements')->whereDate('moved_on', $today)->where('type', 'transfer')->count(), '/movements?kind=transfer'),
         ], 'charts' => [self::chart('Goats handled, last 7 days', 'bar', $labels, [['name' => 'Weighed', 'data' => $w], ['name' => 'Checked', 'data' => $c]])]];
     }
 

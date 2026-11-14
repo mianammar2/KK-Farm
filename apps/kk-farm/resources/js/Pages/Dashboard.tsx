@@ -367,7 +367,7 @@ type PensSummary = {
 function PensAtAGlance({ data }: { data: PensSummary }) {
     return (
         <Panel title="Sheds and Pens" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a pen` : ''}`} className="mt-4" flush
-            actions={<Link href="/movements" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
+            actions={<Link href="/movements?kind=transfer" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
             <FarmScene sheds={data.sheds} meals={data.meals} clock={data.clock} /> {/* D-133: drawn like the real farm */}
             {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a pen →</Link> : null}
         </Panel>

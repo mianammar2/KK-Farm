@@ -38,7 +38,7 @@ export const NAV: Array<{ heading: string; items: Array<{ href: string; label: s
         heading: 'Farm',
         items: [
             { href: '/sheds', label: 'Sheds', module: 'sheds', icon: Warehouse },
-            { href: '/movements', label: 'Movements', module: 'sheds', icon: ArrowLeftRight },
+            { href: '/movements?kind=transfer', label: 'Pen Movements', module: 'sheds', icon: ArrowLeftRight },
             { href: '/tasks', label: 'Tasks & Daily Work', module: 'tasks', icon: CalendarCheck },
             { href: '/employees', label: 'Employees', module: 'employees', icon: Users },
             { href: '/activity', label: 'Activity Log', module: 'dashboard', icon: History },

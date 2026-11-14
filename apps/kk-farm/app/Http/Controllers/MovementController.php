@@ -23,9 +23,16 @@ class MovementController extends Controller
     public function index(Request $request): Response
     {
         $withdrawal = Withdrawal::active();
+        // D-285: pen movements and goats leaving the farm are separate pages
+        $kind = match ($request->query('kind')) {
+            'exit' => 'exit', 'transfer' => 'transfer',
+            default => \App\Support\Pages::allows($request->user(), '/movements', ['kind' => 'transfer']) ? 'transfer' : 'exit',
+        };
 
         return Inertia::render('Movements', [
-            'movements' => AnimalMovement::with(['animal', 'fromPen.shed', 'toPen.shed'])->orderByDesc('moved_on')->orderByDesc('id')->limit(200)->get()->map(fn (AnimalMovement $m) => [
+            'kind' => $kind,
+            'movements' => AnimalMovement::with(['animal', 'fromPen.shed', 'toPen.shed'])->when($kind === 'transfer', fn ($q) => $q->where('type', 'transfer'), fn ($q) => $q->where('type', '!=', 'transfer'))
+                ->orderByDesc('moved_on')->orderByDesc('id')->limit(1000)->get()->map(fn (AnimalMovement $m) => [
                 'id' => $m->id, 'on' => $m->moved_on->format('d/m/Y'), 'type' => $m->type, 'typeLabel' => AnimalMovement::TYPES[$m->type][0] ?? $m->type,
                 'goatId' => $m->animal_id, 'goat' => $m->animal->farm_number, 'from' => $m->fromPen?->fullName(), 'to' => $m->toPen?->fullName() ?? $m->destination,
                 'reason' => $m->reason, 'by' => $m->authorized_by ?? $m->recorded_by, 'amount' => $m->amount_minor !== null ? $m->amount_minor / 100 : null, 'evidence' => $m->evidence_ref,
@@ -35,7 +42,7 @@ class MovementController extends Controller
                 'withdrawal' => isset($withdrawal[$a->id]['meat']) && $withdrawal[$a->id]['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal[$a->id]['meat'])->format('d/m') : null,
             ]),
             'pens' => Pen::with('shed')->where('kind', 'pen')->whereHas('shed', fn ($q) => $q->where('status', 'active'))->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
-            'types' => collect(AnimalMovement::TYPES)->except(['death', 'culling'])->map(fn ($t) => ['label' => $t[0], 'exit' => $t[1]]), // D-260
+            'types' => collect(AnimalMovement::TYPES)->except(['death', 'culling'])->filter(fn ($t, $k) => $kind === 'transfer' ? $k === 'transfer' : $k !== 'transfer')->map(fn ($t) => ['label' => $t[0], 'exit' => $t[1]]), // D-260, D-285
             'month' => AnimalMovement::where('moved_on', '>=', now()->startOfMonth())->groupBy('type')->selectRaw('type, count(*) as n')->pluck('n', 'type'),
             'canExit' => $request->user()->passes('exit_animal'),
             'saleCategories' => Sale::CATEGORIES,
@@ -47,7 +54,7 @@ class MovementController extends Controller
     {
         $data = $request->validate([
             'animal_ids' => ['required', 'array', 'min:1', 'max:500'], 'animal_ids.*' => ['uuid', 'distinct', 'exists:animals,id'],
-            'type' => ['required', Rule::in(array_diff(array_keys(AnimalMovement::TYPES), ['death', 'culling']))], // D-260 'moved_on' => ['required', 'date', 'before_or_equal:today'],
+            'type' => ['required', Rule::in(array_diff(array_keys(AnimalMovement::TYPES), ['death', 'culling']))], 'moved_on' => ['required', 'date', 'before_or_equal:today'], // D-260: no death or culling here
             'to_pen_id' => ['nullable', 'required_if:type,transfer', 'exists:pens,id'],
             'destination' => ['nullable', 'string', 'max:120'], 'reason' => ['nullable', 'string', 'max:200'], 'authorized_by' => ['nullable', 'string', 'max:80'],
             'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'fee' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
