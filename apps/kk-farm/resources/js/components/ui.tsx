@@ -1,3 +1,4 @@
+import { AppStripSlot, useHideAppStrip } from './AppStrip';
 import { canOpen } from '../lib/apps';
 import { Link, usePage } from '@inertiajs/react';
 import { motion, useReducedMotion } from 'motion/react';
@@ -39,6 +40,7 @@ export function LibIcon({ name, size = 16, className }: { name: string; size?: n
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
     return (
+        <>
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3 lg:mb-5">
             <div className="min-w-0">
                 {/* On phones and the gun the app bar already shows the title. */}
@@ -47,6 +49,8 @@ export function PageHeader({ title, description, actions }: { title: string; des
             </div>
             {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </header>
+        <AppStripSlot />
+        </>
     );
 }
 
@@ -101,6 +105,7 @@ export function Stat({ label, value, note, tone }: { label: string; value: React
 }
 
 export function StatRow({ children }: { children: ReactNode }) {
+    useHideAppStrip(); // D-258: a page with its own numbers does not show the app strip as well
     // Phones: a compact two-column grid with hairline gaps (an odd last tile spans both); wider: one row.
     return <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-tile border border-rule bg-rule shadow-tile sm:flex sm:gap-0 sm:divide-x sm:divide-rule sm:bg-tile [&>*]:bg-tile [&>*]:sm:flex-1 [&>*:last-child:nth-child(odd)]:col-span-2">{children}</div>;
 }

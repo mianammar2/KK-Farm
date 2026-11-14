@@ -2,11 +2,12 @@ import BrandMark from './BrandMark';
 import NotificationBell from './NotificationBell';
 import { ArtIcon, NavIcon } from './ArtIcon';
 import { canOpen, currentApp, GROUPS, isHere, masterHref, menuHref, rememberApp, sectionsFor, setPageRules } from '../lib/apps';
+import { AppStripContext, type StripData } from './AppStrip';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3, Beef, CalendarCheck, ChevronDown, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
 import { ScanCapture } from '../lib/scanner';
 import { AppBar, TabBar } from './MobileNav';
@@ -192,6 +193,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const page = usePage<SharedProps>();
     const { auth, roles, flash } = page.props;
     setPageRules(auth?.pages); // D-241: menus follow the same page rules as the server
+    // D-258: on an app's main page (the first page of its menu) its key numbers sit under the title
+    const stripApp = auth ? currentApp(page.url, auth.modules) : null;
+    const landing = stripApp && stripApp.key !== 'dashboard' && sectionsFor(stripApp)[0] && isHere(sectionsFor(stripApp)[0].href, page.url) ? stripApp.key : null;
+    const [strip, setStrip] = useState<StripData | null>(null);
+    // a page with its own number row hides the strip; "hidden" belongs to the address it was asked on, so no reset races the page
+    const urlNow = useRef(page.url);
+    urlNow.current = page.url;
+    const [hiddenFor, setHiddenFor] = useState<string | null>(null);
+    const hideStrip = useCallback(() => setHiddenFor(urlNow.current), []);
+    const stripState = useMemo(() => ({ data: strip, hidden: hiddenFor === page.url, hide: hideStrip }), [strip, hiddenFor, page.url, hideStrip]);
+    useEffect(() => {
+        setStrip(null);
+        if (!landing) return;
+        const c = new AbortController();
+        fetch(`/dashboard/app/${landing}`, { headers: { Accept: 'application/json' }, signal: c.signal }).then((r) => (r.ok ? r.json() : null)).then((d) => d && setStrip(d)).catch(() => undefined);
+        return () => c.abort();
+    }, [landing, page.url]);
     const [drawer, setDrawer] = useState(false);
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState<string | null>(null);
@@ -287,7 +305,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 transition={reduced ? { duration: 0.15 } : { type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
                 className="kk-page mx-auto max-w-[1440px] px-3 pt-4 pb-28 sm:px-5 lg:py-5"
             >
-                {children}
+                <AppStripContext.Provider value={stripState}>{children}</AppStripContext.Provider>
             </motion.main>
 
             <TabBar path={path} modules={auth.modules} items={NAV.flatMap((g) => g.items)} onLogout={() => router.post('/logout')} />

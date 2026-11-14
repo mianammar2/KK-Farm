@@ -1,6 +1,5 @@
-import { canOpen } from '../../lib/apps';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { ArrowDown, ArrowUp, Download, LayoutGrid, List, Plus, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, LayoutGrid, List, Search } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { inScannerApp } from '../../lib/native';
 import GoatPortrait from '../../components/GoatPortrait';
@@ -96,12 +95,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             <PageHeader
                 title="Goat Registry"
                 description={`${rows.length} of ${goats.length} goats shown. Goats that left the farm stay on record.`}
-                actions={
-                    <>
-                        <a href="/goats/export" className="max-sm:hidden"><Button variant="secondary"><Download size={16} aria-hidden /> Export CSV</Button></a>
-                        {canOpen('/goats/register') ? <Button onClick={() => router.visit('/goats/register')}><Plus size={16} aria-hidden /> Register goat</Button> : null}
-                    </>
-                }
+
             />
 
             {show && showLabels[show] ? (

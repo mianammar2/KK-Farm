@@ -28,15 +28,16 @@ class AppDashboardTest extends TestCase
             Animal::create(['farm_number' => "D-$i", 'sex' => $i % 2 ? 'female' : 'male', 'breed_id' => $breed->id, 'birth_date' => now()->subMonths(10 * $i), 'origin' => 'purchased', 'status' => 'active']);
         }
         foreach (array_keys(AppDashboards::APPS) as $app) {
-            $this->actingAs($owner)->get("/dashboard/app/{$app}")->assertOk()->assertInertia(fn (AssertableInertia $p) => $p->component('AppDashboard')->where('app', $app)->has('kpis')->has('charts')->has('alerts'));
+            $this->actingAs($owner)->getJson("/dashboard/app/{$app}")->assertOk()->assertJsonStructure(['kpis', 'alerts']); // D-258: the strip under the app's main page title
         }
         // numbers that are zero are not shown; a goat count is
-        $this->actingAs($owner)->get('/dashboard/app/livestock')->assertInertia(fn ($p) => $p
-            ->where('kpis', fn ($k) => collect($k)->firstWhere('label', 'Goats on the farm')['value'] === 3 && collect($k)->every(fn ($x) => $x['value'] !== 0)));
+        $k = collect($this->actingAs($owner)->getJson('/dashboard/app/livestock')->json('kpis'));
+        $this->assertSame(3, $k->firstWhere('label', 'Goats on the farm')['value']);
+        $this->assertTrue($k->every(fn ($x) => $x['value'] !== 0));
 
         $cleaner = User::create(['name' => 'Cleaner', 'email' => 'c@dash.test', 'password' => 'x', 'role' => 'cleaning', 'org_id' => Tenant::current()]);
-        $this->actingAs($cleaner)->get('/dashboard/app/livestock')->assertForbidden();
-        $this->actingAs($cleaner)->get('/dashboard/app/housing')->assertOk();
-        $this->actingAs($owner)->get('/dashboard/app/nothing')->assertNotFound();
+        $this->actingAs($cleaner)->getJson('/dashboard/app/livestock')->assertForbidden();
+        $this->actingAs($cleaner)->getJson('/dashboard/app/housing')->assertOk();
+        $this->actingAs($owner)->getJson('/dashboard/app/nothing')->assertNotFound();
     }
 }

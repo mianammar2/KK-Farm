@@ -310,11 +310,6 @@ export const APPS: ErpApp[] = [
     ] },
 ];
 
-// D-257: every app opens on its own dashboard, first in its menu (the Dashboard app keeps the Executive Dashboard)
-for (const a of APPS) {
-    if (a.key !== 'dashboard') a.sections.unshift(S('Overview', `/dashboard/app/${a.key}`, 'Dashboard'));
-}
-
 /** D-241: the person's page rules (shared by the server), so a menu only lists pages the server will open. */
 type Rule = [string, Record<string, string> | null, boolean];
 let RULES: Rule[] = [];
