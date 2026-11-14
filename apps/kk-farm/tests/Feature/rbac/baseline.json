@@ -566,6 +566,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "GET /reports/sheet": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "GET /repro-loss": {
         "ceo": 200,
         "manager": 200,
@@ -2016,6 +2025,15 @@
         "finance": 403
     },
     "PAGE reports.herd_census  /reports?section=herd": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE reports.herd_sheet  /reports/sheet": {
         "ceo": 200,
         "manager": 200,
         "vet": 200,

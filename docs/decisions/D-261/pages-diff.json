@@ -46,6 +46,15 @@
    "kind": "OVER"
   },
   {
+   "module": "Livestock",
+   "spec": "Animal Exit",
+   "key": "sheds.animal_exit",
+   "role": "finance",
+   "spec_mark": "s",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
    "module": "Maternity",
    "spec": "Maternity Unit",
    "key": "sheds.maternity_unit",
@@ -85,6 +94,24 @@
    "module": "Purchase",
    "spec": "Animal Intake & Quarantine",
    "key": "goats.intake_quarantine",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Sales",
+   "spec": "Other Exits",
+   "key": "sheds.movements_opening_page",
+   "role": "vet",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Sales",
+   "spec": "Other Exits",
+   "key": "sheds.movements_opening_page",
    "role": "caretaker",
    "spec_mark": "-",
    "actual": 200,
@@ -1170,7 +1197,7 @@
   },
   {
    "key": "sheds.pen_movements",
-   "label": "Pen Movements",
+   "label": "PEN Movements",
    "path": "/movements",
    "query": {
     "kind": "transfer"
@@ -1223,6 +1250,18 @@
     "manager",
     "vet",
     "finance"
+   ],
+   "lock": null
+  },
+  {
+   "key": "reports.herd_sheet",
+   "label": "Herd Sheet",
+   "path": "/reports/sheet",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
    ],
    "lock": null
   },
@@ -1557,7 +1596,7 @@
  ],
  "counts": {
   "spec_rows": 233,
-  "registry": 187,
-  "diffs": 33
+  "registry": 188,
+  "diffs": 36
  }
 }

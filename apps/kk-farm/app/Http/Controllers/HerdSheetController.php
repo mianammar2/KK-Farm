@@ -19,7 +19,7 @@ class HerdSheetController extends Controller
     public function index(Request $request): Response
     {
         $u = $request->user();
-        $seeHealth = in_array($u->role, ['ceo', 'manager', 'vet'], true) || ($u->module_access['health'] ?? false) === true;
+        $seeHealth = $u->passes('see_health_history');
         $d = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : null;
         $iso = fn ($v) => $v ? substr((string) $v, 0, 10) : null;
         $by = fn (string $sql, string $key = 'animal_id') => collect(DB::select($sql))->keyBy($key);
