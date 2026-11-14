@@ -139,6 +139,21 @@ class OpsLog
         ];
     }
 
+    /** D-311: operations whose record can be corrected from the log, with the values the correction form starts from. */
+    public static function fixValues(string $op, object $r): ?array
+    {
+        $d = fn ($v) => $v ? substr((string) $v, 0, 10) : null;
+
+        return match ($op) {
+            'weight' => ['id' => $r->id, 'measured_on' => $d($r->measured_on), 'weight_kg' => $r->weight_kg, 'body_score' => $r->body_score],
+            'height' => ['id' => $r->id, 'measured_on' => $d($r->measured_on), 'height_in' => round($r->height_cm / 2.54, 1)],
+            'checkup' => ['id' => $r->id, 'checked_on' => $d($r->checked_on), 'temperature_f' => $r->temperature_f, 'weight_kg' => $r->weight_kg, 'body_score' => $r->body_score,
+                'findings' => $r->findings, 'outcome' => $r->outcome, 'ultrasound' => $r->ultrasound, 'fetuses' => $r->fetuses, 'ultrasound_status' => $r->ultrasound_status,
+                'viability' => $r->viability, 'days_pregnant' => $r->days_pregnant, 'follow_up_on' => $d($r->follow_up_on), 'follow_up_note' => $r->follow_up_note],
+            default => null,
+        };
+    }
+
     /** The operations an app shows, that this person may see. */
     public static function forApp(?string $app, bool $health): array
     {
@@ -179,6 +194,7 @@ class OpsLog
                     'source' => isset($r->source) && $r->source ? ucfirst((string) $r->source) : 'Manual',
                     'breed' => $g ? $l->breed($g->breed_id) : null, 'sex' => $g ? ($g->sex === 'female' ? 'Female' : 'Male') : null, 'pen' => $g ? $l->pen($g->pen_id) : null,
                     'status' => $g ? ($g->status === 'active' ? 'On farm' : 'Left') : null,
+                    'fix' => self::fixValues($op, $r), // D-311: the record's values, for Correct
                 ]);
             }
         }

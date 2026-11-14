@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { useGridFilters, type Col } from '../../components/DataGrid';
 import { cx, PageHeader, Panel } from '../../components/ui';
+import CorrectRecord from '../../components/CorrectRecord';
+import Sheet from '../../components/Sheet';
 
 /**
  * D-307: the Operations Log: every operation done on a goat in any app, as one spreadsheet. The calendar picks a day
@@ -11,7 +13,7 @@ import { cx, PageHeader, Panel } from '../../components/ui';
  */
 type Row = {
     key: string; op: string; app: string; operation: string; on: string; entered: string | null; sort: string; goatId: string | null; number: string | null;
-    detail: string | null; by: string | null; source: string; breed: string | null; sex: string | null; pen: string | null; status: string | null;
+    detail: string | null; by: string | null; source: string; fix: (Record<string, string | number | null> & { id: number }) | null; breed: string | null; sex: string | null; pen: string | null; status: string | null;
 };
 type Op = { key: string; app: string; label: string };
 
@@ -22,6 +24,7 @@ const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 1000) / 10
 export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[]; app: string | null }) {
     const [picked, setPicked] = useState<string[]>([]); // operation keys; none = all
     const [day, setDay] = useState<string | null>(null);
+    const [fixing, setFixing] = useState<Row | null>(null); // D-311
     const [from, setFrom] = useState(''); // D-309: date range (with the calendar's day on top)
     const [to, setTo] = useState('');
     const inRange = (on: string) => (day ? on === day : (!from || on >= from) && (!to || on <= to));
@@ -34,6 +37,7 @@ export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[];
     const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
 
     const cols = useMemo<Col<Row>[]>(() => { const all: Col<Row>[] = [
+        ...(rows.some((r) => r.fix) ? [{ key: 'fixIt', label: 'Correct', type: 'text' as const, value: () => '', render: (r: Row) => (r.fix ? <button type="button" onClick={() => setFixing(r)} className="h-8 rounded-md border border-rule bg-tile px-2.5 text-sm text-cobalt-800 hover:bg-glaze">Correct</button> : null) }] : []), // D-311
         { key: 'on', label: 'Date', type: 'date', render: (r) => fmt(r.on) },
         { key: 'entered', label: 'Entered on', type: 'text' },
         { key: 'number', label: 'Goat', type: 'text', total: 'count', render: (r) => (r.goatId ? <Link href={`/goats/${r.goatId}`} className="font-mono text-cobalt-800 hover:underline">{r.number}</Link> : '—') },
@@ -133,6 +137,7 @@ export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[];
                     </div>
                 </Panel>
             </div>
+            {fixing?.fix ? <Sheet onClose={() => setFixing(null)}><CorrectRecord op={fixing.op} goat={fixing.number} fix={fixing.fix} onDone={() => setFixing(null)} /></Sheet> : null}
             <Panel flush>
                 {bar}
                 <DataGrid<Row> id="operations-log-grid" name={app ? `${app} Operations Log` : 'Operations Log'} cols={cols} rows={shown} rowKey={(r) => r.key} filterable={false} filterApi={api} pageSize={50} empty="No operation matches" />

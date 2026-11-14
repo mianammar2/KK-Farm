@@ -124,6 +124,7 @@ return [
     'POST /goats/{animal}/death' => ['inline' => 'the action checks report_death', 'module' => 'goats'],
     'POST /goats/{animal}/edit' => ['inline' => 'the action checks edit_goats', 'module' => 'goats'],
     'POST /goats/{animal}/exit' => ['inline' => 'the action checks exit_animal', 'module' => 'goats'],
+    'POST /heights/{record}' => ['inline' => 'the action checks record_height and who measured', 'module' => 'goats'], // D-311
     'POST /goats/{animal}/height' => ['inline' => 'the action checks record_height', 'module' => 'goats'],
     'POST /goats/{animal}/photos' => ['gate' => 'add_goat_photos', 'module' => 'goats'],
     'POST /goats/{animal}/photos/{photo}/profile' => ['gate' => 'add_goat_photos', 'module' => 'goats'],

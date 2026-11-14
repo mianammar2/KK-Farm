@@ -28,7 +28,12 @@ class OperationsLogController extends Controller
 
         return Inertia::render('Reports/Operations', [
             'app' => $app ? OpsLog::APPS[$app][0] : null,
-            'rows' => OpsLog::rows($ops),
+            'rows' => OpsLog::rows($ops)->map(function ($r) use ($user) { // D-311: Correct only for who may (the person who recorded it, or the right to correct)
+                $gate = ['weight' => 'record_weights', 'height' => 'record_height', 'checkup' => 'health_checkup'][$r['op']] ?? null;
+                $may = $r['fix'] && $gate && ($user->passes($gate) || $user->passes('correct_health_records')) && \App\Support\Revisions::canCorrect($user, $r['by']);
+
+                return ['fix' => $may ? $r['fix'] : null] + $r;
+            })->values(),
             'ops' => collect($ops)->map(fn ($o, $k) => ['key' => $k, 'app' => OpsLog::APPS[$app ?? $o[1][0]][0], 'label' => $o[0]])->values(), // D-310: inside an app, all are its own
         ]);
     }

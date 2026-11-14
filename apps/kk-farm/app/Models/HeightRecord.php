@@ -10,4 +10,9 @@ class HeightRecord extends Model
     protected $guarded = [];
 
     protected $casts = ['measured_on' => 'date'];
+
+    public function animal(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Animal::class);
+    }
 }

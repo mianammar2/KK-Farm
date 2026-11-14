@@ -683,6 +683,29 @@ class GoatController extends Controller
         return back()->with('success', "Height {$data['height_in']} in saved for {$animal->farm_number}.");
     }
 
+    /** D-311: correct a height: the person who measured, or the administrator. The old values stay as a revision; the goat's height follows its latest record. */
+    public function correctHeight(Request $request, \App\Models\HeightRecord $record): RedirectResponse
+    {
+        abort_unless($request->user()->passes('record_height') && \App\Support\Revisions::canCorrect($request->user(), $record->measured_by), 403, 'Only the person who measured, or the administrator, can correct this.');
+        $data = $request->validate(['height_in' => ['required', 'numeric', 'between:4,60'], 'measured_on' => ['required', 'date', 'before_or_equal:today'], 'reason' => ['nullable', 'string', 'max:300']], [], ['height_in' => 'height']);
+        $cm = round((float) $data['height_in'] * 2.54, 1);
+        $changes = [];
+        if ($record->measured_on->toDateString() !== \Illuminate\Support\Carbon::parse($data['measured_on'])->toDateString()) {
+            $changes['Date'] = [$record->measured_on->toDateString(), $data['measured_on']];
+        }
+        if (abs((float) $record->height_cm - $cm) > 0.05) {
+            $changes['Height in'] = [round($record->height_cm / 2.54, 1), (float) $data['height_in']];
+        }
+        if ($changes) {
+            $record->update(['measured_on' => $data['measured_on'], 'height_cm' => $cm]);
+            $latest = \App\Models\HeightRecord::where('animal_id', $record->animal_id)->orderByDesc('measured_on')->orderByDesc('id')->first();
+            $record->animal->update(['height_cm' => $latest->height_cm]);
+            \App\Support\Revisions::log('height', $record->id, $record->animal, $changes, $request->user(), $data['reason'] ?? null);
+        }
+
+        return back()->with('success', $changes ? 'Height corrected. The old values stay in the history.' : 'Nothing changed.');
+    }
+
     /** The goat page's "Record exit": one movement through the movement service (D-076). */
     public function exitFarm(Request $request, Animal $animal): RedirectResponse
     {

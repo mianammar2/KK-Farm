@@ -220,4 +220,19 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/reports/operations?app=livestock')->assertInertia(fn ($p) => $p->where('ops', fn ($ops) => ! collect($ops)->contains('key', 'case') && collect($ops)->every(fn ($o) => $o['app'] === 'Livestock')));
         $this->actingAs($this->user('ceo'))->get('/reports/operations?app=veterinary')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => collect($rows)->contains('op', 'case')));
     }
+
+    /** D-311: Correct in the Operations Log changes the record itself (everywhere) and keeps the old value in the history. */
+    public function test_a_record_is_corrected_from_the_operations_log(): void
+    {
+        $vet = $this->user('vet');
+        $this->actingAs($vet)->post("/goats/{$this->goat->id}/height", ['measured_on' => now()->toDateString(), 'height_in' => 24])->assertSessionHasNoErrors();
+        $this->actingAs($vet)->get('/reports/operations?app=livestock')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => collect($rows)->firstWhere('op', 'height')['fix'] !== null));
+        $h = \App\Models\HeightRecord::sole();
+        $this->actingAs($vet)->post("/heights/{$h->id}", ['measured_on' => now()->toDateString(), 'height_in' => 26, 'reason' => 'misread the stick'])->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(66.0, (float) $h->fresh()->height_cm, 0.1);
+        $this->assertEqualsWithDelta(66.0, (float) $this->goat->fresh()->height_cm, 0.1, 'the goat follows its latest height');
+        $this->assertTrue(\App\Models\RecordRevision::where('record_type', 'height')->where('record_id', $h->id)->exists(), 'the old value stays');
+        $other = $this->user('caretaker');
+        $this->actingAs($other)->post("/heights/{$h->id}", ['measured_on' => now()->toDateString(), 'height_in' => 30])->assertForbidden();
+    }
 }
