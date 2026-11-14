@@ -99,4 +99,14 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/goats/register')->assertInertia(fn ($p) => $p->has('registered', 1)->where('registered.0.number', 'H-1'));
         $this->actingAs($this->user('ceo'))->get('/breeding?tab=kidding')->assertInertia(fn ($p) => $p->has('farmBorn', 1)->where('farmBorn.0.number', 'K-1')->where('farmBorn.0.dam', 'H-1'));
     }
+
+    /** D-288: the Herd Sheet has every goat with its details; health columns only for roles that see health. */
+    public function test_the_herd_sheet_lists_every_goat_with_its_details(): void
+    {
+        \App\Models\WeightRecord::create(['animal_id' => $this->goat->id, 'measured_on' => now()->subDays(10), 'weight_kg' => 30, 'measured_by' => 'x', 'source' => 'manual']);
+        \App\Models\WeightRecord::create(['animal_id' => $this->goat->id, 'measured_on' => now(), 'weight_kg' => 32, 'measured_by' => 'x', 'source' => 'manual']);
+        $this->actingAs($this->user('vet'))->get('/reports/sheet')->assertOk()->assertInertia(fn ($p) => $p->component('Reports/Sheet')
+            ->where('rows.0.tag', 'H-1')->where('rows.0.breed', 'Beetal')->where('rows.0.weighings', 2)->where('rows.0.gainKg', 2)->where('rows.0.adg', 200)->where('rows.0.cases', 0)->where('seeHealth', true));
+        $this->actingAs($this->user('caretaker'))->get('/reports/sheet')->assertForbidden();
+    }
 }

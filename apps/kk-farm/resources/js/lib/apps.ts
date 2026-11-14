@@ -44,14 +44,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/scan', 'RFID Scan'),
         S('Operations', '/movements?kind=transfer', 'PEN Movements'), // D-285: moves and exits are separate
         S('Operations', '/movements?kind=exit', 'Animal Exit'),
-        S('Reporting', '/reports?section=herd', 'Herd Census'),
-        S('Reporting', '/reports?section=age', 'Age-Wise Report'),
-        S('Reporting', '/reports?section=breeds', 'Breed-Wise Population'),
-        S('Reporting', '/reports?section=exits', 'Exits & Mortality'),
-        S('Reporting', '/reports/records?kind=weight', 'Weighings Report'), // D-270
-        S('Reporting', '/reports/records?kind=temp', 'Temperature Report'),
-        S('Reporting', '/reports/records?kind=height', 'Height Report'),
-        S('Reporting', '/reports/records?kind=move', 'Movements Report'),
+        S('Reporting', '/reports/sheet', 'Herd Sheet'), // D-288: one sheet for all reporting
         // D-287: no Records section for now; the registry's filter cards show pregnant, attention and missing data
         S('Configuration', '/settings/breeds', 'Breed Master'),
         S('Configuration', '/settings/ages', 'Age Groups'),
