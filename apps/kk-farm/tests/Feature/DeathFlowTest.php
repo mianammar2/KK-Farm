@@ -88,7 +88,9 @@ class DeathFlowTest extends TestCase
 
     public function test_culling_takes_a_goat_out_of_breeding_but_not_off_the_farm(): void
     {
-        $this->actingAs($this->user('caretaker'))->post("/goats/{$this->goat->id}/cull", ['reason' => 'Repeat breeder'])->assertForbidden();
+        foreach (['caretaker', 'ceo', 'manager'] as $role) { // D-269: the vet's by default
+            $this->actingAs($this->user($role))->post("/goats/{$this->goat->id}/cull", ['reason' => 'Repeat breeder'])->assertForbidden();
+        }
         $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/cull", ['reason' => 'Repeat breeder'])->assertSessionHasNoErrors();
         $g = $this->goat->fresh();
         $this->assertSame('active', $g->status);

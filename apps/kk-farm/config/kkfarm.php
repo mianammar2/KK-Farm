@@ -77,7 +77,7 @@ return [
         // D-260: a death is the vet's finding, approved by the administrator; culling takes a goat out of breeding
         'report_death' => ['vet'],
         'approve_death' => ['ceo'],
-        'cull_breeding' => ['ceo', 'vet'],
+        'cull_breeding' => ['vet'], // D-269: a medical decision, the vet's (tickable for others)
         // D-262: the vet's teeth check and height measurement (Tasks jobs and goat page); the administrator has both
         'check_teeth' => ['ceo', 'vet'],
         'record_height' => ['ceo', 'vet'],
