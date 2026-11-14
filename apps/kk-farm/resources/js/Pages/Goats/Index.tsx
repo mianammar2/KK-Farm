@@ -111,7 +111,9 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             <Head title="Goat Registry" />
             <PageHeader
                 title="Goat Registry"
-                description={`${rows.length} of ${goats.length} goats shown. Goats that left the farm stay on record.`}
+                description={status === 'active' // D-268: the total is the goats on the farm now; dead, sold or gone are counted only under Left the farm
+                    ? `${rows.length === onFarm.length ? `${onFarm.length} goats on the farm` : `${rows.length} of ${onFarm.length} goats on the farm shown`}.`
+                    : `${rows.length} goats shown, including ${goats.length - onFarm.length} that left the farm (they stay on record).`}
 
             />
 
