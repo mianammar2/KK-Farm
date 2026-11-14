@@ -93,7 +93,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
                         <select aria-label="Category" className="field w-auto" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All categories</option>{categoryOptions.map((c) => <option key={c}>{c}</option>)}</select>
                     </div>
                 }>
-                    <div className="max-h-[60vh] overflow-auto">
+                    <div className="overflow-x-auto">
                         <table className="data-table min-w-[680px]">
                             <thead><tr><th>Date</th><th>Category</th><th>Party</th><th>Amount</th><th>Payment</th><th>Recorded by</th><th /></tr></thead>
                             <tbody>

@@ -195,7 +195,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 {!rows.length ? (
                     <Empty title="No goats match these filters"><button type="button" onClick={clear} className="font-semibold text-turq-800 underline">Clear filters</button> to see the whole registry.</Empty>
                 ) : view === 'table' ? (
-                    <div className="max-h-[70vh] overflow-auto">
+                    <div className="overflow-x-auto">
                         <table className="data-table min-w-[900px]">
                             <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>

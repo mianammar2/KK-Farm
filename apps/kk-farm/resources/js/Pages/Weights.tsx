@@ -77,7 +77,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
                     </div>
                 }>
                     {rows.length ? (
-                        <div className="max-h-[62vh] overflow-auto">
+                        <div className="overflow-x-auto">
                             <table className="data-table min-w-[560px]">
                                 <thead><tr><th>Goat</th><th>Latest</th><th>Daily Gain</th><th>Body Score</th><th>Weighed</th></tr></thead>
                                 <tbody>
