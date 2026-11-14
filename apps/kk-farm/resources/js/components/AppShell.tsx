@@ -79,9 +79,18 @@ function AppMenu({ appKey, sections, active, onNavigate }: { appKey: string; sec
         setOpen(next);
         try { localStorage.setItem(store, JSON.stringify(next)); } catch { /* private window */ }
     };
+    const link = (x: (typeof sections)[number] & { i: number }) => (
+        <Link href={menuHref(x.href)} onClick={() => { rememberApp(appKey); onNavigate?.(); }} aria-current={x.i === active ? 'page' : undefined}
+            className={cx('flex min-h-9 items-center rounded-tile px-2.5 py-1.5 text-sm transition-colors duration-150', x.i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
+            {x.label}
+        </Link>
+    );
+    // D-279: the app's main pages (Overview) sit at the top as plain links, no heading; the other headings are folders
+    const top = sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === 'Overview');
     return (
         <ul className="space-y-1">
-            {GROUPS.map((g) => {
+            {top.map((x) => <li key={`top${x.href}`}>{link(x)}</li>)}
+            {GROUPS.filter((g) => g !== 'Overview').map((g) => {
                 const items = sections.map((x, i) => ({ ...x, i })).filter((x) => x.group === g);
                 if (!items.length) return null;
                 const isOpen = open.includes(g) || g === activeGroup;
@@ -96,14 +105,7 @@ function AppMenu({ appKey, sections, active, onNavigate }: { appKey: string; sec
                         </button>
                         {isOpen ? (
                             <ul id={id} className="mt-0.5 mb-1 ms-4 space-y-0.5 border-s border-white/15 ps-2">
-                                {items.map((x) => (
-                                    <li key={`${x.group}${x.href}`}>
-                                        <Link href={menuHref(x.href)} onClick={() => { rememberApp(appKey); onNavigate?.(); }} aria-current={x.i === active ? 'page' : undefined}
-                                            className={cx('flex min-h-9 items-center rounded-tile px-2.5 py-1.5 text-sm transition-colors duration-150', x.i === active ? 'bg-tile text-cobalt-900 shadow-tile' : 'text-cobalt-100 hover:bg-cobalt-800')}>
-                                            {x.label}
-                                        </Link>
-                                    </li>
-                                ))}
+                                {items.map((x) => <li key={`${x.group}${x.href}`}>{link(x)}</li>)}
                             </ul>
                         ) : null}
                     </li>
