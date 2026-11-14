@@ -230,7 +230,7 @@ export default function GoatShow(props: Props) {
                     <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg > 0 ? '▲ +' : gain.kg < 0 ? '▼ ' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
                         {death?.review ? <DeathReview d={death} /> : null}
                         {recovery ? <RecoveryNote r={recovery} /> : null}
-                        {weights.length || records.some((r) => r.height !== null) ? <GrowthView rows={records} number={goat.number} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
+                        <GrowthView rows={records} number={goat.number} />
                         <RecordsTable rows={records} />
                     </Panel>
                     <div className="space-y-4">
@@ -802,7 +802,6 @@ function HeightForm({ goatId, onDone }: { goatId: string; onDone: () => void }) 
  */
 const UP = '#2f8f4e', DOWN = '#c8453b', FLAT = '#3b6fb6';
 function GrowthView({ rows, number }: { rows: GoatRecord[]; number: string }) {
-    const hasHeight = rows.some((r) => r.height !== null);
     const hasWeight = rows.some((r) => r.weight !== null);
     const [metric, setMetric] = useState<'weight' | 'height'>(hasWeight ? 'weight' : 'height');
     const [view, setView] = useState<'chart' | 'table'>('chart');
@@ -833,8 +832,8 @@ function GrowthView({ rows, number }: { rows: GoatRecord[]; number: string }) {
         <div>
             <div className="mb-2 flex flex-wrap items-center gap-2">
                 <div className="inline-flex overflow-hidden rounded-tile border border-rule" role="group" aria-label="Measurement">
-                    {hasWeight ? <button type="button" aria-pressed={metric === 'weight'} className={seg(metric === 'weight')} onClick={() => setMetric('weight')}>Weight</button> : null}
-                    {hasHeight ? <button type="button" aria-pressed={metric === 'height'} className={seg(metric === 'height')} onClick={() => setMetric('height')}>Height</button> : null}
+                    <button type="button" aria-pressed={metric === 'weight'} className={seg(metric === 'weight')} onClick={() => setMetric('weight')}>Weight</button>
+                    <button type="button" aria-pressed={metric === 'height'} className={seg(metric === 'height')} onClick={() => setMetric('height')}>Height</button>
                 </div>
                 {last && first && pts.length > 1 ? <span className="text-sm"><Ticker kg={Math.round((last.v - first.v) * 10) / 10} pct={first.v ? Math.round(((last.v - first.v) / first.v) * 1000) / 10 : null} unit={unit} small /> <span className="text-ink-soft">since {label(first.on)}</span></span> : null}
                 <span className="ms-auto flex items-center gap-3 text-xs text-ink-soft">
@@ -847,7 +846,7 @@ function GrowthView({ rows, number }: { rows: GoatRecord[]; number: string }) {
                     <button type="button" aria-pressed={view === 'table'} className={seg(view === 'table')} onClick={() => setView('table')}>Table</button>
                 </div>
             </div>
-            {!pts.length ? <Empty title={`No ${metric} recorded yet`} /> : view === 'chart' ? <Chart option={option} label={`${metric === 'weight' ? 'Weight' : 'Height'} of ${number}`} height={250} /> : (
+            {!pts.length ? <Empty title={`No ${metric} recorded yet`}>{metric === 'height' ? 'Use Add height above (vet or Administrator), or the Measure Height job in Tasks.' : 'Use Add weight above, or the Weigh Goats job in Tasks.'}</Empty> : view === 'chart' ? <Chart option={option} label={`${metric === 'weight' ? 'Weight' : 'Height'} of ${number}`} height={250} /> : (
                 <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                     <table className="data-table text-sm">
                         <thead><tr><th className="text-start">Date</th><th className="text-end">{metric === 'weight' ? 'Weight' : 'Height'}</th><th className="text-end">Change</th></tr></thead>
