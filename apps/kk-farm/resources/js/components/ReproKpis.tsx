@@ -25,7 +25,7 @@ export default function ReproKpiTiles({ k }: { k: ReproKpis }) {
                 <div key={t.label} className="kk-sign kk-rise">
                     <span className="kk-icon-tile" aria-hidden><LibIcon name={t.art} size={36} className="bg-transparent" /></span>
                     <span className="kk-sign-paper min-w-0">
-                        <span className="block truncate text-[11px] font-semibold text-[#4d6356] sm:text-xs">{t.label}</span>
+                        <span className="block truncate text-xs font-semibold text-[#4d6356] sm:text-xs">{t.label}</span>
                         <span className={`block text-xl font-extrabold tabular-nums sm:text-2xl ${t.alert ? 'text-crit-700' : 'text-[#022a1c]'}`}>
                             {Number.isInteger(t.value) ? <CountUp to={t.value as number} /> : t.value}{t.suffix ?? ''}
                         </span>

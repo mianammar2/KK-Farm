@@ -32,7 +32,7 @@ export default function SaleOrders(p: Props) {
         <>
             <Head title="Sale Orders" />
             <PageHeader title="Sale Orders & Dispatch" description="Quote clear goats, approve price and customer, reserve, tick the dispatch checklist, scan every goat at loading, then invoice, dispatch and collect. Margin per goat comes from its cost basis." />
-            <ol className="mb-3 flex flex-wrap items-center gap-1 text-[11px] font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
+            <ol className="mb-3 flex flex-wrap items-center gap-1 text-xs font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
             <StatRow>
                 <Stat label="Margin per goat" value={pkr(p.kpi.margin)} note="Sold, 90 days" tone={p.kpi.margin !== null && p.kpi.margin < 0 ? 'alert' : undefined} />
                 <Stat label="Dispatch errors" value={p.kpi.dispatchError === null ? '—' : `${p.kpi.dispatchError}%`} note="Scans that stopped loading" />

@@ -355,7 +355,7 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
                         {stats.map((t) => (
                             <button key={t.id} type="button" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}
                                 className={cx('kk-stat-plank kk-lift text-left', open === t.id && 'kk-stat-plank-on')}>
-                                <span className="block text-[11px] font-semibold text-[#4d6356]">{t.label}</span>
+                                <span className="block text-xs font-semibold text-[#4d6356]">{t.label}</span>
                                 <span className={cx('block text-lg font-extrabold tabular-nums', t.id === 'attention' ? 'text-crit-700' : 'text-[#12663f]')}>{t.value}</span>
                             </button>
                         ))}
@@ -470,7 +470,7 @@ function ShedPenCard({ p, plain = false, selected, onSelect, onEdit }: { p: Pen;
                                                             <span className={cx('text-sm font-bold tabular-nums', full ? 'text-crit-700' : 'text-[#022a1c]')}>{area ? 'Outdoor' : <>{p.count}{p.capacity ? <span className="text-xs font-semibold opacity-70">/{p.capacity}</span> : null}</>}</span>
                                                         </span>
                                                         <span className="mt-0.5 block truncate text-xs text-[#3d5446]">{p.purpose}</span>
-                                                        {plain ? (attention ? <span className="mt-1 block text-[11px] font-semibold text-crit-700">{attention} need attention</span> : null) : <span className="kk-herd" aria-hidden>
+                                                        {plain ? (attention ? <span className="mt-1 block text-xs font-semibold text-crit-700">{attention} need attention</span> : null) : <span className="kk-herd" aria-hidden>
                                                             {shown.map((g, i) => <GoatFigure key={g.id} female={g.sex === 'female'} flag={g.health !== 'healthy'} stage={g.stage} breed={g.breed} delay={(i * 0.37) % 2.4} info={{ id: g.id, number: g.number, name: g.name, breed: g.breed, female: g.sex === 'female', stage: g.stage, health: g.health, pen: p.name }} />)}
                                                                                                                     </span>}
                                                         {!area && !plain ? <span className="kk-trough mt-1 block" aria-hidden /> : null}

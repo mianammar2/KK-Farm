@@ -90,15 +90,15 @@ export default function UserAccess(p: Props) {
                                     if (!list.length) return null;
                                     return (
                                         <div key={g} className="px-4 pb-2">
-                                            <div className="pl-6 text-[11px] font-semibold tracking-wide text-ink-soft uppercase">{g}</div>
+                                            <div className="pl-6 text-xs font-semibold tracking-wide text-ink-soft uppercase">{g}</div>
                                             <ul className="grid gap-x-6 pl-6 sm:grid-cols-2">{list.map((r) => {
                                                 const own = access.data.pages[r.key];
                                                 const val = r.lock === 'admin' ? r.effective : on && (own ?? r.role);
                                                 return (
                                                     <li key={r.key} className="flex items-center gap-2 border-b border-rule py-1.5 text-sm">
                                                         <input type="checkbox" className="size-4 accent-cobalt-800 disabled:opacity-40" aria-label={r.label} checked={val} disabled={!p.canEdit || !r.editable || !on} onChange={() => tickPage(r)} />
-                                                        <span className="flex-1">{r.label}{r.lock === 'vet' ? <span className="ml-1 text-[11px] text-watch-700">vet-locked: tick to give this person</span> : null}{r.menus.length > 1 ? <span className="block text-[11px] text-ink-soft">Also appears in: {r.menus.join(', ')}</span> : null}</span>
-                                                        {!r.editable ? <Lock size={12} className="text-ink-faint" aria-label="Locked" /> : own === null || own === undefined ? <span className="text-[11px] text-ink-faint">from role</span> : <Chip className={own ? 'bg-ok-100 text-ok-700' : 'bg-crit-100 text-crit-700'}>Custom: {own ? 'given' : 'refused'}</Chip>}
+                                                        <span className="flex-1">{r.label}{r.lock === 'vet' ? <span className="ml-1 text-xs text-watch-700">vet-locked: tick to give this person</span> : null}{r.menus.length > 1 ? <span className="block text-xs text-ink-soft">Also appears in: {r.menus.join(', ')}</span> : null}</span>
+                                                        {!r.editable ? <Lock size={12} className="text-ink-faint" aria-label="Locked" /> : own === null || own === undefined ? <span className="text-xs text-ink-faint">from role</span> : <Chip className={own ? 'bg-ok-100 text-ok-700' : 'bg-crit-100 text-crit-700'}>Custom: {own ? 'given' : 'refused'}</Chip>}
                                                     </li>
                                                 );
                                             })}</ul>

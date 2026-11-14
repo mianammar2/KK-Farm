@@ -45,7 +45,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
             <div className="min-w-0">
                 {/* On phones and the gun the app bar already shows the title. */}
                 <h1 className="hidden text-2xl font-bold tracking-tight text-cobalt-900 lg:block">{titleCase(title)}</h1>
-                {description ? <p className="line-clamp-2 max-w-[68ch] text-[13px] leading-snug text-ink-soft sm:line-clamp-none sm:text-sm lg:mt-1 lg:text-base">{description}</p> : null}
+                {description ? <p className="line-clamp-2 max-w-[68ch] text-sm leading-snug text-ink-soft sm:line-clamp-none sm:text-sm lg:mt-1 lg:text-base">{description}</p> : null}
             </div>
             {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </header>
@@ -83,8 +83,8 @@ export function Panel({ title, description, actions, children, className, flush,
             {title ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2.5 sm:px-4 sm:py-3">
                     <div className="min-w-0">
-                        <h2 className="text-[15px] font-semibold text-cobalt-900 sm:text-base">{titleCase(title)}</h2>
-                        {description ? <p className="text-[13px] leading-snug text-ink-soft sm:text-sm">{description}</p> : null}
+                        <h2 className="text-base font-semibold text-cobalt-900 sm:text-base">{titleCase(title)}</h2>
+                        {description ? <p className="text-sm leading-snug text-ink-soft sm:text-sm">{description}</p> : null}
                     </div>
                     {actions}
                 </div>

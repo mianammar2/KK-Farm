@@ -89,9 +89,9 @@ export default function Sales({ sales, kpis, monthly, customers, types, can }: P
                     <div className="flex h-48 items-end gap-1.5">
                         {monthly.map((m) => (
                             <div key={m.month} className="flex flex-1 flex-col items-center gap-1">
-                                <span className="text-[10px] font-semibold tabular-nums text-ink-soft">{m.net ? `${Math.round(m.net / 1000)}k` : ''}</span>
+                                <span className="text-xs font-semibold tabular-nums text-ink-soft">{m.net ? `${Math.round(m.net / 1000)}k` : ''}</span>
                                 <div className="kk-grow w-full rounded-t-md bg-gradient-to-t from-[#1f7a3a] to-[#2e9e4f]" style={{ height: `${Math.max(2, (m.net / max) * 150)}px`, opacity: m.net ? 1 : 0.25 }} />
-                                <span className="text-[10px] text-ink-soft">{monthLabel(m.month)}</span>
+                                <span className="text-xs text-ink-soft">{monthLabel(m.month)}</span>
                             </div>
                         ))}
                     </div>

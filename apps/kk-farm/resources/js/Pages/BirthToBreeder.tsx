@@ -42,7 +42,7 @@ export default function BirthToBreeder(p: Props) {
                 <Stat label="Replacement selection" value={p.kpi.selectionRate === null ? '—' : `${p.kpi.selectionRate}%`} note={`${p.kpi.selected} breeders · ${p.kpi.sale} sale`} />
                 <Stat label="Below growth target" value={below.length} tone={below.length ? 'alert' : undefined} note={`under ${p.settings.alertPct}% of target`} />
             </StatRow>
-            <ol className="mb-3 flex flex-wrap items-center gap-1 text-[11px] font-semibold">
+            <ol className="mb-3 flex flex-wrap items-center gap-1 text-xs font-semibold">
                 {FUNNEL.map((s, i) => <li key={s} className="flex items-center gap-1"><span className={`rounded-full px-2 py-0.5 ${i >= 6 ? 'bg-cobalt-900 text-white' : 'bg-glaze text-ink-soft ring-1 ring-rule'}`}>{s}</span>{i < FUNNEL.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}
                 <li className="ml-2 text-xs font-normal text-ink-soft">Earlier steps: <Link href="/breeding?tab=kidding" className="text-cobalt-800 hover:underline">Kidding</Link> · <Link href="/breeding?tab=kidcare" className="text-cobalt-800 hover:underline">Kid Care</Link> · <Link href="/breeding?tab=weaning" className="text-cobalt-800 hover:underline">Weaning</Link></li>
             </ol>

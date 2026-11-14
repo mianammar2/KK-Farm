@@ -252,6 +252,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);
         Route::post('/goats/{animal}/death', [\App\Http\Controllers\DeathController::class, 'store']); // D-260: the vet reports
         Route::post('/goats/{animal}/height', [GoatController::class, 'height']); // D-262
+        Route::get('/goats/{animal}/day/{on}', [GoatController::class, 'day']); // D-270: one day's records, JSON
+        Route::get('/reports/records', [\App\Http\Controllers\RecordsReportController::class, 'index']); // D-270
+        Route::get('/reports/records/day', [\App\Http\Controllers\RecordsReportController::class, 'day']); // D-270, JSON
         Route::post('/goats/{animal}/cull', [\App\Http\Controllers\DeathController::class, 'cull']); // D-260: out of breeding, not off the farm
         Route::post('/death-reports/{report}', [\App\Http\Controllers\DeathController::class, 'decide']); // D-260: the administrator approves
         Route::post('/goats/{animal}/birth-date', [GoatController::class, 'correctBirth']); // D-080

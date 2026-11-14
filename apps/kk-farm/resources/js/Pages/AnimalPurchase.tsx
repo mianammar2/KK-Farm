@@ -90,7 +90,7 @@ function LotItem({ l, options, canApprove, canReceive, ...p }: Props & { l: Lot 
                 <Chip className={l.status === 'rejected' || l.status === 'cancelled' ? 'bg-crit-100 text-crit-700' : l.status === 'received' ? 'bg-ok-100 text-ok-700' : 'bg-watch-100 text-watch-700'}>{options.status[l.status]}</Chip>
                 <span className="text-ink-soft">asked by {l.requestedBy}, {l.requestedAt}{l.approvedBy ? ` · decided by ${l.approvedBy}` : ''}</span>
             </div>
-            {stage >= 0 ? <ol className="mt-2 flex flex-wrap items-center gap-1 text-[11px] font-semibold">
+            {stage >= 0 ? <ol className="mt-2 flex flex-wrap items-center gap-1 text-xs font-semibold">
                 {FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className={`rounded-full px-2 py-0.5 ${i <= stage ? 'bg-cobalt-900 text-white' : 'bg-glaze text-ink-soft ring-1 ring-rule'}`}>{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}
             </ol> : null}
             {l.kind === 'feeder' ? <p className="mt-1 text-xs font-semibold text-treat-700">Feeder lot: each goat is proposed for a finishing batch when the vet clears it from quarantine.</p> : null}

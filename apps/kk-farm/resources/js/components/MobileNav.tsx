@@ -83,7 +83,7 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
     ].filter(Boolean) as Array<{ href: string; label: string; icon: typeof LayoutGrid }>;
     const active = (href: string) => (href === '/' ? path === '/' : path.startsWith(href) && !path.startsWith('/goats/register'));
     const tab = (t: { href: string; label: string; icon: typeof LayoutGrid }) => (
-        <Link key={t.href} href={t.href} prefetch className="relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold">
+        <Link key={t.href} href={t.href} prefetch className="relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-xs font-semibold">
             {active(t.href) ? <motion.span layoutId="tab-pill" className="absolute top-1 h-8 w-14 rounded-full bg-turq-100" transition={{ type: 'spring', stiffness: 500, damping: 38 }} /> : null}
             <NavIcon href={t.href} icon={t.icon} size={26} className={cx('relative transition-transform', active(t.href) ? 'scale-110' : 'opacity-90')} />
             <span className={cx('relative', active(t.href) ? 'text-cobalt-900' : 'text-ink-soft')}>{t.label}</span>
@@ -104,7 +104,7 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
                         </div>
                     ) : null}
                     {tabs.slice(2).map(tab)}
-                    <button type="button" onClick={() => setMore(true)} className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold text-ink-soft">
+                    <button type="button" onClick={() => setMore(true)} className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-xs font-semibold text-ink-soft">
                         <MoreHorizontal size={22} aria-hidden /> More
                     </button>
                 </div>

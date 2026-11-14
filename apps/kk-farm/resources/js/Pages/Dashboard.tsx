@@ -240,10 +240,10 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                                     const x = p.meals[m];
                                     return (
                                         <div key={m} className={`kk-chalk-cell ${m === feeding.meal ? 'kk-chalk-now' : ''}`}>
-                                            <div className="flex items-center gap-1 text-[11px] font-semibold"><MealSun meal={m} />{feeding.meals[m]}</div>
+                                            <div className="flex items-center gap-1 text-xs font-semibold"><MealSun meal={m} />{feeding.meals[m]}</div>
                                             <ChalkMark status={x.status} />
-                                            <div className="kk-chalk-soft text-[11px]">{x.planned || x.given ? `${kg(x.given)} / ${kg(x.planned)}` : '—'}</div>
-                                            <BalanceTag balance={x.balance} diff={x.diff} className="mt-0.5 !px-1 !text-[10px]" />
+                                            <div className="kk-chalk-soft text-xs">{x.planned || x.given ? `${kg(x.given)} / ${kg(x.planned)}` : '—'}</div>
+                                            <BalanceTag balance={x.balance} diff={x.diff} className="mt-0.5 !px-1 !text-xs" />
                                         </div>
                                     );
                                 })}

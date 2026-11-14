@@ -7,6 +7,8 @@
 /* Multani kashi glaze: cobalt shell, turquoise action, cool glazed white ground. */
 @theme {
     --font-sans: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+    /* D-271: one typeface everywhere: tag numbers and codes use the same font (with even-width digits), not a typewriter font */
+    --font-mono: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
 
     /* D-152: colours follow the new KK Farms logo: deep green #013624, gold #f3b526, lime #8cbf2a, cream.
        D-068: KK Farms brand — deep forest green (the "K", leaf and waves) and harvest gold, on warm neutrals.
@@ -267,7 +269,7 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .kk-pen-selected { box-shadow: 0 0 0 2px var(--kk-green-2), 0 6px 16px -10px rgb(16 48 31 / 0.4) !important; }
 .kk-yard { background: #eef8ef; border-top-color: #8bcf6b; border-style: solid dashed dashed; }
 .kk-yard:hover { background: #e5f4e6; }
-.kk-pen-sign { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; color: #fff; padding: 1px 7px; border-radius: 999px; background: var(--kk-green); }
+.kk-pen-sign { font-family: var(--font-sans); font-size: 11px; font-weight: 700; color: #fff; padding: 1px 7px; border-radius: 999px; background: var(--kk-green); }
 .kk-herd { display: flex; flex-wrap: wrap; gap: 1px 2px; min-height: 30px; margin-top: 5px; align-content: flex-start; }
 .kk-goat { width: 30px; height: 25px; flex: none; overflow: visible; transform-origin: 50% 100%; animation: kk-graze 2.6s ease-in-out infinite; }
 @keyframes kk-graze { 0%, 100% { translate: 0 0; rotate: 0deg; } 40% { translate: 0 -1px; rotate: -2deg; } 70% { translate: 0 0; rotate: 1.5deg; } }
@@ -345,7 +347,7 @@ button:active:not(:disabled) { transition: transform 0.08s; }
 .kk-chalkboard { padding: 10px 14px 8px; border-radius: 16px; color: #e8f3ec; background: radial-gradient(ellipse at 20% 0%, rgb(46 158 79 / 0.18), transparent 55%), var(--kk-display); box-shadow: inset 0 0 0 1px rgb(125 255 173 / 0.12), 0 10px 24px -16px rgb(13 34 24 / 0.7); }
 .kk-chalkboard thead { color: #e8f3ec; border-bottom: 1px solid rgb(232 243 236 / 0.18); }
 .kk-chalk-body > tr + tr, .kk-chalk-rows > li + li { border-top: 1px solid rgb(232 243 236 / 0.1); }
-.kk-chalk-pen { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: #fff; }
+.kk-chalk-pen { font-family: var(--font-sans); font-weight: 700; color: #fff; }
 .kk-chalk-soft { color: rgb(232 243 236 / 0.65); }
 .kk-chalk-mark { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 1px 8px 1px 6px; border-radius: 999px; background: rgb(255 255 255 / 0.06); }
 .kk-chalk-done { color: #7dffad; background: rgb(125 255 173 / 0.12); }
@@ -450,3 +452,6 @@ main { min-width: 0; }
 /* D-179: the goat on the worker app's job form */
 .kk-worker-goat { display: inline-flex; flex: none; width: 72px; height: 62px; }
 .kk-worker-goat > svg { width: 100%; height: 100%; }
+
+/* D-271: numbers and codes line up (even-width digits) wherever the code style is used */
+.font-mono { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }

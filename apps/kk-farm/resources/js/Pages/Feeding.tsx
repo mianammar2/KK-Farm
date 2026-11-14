@@ -466,7 +466,7 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
     type RangeKey = 'kid' | 'grower' | 'adult';
     const range = (key: RangeKey, label: string, hint?: string) => (
         <div className="grid grid-cols-[7rem_1fr_1fr] items-end gap-2">
-            <div className="pb-2.5 text-sm font-semibold text-cobalt-900">{label}{settings.groupCodes?.[key] ? <span className="block font-mono text-[11px] font-normal text-ink-soft">{settings.groupCodes[key]}</span> : null}</div>
+            <div className="pb-2.5 text-sm font-semibold text-cobalt-900">{label}{settings.groupCodes?.[key] ? <span className="block font-mono text-xs font-normal text-ink-soft">{settings.groupCodes[key]}</span> : null}</div>
             <Field label="From % / day" error={errors[`${key}_min`]} hint={hint}><input className="field" type="number" inputMode="decimal" step="0.1" min={0} value={form.data[`${key}_min`]} onChange={(e) => form.setData(`${key}_min`, e.target.value)} /></Field>
             <Field label="To % / day" error={errors[`${key}_max`]}><input className="field" type="number" inputMode="decimal" step="0.1" min={0} value={form.data[`${key}_max`]} onChange={(e) => form.setData(`${key}_max`, e.target.value)} /></Field>
         </div>

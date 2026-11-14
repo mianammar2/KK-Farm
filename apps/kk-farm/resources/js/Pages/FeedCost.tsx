@@ -31,7 +31,7 @@ export default function FeedCost(p: Props) {
         <>
             <Head title="Feed True Cost" />
             <PageHeader title="Feed True Cost" description="What the feed really cost per goat and per KG gained: meals offered and refused, cost split to the goats in each pen, weight gain, feed conversion and margin." />
-            <ol className="mb-3 flex flex-wrap items-center gap-1 text-[11px] font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
+            <ol className="mb-3 flex flex-wrap items-center gap-1 text-xs font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
             <div className="mb-3 flex flex-wrap items-end gap-2">
                 <Field label="From"><input type="date" className="field" value={p.period.from} max={p.period.to} onChange={(e) => go(e.target.value, p.period.to)} /></Field>
                 <Field label="To"><input type="date" className="field" value={p.period.to} max={today()} onChange={(e) => go(p.period.from, e.target.value)} /></Field>

@@ -125,7 +125,7 @@ function CaseItem({ c, options, isVet, pens, users }: { c: Case; options: Props[
                 <span className="text-ink-soft">opened {c.opened} by {c.by}</span>
             </div>
             {/* where the case is on flow 19 */}
-            <ol className="mt-2 flex flex-wrap items-center gap-1 text-[11px] font-semibold">
+            <ol className="mt-2 flex flex-wrap items-center gap-1 text-xs font-semibold">
                 {FLOW.map(([key, label], i) => <li key={key} className="flex items-center gap-1"><span className={`rounded-full px-2 py-0.5 ${reached(key) || c.status === 'closed' ? 'bg-cobalt-900 text-white' : 'bg-glaze text-ink-soft ring-1 ring-rule'}`}>{label}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}
                 {c.status === 'escalated' ? <li><span className="rounded-full bg-crit-100 px-2 py-0.5 text-crit-700">Escalated: reassess</span></li> : null}
             </ol>

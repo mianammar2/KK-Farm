@@ -5,7 +5,7 @@ import { Camera, ClipboardPlus, MoveRight, Pencil, Scale, Star, Stethoscope, Tra
 import HealthEntry from '../../components/HealthEntry';
 import Sheet from '../../components/Sheet';
 import type { CheckupData } from '../../components/Checkups';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
 import GoatPortrait from '../../components/GoatPortrait';
@@ -235,7 +235,7 @@ export default function GoatShow(props: Props) {
                         {recovery ? <RecoveryNote r={recovery} /> : null}
                         <GrowthView rows={records} number={goat.number} />
                     </Panel>
-                    {records.length ? <Panel flush title="Measurements and care" description={`${records.length} ${records.length === 1 ? 'day' : 'days'}: what was measured, what was found and what was done`}><div className="px-4 pb-1"><RecordsTable rows={records} /></div></Panel> : null}
+                    {records.length ? <Panel flush title="Measurements and care" description={`${records.length} ${records.length === 1 ? 'day' : 'days'}: what was measured, what was found and what was done`}><div className="px-4 pb-1"><RecordsTable rows={records} goatId={goat.id} /></div></Panel> : null}
                     </div>
                     <div className="space-y-4">
                         {pregnancy ? <PregnancyPanel p={pregnancy} /> : null}
@@ -551,7 +551,7 @@ function MilkingPanel({ m }: { m: Milking }) {
 /** Phones: one action as an icon tile with a short label. */
 function ActionTile({ icon, label, onClick, primary = false, active = false }: { icon: ReactNode; label: string; onClick: () => void; primary?: boolean; active?: boolean }) {
     return (
-        <button type="button" onClick={onClick} className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-tile border px-1 py-2 text-[11px] font-semibold leading-tight active:scale-[0.97] ${primary ? 'border-cobalt-800 bg-cobalt-800 text-white' : active ? 'border-cobalt-700 bg-cobalt-100 text-cobalt-900' : 'border-rule bg-tile text-cobalt-900'}`}>
+        <button type="button" onClick={onClick} className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-tile border px-1 py-2 text-xs font-semibold leading-tight active:scale-[0.97] ${primary ? 'border-cobalt-800 bg-cobalt-800 text-white' : active ? 'border-cobalt-700 bg-cobalt-100 text-cobalt-900' : 'border-rule bg-tile text-cobalt-900'}`}>
             <span aria-hidden>{icon}</span>{label}
         </button>
     );
@@ -615,7 +615,7 @@ function StatusStrip({ statuses, history }: { statuses: Record<string, { code: s
         <div className="mt-2">
             <ul className="flex flex-wrap gap-1.5" aria-label="Statuses">{Object.entries(statuses).filter(([d, s]) => !(NO_STATE[d] ?? []).includes(s.code)).map(([d, s]) => (
                 <li key={d} className={`rounded-[4px] px-2 py-1 text-xs ring-1 ring-rule ${tone(d, s.code)}`} title={[s.note, ...(s.blockers ?? [])].filter(Boolean).join(' · ') || undefined}>
-                    <span className="font-semibold">{DIM_LABEL[d] ?? d}:</span> {s.label}{s.note ? <span className="block text-[11px] opacity-80">{s.note}</span> : null}{s.blockers?.length ? <span className="block text-[11px]">{s.blockers.join('; ')}</span> : null}
+                    <span className="font-semibold">{DIM_LABEL[d] ?? d}:</span> {s.label}{s.note ? <span className="block text-xs opacity-80">{s.note}</span> : null}{s.blockers?.length ? <span className="block text-xs">{s.blockers.join('; ')}</span> : null}
                 </li>
             ))}</ul>
             {history.length ? <details className="mt-1 text-xs text-ink-soft"><summary className="cursor-pointer">Status changes ({history.length})</summary><ul className="mt-1 space-y-0.5">{history.map((h, i) => <li key={i}>{h.at} · {DIM_LABEL[h.dimension] ?? h.dimension}: {h.from} → <span className="font-semibold">{h.to}</span> <span className="font-mono">({h.rule})</span></li>)}</ul></details> : null}
@@ -651,8 +651,9 @@ function performed(r: GoatRecord): Done[] {
 const dash = <span className="text-ink-faint">—</span>;
 
 /** D-249/D-266: one row per day: what was done, the measurements, what was found and the checkup's result. */
-function RecordsTable({ rows }: { rows: GoatRecord[] }) {
+function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) {
     const { rows: shown, pager } = usePaged(rows, { size: 10, id: 'goat-records' }); // D-263: numbered pages
+    const [day, setDay] = useState<string | null>(null); // D-270: a day opened in full
     if (!rows.length) return null;
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const resultTone = (x: string) => (x === 'Sick' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
@@ -667,20 +668,21 @@ function RecordsTable({ rows }: { rows: GoatRecord[] }) {
                             <th className={`${th} text-end`}>Height</th><th className={`${th} text-end`}>Temp °F</th><th className={`${th} text-start`}>Found</th><th className={`${th} text-start`}>Result</th></tr>
                     </thead>
                     <tbody className="divide-y divide-rule">{shown.map((r) => (
-                        <tr key={r.on} className="hover:bg-glaze/40">
-                            <td className={`${td} font-semibold whitespace-nowrap text-cobalt-900`}>{date(r.on)}</td>
+                        <tr key={r.on} className="cursor-pointer hover:bg-glaze/40" onClick={() => setDay(r.on)} title={`Open everything recorded on ${date(r.on)}`}>
+                            <td className={`${td} font-semibold whitespace-nowrap text-cobalt-900`} title={r.by.length ? `Recorded by ${r.by.join(', ')}` : undefined}><span className="underline decoration-rule decoration-dotted underline-offset-4">{date(r.on)}</span></td>
                             <td className={td}><span className="flex flex-wrap gap-1">{performed(r).map((d, i) => <span key={i} title={d.detail} className={`rounded px-1.5 py-0.5 text-xs font-semibold ${d.tone}`}>{d.label}</span>)}</span></td>
-                            <td className={`${td} text-end font-semibold tabular-nums whitespace-nowrap`}>{r.weight !== null ? `${r.weight} KG` : dash}</td>
-                            <td className={`${td} text-end whitespace-nowrap`}>{r.change !== null ? <Ticker kg={r.change} pct={r.pct} days={r.days} perDay={r.adg ?? undefined} small /> : dash}</td>
-                            <td className={`${td} text-end tabular-nums whitespace-nowrap`}>{r.height !== null ? `${r.height} in` : dash}</td>
-                            <td className={`${td} text-end tabular-nums`}>{r.temp !== null ? <span className={r.tempFlag ? 'rounded bg-crit-100 px-1.5 py-0.5 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span> : dash}</td>
-                            <td className={`${td} min-w-[9rem] text-ink`}>{r.care.length ? r.care.join('; ') : dash}</td>
+                            <td className={`${td} text-end font-semibold tabular-nums whitespace-nowrap`} title={r.weight !== null ? `${r.weight} KG${r.bcs !== null ? ` · body score ${r.bcs}` : ''}` : 'Not weighed this day'}>{r.weight !== null ? `${r.weight} KG` : dash}</td>
+                            <td className={`${td} text-end whitespace-nowrap`} title={r.change !== null && r.weight !== null ? `${r.change > 0 ? 'Gained' : r.change < 0 ? 'Lost' : 'No change:'} ${Math.abs(r.change)} KG since ${Math.round((r.weight - r.change) * 10) / 10} KG, ${r.days} ${r.days === 1 ? 'day' : 'days'} before (${r.adg ?? 0} g a day)` : undefined}>{r.change !== null ? <Ticker kg={r.change} pct={r.pct} days={r.days} perDay={r.adg ?? undefined} small /> : dash}</td>
+                            <td className={`${td} text-end tabular-nums whitespace-nowrap`} title={r.height !== null ? `${r.height} inches (${Math.round(r.height * 2.54)} cm) at the withers` : 'Not measured this day'}>{r.height !== null ? `${r.height} in` : dash}</td>
+                            <td className={`${td} text-end tabular-nums`} title={r.temp !== null ? `${r.temp} °F${r.heart !== null ? ` · heart ${r.heart}/min` : ''}${r.breaths !== null ? ` · breaths ${r.breaths}/min` : ''} · normal 101.3–103.5 °F` : 'No temperature this day'}>{r.temp !== null ? <span className={r.tempFlag ? 'rounded bg-crit-100 px-1.5 py-0.5 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span> : dash}</td>
+                            <td className={`${td} min-w-[9rem] text-ink`} title={r.care.join('\n') || undefined}>{r.care.length ? r.care.join('; ') : dash}</td>
                             <td className={td}>{r.result ? <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${resultTone(r.result)}`}>{r.result}</span> : dash}</td>
                         </tr>
                     ))}</tbody>
                 </table>
             </div>
             <div className="-mx-4 sm:mx-0">{pager}</div>
+            {day ? <Sheet onClose={() => setDay(null)}><DayDetail goatId={goatId} on={day} /></Sheet> : null}
         </div>
     );
 }
@@ -709,10 +711,10 @@ function Ticker({ kg, pct, days, perDay, small, unit = 'KG' }: { kg: number; pct
     return (
         <span className={`inline-flex flex-col ${small ? 'items-end' : ''}`}>
             <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${tone}`}>
-                <span aria-hidden className={small ? 'text-[10px]' : 'text-xs'}>{up ? '▲' : down ? '▼' : '■'}</span>
-                {up ? '+' : ''}{kg} {unit}{pct !== null && pct !== undefined ? <span className={`rounded px-1 ${small ? 'text-[11px]' : 'text-xs'} ${up ? 'bg-ok-100' : down ? 'bg-crit-100' : 'bg-glaze'}`}>{pct > 0 ? '+' : ''}{pct}%</span> : null}
+                <span aria-hidden className={small ? 'text-xs' : 'text-xs'}>{up ? '▲' : down ? '▼' : '■'}</span>
+                {up ? '+' : ''}{kg} {unit}{pct !== null && pct !== undefined ? <span className={`rounded px-1 ${small ? 'text-xs' : 'text-xs'} ${up ? 'bg-ok-100' : down ? 'bg-crit-100' : 'bg-glaze'}`}>{pct > 0 ? '+' : ''}{pct}%</span> : null}
             </span>
-            {days ? <span className={`font-normal text-ink-soft ${small ? 'text-[11px]' : 'text-xs'}`}>in {days} {days === 1 ? 'day' : 'days'}{perDay !== undefined ? ` · ${perDay > 0 ? '+' : ''}${perDay} g/day` : ''}</span> : null}
+            {days ? <span className={`font-normal text-ink-soft ${small ? 'text-xs' : 'text-xs'}`}>in {days} {days === 1 ? 'day' : 'days'}{perDay !== undefined ? ` · ${perDay > 0 ? '+' : ''}${perDay} g/day` : ''}</span> : null}
             <span className="sr-only">{up ? 'gained' : down ? 'lost' : 'no change'}</span>
         </span>
     );
@@ -880,6 +882,43 @@ function GrowthView({ rows, number }: { rows: GoatRecord[]; number: string }) {
                     </table>
                 </div>
             )}
+        </div>
+    );
+}
+
+/** D-270: everything recorded for this goat on one day, fetched when the day is opened. */
+type DayData = {
+    weights: Array<{ kg: number; bcs: number | null; height: number | null; context: string | null; by: string; at: string | null }>;
+    heights: Array<{ in: number; by: string; at: string | null }>;
+    moves: Array<{ type: string; from: string | null; to: string | null; reason: string | null; by: string | null; at: string | null }>;
+    teeth: Array<{ code: string | null; condition: string | null; by: string | null }>;
+    checkups: Array<{ temp: number | null; fever: boolean; heart: number | null; breaths: number | null; result: string; findings: string | null; by: string; at: string | null }>;
+    care: Array<{ kind: string; title: string; notes: string | null; status: string; by: string; at: string | null }>;
+    treatments: Array<{ product: string; dose: string | null; route: string | null; meat: string | null; milk: string | null; by: string; at: string | null }>;
+};
+function DayDetail({ goatId, on }: { goatId: string; on: string }) {
+    const [d, setD] = useState<DayData | null>(null);
+    useEffect(() => { fetch(`/goats/${goatId}/day/${on}`, { headers: { Accept: 'application/json' } }).then((r) => r.json()).then(setD); }, [goatId, on]);
+    const title = new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const block = (label: string, items: ReactNode[]) => (items.length ? (
+        <section className="mt-4"><h3 className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">{label}</h3>
+            <ul className="divide-y divide-rule rounded-tile bg-tile ring-1 ring-rule">{items.map((x, i) => <li key={i} className="px-3 py-2.5 text-sm">{x}</li>)}</ul></section>
+    ) : null);
+    const who = (by: string | null, at: string | null) => (by || at ? <span className="block text-xs text-ink-soft">{[by, at].filter(Boolean).join(' · ')}</span> : null);
+    return (
+        <div className="p-4 sm:p-6">
+            <h2 className="text-lg font-bold text-cobalt-900">{title}</h2>
+            <p className="text-sm text-ink-soft">Everything recorded for this goat on this day</p>
+            {!d ? <p className="mt-4 text-sm text-ink-soft">Loading…</p> : <>
+                {block('Weighed', d.weights.map((w) => <><b>{w.kg} KG</b>{w.bcs !== null ? ` · body score ${w.bcs}` : ''}{w.height !== null ? ` · height ${w.height} in` : ''}{w.context ? ` · ${w.context}` : ''}{who(w.by, w.at)}</>))}
+                {block('Height', d.heights.map((h) => <><b>{h.in} in</b>{who(h.by, h.at)}</>))}
+                {block('Checkup', d.checkups.map((c) => <>{c.temp !== null ? <b className={c.fever ? 'text-crit-700' : ''}>{c.temp} °F</b> : null}{c.heart !== null ? ` · heart ${c.heart}/min` : ''}{c.breaths !== null ? ` · breaths ${c.breaths}/min` : ''} · <b>{c.result}</b>{c.findings ? <span className="block">{c.findings}</span> : null}{who(c.by, c.at)}</>))}
+                {block('Found and care', d.care.map((h) => <><b>{h.kind}:</b> {h.title}{h.status === 'open' ? <span className="ms-1 rounded bg-watch-100 px-1.5 text-xs font-semibold text-watch-700">Open</span> : null}{h.notes ? <span className="block whitespace-pre-line text-ink-soft">{h.notes}</span> : null}{who(h.by, h.at)}</>))}
+                {block('Treatment', d.treatments.map((t) => <><b>{t.product}</b>{t.dose ? ` ${t.dose}` : ''}{t.route ? ` · ${t.route}` : ''}{t.meat || t.milk ? <span className="block text-ink-soft">Withdrawal: {[t.meat ? `meat clear ${t.meat}` : '', t.milk ? `milk clear ${t.milk}` : ''].filter(Boolean).join(', ')}</span> : null}{who(t.by, t.at)}</>))}
+                {block('Teeth', d.teeth.map((t) => <><b>{t.code ?? '—'}</b>{t.condition && t.condition !== 'normal' ? ` · ${t.condition}` : ''}{who(t.by, null)}</>))}
+                {block('Moved', d.moves.map((m) => <>{m.type}: {m.from ?? '—'} → <b>{m.to ?? '—'}</b>{m.reason ? ` · ${m.reason}` : ''}{who(m.by, m.at)}</>))}
+                {![d.weights, d.heights, d.checkups, d.care, d.treatments, d.teeth, d.moves].some((x) => x.length) ? <p className="mt-4 text-sm text-ink-soft">Nothing else recorded on this day.</p> : null}
+            </>}
         </div>
     );
 }

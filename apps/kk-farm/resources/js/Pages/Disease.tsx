@@ -33,7 +33,7 @@ export default function Disease(p: Props) {
         <>
             <Head title="Disease Control" />
             <PageHeader title="Disease Control & Recovery" description="Triage reported symptoms, isolate and alert for contagious risk, keep affected pens still until the vet clears them, follow cases to recovery with their true cost, and report outbreaks." />
-            <ol className="mb-3 flex flex-wrap items-center gap-1 text-[11px] font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
+            <ol className="mb-3 flex flex-wrap items-center gap-1 text-xs font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
             <StatRow>
                 <Stat label="Active cases" value={p.kpi.active} note={p.kpi.emergencies ? `${p.kpi.emergencies} emergencies` : undefined} tone={p.kpi.emergencies ? 'alert' : undefined} />
                 <Stat label="Restricted pens" value={p.kpi.restrictedPens} tone={p.kpi.restrictedPens ? 'alert' : undefined} note="No moves or sales" />

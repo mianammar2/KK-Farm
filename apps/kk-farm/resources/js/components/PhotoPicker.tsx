@@ -48,7 +48,7 @@ export default function PhotoPicker({ value, onChange, error, compact = false }:
                 <button type="button" onClick={() => camera.current?.click()} aria-label={preview ? 'Retake the profile picture' : 'Take a profile picture'}
                     className="group relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-turq-600 bg-tile transition-colors hover:bg-turq-100">
                     {preview ? <img src={preview} alt="New profile picture" className="size-full object-cover" /> : <Camera size={26} aria-hidden className="text-turq-800" />}
-                    {preview ? <span className="absolute inset-x-0 bottom-0 bg-cobalt-900/70 py-0.5 text-center text-[10px] font-semibold text-white">Change</span> : null}
+                    {preview ? <span className="absolute inset-x-0 bottom-0 bg-cobalt-900/70 py-0.5 text-center text-xs font-semibold text-white">Change</span> : null}
                 </button>
                 <div className="min-w-0">
                     <div className="font-semibold text-cobalt-900">Profile picture <span className="font-normal text-ink-soft">(optional)</span></div>

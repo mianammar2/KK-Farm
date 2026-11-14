@@ -195,7 +195,7 @@ export default function Users(p: Props) {
                         <label className="relative min-w-0 flex-1 sm:max-w-sm">
                             <Search size={16} aria-hidden className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                             <input ref={search} className="field ps-9" placeholder={T.search} aria-label={T.search} value={q} onChange={(e) => setQ(e.target.value)} />
-                            <kbd className="pointer-events-none absolute end-2 top-1/2 hidden -translate-y-1/2 rounded border border-rule px-1.5 text-[11px] text-ink-faint sm:block">/</kbd>
+                            <kbd className="pointer-events-none absolute end-2 top-1/2 hidden -translate-y-1/2 rounded border border-rule px-1.5 text-xs text-ink-faint sm:block">/</kbd>
                         </label>
                         <div className="hidden flex-wrap gap-2 sm:flex [&>select]:w-auto">{filterControls}</div>
                         <button type="button" className="inline-flex min-h-11 items-center gap-1.5 rounded-tile border border-rule bg-tile px-3 text-sm font-semibold text-cobalt-800 sm:hidden" onClick={() => setSheet(true)}>
@@ -295,7 +295,7 @@ function UserRow({ u, dept, checked, dim, onCheck, onOpen, onStatus, lock }: { u
                 <span className="flex items-center gap-3">
                     <Avatar name={u.name} role={u.role} />
                     <span className="min-w-0">
-                        <span className="flex items-center gap-1.5 font-semibold text-cobalt-900">{u.name}{u.me ? <span className="rounded-full bg-cobalt-100 px-1.5 text-[11px] text-cobalt-800">{T.you}</span> : null}</span>
+                        <span className="flex items-center gap-1.5 font-semibold text-cobalt-900">{u.name}{u.me ? <span className="rounded-full bg-cobalt-100 px-1.5 text-xs text-cobalt-800">{T.you}</span> : null}</span>
                         <span className="block truncate font-mono text-xs text-ink-soft">{login ?? u.login}{u.email ? ` · ${u.email}` : ''}</span>
                     </span>
                 </span>

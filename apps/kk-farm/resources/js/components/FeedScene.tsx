@@ -38,7 +38,7 @@ function FeedSack({ sack, index }: { sack: Sack; index: number }) {
                 <span className="kk-sack-tag truncate">{sack.label}</span>
             </div>
             <span className="kk-lcd self-start">{sack.value}</span>
-            {sack.note ? <span className="text-[11px] leading-tight text-[#4d6356]">{sack.note}</span> : null}
+            {sack.note ? <span className="text-xs leading-tight text-[#4d6356]">{sack.note}</span> : null}
         </div>
     );
 }
@@ -81,7 +81,7 @@ function Trough({ pen, share, tracking }: { pen: FeedPen; share: number; trackin
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e9efeb]" role="img" aria-label={`${fill}% of the shed's biggest pen`}>
                 <div className="kk-grow h-full rounded-full bg-gradient-to-r from-[#12663f] to-[#6fe39a]" style={{ width: `${fill}%` }} />
             </div>
-            <span className="mt-1 block text-[11px] text-[#3d5446]">
+            <span className="mt-1 block text-xs text-[#3d5446]">
                 {[pen.cpDay ? `CP ${Math.round(pen.cpDay * 1000).toLocaleString('en-PK')} g` : null, pen.unplanned ? `${pen.unplanned} not planned` : null].filter(Boolean).join(' · ')}
             </span>
             {tracking ? <BalanceTag balance={pen.balance} diff={pen.diff} className="mt-1" /> : null}

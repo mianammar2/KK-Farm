@@ -523,6 +523,37 @@ class GoatController extends Controller
         return back()->with('success', "Birth date of {$animal->farm_number} is now {$new->format('j M Y')}.");
     }
 
+    /**
+     * D-270: everything recorded for this goat on one day, opened from its Measurements and care table: weighings,
+     * heights, checkups, findings and care, treatments, teeth, moves. Health only for the roles that see it.
+     */
+    public function day(Request $request, Animal $animal, string $on): \Illuminate\Http\JsonResponse
+    {
+        abort_unless(preg_match('/^\d{4}-\d{2}-\d{2}$/', $on), 404);
+        $u = $request->user();
+        $seeHealth = in_array($u->role, ['ceo', 'manager', 'vet'], true) || ($u->module_access['health'] ?? false) === true;
+        $time = fn ($m) => $m->created_at?->setTimezone('Asia/Karachi')->format('g:i A');
+        $out = [
+            'weights' => \App\Models\WeightRecord::where('animal_id', $animal->id)->whereDate('measured_on', $on)->get()->map(fn ($w) => ['kg' => (float) $w->weight_kg, 'bcs' => $w->body_score,
+                'height' => $w->height_cm !== null ? round($w->height_cm / 2.54, 1) : null, 'context' => $w->context, 'by' => $w->measured_by, 'at' => $time($w)])->values(),
+            'heights' => \App\Models\HeightRecord::where('animal_id', $animal->id)->whereDate('measured_on', $on)->get()->map(fn ($h) => ['in' => round($h->height_cm / 2.54, 1), 'by' => $h->measured_by, 'at' => $time($h)])->values(),
+            'moves' => \App\Models\AnimalMovement::with(['fromPen', 'toPen'])->where('animal_id', $animal->id)->whereDate('moved_on', $on)->get()->map(fn ($m) => ['type' => \App\Models\AnimalMovement::TYPES[$m->type][0] ?? $m->type,
+                'from' => $m->fromPen?->name, 'to' => $m->toPen?->name, 'reason' => $m->reason, 'by' => $m->authorized_by, 'at' => $time($m)])->values(),
+            'teeth' => $animal->dentalExams()->whereDate('examined_on', $on)->get()->map(fn ($e) => ['code' => $e->dental_code, 'condition' => $e->condition, 'by' => $e->examined_by ?? null])->values(),
+            'checkups' => [], 'care' => [], 'treatments' => [],
+        ];
+        if ($seeHealth) {
+            $out['checkups'] = \App\Models\HealthCheckup::where('animal_id', $animal->id)->whereDate('checked_on', $on)->get()->map(fn ($c) => ['temp' => $c->temperature_f, 'fever' => (bool) $c->flags(),
+                'heart' => $c->heart_rate, 'breaths' => $c->respiration_rate, 'result' => \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome, 'findings' => $c->findings, 'by' => $c->examiner, 'at' => $time($c)])->values();
+            $out['care'] = \App\Models\HealthRecord::where('animal_id', $animal->id)->whereDate('occurred_on', $on)->get()->map(fn ($h) => ['kind' => ucfirst(str_replace('_', ' ', $h->kind)),
+                'title' => preg_replace('/^Checkup: /', '', $h->title), 'notes' => $h->notes, 'status' => $h->status, 'by' => $h->recorded_by, 'at' => $time($h)])->values();
+            $out['treatments'] = \App\Models\Treatment::where('animal_id', $animal->id)->whereDate('given_on', $on)->get()->map(fn ($t) => ['product' => $t->product, 'dose' => $t->dose, 'route' => $t->route,
+                'meat' => $t->meat_clear_on?->format('j M Y'), 'milk' => $t->milk_clear_on?->format('j M Y'), 'by' => $t->recorded_by, 'at' => $time($t)])->values();
+        }
+
+        return response()->json($out);
+    }
+
     /** D-262: a height on its own, with its date (the vet's or the administrator's); the goat's current height follows the latest. */
     public function height(Request $request, Animal $animal): RedirectResponse
     {

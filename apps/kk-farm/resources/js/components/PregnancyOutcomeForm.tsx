@@ -146,7 +146,7 @@ export default function PregnancyOutcomeForm({ matingId, damNumber, matedOn, opt
                         ['Total Kids', total], ['Live Born', alive], ['Stillborn', still],
                         ['Litter', LITTER[total] ?? '5+'], ['Gestation', gestation !== null ? `${gestation} days` : '—'],
                     ].map(([l, v]) => (
-                        <div key={l as string} className="rounded-lg bg-glaze px-2 py-1.5"><div className="text-base font-extrabold text-cobalt-900">{v}</div><div className="text-[11px] text-ink-soft">{l}</div></div>
+                        <div key={l as string} className="rounded-lg bg-glaze px-2 py-1.5"><div className="text-base font-extrabold text-cobalt-900">{v}</div><div className="text-xs text-ink-soft">{l}</div></div>
                     ))}
                 </div>
             </div>

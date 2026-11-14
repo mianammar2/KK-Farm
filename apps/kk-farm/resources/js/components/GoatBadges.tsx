@@ -61,7 +61,7 @@ export function BreedBadge({ breed, withName = false, size = 24 }: { breed?: str
     const s = symbolFor(breed);
     return (
         <span className="inline-flex shrink-0 items-center gap-1 align-middle" title={`Breed: ${breed}`} aria-label={`Breed ${breed}`}>
-            <span className="inline-flex items-center gap-0.5 rounded-full p-px pr-1.5 text-[10px] font-extrabold leading-none tracking-wide" style={{ background: s.bg, color: s.fg, boxShadow: `inset 0 0 0 1px ${s.ring}` }}>
+            <span className="inline-flex items-center gap-0.5 rounded-full p-px pr-1.5 text-xs font-extrabold leading-none tracking-wide" style={{ background: s.bg, color: s.fg, boxShadow: `inset 0 0 0 1px ${s.ring}` }}>
                 {BREED_ART[breedKey(breed)] ? <img src={`/icons/${BREED_ART[breedKey(breed)]}.png`} alt="" aria-hidden className="shrink-0 rounded-full bg-white object-cover" style={{ width: size, height: size }} /> : <GoatHead s={s} size={size} />}
                 {s.code}
             </span>
@@ -81,7 +81,7 @@ export function AgeBadge({ stage, code, withLabel = false }: { stage?: string | 
     const s = stage ? STAGE[stage] : undefined;
     if (!s) return null;
     return (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 align-middle text-[11px] font-bold" style={{ color: s.color, background: `${s.color}1a` }} title={`Age: ${code ? `${code} · ` : ''}${titleCase(s.label)}`}>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 align-middle text-xs font-bold" style={{ color: s.color, background: `${s.color}1a` }} title={`Age: ${code ? `${code} · ` : ''}${titleCase(s.label)}`}>
             <svg viewBox="0 0 14 12" width="13" height="11" role="img" aria-label={s.label}>
                 {[0, 1, 2].map((i) => <rect key={i} x={i * 5} y={8 - i * 3.5} width="3.6" height={4 + i * 3.5} rx="1" fill={i < s.bars ? s.color : `${s.color}33`} />)}
             </svg>

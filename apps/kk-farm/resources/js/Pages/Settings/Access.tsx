@@ -80,7 +80,7 @@ export default function Access(p: Props) {
                     <input type="checkbox" className="size-4 accent-cobalt-800 disabled:opacity-40" aria-label={`${roles[role]}: ${r.label}`}
                         disabled={!p.canEdit || !!r.lock || !mod} checked={mod && val} onChange={() => tickPage(r, role)}
                         title={r.lock === 'vet' ? 'Vet-locked: give it to one person on their own page' : r.lock === 'admin' ? 'Administrator only' : !mod ? `${roles[role]} does not have this app` : undefined} />
-                    {custom && mod ? <span className="rounded-[3px] bg-watch-100 px-1 text-[10px] font-bold text-watch-700" title={`Default: ${r.default[role] ? 'open' : 'closed'}`}>Custom</span> : null}
+                    {custom && mod ? <span className="rounded-[3px] bg-watch-100 px-1 text-xs font-bold text-watch-700" title={`Default: ${r.default[role] ? 'open' : 'closed'}`}>Custom</span> : null}
                 </span>
             </td>
         );
@@ -110,7 +110,7 @@ export default function Access(p: Props) {
                                                 <span className="text-xs font-normal text-ink-faint">{rows.length} {rows.length === 1 ? 'page' : 'pages'}</span>
                                             </button>
                                         ) : <span className="pl-5">{p.moduleLabels[m]}</span>}
-                                        {anyCustom ? <span className="ml-1.5 rounded-[3px] bg-watch-100 px-1 text-[10px] font-bold text-watch-700">Custom</span> : null}
+                                        {anyCustom ? <span className="ml-1.5 rounded-[3px] bg-watch-100 px-1 text-xs font-bold text-watch-700">Custom</span> : null}
                                     </td>
                                     {roleKeys.map((role) => moduleBox(m, role))}
                                 </tr>
@@ -119,15 +119,15 @@ export default function Access(p: Props) {
                                     if (!list.length) return null;
                                     return (
                                         <Fragment key={g}>
-                                            <tr className="bg-glaze/60"><td colSpan={roleKeys.length + 1} className="py-1 pl-7 text-[11px] font-semibold tracking-wide text-ink-soft uppercase">{g}</td></tr>
+                                            <tr className="bg-glaze/60"><td colSpan={roleKeys.length + 1} className="py-1 pl-7 text-xs font-semibold tracking-wide text-ink-soft uppercase">{g}</td></tr>
                                             {list.map((r) => (
                                                 <tr key={r.key} className="bg-glaze/30">
                                                     <td className="pl-9 text-sm">
                                                         <span className="font-medium text-cobalt-900">{r.label}</span>
                                                         {r.lock ? <Lock size={12} className="ml-1 inline text-ink-faint" aria-label={r.lock === 'vet' ? 'Vet-locked' : 'Administrator only'} /> : null}
-                                                        {r.lock === 'vet' ? <span className="ml-1 text-[11px] text-watch-700">vet-locked</span> : r.lock === 'admin' ? <span className="ml-1 text-[11px] text-ink-soft">Administrator only</span> : null}
-                                                        <span className="block font-mono text-[11px] text-ink-faint">{r.href}</span>
-                                                        {r.menus.length > 1 ? <span className="block text-[11px] text-ink-soft">Also appears in: {r.menus.join(', ')}</span> : null}
+                                                        {r.lock === 'vet' ? <span className="ml-1 text-xs text-watch-700">vet-locked</span> : r.lock === 'admin' ? <span className="ml-1 text-xs text-ink-soft">Administrator only</span> : null}
+                                                        <span className="block font-mono text-xs text-ink-faint">{r.href}</span>
+                                                        {r.menus.length > 1 ? <span className="block text-xs text-ink-soft">Also appears in: {r.menus.join(', ')}</span> : null}
                                                     </td>
                                                     {roleKeys.map((role) => pageBox(r, role))}
                                                 </tr>

@@ -50,6 +50,10 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports?section=age', 'Age-Wise Report'),
         S('Reporting', '/reports?section=breeds', 'Breed-Wise Population'),
         S('Reporting', '/reports?section=exits', 'Exits & Mortality'),
+        S('Reporting', '/reports/records?kind=weight', 'Weighings Report'), // D-270
+        S('Reporting', '/reports/records?kind=temp', 'Temperature Report'),
+        S('Reporting', '/reports/records?kind=height', 'Height Report'),
+        S('Reporting', '/reports/records?kind=move', 'Movements Report'),
         S('Configuration', '/settings/breeds', 'Breed Master'),
         S('Configuration', '/settings/ages', 'Age Groups'),
         S('Configuration', '/settings/automation', 'Automation Rules'), // D-236

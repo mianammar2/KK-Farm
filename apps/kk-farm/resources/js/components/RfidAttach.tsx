@@ -77,7 +77,7 @@ export function RfidButton({ goat, onOpen }: { goat: TagGoat; onOpen: () => void
     return (
         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
             title={goat.tag ? `RFID ${goat.tag} is linked: tap to link a different one` : 'No RFID linked: tap to scan one'}
-            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${goat.tag ? 'border-ok-700/40 bg-ok-100 text-ok-700' : 'border-turq-600 bg-turq-100 text-turq-800 hover:bg-turq-400/40'}`}>
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold ${goat.tag ? 'border-ok-700/40 bg-ok-100 text-ok-700' : 'border-turq-600 bg-turq-100 text-turq-800 hover:bg-turq-400/40'}`}>
             <Radio size={12} aria-hidden />{goat.tag ? 'RFID Linked' : 'Link RFID'}
         </button>
     );

@@ -21,7 +21,7 @@ export default function EndOfLife(p: Props) {
         <>
             <Head title="End-of-Life Review" />
             <PageHeader title="Humane End-of-Life Review" description="When a goat is suffering and cannot recover, anyone caring for it can ask for a review. The vet assesses it, the owner or manager authorises it, and only the vet performs it and records the method and disposal. The death then closes the goat's record like any other exit." />
-            <ol className="mb-3 flex flex-wrap items-center gap-1 text-[11px] font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
+            <ol className="mb-3 flex flex-wrap items-center gap-1 text-xs font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
             <StatRow>
                 <Stat label="Waiting for the vet" value={open.filter((r) => r.status === 'requested').length} />
                 <Stat label="Waiting for authorisation" value={open.filter((r) => r.status === 'assessed').length} />

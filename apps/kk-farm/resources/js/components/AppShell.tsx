@@ -89,7 +89,7 @@ function NavList({ path, url, modules, onNavigate }: { path: string; url: string
                     if (!items.length) return null;
                     return (
                         <div key={g} className="mt-3 first:mt-1">
-                            <div className="px-2.5 pb-1 text-[11px] font-semibold tracking-wide text-cobalt-200/80 uppercase">{g}</div>
+                            <div className="px-2.5 pb-1 text-xs font-semibold tracking-wide text-cobalt-200/80 uppercase">{g}</div>
                             <ul className="space-y-0.5">
                                 {items.map((x) => (
                                     <li key={`${x.group}${x.href}`}>

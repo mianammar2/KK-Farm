@@ -155,7 +155,7 @@ function CaseItem({ c, options, pick, isLead, me }: Props & { c: Case }) {
                 <Chip className={c.status === 'reopened' ? 'bg-crit-100 text-crit-700' : c.status === 'closed' ? 'bg-ok-100 text-ok-700' : 'bg-cobalt-100 text-cobalt-800'}>{options.status[c.status]}</Chip>
                 <span className="text-ink-soft">{options.sources[c.source]} · {c.opened} · {c.by}</span>
             </div>
-            <ol className="mt-2 flex flex-wrap items-center gap-1 text-[11px] font-semibold">
+            <ol className="mt-2 flex flex-wrap items-center gap-1 text-xs font-semibold">
                 {FLOW.filter(([k]) => k !== 'contained' || c.risk).map(([key, label], i, all) => <li key={key} className="flex items-center gap-1"><span className={`rounded-full px-2 py-0.5 ${reached(key) ? 'bg-cobalt-900 text-white' : 'bg-glaze text-ink-soft ring-1 ring-rule'}`}>{label}</span>{i < all.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}
                 {c.status === 'reopened' ? <li><span className="rounded-full bg-crit-100 px-2 py-0.5 text-crit-700">Failed: replan</span></li> : null}
             </ol>

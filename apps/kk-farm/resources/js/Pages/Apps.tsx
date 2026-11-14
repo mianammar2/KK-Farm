@@ -43,7 +43,7 @@ export default function Apps() {
                                             <ArtIcon name={a.art} size={68} className="kk-app-art !rounded-[22%] !shadow-none !ring-0" />
                                             {b ? <span className={`absolute -top-1.5 -right-1.5 grid min-w-6 place-items-center rounded-full px-1.5 text-xs font-bold leading-6 text-white shadow ${b.urgent ? 'bg-crit-700' : 'bg-watch-700'}`}>{b.n}</span> : null}
                                         </span>
-                                        <span className="text-[13px] leading-tight font-semibold text-cobalt-900 sm:text-sm">{a.label}</span>
+                                        <span className="text-sm leading-tight font-semibold text-cobalt-900 sm:text-sm">{a.label}</span>
                                     </Link>
                                 </li>
                             );

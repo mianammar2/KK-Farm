@@ -56,7 +56,7 @@ export default function Health(props: Props) {
     // D-097: forms open from + buttons (or a dashboard shortcut: /health?new=case|report|care), not always on the page.
     const [sheet, setSheet] = useState<'entry' | 'case' | 'report' | 'care' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'entry' | 'case' | 'report' | 'care' | null));
     const action = (label: string, icon: React.ReactNode, onClick: () => void, primary = false) => (
-        <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center justify-center gap-1.5 rounded-tile border px-2 text-[13px] font-semibold max-sm:flex-col max-sm:py-2 sm:rounded-full sm:px-4 sm:text-sm', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
+        <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center justify-center gap-1.5 rounded-tile border px-2 text-sm font-semibold max-sm:flex-col max-sm:py-2 sm:rounded-full sm:px-4 sm:text-sm', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
             <span className="flex items-center gap-1"><Plus size={14} aria-hidden className="max-sm:hidden" />{icon}</span>{titleCase(label)}
         </button>
     );

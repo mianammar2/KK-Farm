@@ -81,7 +81,7 @@ function PenChip({ pen }: { pen: ScenePen }) {
         <Link href={`/goats?pen=${encodeURIComponent(pen.name)}`} className="kk-pen-chip kk-lift" title={`${pen.name}: ${pen.goats} goats`}>
             <span className="kk-pen-sign">{pen.code}</span>
             <span className={`text-sm font-bold tabular-nums ${full ? 'text-crit-700' : 'text-[#022a1c]'}`}>{pen.goats}{pen.capacity !== null ? <span className="text-xs font-semibold opacity-70">/{pen.capacity}</span> : null}</span>
-            {pen.attention ? <span className="text-[11px] font-semibold text-crit-700">{pen.attention} need attention</span> : null}
+            {pen.attention ? <span className="text-xs font-semibold text-crit-700">{pen.attention} need attention</span> : null}
             <span className="sr-only">{pen.female} female, {pen.male} male</span>
         </Link>
     );
@@ -108,7 +108,7 @@ function PenYard({ pen }: { pen: ScenePen }) {
                 <svg viewBox="0 0 12 12" className="size-3.5 shrink-0"><path d="M2 3h8l-1 8H3z" fill="#5f87a8" /><rect x="1.5" y="2" width="9" height="1.6" rx=".8" fill="#46667f" /></svg>
             </div>
             <span className="sr-only">{pen.female} female, {pen.male} male{pen.attention ? `, ${pen.attention} need attention` : ''}</span>
-            {pen.attention ? <span className="mt-1 block text-[11px] font-semibold text-crit-700">{pen.attention} need attention</span> : null}
+            {pen.attention ? <span className="mt-1 block text-xs font-semibold text-crit-700">{pen.attention} need attention</span> : null}
         </div>
     );
 }
@@ -193,7 +193,7 @@ export function FigureLegend({ breeds = [], collars = false }: { breeds?: Array<
                 {item('cls-grw', 'Grower', 'grower')}
                 {item('cls-kid', 'Kid', 'kid')}
                 {item('ic-sick', 'Needs Attention')}
-                <span className="text-[11px] font-normal opacity-80">Point at a goat to see its details</span>
+                <span className="text-xs font-normal opacity-80">Point at a goat to see its details</span>
             </div>
             {present.length ? (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
