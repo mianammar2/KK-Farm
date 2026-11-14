@@ -22,6 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [EnsureActiveAccount::class, SetTenant::class, HandleInertiaRequests::class, \App\Http\Middleware\EnsurePage::class]); // D-241: page access
         // The tenant must be bound before route-model binding resolves {animal} etc. (D-037).
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: SetTenant::class);
+        // D-264 F-27: the module check runs before route-model binding, so a refused user never learns whether a record exists
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnsureModule::class);
+        // D-264 F-27: the module check runs before route-model binding, so a refused user never learns whether a record exists
         $middleware->alias(['module' => EnsureModule::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

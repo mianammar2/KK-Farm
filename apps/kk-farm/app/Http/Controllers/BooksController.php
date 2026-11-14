@@ -60,6 +60,7 @@ class BooksController extends Controller
     /** A manual journal: owner's capital, a transfer between cash and bank, drawings, opening balances, corrections. */
     public function storeJournal(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->passes('manage_books'), 403, 'Only the Administrator and Finance post to the books.'); // D-264 F-02
         $data = $request->validate([
             'posted_on' => ['required', 'date', 'before_or_equal:today'], 'memo' => ['required', 'string', 'max:200'], 'reference' => ['nullable', 'string', 'max:60'],
             'opening' => ['boolean'],
@@ -77,6 +78,7 @@ class BooksController extends Controller
 
     public function reverseJournal(Request $request, JournalEntry $journal): RedirectResponse
     {
+        abort_unless($request->user()->passes('manage_books'), 403, 'Only the Administrator and Finance post to the books.'); // D-264 F-02
         abort_if($journal->ledger_entry_id !== null, 422, 'This journal came from a ledger entry: reverse the entry on the Finance page instead.');
         $r = Accounting::reverse($journal->load('lines'), now()->toDateString(), $request->user()->name);
         Farm::log($request->user(), "Reversed journal #{$journal->entry_no}", '/finance/books', 'finance');
@@ -86,6 +88,7 @@ class BooksController extends Controller
 
     public function storeAccount(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->passes('manage_books'), 403, 'Only the Administrator and Finance change the chart of accounts.'); // D-264 F-02
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80'], 'type' => ['required', Rule::in(array_keys(Account::TYPES))],
             'code' => ['nullable', 'string', 'max:10', 'regex:/^[0-9A-Za-z-]+$/', Rule::unique('accounts', 'code')->where('org_id', \App\Support\Tenant::current())],
@@ -101,6 +104,7 @@ class BooksController extends Controller
     /** Name, notes and active can change; the type cannot once the account has postings. */
     public function updateAccount(Request $request, Account $account): RedirectResponse
     {
+        abort_unless($request->user()->passes('manage_books'), 403, 'Only the Administrator and Finance change the chart of accounts.'); // D-264 F-02
         $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'active' => ['boolean'], 'notes' => ['nullable', 'string', 'max:200']]);
         abort_if($account->system_key && array_key_exists('active', $data) && ! $data['active'], 422, 'A system account cannot be switched off.');
         $account->update($data);

@@ -33,6 +33,7 @@ class Access
         'edit_goats' => 'Edit goat details', 'remove_goats' => 'Remove or restore goat entries', 'health_checkup' => 'Routine health checkups', 'manage_market' => 'Market rates',
         'record_milk' => 'Record milk', 'manage_milking' => 'Milking settings', 'open_cases' => 'Open health cases', 'approve_breeding' => 'Approve goats for breeding',
         'health_entry' => 'New health entry', 'report_concern' => 'Report concern',
+        'manage_books' => 'Post to the books (journals, accounts)', 'manage_staff' => 'Add staff, record attendance and leave', 'request_end_of_life' => 'Ask for a humane end-of-life review', 'request_goat_purchase' => 'Raise a goat purchase',
         'record_heat' => 'Record heat', 'record_mating' => 'Record mating', 'give_care' => 'Give vaccines and deworming', 'move_goats' => 'Move goats between pens',
         'report_death' => 'Report a death', 'approve_death' => 'Approve a death (the goat leaves the farm)', 'cull_breeding' => 'Cull from breeding', 'check_teeth' => 'Check teeth', 'record_height' => 'Measure height',
     ];
@@ -72,8 +73,8 @@ class Access
 
     public static function module(User $u, string $module): bool
     {
-        if ($module === 'settings' && $u->role === 'ceo') {
-            return true; // the owner can never lock themselves out
+        if ($module === 'settings') {
+            return $u->role === 'ceo'; // D-264 F-08: Settings is the Administrator's alone, even when ticked for a person or role
         }
         $own = $u->module_access[$module] ?? null;
         if ($own !== null) {

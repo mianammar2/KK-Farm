@@ -97,6 +97,11 @@ return [
         'manage_sales' => ['ceo', 'manager', 'finance'],
         'manage_market' => ['ceo', 'manager', 'finance'],
         'manage_devices' => ['ceo'],
+        // D-264 (audit F-02, F-03, F-04, F-06): the books, staff records, end-of-life requests and goat purchases
+        'manage_books' => ['ceo', 'finance'],
+        'manage_staff' => ['ceo', 'manager'],
+        'request_end_of_life' => ['ceo', 'manager', 'vet'],
+        'request_goat_purchase' => ['ceo', 'manager'],
         'record_weights' => ['ceo', 'manager', 'caretaker'], // RBAC §4/§8.3: vet and feeding staff view weights only (a vet's checkup still records its own weight)
     ],
 

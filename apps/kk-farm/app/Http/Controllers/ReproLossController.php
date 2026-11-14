@@ -49,6 +49,7 @@ class ReproLossController extends Controller
     /** Isolate the doe: the clock for time to containment stops here. */
     public function contain(Request $request, ReproLossCase $case): RedirectResponse
     {
+        abort_unless(ReproLoss::canHandle($request->user()), 403, 'Only the vet or trained staff isolate a pregnancy loss.'); // D-264 F-05
         abort_unless($case->status === 'open', 422, 'Already contained.');
         $data = $request->validate(['pen_id' => ['required', 'exists:pens,id']], [], ['pen_id' => 'isolation pen']);
         DB::transaction(function () use ($case, $data, $request) {

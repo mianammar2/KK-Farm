@@ -76,7 +76,7 @@ class ProcessingFeederEndOfLifeTest extends TestCase
     public function test_end_of_life_needs_the_vet_and_a_separate_authoriser_and_closes_the_record(): void
     {
         $g = $this->goat('E-1');
-        $this->actingAs($this->user('caretaker'))->post('/welfare/end-of-life', ['animal_id' => $g->id, 'reason' => 'severe_injury', 'details' => 'Broken leg, cannot stand, in pain since yesterday'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post('/welfare/end-of-life', ['animal_id' => $g->id, 'reason' => 'severe_injury', 'details' => 'Broken leg, cannot stand, in pain since yesterday'])->assertSessionHasNoErrors();
         $r = EndOfLifeReview::sole();
         $this->actingAs($this->user('manager'))->post("/welfare/end-of-life/{$r->id}/assess", ['recommends' => true, 'assessment' => 'Compound fracture'])->assertForbidden();
         $this->actingAs($this->user('manager'))->post("/welfare/end-of-life/{$r->id}/authorise", ['decision' => 'approved'])->assertStatus(422); // vet first

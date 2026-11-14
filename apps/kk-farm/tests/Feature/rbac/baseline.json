@@ -2508,7 +2508,7 @@
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
-        "finance": 302
+        "finance": 403
     },
     "POST /environment/rounds": {
         "ceo": 302,
@@ -2719,7 +2719,7 @@
     },
     "POST /finance/accounts": {
         "ceo": 302,
-        "manager": 302,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -2728,7 +2728,7 @@
     },
     "POST /finance/accounts/{account}": {
         "ceo": 302,
-        "manager": 302,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -2764,7 +2764,7 @@
     },
     "POST /finance/journals": {
         "ceo": 302,
-        "manager": 302,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -2773,7 +2773,7 @@
     },
     "POST /finance/journals/{journal}/reverse": {
         "ceo": 422,
-        "manager": 422,
+        "manager": 403,
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
@@ -3129,7 +3129,7 @@
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
-        "finance": 302
+        "finance": 403
     },
     "POST /hr/attendance/all-present": {
         "ceo": 302,
@@ -3138,7 +3138,7 @@
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
-        "finance": 302
+        "finance": 403
     },
     "POST /hr/leave": {
         "ceo": 302,
@@ -3147,7 +3147,7 @@
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
-        "finance": 302
+        "finance": 403
     },
     "POST /hr/skills": {
         "ceo": 302,
@@ -3314,11 +3314,11 @@
     "POST /purchase/animals": {
         "ceo": 302,
         "manager": 302,
-        "vet": 302,
+        "vet": 403,
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
-        "finance": 302
+        "finance": 403
     },
     "POST /purchase/orders": {
         "ceo": 302,
@@ -3771,13 +3771,13 @@
         "finance": 403
     },
     "POST /weights/review/{record}": {
-        "ceo": 500,
-        "manager": 500,
-        "vet": 500,
-        "caretaker": 500,
-        "feeding": 500,
-        "cleaning": 403,
-        "finance": 403
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
     },
     "POST /weights/{record}": {
         "ceo": 302,
@@ -3810,7 +3810,7 @@
         "ceo": 302,
         "manager": 302,
         "vet": 302,
-        "caretaker": 302,
+        "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
