@@ -26,7 +26,7 @@ class OperationsController extends Controller
 {
     private function supervisor(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager'], true);
+        return $request->user()->passes('manage_checklists');
     }
 
     public function index(Request $request): Response
@@ -60,7 +60,7 @@ class OperationsController extends Controller
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number']),
             'options' => ['shifts' => ChecklistTemplate::SHIFTS, 'kinds' => Incident::KINDS, 'severity' => Incident::SEVERITY, 'categories' => Incident::CATEGORIES],
-            'canSupervise' => $this->supervisor($request), 'canResolve' => $this->supervisor($request) || $request->user()->role === 'vet',
+            'canSupervise' => $this->supervisor($request), 'canResolve' => $request->user()->passes('resolve_incidents'),
         ]);
     }
 
@@ -96,7 +96,7 @@ class OperationsController extends Controller
             'description' => ['required', 'string', 'max:1000'], 'sop_id' => ['nullable', 'exists:sops,id'], 'containment' => ['nullable', Rule::in(['hold', 'isolate', 'recall'])],
         ]);
         $user = $request->user();
-        abort_if(! empty($data['containment']) && ! ($this->supervisor($request) || $user->role === 'vet'), 403, 'The owner, manager or vet places a hold.');
+        abort_if(! empty($data['containment']) && ! ($user->passes('resolve_incidents')), 403, 'The owner, manager or vet places a hold.');
         $incident = DB::transaction(function () use ($data, $user) {
             $sop = ! empty($data['sop_id']) ? \App\Models\Sop::find($data['sop_id']) : null;
             $incident = Incident::create(collect($data)->except('containment')->all() + ['reported_by' => $user->name, 'category' => Incident::CATEGORY[$data['kind']] ?? 'operations', 'sop_version' => $sop?->version]);
@@ -125,7 +125,7 @@ class OperationsController extends Controller
 
     public function resolve(Request $request, Incident $incident): RedirectResponse
     {
-        abort_unless($this->supervisor($request) || $request->user()->role === 'vet', 403);
+        abort_unless($request->user()->passes('resolve_incidents'), 403);
         abort_if($incident->status !== 'open', 422, $incident->status === 'escalated' ? 'This incident closes through its quality case (root cause, CAPA, independent verification).' : 'Already resolved.');
         $data = $request->validate(['resolution' => ['required', 'string', 'max:1000'], 'root_cause' => ['required', 'string', 'max:1000']], [], ['root_cause' => 'root cause']);
         $incident->update(['status' => 'resolved', 'resolution' => $data['resolution'], 'root_cause' => $data['root_cause'], 'resolved_by' => $request->user()->name, 'resolved_at' => now()]);
@@ -136,7 +136,7 @@ class OperationsController extends Controller
     /** D-205: send any open incident to a quality case. */
     public function escalate(Request $request, Incident $incident): RedirectResponse
     {
-        abort_unless($this->supervisor($request) || $request->user()->role === 'vet', 403);
+        abort_unless($request->user()->passes('resolve_incidents'), 403);
         abort_unless($incident->status === 'open', 422, 'Only an open incident is escalated.');
         $data = $request->validate(['containment' => ['nullable', Rule::in(['hold', 'isolate', 'recall'])]]);
         $case = \App\Support\IncidentCapa::escalate($incident, $request->user(), $data['containment'] ?? null);

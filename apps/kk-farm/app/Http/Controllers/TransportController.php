@@ -28,7 +28,7 @@ class TransportController extends Controller
 {
     private function supervisor(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager'], true);
+        return $request->user()->passes('manage_transport');
     }
 
     private function crew(Request $request): bool
@@ -65,7 +65,7 @@ class TransportController extends Controller
             ],
             'options' => ['kinds' => Vehicle::KINDS, 'points' => Vehicle::POINTS, 'claims' => TransportClaim::KINDS],
             'canPlan' => $request->user()->passes('manage_sales') || $this->supervisor($request), 'canDecide' => $this->supervisor($request),
-            'canFit' => $request->user()->passes('clinical') || in_array($request->user()->role, ['ceo', 'manager', 'caretaker'], true), 'canCrew' => $this->crew($request),
+            'canFit' => $request->user()->passes('clinical') || $request->user()->passes('record_transit_check'), 'canCrew' => $this->crew($request),
         ]);
     }
 
@@ -115,7 +115,7 @@ class TransportController extends Controller
     /** Fitness to travel (vet, owner, manager or caretaker). An unfit goat comes off the order. */
     public function fitness(Request $request, SaleOrderLine $line): RedirectResponse
     {
-        abort_unless($request->user()->passes('clinical') || in_array($request->user()->role, ['ceo', 'manager', 'caretaker'], true), 403, 'The vet or a caretaker checks fitness to travel.');
+        abort_unless($request->user()->passes('clinical') || $request->user()->passes('record_transit_check'), 403, 'The vet or a caretaker checks fitness to travel.');
         abort_unless(in_array($line->status, ['reserved', 'loaded'], true), 422, 'This goat is not waiting to load.');
         $data = $request->validate(['fit' => ['required', 'boolean'], 'note' => ['nullable', 'required_if:fit,false', 'string', 'max:300']], [], ['note' => 'reason']);
         DB::transaction(function () use ($line, $data, $request) {

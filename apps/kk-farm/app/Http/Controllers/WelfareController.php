@@ -174,7 +174,7 @@ class WelfareController extends Controller
             $improved = $case->status === 'follow_up' || $case->actions()->where('kind', 'follow_up')->where('improved', true)->exists();
             abort_unless($improved, 422, 'Confirm the welfare improvement with a follow-up before closing.');
             // Key control: a case under a vet plan is closed by the vet, the owner or the manager, not by a task alone.
-            abort_if($case->health_record_id && ! ($user->passes('clinical') || in_array($user->role, ['ceo', 'manager'], true)), 403, 'A case under a vet plan is closed by the vet.');
+            abort_if($case->health_record_id && ! ($user->passes('clinical') || $user->passes('manage_welfare_cases')), 403, 'A case under a vet plan is closed by the vet.');
         }
         DB::transaction(function () use ($case, $data, $user) {
             $animal = $case->animal;

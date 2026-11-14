@@ -15,7 +15,7 @@ final class Revisions
 {
     public static function canCorrect(User $user, ?string $recordedBy): bool
     {
-        return $user->role === 'ceo' || ($recordedBy !== null && $recordedBy === $user->name);
+        return $user->passes('correct_health_records') || ($recordedBy !== null && $recordedBy === $user->name);
     }
 
     /** @param array<string, array{0: mixed, 1: mixed}> $changes field => [old, new] */

@@ -235,7 +235,7 @@ class DiseaseController extends Controller
 
     public function settings(Request $request): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager'], true) || $request->user()->passes('clinical'), 403);
+        abort_unless($request->user()->passes('manage_disease_control') || $request->user()->passes('clinical'), 403);
         $data = $request->validate(['labour_rate' => ['required', 'numeric', 'min:0', 'max:100000']], [], ['labour_rate' => 'labour rate']);
         Organization::whereKey(Tenant::current())->update(['labour_rate_minor' => (int) round($data['labour_rate'] * 100)]);
 

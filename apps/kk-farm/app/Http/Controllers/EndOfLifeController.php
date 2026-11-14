@@ -37,7 +37,7 @@ class EndOfLifeController extends Controller
             'goats' => Animal::active()->orderBy('farm_number')->get(['id', 'farm_number'])->map(fn ($a) => ['id' => $a->id, 'number' => $a->farm_number])->values(),
             'cases' => WelfareCase::whereNotIn('status', ['closed'])->with('animal')->get()->map(fn ($c) => ['id' => $c->id, 'label' => $c->label(), 'goatId' => $c->animal_id])->values(),
             'reasons' => EndOfLifeReview::REASONS,
-            'isVet' => $role === 'vet', 'canAuthorise' => in_array($role, ['ceo', 'manager'], true), 'me' => $request->user()->name,
+            'isVet' => $request->user()->passes('clinical'), 'canAuthorise' => $request->user()->passes('authorise_end_of_life'), 'me' => $request->user()->name,
         ]);
     }
 
@@ -73,9 +73,9 @@ class EndOfLifeController extends Controller
     public function authorise(Request $request, EndOfLifeReview $review): RedirectResponse
     {
         $user = $request->user();
-        abort_unless(in_array($user->role, ['ceo', 'manager'], true), 403, 'The owner or manager authorises.');
+        abort_unless($user->passes('authorise_end_of_life'), 403, 'The owner or manager authorises.');
         abort_unless($review->status === 'assessed' && $review->vet_recommends, 422, 'The vet must support it first.');
-        if ($review->requested_by === $user->name && $user->role !== 'ceo') {
+        if ($review->requested_by === $user->name && ! $user->passes('override_separation')) {
             throw ValidationException::withMessages(['decision' => 'Someone other than the person who asked authorises.']);
         }
         $data = $request->validate(['decision' => ['required', Rule::in(['approved', 'declined'])]]);
@@ -102,7 +102,7 @@ class EndOfLifeController extends Controller
     public function withdraw(Request $request, EndOfLifeReview $review): RedirectResponse
     {
         abort_unless(in_array($review->status, ['requested', 'assessed', 'approved'], true), 422);
-        abort_unless($review->requested_by === $request->user()->name || in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 403);
+        abort_unless($review->requested_by === $request->user()->name || $request->user()->passes('request_end_of_life'), 403);
         $review->update(['status' => 'withdrawn']);
 
         return back()->with('success', 'Withdrawn.');

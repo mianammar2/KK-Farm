@@ -40,7 +40,7 @@ class AnimalPurchaseController extends Controller
 {
     private function approver(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager'], true);
+        return $request->user()->passes('approve_goat_purchase');
     }
 
     public function index(Request $request): Response
@@ -66,7 +66,7 @@ class AnimalPurchaseController extends Controller
                     'goat' => $i->animal ? ['id' => $i->animal_id, 'number' => $i->animal->farm_number, 'inQuarantine' => in_array($i->animal_id, $quarantined, true), 'status' => $i->animal->status, 'pen' => $i->animal->pen?->fullName()] : null,
                     'cost' => $i->cost_minor !== null ? $i->cost_minor / 100 : null,
                 ])->values(),
-                'canDecide' => $l->status === 'requested' && $this->approver($request) && ($l->requested_by !== $request->user()->name || $request->user()->role === 'ceo'),
+                'canDecide' => $l->status === 'requested' && $this->approver($request) && ($l->requested_by !== $request->user()->name || $request->user()->passes('override_separation')),
             ]),
             'kpi' => [
                 'rejection' => $items->count() ? round($items->where('screening', 'rejected')->count() / $items->count() * 100, 1) : null,
@@ -84,7 +84,7 @@ class AnimalPurchaseController extends Controller
                 return ['id' => $p->id, 'name' => $p->fullName(), 'goats' => count($ids), 'quarantineOnly' => ! array_diff($ids, $quarantined), 'biosecure' => in_array($p->shed?->type, ['BSU', 'VCU'], true)];
             })->filter(fn ($p) => $p['quarantineOnly'])->sortBy([['biosecure', 'desc'], ['name', 'asc']])->values(),
             'options' => ['status' => AnimalPurchaseLot::STATUS, 'screening' => AnimalPurchaseItem::SCREENING],
-            'canApprove' => $this->approver($request), 'canReceive' => in_array($request->user()->role, ['ceo', 'manager', 'vet'], true),
+            'canApprove' => $this->approver($request), 'canReceive' => $request->user()->passes('receive_goat_lot'),
             'canTag' => $request->user()->passes('assign_tags'),
             'quarantineDays' => Intake::days(),
         ]);
@@ -120,7 +120,7 @@ class AnimalPurchaseController extends Controller
     {
         abort_unless($this->approver($request), 403, 'The owner or manager approves goat purchases.');
         abort_unless($lot->status === 'requested', 422, 'This request was already decided.');
-        abort_if($lot->requested_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the requester approves the purchase.');
+        abort_if($lot->requested_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the requester approves the purchase.');
         $data = $request->validate(['approve' => ['required', 'boolean'], 'note' => ['nullable', 'required_if:approve,false', 'required_if:approve,0', 'string', 'max:300']], ['note.required_if' => 'Say why it is not approved.']);
         $lot->update(['status' => $data['approve'] ? 'approved' : 'rejected', 'approved_by' => $request->user()->name, 'approved_at' => now(), 'decision_note' => $data['note'] ?? null]);
 
@@ -143,7 +143,7 @@ class AnimalPurchaseController extends Controller
      */
     public function receive(Request $request, AnimalPurchaseLot $lot): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 403, 'The owner, manager or vet receives goats.');
+        abort_unless($request->user()->passes('receive_goat_lot'), 403, 'The owner, manager or vet receives goats.');
         abort_unless($lot->status === 'approved', 422, 'Only an approved purchase is received.');
         $data = $request->validate([
             'received_on' => ['required', 'date', 'before_or_equal:today'], 'quarantine_pen_id' => ['required', Rule::exists('pens', 'id')->where('kind', 'pen')],

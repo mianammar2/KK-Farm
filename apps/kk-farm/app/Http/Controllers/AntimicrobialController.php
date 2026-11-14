@@ -52,14 +52,14 @@ class AntimicrobialController extends Controller
                 'product' => $t->medicine?->name ?? $t->product, 'dose' => $t->dose, 'route' => $t->route, 'condition' => $t->healthCase?->condition, 'cia' => $cia($t), 'by' => $t->recorded_by,
                 'batch' => ($issued[$t->id] ?? collect())->pluck('batch')->filter()->unique()->implode(', ') ?: null])->values(),
             'antibiotics' => $antibiotics->sortBy('name')->map(fn (Medicine $m) => ['id' => $m->id, 'name' => $m->name, 'cia' => $m->critically_important])->values(),
-            'isVet' => in_array($request->user()->role, ['vet', 'ceo'], true),
+            'isVet' => $request->user()->passes('mark_antimicrobials'),
         ]);
     }
 
     /** The vet marks which antibiotics are critically important (for stewardship reporting). */
     public function mark(Request $request, Medicine $medicine): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['vet', 'ceo'], true), 403, 'The vet marks critically important antibiotics.');
+        abort_unless($request->user()->passes('mark_antimicrobials'), 403, 'The vet marks critically important antibiotics.');
         abort_unless($medicine->category === 'antibiotic', 422);
         $data = $request->validate(['critically_important' => ['required', 'boolean']]);
         $medicine->update($data);

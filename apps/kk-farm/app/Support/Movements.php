@@ -44,7 +44,7 @@ final class Movements
             if (empty($extra['capacity_override'])) {
                 throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is full ({$to->capacity} goats). The owner or manager can authorise one more with a reason."]);
             }
-            if (! in_array($by->role, ['ceo', 'manager'], true)) {
+            if (! $by->passes('approve_movements')) {
                 throw ValidationException::withMessages(['to_pen_id' => 'Only the owner or manager authorises a move into a full PEN.']);
             }
             $override = mb_substr("Over capacity ({$to->capacity}), authorised by {$by->name}: {$extra['capacity_override']}", 0, 300);

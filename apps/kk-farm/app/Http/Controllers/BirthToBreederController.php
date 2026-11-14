@@ -37,7 +37,7 @@ class BirthToBreederController extends Controller
 {
     private function lead(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('select_breeders');
     }
 
     public function index(Request $request): Response

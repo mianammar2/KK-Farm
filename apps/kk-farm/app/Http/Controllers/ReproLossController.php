@@ -40,9 +40,9 @@ class ReproLossController extends Controller
             ]),
             'kpi' => ReproLoss::kpis(),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
-            'staff' => in_array($request->user()->role, ['ceo', 'manager'], true) ? User::where('org_id', Tenant::current())->where('active', true)->orderBy('name')->get(['id', 'name', 'role', 'biohazard_trained']) : [],
+            'staff' => $request->user()->passes('manage_staff') ? User::where('org_id', Tenant::current())->where('active', true)->orderBy('name')->get(['id', 'name', 'role', 'biohazard_trained']) : [],
             'options' => ['types' => ReproLossCase::TYPES, 'status' => ReproLossCase::STATUS, 'breeding' => ReproLossCase::BREEDING],
-            'isVet' => $request->user()->passes('clinical'), 'canHandle' => ReproLoss::canHandle($request->user()), 'canTrain' => in_array($request->user()->role, ['ceo', 'manager'], true),
+            'isVet' => $request->user()->passes('clinical'), 'canHandle' => ReproLoss::canHandle($request->user()), 'canTrain' => $request->user()->passes('manage_staff'),
         ]);
     }
 
@@ -136,7 +136,7 @@ class ReproLossController extends Controller
     /** Mark who is trained to handle aborted material (owner or manager). */
     public function train(Request $request, User $user): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager'], true), 403);
+        abort_unless($request->user()->passes('manage_staff'), 403);
         abort_unless($user->org_id === Tenant::current(), 404);
         $data = $request->validate(['trained' => ['required', 'boolean']]);
         $user->update(['biohazard_trained' => $data['trained']]);

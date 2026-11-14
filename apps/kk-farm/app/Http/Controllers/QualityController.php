@@ -47,7 +47,7 @@ class QualityController extends Controller
     /** Owner, manager and vet act as the Quality & Compliance lead: contain, approve, verify, release, close. */
     private function lead(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('manage_quality');
     }
 
     public function index(Request $request): Response
@@ -266,7 +266,7 @@ class QualityController extends Controller
     {
         abort_unless($this->lead($request), 403, 'The quality lead approves CAPAs.');
         abort_unless($capa->status === 'planned', 422, 'Only a planned action is approved.');
-        abort_if($capa->planned_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the planner approves the action.');
+        abort_if($capa->planned_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the planner approves the action.');
         $capa->update(['status' => 'approved', 'approved_by' => $request->user()->name, 'approved_at' => now()]);
         $case = $capa->qualityCase;
         $this->task("CAPA {$case->label()}: ".mb_substr($capa->action, 0, 120), 'medium', 'Management', "Due {$capa->due_on->format('d/m/Y')}. Owner: {$capa->owner}.", $case, null, User::where('name', $capa->owner)->value('id'));
@@ -379,7 +379,7 @@ class QualityController extends Controller
     {
         abort_unless($this->lead($request), 403);
         abort_if($revision->approved_at !== null, 422, 'Already approved.');
-        abort_if($revision->written_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the writer approves the SOP.');
+        abort_if($revision->written_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the writer approves the SOP.');
         DB::transaction(function () use ($revision, $request) {
             $revision->update(['approved_by' => $request->user()->name, 'approved_at' => now()]);
             $revision->sop->update(['version' => $revision->version, 'review_on' => now()->addYear()->toDateString()]);
@@ -390,7 +390,7 @@ class QualityController extends Controller
 
     public function register(Request $request, ?ComplianceItem $item = null): RedirectResponse
     {
-        abort_unless($this->lead($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('settle_quality_costs'), 403);
         $data = $request->validate([
             'kind' => ['required', Rule::in(array_keys(ComplianceItem::KINDS))], 'name' => ['required', 'string', 'max:120'], 'authority' => ['nullable', 'string', 'max:120'],
             'reference' => ['nullable', 'string', 'max:60'], 'issued_on' => ['nullable', 'date'], 'expires_on' => ['nullable', 'date', 'after_or_equal:issued_on'],

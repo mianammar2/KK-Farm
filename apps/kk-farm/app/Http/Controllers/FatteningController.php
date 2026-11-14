@@ -37,7 +37,7 @@ class FatteningController extends Controller
 {
     private function supervisor(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager'], true);
+        return $request->user()->passes('supervise_fattening');
     }
 
     public function index(Request $request): Response
@@ -208,7 +208,7 @@ class FatteningController extends Controller
 
     public function reserve(Request $request, FatteningBatchAnimal $member): RedirectResponse
     {
-        abort_unless($this->supervisor($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('settle_fattening'), 403);
         abort_unless($member->status === 'ready', 422, 'Only a goat cleared by the vet can be reserved.');
         $member->update(['status' => 'reserved']);
 
@@ -221,7 +221,7 @@ class FatteningController extends Controller
      */
     public function sell(Request $request, FatteningBatchAnimal $member): RedirectResponse
     {
-        abort_unless($this->supervisor($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('settle_fattening'), 403);
         abort_unless(in_array($member->status, ['ready', 'reserved'], true), 422, 'Only a cleared goat can be sold.');
         $data = $request->validate([
             'scanned' => ['required', 'string', 'max:80'], 'price' => ['required', 'numeric', 'min:1'], 'exit_weight_kg' => ['nullable', 'numeric', 'between:3,200'],
@@ -281,7 +281,7 @@ class FatteningController extends Controller
         abort_unless($this->supervisor($request), 403, 'The owner or manager approves meat selections.');
         abort_unless($selection->status === 'proposed', 422, 'This selection was already decided.');
         $user = $request->user();
-        if ($selection->proposed_by === $user->name && $user->role !== 'ceo') {
+        if ($selection->proposed_by === $user->name && ! $user->passes('override_separation')) {
             throw ValidationException::withMessages(['decision' => 'Someone other than the proposer must approve this.']);
         }
         $data = $request->validate(['decision' => ['required', Rule::in(['approved', 'rejected'])], 'note' => ['nullable', 'required_if:decision,rejected', 'string', 'max:300']], [], ['note' => 'reason']);

@@ -71,8 +71,8 @@ final class Fodder
     public static function release(FodderLot $lot, User $by, ?string $note = null): void
     {
         abort_unless($lot->status === 'quarantine', 422, 'This lot was already decided.');
-        abort_unless(in_array($by->role, ['ceo', 'manager', 'vet'], true), 403, 'The owner, manager or vet releases fodder into feed stock.');
-        if ($lot->harvested_by === $by->name && $by->role !== 'ceo') {
+        abort_unless($by->passes('release_fodder'), 403, 'The owner, manager or vet releases fodder into feed stock.');
+        if ($lot->harvested_by === $by->name && ! $by->passes('override_separation')) {
             throw ValidationException::withMessages(['lot' => 'Someone other than the harvester releases the lot.']);
         }
         if ($why = self::releaseBlockers($lot)) {
@@ -101,7 +101,7 @@ final class Fodder
     public static function reject(FodderLot $lot, User $by, string $note): void
     {
         abort_unless($lot->status === 'quarantine', 422, 'This lot was already decided.');
-        abort_unless(in_array($by->role, ['ceo', 'manager', 'vet'], true), 403);
+        abort_unless($by->passes('release_fodder'), 403);
         $lot->update(['status' => 'rejected', 'decided_by' => $by->name, 'decided_at' => now(), 'decision_note' => $note]);
         if ($lot->final_cut) {
             $lot->crop->update(['status' => 'closed']);

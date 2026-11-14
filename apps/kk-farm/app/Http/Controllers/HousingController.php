@@ -24,7 +24,7 @@ class HousingController extends Controller
 {
     private function supervisor(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('set_pen_status');
     }
 
     public function index(Request $request): Response
@@ -99,7 +99,7 @@ class HousingController extends Controller
     {
         abort_unless($this->supervisor($request), 403);
         abort_unless($cleaning->finished_at && ! $cleaning->verified_at, 422, 'Only a finished cleaning is verified.');
-        abort_if($cleaning->done_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the cleaner verifies.');
+        abort_if($cleaning->done_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the cleaner verifies.');
         DB::transaction(function () use ($cleaning, $request) {
             $cleaning->update(['verified_by' => $request->user()->name, 'verified_at' => now()]);
             if ($cleaning->pen->status === 'cleaning' && ! PenCleaning::where('pen_id', $cleaning->pen_id)->whereNull('verified_at')->where('id', '!=', $cleaning->id)->whereIn('kind', PenCleaning::EMPTY_PEN)->exists()) {

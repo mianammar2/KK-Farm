@@ -22,7 +22,7 @@ class MilkProcessingController extends Controller
 {
     private function supervisor(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('manage_milk_processing');
     }
 
     private static function used(int $dispatchId): float
@@ -50,7 +50,7 @@ class MilkProcessingController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($this->supervisor($request) || $request->user()->role === 'caretaker', 403);
+        abort_unless($request->user()->passes('record_milk_processing'), 403);
         $data = $request->validate([
             'dispatch_id' => ['required', Rule::exists('milk_dispatches', 'id')->where('kind', 'processing')], 'product' => ['required', Rule::in(array_keys(MilkProcessingBatch::PRODUCTS))],
             'input_l' => ['required', 'numeric', 'gt:0', 'max:100000'], 'heat_temp_c' => ['nullable', 'numeric', 'between:20,150'], 'heat_minutes' => ['nullable', 'integer', 'between:0,600'],
@@ -80,7 +80,7 @@ class MilkProcessingController extends Controller
         $data = $request->validate(['decision' => ['required', Rule::in(['released', 'discarded'])], 'note' => ['nullable', 'required_if:decision,discarded', 'string', 'max:300']], [], ['note' => 'reason']);
         $user = $request->user();
         if ($data['decision'] === 'released') {
-            if ($batch->made_by === $user->name && $user->role !== 'ceo') {
+            if ($batch->made_by === $user->name && ! $user->passes('override_separation')) {
                 throw ValidationException::withMessages(['decision' => 'Someone other than the maker releases the batch.']);
             }
             if (in_array($batch->product, MilkProcessingBatch::HEATED, true) && $batch->heat_temp_c === null) {

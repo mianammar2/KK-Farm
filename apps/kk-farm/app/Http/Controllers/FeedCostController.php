@@ -70,7 +70,7 @@ class FeedCostController extends Controller
             'suppliers' => Supplier::where('active', true)->orderBy('name')->get(['id', 'name']),
             'fcrAlert' => (float) (Tenant::org()?->fcr_alert ?? 10),
             'canCount' => $this->canCount($request), 'canPurchase' => $request->user()->passes('manage_purchase'),
-            'canReview' => in_array($request->user()->role, ['ceo', 'manager', 'vet', 'feeding'], true),
+            'canReview' => $request->user()->passes('review_feed_pens'),
         ]);
     }
 
@@ -128,7 +128,7 @@ class FeedCostController extends Controller
     /** Poor response → review intake, ration and illness (and adjust the plan). */
     public function review(Request $request, Pen $pen): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet', 'feeding'], true), 403);
+        abort_unless($request->user()->passes('review_feed_pens'), 403);
         $data = $request->validate(['issues' => ['nullable', 'string', 'max:400']]);
         abort_if(Task::where('pen_id', $pen->id)->where('title', "Feed response review: {$pen->fullName()}")->whereIn('status', Task::OPEN)->exists(), 422, 'A review for this PEN is already open.');
         foreach (['Feeding' => 'Check intake and refusals, and adjust the ration plan if needed.', 'Veterinary' => 'Check the PEN for illness or parasites that would explain the poor response.'] as $dept => $what) {
@@ -143,7 +143,7 @@ class FeedCostController extends Controller
 
     public function settings(Request $request): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 403);
+        abort_unless($request->user()->passes('set_feed_cost_settings'), 403);
         $data = $request->validate(['fcr_alert' => ['required', 'numeric', 'between:2,30']], [], ['fcr_alert' => 'feed conversion alert']);
         Organization::whereKey(Tenant::current())->update($data);
 

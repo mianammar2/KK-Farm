@@ -25,7 +25,7 @@ class FodderController extends Controller
 {
     private function manager(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager'], true);
+        return $request->user()->passes('manage_fodder_setup');
     }
 
     public function index(Request $request): Response
@@ -35,8 +35,8 @@ class FodderController extends Controller
         $lots = $enabled ? FodderLot::with(['crop.field', 'item'])->orderByRaw("case status when 'quarantine' then 0 else 1 end")->orderByDesc('harvested_on')->orderByDesc('id')->limit(150)->get() : collect();
 
         return Inertia::render('Fodder', [
-            'enabled' => $enabled, 'isOwner' => $request->user()->role === 'ceo', 'canManage' => $this->manager($request),
-            'canRelease' => in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 'me' => $request->user()->name,
+            'enabled' => $enabled, 'isOwner' => $request->user()->passes('switch_fodder'), 'canManage' => $this->manager($request),
+            'canRelease' => $request->user()->passes('release_fodder'), 'me' => $request->user()->name,
             'fields' => $enabled ? FodderField::orderBy('name')->get()->map(fn ($f) => ['id' => $f->id, 'name' => $f->name, 'acres' => $f->area_acres, 'location' => $f->location, 'soil' => $f->soil, 'irrigation' => $f->irrigation, 'active' => $f->active]) : [],
             'crops' => $crops->map(fn (FodderCrop $c) => [
                 'id' => $c->id, 'label' => $c->label(), 'crop' => $c->crop, 'field' => $c->field?->name, 'acres' => $c->area_acres, 'sown' => $c->sown_on->format('d/m/Y'), 'expected' => $c->expected_harvest_on?->format('d/m/Y'),
@@ -59,7 +59,7 @@ class FodderController extends Controller
 
     public function toggle(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->role === 'ceo', 403, 'The owner turns Fodder & Pasture on or off.');
+        abort_unless($request->user()->passes('switch_fodder'), 403, 'The owner turns Fodder & Pasture on or off.');
         $data = $request->validate(['enabled' => ['required', 'boolean'], 'aflatoxin_limit_ppb' => ['nullable', 'integer', 'between:1,500']]);
         Organization::whereKey(Tenant::current())->update(['fodder_enabled' => $data['enabled']] + (isset($data['aflatoxin_limit_ppb']) ? ['aflatoxin_limit_ppb' => $data['aflatoxin_limit_ppb']] : []));
         Tenant::flush();
@@ -79,7 +79,7 @@ class FodderController extends Controller
 
     public function crop(Request $request): RedirectResponse
     {
-        abort_unless($this->manager($request) || $request->user()->role === 'feeding', 403);
+        abort_unless($request->user()->passes('record_fodder_work'), 403);
         $data = $request->validate(['field_id' => ['required', 'exists:fodder_fields,id'], 'crop' => ['required', Rule::in(array_keys(FodderCrop::CROPS))], 'variety' => ['nullable', 'string', 'max:60'],
             'area_acres' => ['required', 'numeric', 'gt:0'], 'sown_on' => ['required', 'date', 'before_or_equal:today'], 'expected_harvest_on' => ['nullable', 'date', 'after:sown_on'],
             'expected_yield_kg' => ['required', 'integer', 'min:1'], 'notes' => ['nullable', 'string', 'max:500']], [], ['expected_yield_kg' => 'expected yield']);
@@ -95,7 +95,7 @@ class FodderController extends Controller
     /** An input with its cost (expensed once as Fodder Production); a chemical needs its pre-harvest interval. */
     public function input(Request $request, FodderCrop $crop): RedirectResponse
     {
-        abort_unless($this->manager($request) || $request->user()->role === 'feeding', 403);
+        abort_unless($request->user()->passes('record_fodder_work'), 403);
         abort_if($crop->status === 'closed', 422, 'This crop is closed.');
         $data = $request->validate(['kind' => ['required', Rule::in(array_keys(FodderInput::KINDS))], 'applied_on' => ['required', 'date', 'before_or_equal:today'], 'product' => ['nullable', 'required_if:kind,chemical', 'string', 'max:120'],
             'qty' => ['nullable', 'numeric', 'min:0'], 'unit' => ['nullable', 'string', 'max:12'], 'cost' => ['nullable', 'numeric', 'min:0'],
@@ -115,7 +115,7 @@ class FodderController extends Controller
     /** Harvest a lot into quarantine. Refused inside a chemical's pre-harvest interval. */
     public function harvest(Request $request, FodderCrop $crop): RedirectResponse
     {
-        abort_unless($this->manager($request) || $request->user()->role === 'feeding', 403);
+        abort_unless($request->user()->passes('record_fodder_work'), 403);
         abort_if($crop->status === 'closed', 422, 'This crop is closed.');
         $data = $request->validate(['harvested_on' => ['required', 'date', 'before_or_equal:today', 'after_or_equal:'.$crop->sown_on->toDateString()], 'form' => ['required', Rule::in(array_keys(FodderLot::FORMS))],
             'fresh_kg' => ['required', 'numeric', 'gt:0', 'max:10000000'], 'final_cut' => ['boolean']], [], ['fresh_kg' => 'weight']);

@@ -30,7 +30,7 @@ class GeneticsController extends Controller
 {
     private function lead(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('manage_breeding');
     }
 
     public function index(Request $request): Response

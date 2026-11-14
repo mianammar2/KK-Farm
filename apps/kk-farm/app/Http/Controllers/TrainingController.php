@@ -21,7 +21,7 @@ class TrainingController extends Controller
 {
     private function manager(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager'], true);
+        return $request->user()->passes('manage_staff');
     }
 
     public function index(Request $request): Response

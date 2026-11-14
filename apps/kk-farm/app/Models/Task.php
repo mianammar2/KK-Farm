@@ -26,7 +26,7 @@ class Task extends Model
      */
     public function scopeVisibleTo($q, User $u)
     {
-        if (in_array($u->role, ['ceo', 'manager'], true)) {
+        if ($u->passes('see_all_tasks')) {
             return $q;
         }
         $dept = $u->department_id ?? Department::forRole($u->role);

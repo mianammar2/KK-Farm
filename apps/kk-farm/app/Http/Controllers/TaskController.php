@@ -47,7 +47,7 @@ class TaskController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $me = $request->user();
-        if (! in_array($me->role, ['ceo', 'manager'], true)) { // D-241 (RBAC §9.3): others may only make tasks for themselves
+        if (! $me->passes('assign_tasks')) { // D-241 (RBAC §9.3): others may only make tasks for themselves
             $request->merge(['user_id' => $me->id, 'department_id' => $me->department_id ?? \App\Models\Department::forRole($me->role)]);
         }
         $data = $request->validate([

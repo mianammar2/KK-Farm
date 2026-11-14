@@ -96,7 +96,10 @@ for x in routes:
 if missing:
     print('UNASSIGNED write routes (add a rule):'); [print('  ', k) for k in missing]; sys.exit(1)
 used = {gg for e in out.values() for gg in ([e['gate']] if isinstance(e.get('gate'), str) else e.get('gate', []))}
-NEW = {k: v for k, v in NEW.items() if k in used}  # a gate no row uses would be a control that does nothing
+import glob
+for f in glob.glob('app/**/*.php', recursive=True): used |= set(re.findall(r"passes\('([a-z_]+)'\)", open(f).read()))  # a gate the code asks for must exist
+NEW = {k: v for k, v in NEW.items() if k in used}
+NEW.update({k: (v[0], v[1]) for k, v in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'role_list_gates.json'))).items()})  # step 5b: the actions that replaced role-name lists in controllers (always kept)  # a gate no row uses would be a control that does nothing
 def php(v, ind=0):
     if isinstance(v, list): return '[' + ', '.join(php(i) for i in v) + ']'
     if isinstance(v, str): return "'" + v.replace('\\', '\\\\').replace("'", "\\'") + "'"

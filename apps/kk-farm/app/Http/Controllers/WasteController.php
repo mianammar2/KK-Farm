@@ -22,7 +22,7 @@ class WasteController extends Controller
 {
     private function lead(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('manage_waste_routes');
     }
 
     public function index(Request $request): Response
@@ -113,7 +113,7 @@ class WasteController extends Controller
     {
         abort_unless($this->lead($request), 403);
         abort_if($disposal->verified_at !== null, 422, 'Already audited.');
-        abort_if($disposal->recorded_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the recorder audits the disposal.');
+        abort_if($disposal->recorded_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the recorder audits the disposal.');
         $data = $request->validate(['note' => ['nullable', 'string', 'max:300']]);
         $disposal->update(['verified_by' => $request->user()->name, 'verified_at' => now(), 'audit_note' => $data['note'] ?? null]);
 

@@ -17,7 +17,7 @@ class WeightReviewController extends Controller
 {
     private function reviewer(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('review_weights');
     }
 
     public function index(Request $request): Response

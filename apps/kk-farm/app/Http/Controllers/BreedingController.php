@@ -160,7 +160,7 @@ class BreedingController extends Controller
             if (empty($data['coi_override_reason'])) {
                 throw ValidationException::withMessages(['sire_id' => "Inbreeding alert: the kid would be {$data['coi_pct']}% inbred (farm limit ".\App\Support\Genetics::limit().'%). Choose another buck or give the reason.']);
             }
-            abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 403, 'Only the owner, manager or vet can approve a mating above the inbreeding limit.');
+            abort_unless($request->user()->passes('manage_breeding'), 403, 'Only the owner, manager or vet can approve a mating above the inbreeding limit.');
         } else {
             $data['coi_override_reason'] = null;
         }
@@ -330,7 +330,7 @@ class BreedingController extends Controller
 
     public function close(Request $request, Mating $mating): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet'], true), 403);
+        abort_unless($request->user()->passes('manage_breeding'), 403);
         $mating->update(['status' => 'closed']);
         Farm::event($mating->dam, 'breeding', 'Mating closed without kidding', $request->user()->name);
 

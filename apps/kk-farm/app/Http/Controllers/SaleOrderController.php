@@ -39,7 +39,7 @@ class SaleOrderController extends Controller
 {
     private function approver(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager'], true);
+        return $request->user()->passes('approve_sale_orders');
     }
 
     public function index(Request $request): Response
@@ -63,7 +63,7 @@ class SaleOrderController extends Controller
                 'owed' => $o->status === 'dispatched' && ! $o->collected_at ? round($o->lines->filter(fn ($l) => $l->sale)->sum(fn ($l) => ($e = LedgerEntry::find($l->sale->ledger_entry_id)) ? Accounting::receivableMinor($e) : 0) / 100) : 0,
                 'total' => $o->lines->whereNotIn('status', ['removed'])->sum('price_minor') / 100,
                 'errors' => $o->scans->whereNotIn('result', ['match'])->count(),
-                'canApprove' => $o->status === 'quote' && $this->approver($request) && ($o->created_by !== $request->user()->name || $request->user()->role === 'ceo'),
+                'canApprove' => $o->status === 'quote' && $this->approver($request) && ($o->created_by !== $request->user()->name || $request->user()->passes('override_separation')),
                 'lines' => $o->lines->map(fn (SaleOrderLine $l) => [
                     'id' => $l->id, 'goatId' => $l->animal_id, 'number' => $l->animal?->farm_number, 'breed' => $l->animal?->breed?->name, 'sex' => $l->animal?->sex,
                     'pedigree' => trim(($l->animal?->sire_tag ?? $l->animal?->sire?->farm_number ?? '').' × '.($l->animal?->dam_tag ?? $l->animal?->dam?->farm_number ?? ''), ' ×') ?: null,
@@ -147,7 +147,7 @@ class SaleOrderController extends Controller
     {
         abort_unless($this->approver($request), 403, 'The owner or manager approves sale terms.');
         abort_unless($order->status === 'quote', 422, 'Only a quote is approved.');
-        abort_if($order->created_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the person who quoted approves the price.');
+        abort_if($order->created_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the person who quoted approves the price.');
         DB::transaction(function () use ($order, $request) {
             $order->update(['status' => 'reserved', 'approved_by' => $request->user()->name, 'approved_at' => now()]);
             $order->lines()->where('status', 'quoted')->update(['status' => 'reserved']);
@@ -172,7 +172,7 @@ class SaleOrderController extends Controller
     /** Scan RFID at loading. A goat not on the order (substituted), a repeat or an unknown tag stops loading. */
     public function scan(Request $request, SaleOrder $order): RedirectResponse
     {
-        abort_unless($request->user()->passes('manage_sales') || $this->approver($request) || $request->user()->passes('scan'), 403);
+        abort_unless($request->user()->passes('manage_sales') || $this->approver($request), 403); // D-266: a clause asking for a right called scan stood here since D-194 but no such right existed, so it never allowed anyone; removed with no change in who may load goats (floor staff loading is an open question for the owner)
         abort_unless($order->status === 'reserved', 422, 'Loading starts once the order is approved.');
         $data = $request->validate(['code' => ['required', 'string', 'max:80']]);
         $code = strtoupper(trim($data['code']));

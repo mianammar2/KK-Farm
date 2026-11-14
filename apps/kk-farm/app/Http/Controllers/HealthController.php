@@ -189,7 +189,7 @@ class HealthController extends Controller
     /** D-099: correct a checkup: the vet who did it, or the administrator. */
     public function updateCheckup(Request $request, \App\Models\HealthCheckup $checkup): RedirectResponse
     {
-        abort_unless(($request->user()->passes('health_checkup') || $request->user()->role === 'ceo') && \App\Support\Revisions::canCorrect($request->user(), $checkup->examiner), 403, 'Only the person who did this checkup, or the administrator, can correct it.');
+        abort_unless(($request->user()->passes('health_checkup') || $request->user()->passes('correct_health_records')) && \App\Support\Revisions::canCorrect($request->user(), $checkup->examiner), 403, 'Only the person who did this checkup, or the administrator, can correct it.');
         $data = $request->validate([
             'checked_on' => ['required', 'date', 'before_or_equal:today'], 'temperature_f' => ['nullable', 'numeric', 'between:93,110'],
             'body_score' => ['nullable', 'integer', 'between:1,5'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
@@ -243,7 +243,7 @@ class HealthController extends Controller
     /** D-174: add or change a disease in the master (the vet, or the owner). */
     public function disease(Request $request, ?\App\Models\Disease $disease = null): RedirectResponse
     {
-        abort_unless($request->user()->passes('clinical') || $request->user()->role === 'ceo', 403, 'The disease master is kept by the veterinarian.');
+        abort_unless($request->user()->passes('clinical') || $request->user()->passes('keep_vet_masters'), 403, 'The disease master is kept by the veterinarian.');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120', Rule::unique('diseases', 'name')->ignore($disease?->id)], 'category' => ['required', Rule::in(array_keys(\App\Models\Disease::CATEGORIES))],
             'zoonotic' => ['boolean'], 'notifiable' => ['boolean'], 'contagious' => ['boolean'], 'notes' => ['nullable', 'string', 'max:500'], 'active' => ['boolean'], // D-193: contagious
@@ -275,7 +275,7 @@ class HealthController extends Controller
     /** D-173: add or change a vaccine / deworming protocol (the vet, or the owner). */
     public function protocol(Request $request, ?\App\Models\CareProtocol $protocol = null): RedirectResponse
     {
-        abort_unless($request->user()->passes('clinical') || $request->user()->role === 'ceo', 403, 'Protocols are set by the veterinarian.');
+        abort_unless($request->user()->passes('clinical') || $request->user()->passes('keep_vet_masters'), 403, 'Protocols are set by the veterinarian.');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'], 'kind' => ['required', Rule::in(array_keys(self::CARE_TYPES))],
             'medicine_id' => ['nullable', 'exists:medicines,id'], 'dose_per_goat' => ['nullable', 'numeric', 'gt:0', 'max:1000'],

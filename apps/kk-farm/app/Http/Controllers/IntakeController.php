@@ -22,7 +22,7 @@ class IntakeController extends Controller
             // D-190: approved operating pens for the clearance transfer (no pen holding goats still in quarantine).
             'pens' => \App\Models\Pen::with('shed')->where('kind', 'pen')->get()->reject(fn ($p) => \App\Models\Animal::active()->where('pen_id', $p->id)->whereIn('id', Intake::quarantinedIds())->exists())
                 ->map(fn ($p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
-            'canClear' => $request->user()->passes('clinical'), 'canConfigure' => in_array($request->user()->role, ['ceo', 'vet'], true),
+            'canClear' => $request->user()->passes('clinical'), 'canConfigure' => $request->user()->passes('configure_intake'),
         ]);
     }
 
@@ -62,7 +62,7 @@ class IntakeController extends Controller
 
     public function settings(Request $request): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'vet'], true), 403);
+        abort_unless($request->user()->passes('configure_intake'), 403);
         $data = $request->validate(['quarantine_days' => ['required', 'integer', 'between:1,90']], [], ['quarantine_days' => 'quarantine days']);
         Organization::whereKey(Tenant::current())->update($data);
 

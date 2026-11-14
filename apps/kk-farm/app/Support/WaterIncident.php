@@ -94,10 +94,10 @@ final class WaterIncident
     public static function approveSupply(EnvironmentIssue $issue, User $by): void
     {
         self::assertOpen($issue);
-        abort_unless(in_array($by->role, ['ceo', 'manager', 'vet'], true), 403, 'The owner, manager or vet approves the water as safe.');
+        abort_unless($by->passes('approve_water_safe'), 403, 'The owner, manager or vet approves the water as safe.');
         abort_if($issue->supply_at === null, 422, 'Record the emergency supply first.');
         abort_if($issue->supply_approved_at !== null, 422, 'Already approved.');
-        if ($issue->supply_by === $by->name && $by->role !== 'ceo') {
+        if ($issue->supply_by === $by->name && ! $by->passes('override_separation')) {
             throw ValidationException::withMessages(['supply' => 'Someone other than the person who arranged the supply approves it.']);
         }
         $issue->update(['supply_approved_by' => $by->name, 'supply_approved_at' => now()]);

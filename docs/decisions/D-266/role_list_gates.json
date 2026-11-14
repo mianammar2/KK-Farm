@@ -1,0 +1,277 @@
+{
+ "manage_fodder_setup": [
+  "Set up fodder fields and crops",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "release_fodder": [
+  "Release fodder lots into feed stock",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "select_breeders": [
+  "Decide breeder and sale selection",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "approve_sale_orders": [
+  "Approve price quotes and sale orders",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "manage_waste_routes": [
+  "Record waste routes and approve disposals",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "mark_antimicrobials": [
+  "Mark critically important antibiotics",
+  [
+   "ceo",
+   "vet"
+  ]
+ ],
+ "approve_goat_purchase": [
+  "Approve and reconcile goat purchases",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "configure_intake": [
+  "Intake and quarantine settings",
+  [
+   "ceo",
+   "vet"
+  ]
+ ],
+ "lead_environment": [
+  "Set up water points and waste, approve supply",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "set_heat_limit": [
+  "Set the heat-stress limit",
+  [
+   "ceo",
+   "vet"
+  ]
+ ],
+ "review_feed_pens": [
+  "Review feed pens and counts",
+  [
+   "ceo",
+   "manager",
+   "vet",
+   "feeding"
+  ]
+ ],
+ "set_feed_cost_settings": [
+  "Feed cost settings",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "supervise_fattening": [
+  "Create finishing batches and decide selections",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "manage_milk_quality": [
+  "Test, release and trace milk lots",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "release_feed_lots": [
+  "Test and release feed lots",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "set_feed_lot_limits": [
+  "Feed lot safety limits",
+  [
+   "ceo",
+   "vet"
+  ]
+ ],
+ "manage_milk_processing": [
+  "Manage milk processing batches",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "approve_water_safe": [
+  "Approve water as safe again",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "approve_movements": [
+  "Record exits and corrections in movements",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "authorise_end_of_life": [
+  "Authorise a humane end of life",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "assign_tasks": [
+  "Give tasks to other people and departments",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "see_all_tasks": [
+  "See every task, not only their own and their department's",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "record_fodder_work": [
+  "Record fodder crops, inputs and harvests",
+  [
+   "ceo",
+   "manager",
+   "feeding"
+  ]
+ ],
+ "switch_fodder": [
+  "Switch the Fodder app on or off",
+  [
+   "ceo"
+  ]
+ ],
+ "resolve_incidents": [
+  "Resolve incidents and place holds",
+  [
+   "ceo",
+   "manager",
+   "vet"
+  ]
+ ],
+ "settle_fattening": [
+  "Sell and settle fattening animals",
+  [
+   "ceo",
+   "manager",
+   "finance"
+  ]
+ ],
+ "test_milk_lots": [
+  "Test milk lots",
+  [
+   "ceo",
+   "manager",
+   "vet",
+   "caretaker"
+  ]
+ ],
+ "handle_milk_money": [
+  "Handle milk invoices, orders and dispatch",
+  [
+   "ceo",
+   "manager",
+   "vet",
+   "finance"
+  ]
+ ],
+ "record_milk_processing": [
+  "Record milk processing batches",
+  [
+   "ceo",
+   "manager",
+   "vet",
+   "caretaker"
+  ]
+ ],
+ "settle_quality_costs": [
+  "Settle quality costs",
+  [
+   "ceo",
+   "manager",
+   "vet",
+   "finance"
+  ]
+ ],
+ "manage_disease_control": [
+  "Manage disease control and outbreaks",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "manage_welfare_cases": [
+  "Manage welfare cases under vet care",
+  [
+   "ceo",
+   "manager"
+  ]
+ ],
+ "correct_health_records": [
+  "Correct health records others made",
+  [
+   "ceo"
+  ]
+ ],
+ "keep_vet_masters": [
+  "Keep the disease master and protocols",
+  [
+   "ceo"
+  ]
+ ],
+ "see_security_log": [
+  "See the security entries of the Activity Log",
+  [
+   "ceo"
+  ]
+ ],
+ "override_separation": [
+  "Approve something they prepared themselves",
+  [
+   "ceo"
+  ]
+ ],
+ "see_recovery_progress": [
+  "See a goat's recovery progress",
+  [
+   "caretaker"
+  ]
+ ]
+}

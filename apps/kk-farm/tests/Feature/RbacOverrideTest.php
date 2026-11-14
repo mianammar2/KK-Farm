@@ -74,4 +74,25 @@ class RbacOverrideTest extends TestCase
         Tenant::flush();
         $this->actingAs($mgr->fresh())->get('/finance')->assertOk();
     }
+
+    /** Step 5b: an action that used to be a list of role names in the code is now a right the Access Rights screen controls, for a role and for a person. */
+    public function test_a_former_role_list_action_follows_the_access_rights_screen(): void
+    {
+        $ceo = $this->person('ceo');
+        $mgr = $this->person('manager');
+        $care = $this->person('caretaker');
+        $url = '/environment/settings'; // the heat-stress limit: was ['ceo', 'vet'] inside the controller
+        $this->actingAs($mgr)->post($url, ['heat_stress_thi' => 75])->assertForbidden();
+        // a role: the Administrator gives it to every manager on the role screen
+        $gates = \App\Support\Access::roleGates($this->org->id);
+        $gates['set_heat_limit'] = [...$gates['set_heat_limit'], 'manager'];
+        $this->actingAs($ceo)->post('/settings/access', ['modules' => \App\Support\Access::roleModules($this->org->id), 'gates' => $gates])->assertSessionHasNoErrors();
+        Tenant::flush();
+        $this->actingAs($mgr->fresh())->post($url, ['heat_stress_thi' => 75])->assertSessionHasNoErrors();
+        // a person: one caretaker only
+        $this->actingAs($care)->post($url, ['heat_stress_thi' => 75])->assertForbidden();
+        $care->forceFill(['gate_access' => ['set_heat_limit' => true]])->save();
+        Tenant::flush();
+        $this->actingAs($care->fresh())->post($url, ['heat_stress_thi' => 75])->assertSessionHasNoErrors();
+    }
 }

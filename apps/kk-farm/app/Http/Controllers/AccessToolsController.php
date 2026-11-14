@@ -100,7 +100,7 @@ class AccessToolsController extends Controller
         $add('Write routes with no rule', $missing ? 'warn' : 'ok', $missing ? 'These answer 403 to everyone until a rule is declared.' : 'All '.$writes->count().' write routes declare a rule (deny by default).', $missing);
 
         $hard = collect($rows)->filter(fn ($r) => isset($r['inline']) && ! isset($r['gate']))->keys()->all();
-        $add('Actions still decided by a list of role names inside the code', $hard ? 'info' : 'ok', $hard ? count($hard).' actions the Access Rights screen can not change yet (they are being moved to actions).' : 'None.', $hard);
+        $add('Actions the controller checks after the door', 'info', $hard ? count($hard).' routes let the people of the app in and the action then checks a right of its own. They follow the Access Rights screen; the door itself only knows the app.' : 'None.', $hard);
 
         return $out;
     }

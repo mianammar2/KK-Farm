@@ -26,7 +26,7 @@ class FeedLotController extends Controller
 {
     private function decider(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('release_feed_lots');
     }
 
     public function index(Request $request): Response
@@ -63,7 +63,7 @@ class FeedLotController extends Controller
         abort_unless($lot->status === 'quarantined', 422, 'This lot was already decided.');
         $user = $request->user();
         $data = $request->validate(['decision' => ['required', Rule::in(['released', 'rejected'])], 'note' => ['nullable', 'required_if:decision,rejected', 'string', 'max:300']], [], ['note' => 'reason']);
-        if ($lot->received_by === $user->name && $user->role !== 'ceo') {
+        if ($lot->received_by === $user->name && ! $user->passes('override_separation')) {
             throw ValidationException::withMessages(['decision' => 'Someone other than the person who received the lot decides.']);
         }
         if ($data['decision'] === 'released') {
@@ -100,7 +100,7 @@ class FeedLotController extends Controller
 
     public function limits(Request $request): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'vet'], true), 403);
+        abort_unless($request->user()->passes('set_feed_lot_limits'), 403);
         $data = $request->validate(['feed_max_moisture_pct' => ['required', 'numeric', 'between:5,40'], 'feed_max_aflatoxin_ppb' => ['required', 'numeric', 'between:0,500']]);
         Organization::whereKey(Tenant::current())->update($data);
 

@@ -96,7 +96,7 @@ class HrController extends Controller
 
     public function decide(Request $request, LeaveRequest $leave): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'manager'], true), 403);
+        abort_unless($request->user()->passes('manage_staff'), 403);
         abort_unless($leave->status === 'pending', 422, 'This request was already decided.');
         $data = $request->validate(['decision' => ['required', Rule::in(['approved', 'rejected'])]]);
         $leave->update(['status' => $data['decision'], 'decided_by' => $request->user()->name, 'decided_at' => now()]);

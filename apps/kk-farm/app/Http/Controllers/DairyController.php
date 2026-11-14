@@ -38,7 +38,7 @@ class DairyController extends Controller
 
     private function quality(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('manage_milk_quality');
     }
 
     /** Produced, held and colostrum litres of a day's session, from the current per-doe records. */
@@ -207,7 +207,7 @@ class DairyController extends Controller
     /** Milk quality and residue checks: fail → rejected (discard); pass → chilled / stored. */
     public function test(Request $request, MilkLot $lot): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'caretaker', 403);
+        abort_unless($request->user()->passes('test_milk_lots'), 403);
         abort_unless(in_array($lot->status, ['pending_qc', 'hold'], true), 422, 'Only a lot waiting for QA or on hold is tested.');
         $data = $request->validate([
             'appearance_ok' => ['required', 'boolean'], 'smell_ok' => ['required', 'boolean'], 'residue' => ['required', Rule::in(['negative', 'positive', 'not_tested'])],
@@ -228,7 +228,7 @@ class DairyController extends Controller
         abort_unless($this->quality($request), 403, 'The quality lead releases milk lots.');
         abort_unless($lot->status === 'stored', 422, 'Only a tested, stored lot is released.');
         abort_if(\App\Support\Quality::milkLotHold($lot->id) !== null, 422, "{$lot->code} is on a quality hold. Quality releases it first."); // D-189
-        abort_if($lot->tested_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the tester releases the lot.');
+        abort_if($lot->tested_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the tester releases the lot.');
         $lot->update(['status' => 'released', 'released_by' => $request->user()->name, 'released_at' => now()]);
 
         return back()->with('success', "{$lot->code} released for dispatch.");
@@ -268,7 +268,7 @@ class DairyController extends Controller
      */
     public function dispatch(Request $request, MilkLot $lot): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('handle_milk_money'), 403);
         $data = $request->validate([
             'kind' => ['required', Rule::in(['sale', 'processing'])], 'litres' => ['required', 'numeric', 'gt:0'], 'dispatched_on' => ['required', 'date', 'before_or_equal:today'],
             'order_id' => ['nullable', 'exists:milk_orders,id'], 'customer_id' => ['nullable', 'exists:customers,id'], 'buyer' => ['nullable', 'string', 'max:120'],
@@ -333,7 +333,7 @@ class DairyController extends Controller
     /** D-195: a customer milk order (traced to the lots it is filled from). */
     public function order(Request $request): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('handle_milk_money'), 403);
         $data = $request->validate([
             'customer_id' => ['nullable', 'required_without:buyer', 'exists:customers,id'], 'buyer' => ['nullable', 'string', 'max:120'], 'litres' => ['required', 'numeric', 'gt:0', 'max:100000'],
             'price_per_litre' => ['required', 'numeric', 'gt:0', 'max:100000'], 'wanted_on' => ['required', 'date'], 'terms' => ['required', Rule::in(['cash', 'credit'])],
@@ -353,7 +353,7 @@ class DairyController extends Controller
 
     public function cancelOrder(Request $request, \App\Models\MilkOrder $order): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('handle_milk_money'), 403);
         abort_unless($order->status === 'open', 422);
         $order->update(['status' => 'cancelled']);
 
@@ -363,7 +363,7 @@ class DairyController extends Controller
     /** D-195: the customer pays a milk invoice: Accounts receivable is cleared. */
     public function collect(Request $request, MilkDispatch $dispatch): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('handle_milk_money'), 403);
         abort_unless($dispatch->sale_id && ! $dispatch->collected_at, 422, 'Nothing to collect.');
         $data = $request->validate(['collected_on' => ['required', 'date', 'before_or_equal:today']]);
         DB::transaction(function () use ($dispatch, $data, $request) {
@@ -381,7 +381,7 @@ class DairyController extends Controller
     /** D-196: a storage temperature reading; above the limit the lot is held under a quality case. */
     public function temperature(Request $request, MilkLot $lot): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'caretaker', 403);
+        abort_unless($request->user()->passes('test_milk_lots'), 403);
         $c = (float) $request->validate(['temp_c' => ['required', 'numeric', 'between:-5,40']], [], ['temp_c' => 'temperature'])['temp_c'];
         $case = \App\Support\MilkTrace::temperature($lot, $c, $request->user());
 
@@ -391,7 +391,7 @@ class DairyController extends Controller
     /** D-196: a customer complaint about milk sold; the quality lead may recall the lot at once. */
     public function complaint(Request $request, MilkDispatch $dispatch): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('handle_milk_money'), 403);
         $data = $request->validate(['details' => ['required', 'string', 'max:1000'], 'severity' => ['required', Rule::in(['low', 'medium', 'high', 'critical'])], 'recall' => ['required', 'boolean']]);
         abort_if($data['recall'] && ! $this->quality($request), 403, 'Only the quality lead recalls a lot.');
         $case = \App\Support\MilkTrace::complaint($dispatch, $data['details'], $data['severity'], (bool) $data['recall'], $request->user());
@@ -402,7 +402,7 @@ class DairyController extends Controller
     /** D-196: refund or credit a sale of a recalled lot; the books are corrected and returned litres noted. */
     public function settle(Request $request, MilkDispatch $dispatch): RedirectResponse
     {
-        abort_unless($this->quality($request) || $request->user()->role === 'finance', 403);
+        abort_unless($request->user()->passes('handle_milk_money'), 403);
         $data = $request->validate(['kind' => ['required', Rule::in(['refund', 'credit'])], 'amount' => ['nullable', 'numeric', 'gt:0'], 'returned_l' => ['nullable', 'numeric', 'min:0']]);
         \App\Support\MilkTrace::settle($dispatch, $data['kind'], isset($data['amount']) ? (float) $data['amount'] : null, isset($data['returned_l']) ? (float) $data['returned_l'] : null, $request->user());
 

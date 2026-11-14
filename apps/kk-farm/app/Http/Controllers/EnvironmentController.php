@@ -37,7 +37,7 @@ class EnvironmentController extends Controller
 {
     private function canConfigure(Request $request): bool
     {
-        return in_array($request->user()->role, ['ceo', 'manager', 'vet'], true);
+        return $request->user()->passes('lead_environment');
     }
 
     private function threshold(): float
@@ -192,7 +192,7 @@ class EnvironmentController extends Controller
     {
         abort_unless($this->canConfigure($request), 403);
         abort_unless($issue->status === 'resolved', 422, 'Only a resolved issue can be verified.');
-        abort_if($issue->resolved_by === $request->user()->name && $request->user()->role !== 'ceo', 403, 'Someone other than the person who resolved it verifies.');
+        abort_if($issue->resolved_by === $request->user()->name && ! $request->user()->passes('override_separation'), 403, 'Someone other than the person who resolved it verifies.');
         if ($issue->kind === 'water' && ($why = WaterIncident::verifyBlockers($issue))) { // D-198: monitored resolution
             throw ValidationException::withMessages(['verify' => 'Cannot verify yet: '.implode(', ', $why).'.']);
         }
@@ -219,7 +219,7 @@ class EnvironmentController extends Controller
 
     public function settings(Request $request): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['ceo', 'vet'], true), 403, 'The heat-stress limit is set by the owner or vet.');
+        abort_unless($request->user()->passes('set_heat_limit'), 403, 'The heat-stress limit is set by the owner or vet.');
         $data = $request->validate(['heat_stress_thi' => ['required', 'numeric', 'between:60,100']], [], ['heat_stress_thi' => 'heat-stress THI']);
         Organization::whereKey(Tenant::current())->update($data);
 

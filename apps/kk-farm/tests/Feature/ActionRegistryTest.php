@@ -124,4 +124,23 @@ class ActionRegistryTest extends TestCase
         $this->assertTrue(EnforceAction::allows($mk('finance'), ['open' => 'any signed-in person']));
         $this->assertFalse(EnforceAction::allows($mk('ceo'), [])); // an empty row never opens anything
     }
+
+    /** Every right the code asks for with passes('name') exists: a typo or a pruned gate would silently refuse everyone. */
+    public function test_every_right_the_code_asks_for_exists(): void
+    {
+        $gates = array_keys(config('kkfarm.gates'));
+        $unknown = [];
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(app_path())) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+            preg_match_all("/passes\\('([a-z_]+)'\\)/", file_get_contents($file->getPathname()), $m);
+            foreach (array_unique($m[1]) as $g) {
+                if (! in_array($g, $gates, true)) {
+                    $unknown[] = $g.' in '.str_replace(app_path().'/', '', $file->getPathname());
+                }
+            }
+        }
+        $this->assertSame([], $unknown, "passes() asks for rights that do not exist:\n".implode("\n", $unknown));
+    }
 }
