@@ -73,6 +73,7 @@ return [
         'record_heat' => ['ceo', 'manager', 'vet', 'caretaker'],
         'record_mating' => ['ceo', 'manager', 'vet', 'caretaker'],
         'give_care' => ['ceo', 'vet'], // vaccination, deworming and other preventive care given
+        'scan_goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'], // D-305: an app's scanner opens the scanned goat's card (that goat only, read-only)
         'give_doses' => ['ceo', 'vet', 'caretaker'], // D-304: give the doses a vet prescribed (given / missed / held)
         'move_goats' => ['ceo', 'manager', 'caretaker'], // D-266 F-10 (Q10): not the vet or the feeding staff
         'see_health_history' => ['ceo', 'manager', 'vet'], // D-266 F-15: health history, cases and treatments on a goat (was a hard-coded role list)

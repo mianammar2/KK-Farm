@@ -11,7 +11,7 @@ import type { Health as HealthFlag } from '../types';
  * goat is shown to someone. Everything at a glance: who it is, its age, PEN, weight and growth, its problems
  * (cases, temperature, Watch, withdrawal, care due; for those with the health right), breeding and family.
  */
-type Profile = {
+export type Profile = {
     id: string; number: string; name: string | null; sex: string; breed: string | null; age: string | null; ageExact: boolean; stage: string; ageCode: string | null; ageMonths: number | null;
     teethCode: string | null; roles: string[]; roleLabels: Record<string, string>; pen: string | null; shed: string | null; status: string; health: HealthFlag; repro: string; monitorUntil: string | null;
     photo: number | null; rfid: string | null; origin: string; arrived: string | null; born: string | null; bornEstimated: boolean; from: string | null; purpose: string | null;
@@ -35,11 +35,12 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
     return <div className="min-w-0"><dt className="text-xs text-ink-soft">{label}</dt><dd className="text-sm break-words text-ink">{children ?? '—'}</dd></div>;
 }
 
-export default function GoatProfileCard({ id, actions }: { id: string; actions?: ReactNode }) {
+export default function GoatProfileCard({ id, actions, data }: { id: string; actions?: ReactNode; data?: Profile & { canOpenRecord?: boolean } }) {
     const [p, setP] = useState<Profile | null>(null);
     const [h, setH] = useState<Health | null>(null);
     const [failed, setFailed] = useState(false);
     useEffect(() => {
+        if (data) { setP(data); setH(data.healthDetail); return; } // D-305: the scanner already has it
         const c = new AbortController();
         setP(null); setFailed(false);
         fetch(`/goats/${id}/profile`, { headers: { Accept: 'application/json' }, signal: c.signal })
@@ -47,7 +48,8 @@ export default function GoatProfileCard({ id, actions }: { id: string; actions?:
             .then((d: Profile) => { setP(d); setH(d.healthDetail); })
             .catch((e) => { if (e?.name !== 'AbortError') setFailed(true); });
         return () => c.abort();
-    }, [id]);
+    }, [id, data]);
+    const open = data?.canOpenRecord ?? true; // D-305: without the Goats pages the card is that goat only, no links
 
     if (failed) return <p className="p-4 text-sm text-crit-700">The profile could not be loaded.</p>;
     if (!p) return <p className="p-4 text-sm text-ink-soft">Loading the goat's profile…</p>;
@@ -114,14 +116,14 @@ export default function GoatProfileCard({ id, actions }: { id: string; actions?:
                     {b.lastMating ? <Item label="Last mating">{b.lastMating.on}{b.lastMating.buck ? ` · ${b.lastMating.buck}` : ''} · {b.lastMating.status}</Item> : null}
                     {b.lastMating?.expected ? <Item label="Expected kidding">{b.lastMating.expected}</Item> : null}
                     <Item label="Kids">{b.kids}{b.kiddings !== null ? ` · ${b.kiddings} kiddings` : ''}</Item>
-                    <Item label="Mother">{p.family.dam ? <Link href={`/goats/${p.family.dam.id}`} className="font-mono text-cobalt-800 hover:underline">{p.family.dam.number}</Link> : '—'}</Item>
-                    <Item label="Father">{p.family.sire ? <Link href={`/goats/${p.family.sire.id}`} className="font-mono text-cobalt-800 hover:underline">{p.family.sire.number}</Link> : '—'}</Item>
+                    <Item label="Mother">{p.family.dam && !open ? p.family.dam.number : p.family.dam ? <Link href={`/goats/${p.family.dam.id}`} className="font-mono text-cobalt-800 hover:underline">{p.family.dam.number}</Link> : '—'}</Item>
+                    <Item label="Father">{p.family.sire && !open ? p.family.sire.number : p.family.sire ? <Link href={`/goats/${p.family.sire.id}`} className="font-mono text-cobalt-800 hover:underline">{p.family.sire.number}</Link> : '—'}</Item>
                 </Section>
             </div>
             {p.missing.length ? <p className="border-t border-rule px-4 py-2 text-sm text-watch-700">Missing: {p.missing.join(', ')}</p> : null}
             <footer className="flex flex-wrap items-center gap-2 border-t border-rule px-4 py-3 print:hidden">
                 {actions}
-                <Link href={`/goats/${p.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule px-3 text-sm text-cobalt-800 hover:bg-glaze"><ExternalLink size={15} aria-hidden /> Open full record</Link>
+                {open ? <Link href={`/goats/${p.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule px-3 text-sm text-cobalt-800 hover:bg-glaze"><ExternalLink size={15} aria-hidden /> Open full record</Link> : <span className="text-sm text-ink-soft">Read-only card</span>}
                 <button type="button" onClick={() => window.print()} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule px-3 text-sm text-cobalt-800 hover:bg-glaze"><Printer size={15} aria-hidden /> Print</button>
             </footer>
         </article>

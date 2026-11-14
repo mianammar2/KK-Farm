@@ -470,6 +470,25 @@ class GoatController extends Controller
         ]);
     }
 
+    /**
+     * D-305: an app's scanner: the goat for a scanned RFID tag or a typed Tag ID, as its read-only profile card. Needs
+     * only the right "Scan goats", not the Goats pages: the person sees that one goat, nothing else, and can do what the
+     * app they are in allows. canOpenRecord tells the card whether links to the full record may show.
+     */
+    public function lookup(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()->passes('scan_goats'), 403, 'Scanning goats is not among your rights. Ask the owner to tick "Scan goats" in Access Rights.');
+        $code = GoatRegistration::normaliseCode((string) $request->query('code', ''));
+        abort_if($code === '', 404);
+        $tag = \App\Models\RfidTag::where('tag_code', $code)->first();
+        $goat = ($tag ? \App\Models\RfidAssignment::with('animal')->where('rfid_tag_id', $tag->id)->whereNull('valid_to')->first()?->animal : null)
+            ?? Animal::whereRaw('upper(farm_number) = ?', [$code])->whereNull('voided_at')->first();
+        abort_unless($goat, 404, "No goat on the farm has the tag $code.");
+        $data = $this->profile($request, $goat)->getData(true);
+
+        return response()->json($data + ['canOpenRecord' => \App\Support\Pages::allows($request->user(), "/goats/{$goat->id}")]);
+    }
+
     /** D-293: the goat for a typed Tag ID or a scanned RFID chip, for the goat fields of every form. */
     public function find(Request $request): \Illuminate\Http\JsonResponse
     {

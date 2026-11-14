@@ -139,7 +139,7 @@ class PregnancyOutcomeTest extends TestCase
         $doe = $this->doe->fresh();
         $this->assertSame('PCU-01', $doe->pen->name);
         $this->assertTrue(\App\Models\AnimalMovement::where('animal_id', $doe->id)->where('from_pen_id', $oldPen)->where('to_pen_id', $doe->pen_id)->exists());
-        $this->assertSame(['female' => 'PCU-01', 'male' => 'NCU-01'], Animal::where('dam_id', $doe->id)->with('pen')->get()->mapWithKeys(fn ($k) => [$k->sex => $k->pen->name])->all());
+        $this->assertEqualsCanonicalizing(['female' => 'PCU-01', 'male' => 'NCU-01'], Animal::where('dam_id', $doe->id)->with('pen')->get()->mapWithKeys(fn ($k) => [$k->sex => $k->pen->name])->all());
 
         // a second doe that aborts goes to isolation, not with the mothers and kids
         $doe2 = Animal::create(['farm_number' => 'TD-2', 'sex' => 'female', 'breed_id' => $this->doe->breed_id, 'birth_date' => now()->subYears(3), 'origin' => 'purchased', 'pen_id' => $oldPen]);

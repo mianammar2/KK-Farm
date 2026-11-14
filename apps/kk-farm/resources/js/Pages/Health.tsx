@@ -175,7 +175,8 @@ export default function Health(props: Props) {
 
                 {sheet ? (
                     <Sheet onClose={() => { setSheet(null); setFromReport(null); }}>
-                        {sheet === 'entry' ? <HealthEntry data={{ ...props.checkups, conditions: props.checkups.conditions ?? [] }} severities={severities} onDone={() => { setSheet(null); router.reload(); }} /> : null}
+                        {sheet === 'entry' ? <HealthEntry data={{ ...props.checkups, conditions: props.checkups.conditions ?? [] }} severities={severities} onDone={() => { setSheet(null); router.reload(); }}
+                            goatId={new URLSearchParams(window.location.search).get('goat') ?? undefined} kind={new URLSearchParams(window.location.search).get('kind') ?? undefined} /> : null}{/* D-305: ?new=entry&goat=…&kind=… from an app's scan */}
                         {sheet === 'case' && canCase ? <CaseForm key={fromReport?.id ?? 'new'} goats={goats} severities={severities} report={fromReport} onDone={() => { setFromReport(null); setSheet(null); setTab('cases'); }} /> : null}
                         {sheet === 'report' ? <ObservationForm goats={goats} onDone={() => setSheet(null)} /> : null}
                         {sheet === 'care' && isVet ? <PreventiveForm goats={goats} onDone={() => setSheet(null)} /> : null}

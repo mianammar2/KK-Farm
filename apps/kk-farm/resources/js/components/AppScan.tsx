@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { currentApp } from '../lib/apps';
 import type { SharedProps } from '../types';
-import GoatProfileCard from './GoatProfileCard';
+import GoatProfileCard, { type Profile } from './GoatProfileCard';
 import { X } from 'lucide-react';
 
 /**
@@ -12,37 +12,39 @@ import { X } from 'lucide-react';
  * tag or Tag ID and opens a popup: the goat's full profile card and that app's own actions for it, each opening the
  * right form with the goat already chosen. Only actions the person has the right to do are offered.
  */
-type Action = { label: string; href: (id: string) => string; gate?: string; female?: boolean; primary?: boolean };
+// record: opens on the goat's own page (only for those who may open it); without it the app's own page is used
+type Action = { label: string; href: (id: string) => string; gate?: string; female?: boolean; primary?: boolean; record?: boolean; alt?: (id: string) => string };
 const goat = (doing: string) => (id: string) => `/goats/${id}?do=${doing}`;
+const vetEntry = (kind?: string) => (id: string) => `/health?tab=checkups&new=entry&goat=${id}${kind ? `&kind=${kind}` : ''}`; // D-305: the Veterinary page's own entry form
 
 const ACTIONS: Record<string, Action[]> = {
     livestock: [
-        { label: 'Add weight', href: goat('weight'), gate: 'record_weights', primary: true }, { label: 'Add height', href: goat('height'), gate: 'record_height' },
-        { label: 'Move PEN', href: goat('move'), gate: 'move_goats' }, { label: 'Add photo', href: goat('photo') },
-        { label: 'Edit details', href: (id) => `/goats/${id}/edit`, gate: 'edit_goats' }, { label: 'Record exit', href: goat('exit'), gate: 'exit_animal' },
+        { label: 'Add weight', href: goat('weight'), gate: 'record_weights', primary: true, record: true }, { label: 'Add height', href: goat('height'), gate: 'record_height', record: true },
+        { label: 'Move PEN', href: goat('move'), gate: 'move_goats', record: true }, { label: 'Add photo', href: goat('photo'), record: true },
+        { label: 'Edit details', href: (id) => `/goats/${id}/edit`, gate: 'edit_goats', record: true }, { label: 'Record exit', href: goat('exit'), gate: 'exit_animal', record: true },
     ],
     veterinary: [
-        { label: 'Health checkup', href: goat('checkup'), gate: 'health_checkup', primary: true }, { label: 'New health entry', href: goat('entry'), gate: 'health_entry' },
-        { label: 'Temp check', href: goat('temp'), gate: 'health_checkup' }, { label: 'Give a dose', href: (id) => `/health?tab=doses&goat=${id}`, gate: 'give_doses' },
-        { label: 'Report concern', href: goat('concern'), gate: 'report_concern' }, { label: 'Report death', href: goat('death'), gate: 'report_death' },
+        { label: 'Health checkup', href: goat('checkup'), gate: 'health_checkup', primary: true, record: true, alt: vetEntry('checkup') }, { label: 'New health entry', href: goat('entry'), gate: 'health_entry', record: true, alt: vetEntry() },
+        { label: 'Temp check', href: goat('temp'), gate: 'health_checkup', record: true }, { label: 'Give a dose', href: (id) => `/health?tab=doses&goat=${id}`, gate: 'give_doses' },
+        { label: 'Report concern', href: goat('concern'), gate: 'report_concern', record: true }, { label: 'Report death', href: goat('death'), gate: 'report_death', record: true },
     ],
     breeding: [
         { label: 'Record a mating', href: (id) => `/breeding?tab=cycle&mate=${id}`, gate: 'record_mating', female: true, primary: true },
-        { label: 'Pregnancy check', href: goat('pregnancy'), gate: 'health_checkup', female: true }, { label: 'Cull from breeding', href: goat('cull'), gate: 'cull_breeding' },
+        { label: 'Pregnancy check', href: goat('pregnancy'), gate: 'health_checkup', female: true, record: true, alt: vetEntry('pregnancy') }, { label: 'Cull from breeding', href: goat('cull'), gate: 'cull_breeding', record: true },
     ],
     maternity: [
-        { label: 'Pregnancy check', href: goat('pregnancy'), gate: 'health_checkup', female: true, primary: true },
-        { label: 'Record a mating', href: (id) => `/breeding?tab=cycle&mate=${id}`, gate: 'record_mating', female: true }, { label: 'Add weight', href: goat('weight'), gate: 'record_weights' },
+        { label: 'Pregnancy check', href: goat('pregnancy'), gate: 'health_checkup', female: true, primary: true, record: true, alt: vetEntry('pregnancy') },
+        { label: 'Record a mating', href: (id) => `/breeding?tab=cycle&mate=${id}`, gate: 'record_mating', female: true }, { label: 'Add weight', href: goat('weight'), gate: 'record_weights', record: true },
     ],
-    growth: [{ label: 'Add weight', href: goat('weight'), gate: 'record_weights', primary: true }, { label: 'Add height', href: goat('height'), gate: 'record_height' }],
-    housing: [{ label: 'Move PEN', href: goat('move'), gate: 'move_goats', primary: true }],
-    sales: [{ label: 'Record exit', href: goat('exit'), gate: 'exit_animal', primary: true }],
+    growth: [{ label: 'Add weight', href: goat('weight'), gate: 'record_weights', primary: true, record: true }, { label: 'Add height', href: goat('height'), gate: 'record_height', record: true }],
+    housing: [{ label: 'Move PEN', href: goat('move'), gate: 'move_goats', primary: true, record: true }],
+    sales: [{ label: 'Record exit', href: goat('exit'), gate: 'exit_animal', primary: true, record: true }],
     worker: [
-        { label: 'Add weight', href: goat('weight'), gate: 'record_weights', primary: true }, { label: 'Temp check', href: goat('temp'), gate: 'health_checkup' },
-        { label: 'Report concern', href: goat('concern'), gate: 'report_concern' }, { label: 'Move PEN', href: goat('move'), gate: 'move_goats' },
+        { label: 'Add weight', href: goat('weight'), gate: 'record_weights', primary: true, record: true }, { label: 'Temp check', href: goat('temp'), gate: 'health_checkup', record: true },
+        { label: 'Report concern', href: goat('concern'), gate: 'report_concern', record: true }, { label: 'Move PEN', href: goat('move'), gate: 'move_goats', record: true },
     ],
 };
-const DEFAULT: Action[] = [{ label: 'Add weight', href: goat('weight'), gate: 'record_weights' }, { label: 'Health checkup', href: goat('checkup'), gate: 'health_checkup' }, { label: 'Move PEN', href: goat('move'), gate: 'move_goats' }];
+const DEFAULT: Action[] = [{ label: 'Add weight', href: goat('weight'), gate: 'record_weights', record: true }, { label: 'Health checkup', href: goat('checkup'), gate: 'health_checkup', record: true }, { label: 'Move PEN', href: goat('move'), gate: 'move_goats', record: true }];
 
 // D-302: how the scanner shows: a box in the top bar, a big button in the app menu, or a small button (phone bar)
 export default function AppScan({ listen = true, variant = 'bar' }: { listen?: boolean; variant?: 'bar' | 'field' | 'menu' | 'button' }) { // listen: the one instance that takes RFID gun reads
@@ -51,7 +53,7 @@ export default function AppScan({ listen = true, variant = 'bar' }: { listen?: b
     const app = currentApp(pageUrl, auth?.modules ?? []);
     const [open, setOpen] = useState(false);
     const [code, setCode] = useState('');
-    const [found, setFound] = useState<{ id: string; sex?: string } | null>(null);
+    const [found, setFound] = useState<(Profile & { canOpenRecord?: boolean }) | null>(null);
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
     const input = useRef<HTMLInputElement>(null);
@@ -60,10 +62,10 @@ export default function AppScan({ listen = true, variant = 'bar' }: { listen?: b
         const c = raw.trim();
         if (!c) return;
         setBusy(true); setError(''); setFound(null);
-        fetch(`/goats/find?code=${encodeURIComponent(c)}`, { headers: { Accept: 'application/json' } })
+        fetch(`/lookup/goat?code=${encodeURIComponent(c)}`, { headers: { Accept: 'application/json' } }) // D-305: needs only "Scan goats"
             .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-            .then((d) => fetch(`/goats/${d.id}/profile`, { headers: { Accept: 'application/json' } }).then((r) => r.json()).then((p) => setFound({ id: d.id, sex: p.sex })))
-            .catch(() => setError(`No goat on the farm has the tag ${c}.`))
+            .then((d) => setFound(d))
+            .catch((status) => setError(status === 403 ? 'Scanning goats is not among your rights. Ask the owner to tick "Scan goats" for you in Access Rights.' : `No goat on the farm has the tag ${c}.`))
             .finally(() => setBusy(false));
     }, []);
 
@@ -78,7 +80,9 @@ export default function AppScan({ listen = true, variant = 'bar' }: { listen?: b
 
     if (!auth || !app) return null; // D-303: only inside an app
     const gates = auth.gates ?? [];
-    const actions = (app ? ACTIONS[app.key] ?? DEFAULT : DEFAULT).filter((a) => (!a.gate || gates.includes(a.gate)) && (!a.female || found?.sex === 'female'));
+    const canRecord = found?.canOpenRecord ?? false;
+    const actions = (app ? ACTIONS[app.key] ?? DEFAULT : DEFAULT).filter((a) => (!a.gate || gates.includes(a.gate)) && (!a.female || found?.sex === 'female') && (!a.record || canRecord || a.alt))
+        .map((a) => (a.record && !canRecord && a.alt ? { ...a, href: a.alt } : a));
     const close = () => { setOpen(false); setFound(null); setError(''); setCode(''); };
 
     return (
@@ -132,7 +136,7 @@ export default function AppScan({ listen = true, variant = 'bar' }: { listen?: b
                                         ))}
                                     </div>
                                 ) : null}
-                                <GoatProfileCard id={found.id} />
+                                <GoatProfileCard id={found.id} data={found} />
                             </>
                         ) : null}
                     </div>

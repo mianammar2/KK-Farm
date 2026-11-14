@@ -176,4 +176,16 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('caretaker'))->post("/health/doses/{$third->id}", ['action' => 'missed', 'notes' => 'Goat ran off'])->assertSessionHasNoErrors();
         $this->assertTrue(\App\Models\Task::where('title', 'like', 'Medicine: H-1 · Missed dose 3%')->exists(), 'the vet is told (AL-012)');
     }
+
+    /** D-305: an app's scanner opens one goat's card with the right "Scan goats" alone, read-only without the Goats pages. */
+    public function test_the_scanner_opens_one_goat_with_the_scan_right_only(): void
+    {
+        $cleaner = $this->user('cleaning');
+        $this->actingAs($cleaner)->getJson('/lookup/goat?code=H-1')->assertForbidden();
+        $cleaner->update(['gate_access' => ['scan_goats' => true]]);
+        $this->actingAs($cleaner->fresh())->getJson('/goats/find?code=H-1')->assertForbidden(); // no Goats pages
+        $this->actingAs($cleaner->fresh())->getJson('/lookup/goat?code=h-1')->assertOk()->assertJsonPath('number', 'H-1')->assertJsonPath('canOpenRecord', false);
+        $this->actingAs($this->user('vet'))->getJson('/lookup/goat?code=H-1')->assertOk()->assertJsonPath('canOpenRecord', true);
+        $this->actingAs($this->user('vet'))->getJson('/lookup/goat?code=NOPE-99')->assertNotFound();
+    }
 }
