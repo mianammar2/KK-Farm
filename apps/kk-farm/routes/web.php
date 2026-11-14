@@ -27,7 +27,7 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->group(function (): void {
-    Route::get('/reports/operations', [\App\Http\Controllers\OperationsLogController::class, 'index']); // D-307/D-308: each app's Operations Log (the controller checks the app)
+    Route::get('/reports/operations', [\App\Http\Controllers\OperationsLogController::class, 'index']); // D-307/D-309: each app's Operations Log (the controller checks the app)
     Route::get('/lookup/goat', [GoatController::class, 'lookup']); // D-305: an app's scanner opens one goat's card (right "Scan goats"), without the Goats pages
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/switch-role', [AuthController::class, 'login']); // demo login only (D-044)
