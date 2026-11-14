@@ -2906,6 +2906,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /goats/{animal}/height": {
+        "ceo": 422,
+        "manager": 403,
+        "vet": 422,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /goats/{animal}/photos": {
         "ceo": 302,
         "manager": 302,
