@@ -282,6 +282,9 @@ class GoatController extends Controller
 
             return $days[$on];
         };
+        // D-316: a day's result is its most serious one (Under treatment > Sick > Watch > Healthy)
+        $rank = ['Healthy' => 1, 'Watch' => 2, 'Sick' => 3, 'Under treatment' => 4];
+        $worse = fn (?string $a, ?string $b) => ($rank[$b] ?? 0) > ($rank[$a] ?? 0) ? $b : $a;
         $prev = null;
         foreach ($weights as $w) {
             $on = $w->measured_on->format('Y-m-d');
@@ -307,9 +310,10 @@ class GoatController extends Controller
             unset($r);
         }
         // D-262: what was done for the goat: moves with their reason, and being taken off Watch
-        foreach (\App\Models\AnimalMovement::with('toPen')->where('animal_id', $animal->id)->where('type', 'transfer')->get() as $m) {
+        foreach (\App\Models\AnimalMovement::with('toPen')->where('animal_id', $animal->id)->get() as $m) {
             $r = &$day($m->moved_on->format('Y-m-d'));
-            $r['actions'][] = 'Moved'.($m->toPen ? " to {$m->toPen->name}" : '').($m->reason ? ": {$m->reason}" : '');
+            $r['actions'][] = $m->type === 'transfer' ? 'Moved'.($m->toPen ? " to {$m->toPen->name}" : '').($m->reason ? ": {$m->reason}" : '')
+                : 'Left the farm: '.(\App\Models\AnimalMovement::TYPES[$m->type][0] ?? $m->type).($m->reason ? " ({$m->reason})" : ''); // D-316: exits too
             unset($r);
         }
         foreach ($animal->dentalExams()->get() as $e) {
@@ -325,7 +329,8 @@ class GoatController extends Controller
                 $r['bcs'] = $r['bcs'] ?? $c->body_score;
                 $r['weight'] = $r['weight'] ?? ($c->weight_kg ? (float) $c->weight_kg : null);
                 $r['ultrasound'] = $c->ultrasound ? str_replace('_', ' ', $c->ultrasound).($c->days_pregnant ? ", day {$c->days_pregnant}" : '').($c->fetuses ? ", {$c->fetuses} ".($c->fetuses > 1 ? 'kids' : 'kid') : '') : null;
-                $r['result'] = \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome;
+                $r['result'] = $worse($r['result'], \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome);
+                $r['checkup'] = true;
                 $r['by'][] = $c->examiner;
                 unset($r);
             }
@@ -337,6 +342,26 @@ class GoatController extends Controller
                     $r['actions'][] = ucfirst(str_replace('_', ' ', $h->kind)).': '.$h->title;
                 }
                 $r['by'][] = $h->recorded_by;
+                unset($r);
+            }
+            // D-316: the goat's health cases: opened (what was found), and closed
+            foreach (\App\Models\HealthCase::where('animal_id', $animal->id)->get() as $c) {
+                $r = &$day($c->onset_on->format('Y-m-d'));
+                $r['actions'][] = "Case opened: {$c->label()}";
+                $r['care'][] = "Case {$c->label()}: ".trim($c->condition.($c->diagnosis && $c->diagnosis !== $c->condition ? " ({$c->diagnosis})" : '')).' · '.ucfirst((string) $c->severity).($c->isolated ? ' · isolated' : '');
+                $r['result'] = $worse($r['result'], in_array($c->status, \App\Models\HealthCase::ACTIVE, true) ? 'Under treatment' : 'Sick'); // a case: Sick then, Under treatment while open
+                $r['by'][] = $c->recorded_by;
+                unset($r);
+                if ($c->resolved_on) {
+                    $r = &$day($c->resolved_on->format('Y-m-d'));
+                    $r['actions'][] = "Case {$c->label()} closed: ".str_replace('_', ' ', (string) $c->status);
+                    unset($r);
+                }
+            }
+            foreach (\App\Models\TreatmentDose::with('treatment')->where('animal_id', $animal->id)->where('status', '<>', 'due')->where('number', '>', 1)->get() as $d) {
+                $r = &$day(($d->done_at ?? $d->due_on)->setTimezone('Asia/Karachi')->format('Y-m-d'));
+                $r['actions'][] = ucfirst($d->status)." dose {$d->number}: {$d->treatment?->product}".($d->adverse ? ' (reaction)' : '');
+                $r['by'][] = $d->done_by;
                 unset($r);
             }
             foreach (\App\Models\Treatment::where('animal_id', $animal->id)->get() as $t) {
@@ -714,8 +739,9 @@ class GoatController extends Controller
             // D-260: a death goes through the vet's report and the administrator's approval; culling takes a goat out of breeding, not off the farm
             'reason' => ['required', Rule::in(array_diff(array_keys(\App\Support\Movements::REASON_TO_TYPE), ['died', 'culled']))],
             'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'destination' => ['nullable', 'string', 'max:120'], 'notes' => ['nullable', 'string', 'max:500'],
+            'moved_on' => ['nullable', 'date', 'before_or_equal:today', 'after_or_equal:'.($animal->acquired_on ?? $animal->birth_date ?? '2000-01-01')->format('Y-m-d')], // D-316: the day it left (sold on)
         ] + \App\Support\Movements::saleReasonRules('reason,sold'), ['reason.in' => 'A death is reported by the vet and approved by the administrator; culling is done from the breeding lists.',
-            'sale_reason.required_if' => 'Choose why the goat was sold.', 'disease_id.required_if' => 'Choose the disease.', 'sale_reason_note.required_if' => 'Write the reason.']);
+            'sale_reason.required_if' => 'Choose why the goat was sold.', 'disease_id.required_if' => 'Choose the disease.', 'disease_id.required' => 'Choose the disease, or write the problem.', 'sale_reason_note.required_if' => 'Write the reason.']);
         abort_unless($animal->status === 'active', 422);
         $type = \App\Support\Movements::REASON_TO_TYPE[$data['reason']];
         if ($type === 'sale') {

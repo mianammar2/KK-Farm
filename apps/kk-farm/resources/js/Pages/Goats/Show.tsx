@@ -390,7 +390,7 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
     const temp = useForm({ animal_id: goat.id, temperature_f: '', checked_on: today, outcome: 'healthy' });
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? ''), capacity_override: '', reason: '' });
     const { saleReasons = {}, diseases = [] } = usePage<{ saleReasons?: Record<string, string>; diseases?: DiseaseOption[] }>().props; // D-290
-    const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '', ...saleReasonDefaults(goat.saleHint) });
+    const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '', moved_on: new Date().toISOString().slice(0, 10), ...saleReasonDefaults(goat.saleHint) });
     const [ask, confirmBox] = useConfirm(); // D-133
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
     const birth = useForm({ birth_date: '', age_months: '', reason: '' });
@@ -479,6 +479,7 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
         <form onSubmit={async (e) => { e.preventDefault(); if (await ask({ title: `Record ${goat.number} as ${EXIT_WORD[exit.data.reason] ?? 'left the farm'}?`, message: 'It leaves the farm lists and counts. This is kept in its history.', confirm: 'Yes, record exit' })) exit.post(`/goats/${goat.id}/exit`, options); }} className="flex flex-wrap items-end gap-2">
             {confirmBox}
             <div className="w-52"><Field label="Reason" error={exit.errors.reason}><select className="field" value={exit.data.reason} onChange={(e) => exit.setData('reason', e.target.value)}><option value="sold">Sold</option><option value="sacrificed">Qurbani / sacrifice</option><option value="gifted">Gifted</option><option value="transferred">Transferred out</option><option value="other">Other</option></select></Field></div>
+            <div className="w-44"><Field label={exit.data.reason === 'sold' ? 'Sale date' : 'Date'} error={(exit.errors as Record<string, string>).moved_on}><input type="date" className="field" required max={new Date().toISOString().slice(0, 10)} value={exit.data.moved_on} onChange={(e) => exit.setData('moved_on', e.target.value)} /></Field></div>{/* D-316 */}
             {exit.data.reason === 'sold' ? <SaleReasonFields data={exit.data} set={(k, v) => exit.setData(k, v)} errors={exit.errors as Record<string, string>} reasons={saleReasons} diseases={diseases} hint={goat.saleHint} /> : null}
             {exit.data.reason === 'sold' ? <div className="w-40"><Field label="Price (PKR)" error={exit.errors.amount}><input inputMode="decimal" className="field" value={exit.data.amount} onChange={(e) => exit.setData('amount', e.target.value)} /></Field></div> : null}
             {exit.data.reason !== 'died' ? <div className="w-48"><Field label={exit.data.reason === 'sold' ? 'Buyer' : 'Destination'}><input className="field" value={exit.data.destination} onChange={(e) => exit.setData('destination', e.target.value)} /></Field></div> : null}
@@ -627,7 +628,7 @@ function StatusStrip({ statuses, history }: { statuses: Record<string, { code: s
 }
 
 /** D-249: one goat's measurements and care, one row per day, newest first. */
-export type GoatRecord = {
+export type GoatRecord = { checkup?: boolean;
     on: string; weight: number | null; change: number | null; adg: number | null; bcs: number | null; height: number | null;
     pct: number | null; days: number | null; // D-254: change in % and the days since the weighing before
     temp: number | null; tempFlag: boolean; heart: number | null; breaths: number | null; teeth: string | null; ultrasound: string | null;
@@ -640,7 +641,7 @@ function performed(r: GoatRecord): Done[] {
     const out: Done[] = [];
     if (r.weight !== null) out.push({ label: 'Weighed', tone: DONE_TONE.measure });
     if (r.height !== null) out.push({ label: 'Height', tone: DONE_TONE.measure });
-    if (r.result !== null) out.push({ label: 'Checkup', tone: DONE_TONE.vet });
+    if (r.checkup) out.push({ label: 'Checkup', tone: DONE_TONE.vet }); // D-316: a health case alone is not a checkup
     else if (r.temp !== null) out.push({ label: 'Temp check', tone: DONE_TONE.vet });
     if (r.teeth) out.push({ label: 'Teeth check', tone: DONE_TONE.vet, detail: r.teeth });
     if (r.ultrasound) out.push({ label: 'Ultrasound', tone: DONE_TONE.vet, detail: r.ultrasound });
@@ -659,7 +660,7 @@ function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) 
     const [day, setDay] = useState<string | null>(null); // D-270: a day opened in full
     if (!rows.length) return null;
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const resultTone = (x: string) => (x === 'Sick' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
+    const resultTone = (x: string) => (x === 'Sick' || x === 'Under treatment' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
     const th = 'px-2.5 py-2.5 text-xs font-medium whitespace-nowrap text-ink-soft';
     const td = 'px-2.5 py-3 align-middle';
     return (

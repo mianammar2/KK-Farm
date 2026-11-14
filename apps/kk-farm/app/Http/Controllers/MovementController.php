@@ -63,7 +63,7 @@ class MovementController extends Controller
             'evidence_ref' => ['nullable', 'string', 'max:80'], 'notes' => ['nullable', 'string', 'max:500'],
             'sale_category' => ['nullable', Rule::in(['live_goat', 'breeding_goat'])], 'capacity_override' => ['nullable', 'string', 'max:200'], // D-207
         ] + Movements::saleReasonRules('type,sale') + [
-        ], ['to_pen_id.required_if' => 'Choose the PEN to move to.', 'sale_reason.required_if' => 'Choose why the goats were sold.', 'disease_id.required_if' => 'Choose the disease.', 'sale_reason_note.required_if' => 'Write the reason.'], ['animal_ids' => 'goats', 'amount' => 'price']);
+        ], ['to_pen_id.required_if' => 'Choose the PEN to move to.', 'sale_reason.required_if' => 'Choose why the goats were sold.', 'disease_id.required_if' => 'Choose the disease.', 'disease_id.required' => 'Choose the disease, or write the problem.', 'sale_reason_note.required_if' => 'Write the reason.'], ['animal_ids' => 'goats', 'amount' => 'price']);
         if ($data['type'] === 'sale' && empty($data['reason'])) {
             $data['reason'] = Movements::saleReasonText($data); // D-290
         }

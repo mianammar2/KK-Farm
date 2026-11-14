@@ -27,7 +27,8 @@ final class Movements
     {
         return [
             'sale_reason' => ['nullable', "required_if:$when", \Illuminate\Validation\Rule::in(array_keys(self::SALE_REASONS))],
-            'disease_id' => ['nullable', 'required_if:sale_reason,sick', 'exists:diseases,id'],
+            // D-316: Sick takes a disease from the Disease Master, or the problem written in when it is not there
+            'disease_id' => ['nullable', \Illuminate\Validation\Rule::requiredIf(fn () => request('sale_reason') === 'sick' && trim((string) request('sale_reason_note')) === ''), 'exists:diseases,id'],
             'sale_reason_note' => ['nullable', 'required_if:sale_reason,other', 'string', 'max:200'],
         ];
     }
@@ -45,15 +46,31 @@ final class Movements
      */
     public static function saleHint(\App\Models\Animal $animal): ?array
     {
-        $case = \App\Models\HealthCase::where('animal_id', $animal->id)->whereIn('status', \App\Models\HealthCase::ACTIVE)->latest('onset_on')->first();
-        if (! $case) {
+        // D-316: every open case, newest first; the first that names a disease (the vet's choice, else its diagnosis or
+        // condition found in the Disease Master) fills the disease; with none, the newest case's problem is the note
+        $cases = \App\Models\HealthCase::where('animal_id', $animal->id)->whereIn('status', \App\Models\HealthCase::ACTIVE)->orderByDesc('onset_on')->orderByDesc('id')->get();
+        if ($cases->isEmpty()) {
             return null;
         }
-        $name = trim((string) ($case->diagnosis ?: $case->condition));
-        $disease = ($case->disease_id ? \App\Models\Disease::find($case->disease_id) : null) ?? \App\Models\Disease::where('active', true)->where(fn ($q) => $q->whereRaw('lower(name) = lower(?)', [$name])->orWhereRaw('lower(local_name) = lower(?)', [$name])->orWhere('code', $name))->first()
-            ?? \App\Models\Disease::where('active', true)->whereRaw('lower(?) like lower(concat(\'%\', name, \'%\'))', [$name])->first();
+        $find = function (string $name) {
+            $name = trim($name);
+            if ($name === '') {
+                return null;
+            }
 
-        return ['reason' => 'sick', 'diseaseId' => $disease?->id, 'note' => $disease ? null : $name, 'from' => "Open health case {$case->label()}: {$name}"];
+            return \App\Models\Disease::where('active', true)->where(fn ($q) => $q->whereRaw('lower(name) = lower(?)', [$name])->orWhereRaw('lower(local_name) = lower(?)', [$name])->orWhereRaw('lower(code) = lower(?)', [$name]))->first()
+                ?? \App\Models\Disease::where('active', true)->whereRaw('lower(?) like lower(concat(\'%\', name, \'%\'))', [$name])->first();
+        };
+        foreach ($cases as $case) {
+            $disease = ($case->disease_id ? \App\Models\Disease::find($case->disease_id) : null) ?? $find((string) $case->diagnosis) ?? $find((string) $case->condition);
+            if ($disease) {
+                return ['reason' => 'sick', 'diseaseId' => $disease->id, 'note' => null, 'from' => "Open health case {$case->label()}: ".trim((string) ($case->diagnosis ?: $case->condition))];
+            }
+        }
+        $case = $cases->first();
+        $name = trim((string) ($case->diagnosis ?: $case->condition));
+
+        return ['reason' => 'sick', 'diseaseId' => null, 'note' => $name, 'from' => "Open health case {$case->label()}: {$name} (not in the Disease Master, so it is written in)"];
     }
 
     /** "Sold: Sick (PPR)" for the movement's reason line. */
@@ -63,7 +80,7 @@ final class Movements
         if (! $r) {
             return null;
         }
-        $extra = $r === 'sick' ? \App\Models\Disease::find($data['disease_id'] ?? 0)?->name : ($r === 'other' ? ($data['sale_reason_note'] ?? null) : null);
+        $extra = $r === 'sick' ? (\App\Models\Disease::find($data['disease_id'] ?? 0)?->name ?? ($data['sale_reason_note'] ?? null)) : ($r === 'other' ? ($data['sale_reason_note'] ?? null) : null);
 
         return 'Sold: '.self::SALE_REASONS[$r].($extra ? " ($extra)" : '');
     }

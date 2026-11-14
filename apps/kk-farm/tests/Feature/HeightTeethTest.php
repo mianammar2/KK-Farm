@@ -260,4 +260,30 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('ceo'))->get('/reports/operations?app=livestock')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => collect($rows)->contains('txn', "HT-$id")
             && collect($rows)->every(fn ($r) => isset($r['on'], $r['app'], $r['operation'], $r['txn'])))); // every entry keeps its date, app and operation
     }
+
+    /** D-316: the exit form's Sick is filled from every open case; a problem not in the Disease Master is written in. */
+    public function test_sold_sick_is_filled_from_the_goats_open_cases(): void
+    {
+        $ppr = \App\Models\Disease::create(['name' => 'PPR', 'category' => 'viral', 'active' => true]);
+        \App\Models\HealthCase::create(['case_no' => 1, 'animal_id' => $this->goat->id, 'onset_on' => now()->subDay(), 'condition' => 'Intake quarantine', 'severity' => 'mild', 'status' => 'monitoring', 'recorded_by' => 'x']);
+        $hint = \App\Support\Movements::saleHint($this->goat);
+        $this->assertSame(['sick', null, 'Intake quarantine'], [$hint['reason'], $hint['diseaseId'], $hint['note']], 'not a disease: written in');
+        \App\Models\HealthCase::create(['case_no' => 2, 'animal_id' => $this->goat->id, 'onset_on' => now()->subDays(5), 'condition' => 'Fever', 'diagnosis' => 'PPR', 'severity' => 'severe', 'status' => 'open', 'recorded_by' => 'x']);
+        $this->assertSame($ppr->id, \App\Support\Movements::saleHint($this->goat)['diseaseId'], 'an older open case naming a disease fills it');
+        $this->actingAs($this->user('ceo'))->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold', 'amount' => 20000, 'sale_reason' => 'sick', 'sale_reason_note' => 'Intake quarantine'])->assertSessionHasNoErrors();
+        $this->assertSame('Sold: Sick (Intake quarantine)', \App\Models\AnimalMovement::where('animal_id', $this->goat->id)->latest('id')->value('reason'));
+    }
+
+    /** D-316: the goat page's day shows its health case and the most serious result; the exit takes its date. */
+    public function test_goat_page_day_shows_the_case_and_the_most_serious_result(): void
+    {
+        \App\Models\HealthCheckup::create(['animal_id' => $this->goat->id, 'checked_on' => now()->toDateString(), 'outcome' => 'healthy', 'examiner' => 'x']);
+        \App\Models\HealthCase::create(['case_no' => 4, 'animal_id' => $this->goat->id, 'onset_on' => now(), 'condition' => 'Intake quarantine', 'severity' => 'low', 'status' => 'under_treatment', 'recorded_by' => 'x']);
+        $this->actingAs($this->user('ceo'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('records.0.result', 'Under treatment')
+            ->where('records.0.care', fn ($c) => str_contains(collect($c)->implode(' '), 'Intake quarantine')));
+        $on = now()->subDays(2)->toDateString();
+        $this->actingAs($this->user('ceo'))->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold', 'amount' => 20000, 'sale_reason' => 'business', 'moved_on' => $on])->assertSessionHasNoErrors();
+        $this->assertSame($on, \App\Models\Sale::where('animal_id', $this->goat->id)->value('sold_on')?->toDateString() ?? \App\Models\AnimalMovement::where('animal_id', $this->goat->id)->latest('id')->first()->moved_on->toDateString());
+        $this->assertSame($on, $this->goat->fresh()->exit_date->toDateString());
+    }
 }
