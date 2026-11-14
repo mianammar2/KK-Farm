@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * D-307/D-308: the Operations Log of every app, read from each app's own records (append-only history), so nothing is
+ * D-307/D-309: the Operations Log of every app, read from each app's own records (append-only history), so nothing is
  * typed twice. Each operation is described once: its table, the date of the work, who did it, the goat (if any) and
  * the details. An app's log shows its own operations; Livestock's includes every goat operation.
  */

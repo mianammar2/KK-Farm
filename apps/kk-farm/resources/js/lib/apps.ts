@@ -305,7 +305,7 @@ export const APPS: ErpApp[] = [
 /** D-241: the person's page rules (shared by the server), so a menu only lists pages the server will open. */
 type Rule = [string, Record<string, string> | null, boolean];
 let RULES: Rule[] = [];
-// D-308: every app's Reporting has its own Operations Log (that app's operations, calendar and date filter)
+// D-309: every app's Reporting has its own Operations Log (that app's operations, calendar and date filter)
 const OPS_LOG_APPS = ['livestock', 'breeding', 'maternity', 'veterinary', 'feeding', 'housing', 'growth', 'operations', 'inventory', 'purchase', 'sales', 'accounting', 'employees', 'maintenance', 'dairy', 'fattening', 'welfare', 'environment', 'quality', 'fodder', 'settings'];
 for (const a of APPS) if (OPS_LOG_APPS.includes(a.key)) a.sections.push(S('Reporting', `/reports/operations?app=${a.key}`, 'Operations Log'));
 

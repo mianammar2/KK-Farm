@@ -8,7 +8,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * D-307/D-308: the Operations Log. ?app=feeding shows that app's operations (each app's Reporting menu opens its own);
+ * D-307/D-309: the Operations Log. ?app=feeding shows that app's operations (each app's Reporting menu opens its own);
  * without app, every operation of every app the person can open (the Reports app). Health operations need the right
  * to see health history.
  */

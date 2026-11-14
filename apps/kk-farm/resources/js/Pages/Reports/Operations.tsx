@@ -22,7 +22,7 @@ const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 1000) / 10
 export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[]; app: string | null }) {
     const [picked, setPicked] = useState<string[]>([]); // operation keys; none = all
     const [day, setDay] = useState<string | null>(null);
-    const [from, setFrom] = useState(''); // D-308: date range (with the calendar's day on top)
+    const [from, setFrom] = useState(''); // D-309: date range (with the calendar's day on top)
     const [to, setTo] = useState('');
     const inRange = (on: string) => (day ? on === day : (!from || on >= from) && (!to || on <= to));
     const preset = (days: number | 'month' | null) => {
@@ -114,7 +114,7 @@ export default function Operations({ rows, ops, app }: { rows: Row[]; ops: Op[];
                         {picked.length ? <button type="button" onClick={() => setPicked([])} className="text-sm text-cobalt-800 hover:underline">Show all operations</button> : null}
                     </div>
                     <div className="space-y-3">
-                        {apps.map((a) => ( // D-308: every operation shows, those with none greyed
+                        {apps.map((a) => ( // D-309: every operation shows, those with none greyed
                             <div key={a}>
                                 {apps.length > 1 ? <div className="mb-1.5 text-xs uppercase tracking-wide text-ink-soft">{a}</div> : null}
                                 <div className="flex flex-wrap gap-2">
