@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * D-307/D-309: the Operations Log of every app, read from each app's own records (append-only history), so nothing is
  * typed twice. Each operation is described once: its table, the date of the work, who did it, the goat (if any) and
- * the details. An app's log shows its own operations; Livestock's includes every goat operation.
+ * the details. An app's log shows only its own operations (D-310).
  */
 class OpsLog
 {
@@ -39,7 +39,7 @@ class OpsLog
         $w = fn ($v) => $v === null ? null : ucfirst(str_replace('_', ' ', (string) $v));
 
         return [
-            // goats (Livestock shows them all)
+            // Livestock
             'register' => ['Registered', ['livestock', 'purchase'], 'animals', 'created_at', null, 'id', fn ($r) => $t($w($r->origin), $r->source_farm ? "from {$r->source_farm}" : null)],
             'weight' => ['Weight', ['livestock', 'growth'], 'weight_records', 'measured_on', 'measured_by', 'animal_id', fn ($r) => $t($kg($r->weight_kg), $r->body_score ? "body score {$r->body_score}" : null)],
             'height' => ['Height', ['livestock', 'growth'], 'height_records', 'measured_on', 'measured_by', 'animal_id', fn ($r) => round($r->height_cm / 2.54, 1).' in'],
@@ -49,24 +49,24 @@ class OpsLog
             'edit' => ['Details edited', ['livestock'], 'animal_events', 'occurred_at', 'recorded_by', 'animal_id', fn ($r) => $r->summary],
             'rfid' => ['RFID linked', ['livestock'], 'rfid_assignments', 'valid_from', 'assigned_by', 'animal_id', fn ($r) => $w($r->reason_assigned) ?: 'Tag linked'],
             // Veterinary
-            'checkup' => ['Checkup', ['veterinary', 'livestock'], 'health_checkups', 'checked_on', 'examiner', 'animal_id', fn ($r) => $t($r->temperature_f ? "{$r->temperature_f} °F" : null, $kg($r->weight_kg), $w($r->outcome), $r->findings)],
-            'case' => ['Health case', ['veterinary', 'livestock'], 'health_cases', 'onset_on', 'recorded_by', 'animal_id', fn ($r) => $t("Case H-{$r->case_no}", $r->condition, $w($r->severity), $w($r->status))],
-            'treatment' => ['Treatment', ['veterinary', 'livestock'], 'treatments', 'given_on', 'recorded_by', 'animal_id', fn ($r) => $t($r->product, $r->dose, $r->days_prescribed ? "{$r->days_prescribed} days" : null)],
-            'dose' => ['Dose', ['veterinary', 'livestock'], 'treatment_doses', 'done_at', 'done_by', 'animal_id', fn ($r, $l) => $t($l->product($r->treatment_id), "dose {$r->number}", $w($r->status), $r->adverse ? 'reaction' : null, $r->notes)],
-            'care' => ['Vaccination / deworming', ['veterinary', 'livestock'], 'health_records', 'occurred_on', 'recorded_by', 'animal_id', fn ($r) => $t($w($r->kind), $r->title)],
-            'teeth' => ['Teeth check', ['veterinary', 'livestock'], 'dental_exams', 'examined_on', 'recorded_by', 'animal_id', fn ($r) => $t($r->dental_code, $w($r->condition))],
-            'death' => ['Death report', ['veterinary', 'livestock'], 'death_reports', 'died_at', 'reported_by', 'animal_id', fn ($r) => $t($r->cause, $w($r->status))],
+            'checkup' => ['Checkup', ['veterinary'], 'health_checkups', 'checked_on', 'examiner', 'animal_id', fn ($r) => $t($r->temperature_f ? "{$r->temperature_f} °F" : null, $kg($r->weight_kg), $w($r->outcome), $r->findings)],
+            'case' => ['Health case', ['veterinary'], 'health_cases', 'onset_on', 'recorded_by', 'animal_id', fn ($r) => $t("Case H-{$r->case_no}", $r->condition, $w($r->severity), $w($r->status))],
+            'treatment' => ['Treatment', ['veterinary'], 'treatments', 'given_on', 'recorded_by', 'animal_id', fn ($r) => $t($r->product, $r->dose, $r->days_prescribed ? "{$r->days_prescribed} days" : null)],
+            'dose' => ['Dose', ['veterinary'], 'treatment_doses', 'done_at', 'done_by', 'animal_id', fn ($r, $l) => $t($l->product($r->treatment_id), "dose {$r->number}", $w($r->status), $r->adverse ? 'reaction' : null, $r->notes)],
+            'care' => ['Vaccination / deworming', ['veterinary'], 'health_records', 'occurred_on', 'recorded_by', 'animal_id', fn ($r) => $t($w($r->kind), $r->title)],
+            'teeth' => ['Teeth check', ['veterinary'], 'dental_exams', 'examined_on', 'recorded_by', 'animal_id', fn ($r) => $t($r->dental_code, $w($r->condition))],
+            'death' => ['Death report', ['veterinary'], 'death_reports', 'died_at', 'reported_by', 'animal_id', fn ($r) => $t($r->cause, $w($r->status))],
             'parasite' => ['Parasite test', ['veterinary'], 'parasite_samples', 'sampled_on', 'recorded_by', 'animal_id', fn ($r) => $t($r->sample_no, $r->epg !== null ? "EPG {$r->epg}" : null, $r->famacha ? "FAMACHA {$r->famacha}" : null, $w($r->decision))],
             'outbreak' => ['Outbreak', ['veterinary'], 'outbreaks', 'opened_on', 'opened_by', null, fn ($r) => $t($r->code, $r->condition, $w($r->status))],
             // Breeding and Maternity
-            'heat' => ['Heat', ['breeding', 'livestock'], 'heat_records', 'observed_on', 'observed_by', 'dam_id', fn ($r) => $w($r->intensity)],
-            'mating' => ['Mating', ['breeding', 'livestock'], 'matings', 'mated_on', 'recorded_by', 'dam_id', fn ($r, $l) => $t('With '.($l->goat($r->sire_id) ?? 'unknown buck'), $w($r->method))],
-            'ultrasound' => ['Ultrasound', ['breeding', 'livestock'], 'pregnancy_checks', 'checked_on', 'examiner', 'dam_id', fn ($r) => $t($w($r->result), $r->fetuses ? "{$r->fetuses} fetus(es)" : null, $r->pregnancy_day ? "day {$r->pregnancy_day}" : null)],
+            'heat' => ['Heat', ['breeding'], 'heat_records', 'observed_on', 'observed_by', 'dam_id', fn ($r) => $w($r->intensity)],
+            'mating' => ['Mating', ['breeding'], 'matings', 'mated_on', 'recorded_by', 'dam_id', fn ($r, $l) => $t('With '.($l->goat($r->sire_id) ?? 'unknown buck'), $w($r->method))],
+            'ultrasound' => ['Ultrasound', ['breeding'], 'pregnancy_checks', 'checked_on', 'examiner', 'dam_id', fn ($r) => $t($w($r->result), $r->fetuses ? "{$r->fetuses} fetus(es)" : null, $r->pregnancy_day ? "day {$r->pregnancy_day}" : null)],
             'breeding_ok' => ['Breeding approval', ['breeding'], 'breeding_approvals', 'decided_on', 'decided_by', 'animal_id', fn ($r) => $t($w($r->decision), $r->reason)],
             'selection' => ['Replacement review', ['breeding'], 'breeder_selections', 'decided_on', 'decided_by', 'animal_id', fn ($r) => $t($w($r->decision), $r->reason)],
-            'kidding' => ['Kidding', ['maternity', 'livestock'], 'kiddings', 'kidded_on', 'recorded_by', 'dam_id', fn ($r) => $t("{$r->born_alive} alive", $r->stillborn ? "{$r->stillborn} stillborn" : null, $w($r->delivery_method))],
+            'kidding' => ['Kidding', ['maternity'], 'kiddings', 'kidded_on', 'recorded_by', 'dam_id', fn ($r) => $t("{$r->born_alive} alive", $r->stillborn ? "{$r->stillborn} stillborn" : null, $w($r->delivery_method))],
             'kid_care' => ['Kid care', ['maternity'], 'kid_care_records', 'given_at', 'recorded_by', 'kid_id', fn ($r) => $t($w($r->kind), $r->amount_ml ? "{$r->amount_ml} ml" : null, $r->notes)],
-            'weaning' => ['Weaning', ['maternity', 'livestock'], 'weanings', 'weaned_on', 'handler', 'kid_id', fn ($r) => $t($w($r->status), $kg($r->weight_kg))],
+            'weaning' => ['Weaning', ['maternity'], 'weanings', 'weaned_on', 'handler', 'kid_id', fn ($r) => $t($w($r->status), $kg($r->weight_kg))],
             'repro_loss' => ['Pregnancy loss', ['maternity'], 'repro_loss_cases', 'occurred_on', null, 'dam_id', fn ($r) => $t($r->case_no, $w($r->loss_type), $r->kids_lost ? "{$r->kids_lost} lost" : null, $w($r->status))],
             // Feeding
             'feed_given' => ['Feed given', ['feeding'], 'feed_usages', 'fed_on', 'fed_by', null, fn ($r, $l) => $t($l->pen($r->pen_id), $w($r->meal), $l->feed($r->feed_item_id), 'offered '.$kg($r->offered_kg), $r->refused_kg ? 'refused '.$kg($r->refused_kg) : null)],

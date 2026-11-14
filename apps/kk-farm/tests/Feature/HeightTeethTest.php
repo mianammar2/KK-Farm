@@ -212,4 +212,12 @@ class HeightTeethTest extends TestCase
             ->where('rows', fn ($rows) => collect($rows)->contains('op', 'height') && ! collect($rows)->contains('op', 'register')));
         $this->actingAs($this->user('cleaning'))->get('/reports/operations?app=accounting')->assertForbidden();
     }
+
+    /** D-310: an app's log shows only that app's operations. */
+    public function test_an_app_log_shows_only_its_own_operations(): void
+    {
+        \App\Models\HealthCase::create(['case_no' => 7, 'animal_id' => $this->goat->id, 'onset_on' => now(), 'condition' => 'Cough', 'severity' => 'mild', 'status' => 'open', 'recorded_by' => 'Test vet']);
+        $this->actingAs($this->user('ceo'))->get('/reports/operations?app=livestock')->assertInertia(fn ($p) => $p->where('ops', fn ($ops) => ! collect($ops)->contains('key', 'case') && collect($ops)->every(fn ($o) => $o['app'] === 'Livestock')));
+        $this->actingAs($this->user('ceo'))->get('/reports/operations?app=veterinary')->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => collect($rows)->contains('op', 'case')));
+    }
 }

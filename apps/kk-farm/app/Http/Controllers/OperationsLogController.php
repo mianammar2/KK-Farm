@@ -29,7 +29,7 @@ class OperationsLogController extends Controller
         return Inertia::render('Reports/Operations', [
             'app' => $app ? OpsLog::APPS[$app][0] : null,
             'rows' => OpsLog::rows($ops),
-            'ops' => collect($ops)->map(fn ($o, $k) => ['key' => $k, 'app' => OpsLog::APPS[$o[1][0]][0], 'label' => $o[0]])->values(),
+            'ops' => collect($ops)->map(fn ($o, $k) => ['key' => $k, 'app' => OpsLog::APPS[$app ?? $o[1][0]][0], 'label' => $o[0]])->values(), // D-310: inside an app, all are its own
         ]);
     }
 }
