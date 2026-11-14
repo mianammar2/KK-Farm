@@ -277,13 +277,13 @@ final class AppDashboards
 
         return ['kpis' => [
             self::k('Sheds', DB::table('sheds')->count(), '/sheds'),
-            self::k('Pens', $pens->count(), '/sheds'),
+            self::k('PENs', $pens->count(), '/sheds'),
             self::k('Goats housed', (int) $count->sum(), '/housing'),
-            self::k('Pens full', $full->count(), '/housing', 'warning'),
-            self::k('Pens over capacity', $over->count(), '/housing', 'critical'),
-            self::k('Goats without a pen', self::active()->whereNull('pen_id')->count(), '/goats?show=no_pen', 'warning'),
-            self::k('Pens not in use (cleaning, repair)', $pens->whereNotIn('status', [null, 'active'])->count(), '/housing'),
-        ], 'charts' => [self::chart('Goats per pen (fullest 10)', 'bar', $top->map(fn ($p) => $p->name)->values()->all(), [
+            self::k('PENs full', $full->count(), '/housing', 'warning'),
+            self::k('PENs over capacity', $over->count(), '/housing', 'critical'),
+            self::k('Goats without a PEN', self::active()->whereNull('pen_id')->count(), '/goats?show=no_pen', 'warning'),
+            self::k('PENs not in use (cleaning, repair)', $pens->whereNotIn('status', [null, 'active'])->count(), '/housing'),
+        ], 'charts' => [self::chart('Goats per PEN (fullest 10)', 'bar', $top->map(fn ($p) => $p->name)->values()->all(), [
             ['name' => 'Goats', 'data' => $top->map(fn ($p) => (int) ($count[$p->id] ?? 0))->values()->all()],
             ['name' => 'Capacity', 'data' => $top->map(fn ($p) => (int) ($p->capacity ?? 0))->values()->all()],
         ])]];

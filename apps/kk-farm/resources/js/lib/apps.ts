@@ -21,7 +21,7 @@ export const APPS: ErpApp[] = [
         S('Overview', '/worker', 'Choose a Job'),
         S('Operations', '/worker', 'Weigh · Temp · Heat · Mating · Milk · Vaccinate · Teeth · Height · Move'),
         S('Operations', '/scan', 'RFID Scan'),
-        S('Operations', '/feeding?tab=now', 'Feed Pens'),
+        S('Operations', '/feeding?tab=now', 'Feed PENs'),
         S('Operations', '/tasks?tab=mine', 'My Tasks'),
         S('Reporting', '/activity', 'Activity Log'),
         S('Configuration', '/account/app', 'Gun & App Settings'),
@@ -42,11 +42,8 @@ export const APPS: ErpApp[] = [
         S('Operations', '/intake', 'Intake & Quarantine'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
         S('Operations', '/scan', 'RFID Scan'),
-        S('Operations', '/movements?kind=transfer', 'Pen Movements'), // D-285: moves and exits are separate
+        S('Operations', '/movements?kind=transfer', 'PEN Movements'), // D-285: moves and exits are separate
         S('Operations', '/movements?kind=exit', 'Animal Exit'),
-        S('Records', '/goats?show=pregnant', 'Pregnant Does'),
-        S('Records', '/goats?show=attention', 'Need Attention'),
-        S('Records', '/goats?show=missing', 'Missing Data'),
         S('Reporting', '/reports?section=herd', 'Herd Census'),
         S('Reporting', '/reports?section=age', 'Age-Wise Report'),
         S('Reporting', '/reports?section=breeds', 'Breed-Wise Population'),
@@ -55,6 +52,7 @@ export const APPS: ErpApp[] = [
         S('Reporting', '/reports/records?kind=temp', 'Temperature Report'),
         S('Reporting', '/reports/records?kind=height', 'Height Report'),
         S('Reporting', '/reports/records?kind=move', 'Movements Report'),
+        // D-287: no Records section for now; the registry's filter cards show pregnant, attention and missing data
         S('Configuration', '/settings/breeds', 'Breed Master'),
         S('Configuration', '/settings/ages', 'Age Groups'),
         S('Configuration', '/settings/automation', 'Automation Rules'), // D-236
@@ -95,7 +93,7 @@ export const APPS: ErpApp[] = [
         S('Overview', '/disease?tab=cases', 'Disease Control & Recovery'),
         S('Operations', '/disease?tab=triage', 'Triage Reported Symptoms'),
         S('Operations', '/health?tab=reports', 'Reported Concerns'),
-        S('Records', '/disease?tab=restricted', 'Restricted Pens'),
+        S('Records', '/disease?tab=restricted', 'Restricted PENs'),
         S('Reporting', '/disease?tab=outbreaks', 'Outbreak Reports'),
         S('Operations', '/parasites', 'Parasite Testing & Control'),
         S('Operations', '/health?tab=calendar', 'Vaccination & Deworming Due'),
@@ -127,12 +125,12 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/feeding?tab=times', 'Feeding Times'),
     ] },
     { key: 'housing', no: '07', label: 'Housing', art: 'app-housing', modules: ['sheds'], linked: ['livestock', 'feeding', 'maternity', 'maintenance'], sections: [
-        S('Overview', '/sheds', 'Farms, Units & Pens'),
-        S('Operations', '/movements?kind=transfer', 'Pen Movements'),
-        S('Records', '/goats?show=no_pen', 'Goats Without a Pen'),
-        S('Operations', '/housing', 'Pen Status, Capacity & Cleaning'),
-        S('Reporting', '/housing', 'Pen Occupancy'),
-        S('Configuration', '/sheds', 'Unit & Pen Setup'),
+        S('Overview', '/sheds', 'Farms, Units & PENs'),
+        S('Operations', '/movements?kind=transfer', 'PEN Movements'),
+        S('Records', '/goats?show=no_pen', 'Goats Without a PEN'),
+        S('Operations', '/housing', 'PEN Status, Capacity & Cleaning'),
+        S('Reporting', '/housing', 'PEN Occupancy'),
+        S('Configuration', '/sheds', 'Unit & PEN Setup'),
     ] },
     { key: 'growth', no: '08', label: 'Growth', art: 'app-growth', modules: ['weights'], linked: ['maternity', 'breeding', 'livestock', 'feeding', 'veterinary', 'sales'], sections: [
         S('Overview', '/growth?tab=growth', 'Growth vs Plan'),

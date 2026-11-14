@@ -61,14 +61,14 @@ function SampleForm({ goats, pens, options, samples, onDone }: Props & { onDone:
     const e = form.errors as Record<string, string>;
     const treated = samples.filter((s) => s.decision === 'treat' && !s.retested);
     return (
-        <Panel title="Record Sample" description="An egg count from the lab and / or FAMACHA (eye-lid colour) and body score on the farm. A goat or a pooled pen sample.">
+        <Panel title="Record Sample" description="An egg count from the lab and / or FAMACHA (eye-lid colour) and body score on the farm. A goat or a pooled PEN sample.">
             <form className="grid gap-3 p-4 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, animal_id: nul(d.animal_id), pen_id: nul(d.pen_id), epg: nul(d.epg), famacha: nul(d.famacha), bcs: nul(d.bcs), cost: nul(d.cost), retest_of_id: nul(d.retest_of_id), lab: nul(d.lab), notes: nul(d.notes) })); form.post('/parasites/samples', { preserveScroll: true, onSuccess: onDone }); }}>
                 <Field label="Reason" error={e.reason}><select className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)}>{Object.entries(options.reasons).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 {form.data.reason === 'retest' ? (
                     <Field label="Retest of" error={e.retest_of_id}><select className="field" value={form.data.retest_of_id} onChange={(x) => { const s = treated.find((t) => String(t.id) === x.target.value); form.setData((d) => ({ ...d, retest_of_id: x.target.value, animal_id: s?.goat?.id ?? '', pen_id: s?.penId ? String(s.penId) : '' })); }}><option value="">Choose…</option>{treated.map((s) => <option key={s.id} value={s.id}>{s.no} · {s.goat?.number ?? s.pen} · {s.epg} EPG</option>)}</select></Field>
                 ) : null}
                 <Field label="Goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">—</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
-                <Field label="Or pooled pen" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">—</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
+                <Field label="Or pooled PEN" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">—</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
                 <Field label="Sampled on" error={e.sampled_on}><input type="date" max={today()} className="field" value={form.data.sampled_on} onChange={(x) => form.setData('sampled_on', x.target.value)} /></Field>
                 <Field label="Egg count (EPG)" error={e.epg}><input type="number" min={0} className="field" value={form.data.epg} onChange={(x) => form.setData('epg', x.target.value)} /></Field>
                 <Field label="FAMACHA (1–5)" error={e.famacha}><select className="field" value={form.data.famacha} onChange={(x) => form.setData('famacha', x.target.value)}><option value="">—</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
@@ -92,7 +92,7 @@ function SampleRow({ s, goats, dewormers, options, isVet }: { s: Sample } & Prop
         <li className={`px-4 py-3 text-sm ${s.aboveGuide && !s.decision ? 'bg-watch-100/30' : ''}`}>
             <div className="flex flex-wrap items-center gap-2">
                 <strong className="font-mono text-cobalt-900">{s.no}</strong>
-                {s.goat ? <Link href={`/goats/${s.goat.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{s.goat.number}</Link> : <span>Pen {s.pen}</span>}
+                {s.goat ? <Link href={`/goats/${s.goat.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{s.goat.number}</Link> : <span>PEN {s.pen}</span>}
                 <span className="text-ink-soft">{s.on} · {options.reasons[s.reason]}</span>
                 {s.epg !== null ? <Chip className={s.aboveGuide ? 'bg-crit-100 text-crit-700' : 'bg-glaze text-cobalt-900'}>{s.epg} EPG</Chip> : null}
                 {s.famacha ? <Chip className={s.famacha >= 4 ? 'bg-crit-100 text-crit-700' : 'bg-glaze text-cobalt-900'}>FAMACHA {s.famacha}</Chip> : null}

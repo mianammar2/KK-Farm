@@ -222,15 +222,15 @@ export default function Register({ registered = [], epc, fields, lookups, classS
             const only = pens.filter((p) => p.shed === shed);
             set(f, only.length === 1 ? String(only[0].value) : '');
         };
-        if (!pens.length) return <p className="text-sm text-ink-soft">No pens yet. Add a shed and its pens on the Sheds page first.</p>;
+        if (!pens.length) return <p className="text-sm text-ink-soft">No PENs yet. Add a shed and its PENs on the Sheds page first.</p>;
         return (
             <div className="grid grid-cols-2 gap-2">
                 <select className="field" aria-label="Shed" value={currentShed ?? ''} onChange={(e) => chooseShed(e.target.value)}>
                     {currentShed === undefined ? <option value="">Choose shed…</option> : null}
                     {sheds.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                 </select>
-                <select className="field" aria-label="Pen" value={String(form.data.pen_id ?? '')} disabled={currentShed === undefined} onChange={(e) => set(f, e.target.value)}>
-                    {!pickedPen ? <option value="">{currentShed === undefined ? 'Choose a shed first' : 'Choose pen…'}</option> : null}
+                <select className="field" aria-label="PEN" value={String(form.data.pen_id ?? '')} disabled={currentShed === undefined} onChange={(e) => set(f, e.target.value)}>
+                    {!pickedPen ? <option value="">{currentShed === undefined ? 'Choose a shed first' : 'Choose PEN…'}</option> : null}
                     {shedPens.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
             </div>
@@ -434,7 +434,7 @@ const REG_COLS: Col<RegRow>[] = [
     { key: 'sex', label: 'Sex', type: 'enum' },
     { key: 'code', label: 'Class code', type: 'enum' },
     { key: 'role', label: 'Role', type: 'enum' },
-    { key: 'pen', label: 'Pen', type: 'enum' },
+    { key: 'pen', label: 'PEN', type: 'enum' },
     { key: 'status', label: 'Status', type: 'enum' },
     { key: 'by', label: 'Entered by', type: 'enum' },
     { key: 'enteredIso', label: 'Entered on', type: 'date', render: (r) => r.entered ?? '—' },

@@ -112,7 +112,7 @@ class SensorsController extends Controller
         $n = Sensors::setPresence(Animal::with('pen.shed')->active()->whereIn('id', $data['animal_ids'])->get(), $data['direction'], $area, 'manual', $request->user()->name);
         Farm::log($request->user(), ($data['direction'] === 'out' ? "Sent {$n} goat(s) out to ".$area->fullName() : "Brought {$n} goat(s) back in"), '/');
 
-        return back()->with('success', $data['direction'] === 'out' ? "{$n} goat".($n === 1 ? '' : 's')." out in {$area->fullName()}." : "{$n} goat".($n === 1 ? '' : 's').' back in their pens.');
+        return back()->with('success', $data['direction'] === 'out' ? "{$n} goat".($n === 1 ? '' : 's')." out in {$area->fullName()}." : "{$n} goat".($n === 1 ? '' : 's').' back in their PENs.');
     }
 
     private function validated(Request $request, ?Device $device = null): array

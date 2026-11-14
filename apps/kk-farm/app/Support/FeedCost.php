@@ -46,7 +46,7 @@ final class FeedCost
             $eaten = (float) $u->consumedKg();
             $dmKg = $eaten * (($dm[$u->feed_item_id] ?? null) !== null ? $dm[$u->feed_item_id] / 100 : 1);
             $p = &$pens[$u->pen_id];
-            $p ??= ['id' => $u->pen_id, 'name' => $u->pen?->fullName() ?? 'Pen', 'cost' => 0.0, 'offered' => 0.0, 'refused' => 0.0, 'wasted' => 0.0, 'dm' => 0.0, 'days' => [], 'goats' => []];
+            $p ??= ['id' => $u->pen_id, 'name' => $u->pen?->fullName() ?? 'PEN', 'cost' => 0.0, 'offered' => 0.0, 'refused' => 0.0, 'wasted' => 0.0, 'dm' => 0.0, 'days' => [], 'goats' => []];
             $p['cost'] += $cost;
             $p['offered'] += (float) $u->offered_kg;
             $p['refused'] += (float) ($u->refused_kg ?? 0);

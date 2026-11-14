@@ -129,7 +129,7 @@ function DeviceForm({ device, types, places, defaults, onDone }: { device: Devic
                 <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Walk-over scale, doe shed" required /></Field>
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Shed" error={form.errors.shed_id}><select className="field" value={form.data.shed_id} onChange={(e) => form.setData({ ...form.data, shed_id: e.target.value, pen_id: '' })}><option value="">Not placed</option>{places.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
-                    <Field label="Pen or open area" error={form.errors.pen_id}><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)} disabled={!shed}><option value="">Whole shed</option>{shed?.pens.map((p) => <option key={p.id} value={p.id}>{p.name}{p.kind === 'open_area' ? ' (open area)' : ''}</option>)}</select></Field>
+                    <Field label="PEN or open area" error={form.errors.pen_id}><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)} disabled={!shed}><option value="">Whole shed</option>{shed?.pens.map((p) => <option key={p.id} value={p.id}>{p.name}{p.kind === 'open_area' ? ' (open area)' : ''}</option>)}</select></Field>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Brand"><input className="field" value={form.data.vendor} onChange={(e) => form.setData('vendor', e.target.value)} /></Field>
@@ -189,7 +189,7 @@ function ReadingsTab({ readings }: { readings: Reading[] }) {
 
 function OutTab({ out }: { out: Props['out'] }) {
     return (
-        <Panel flush title="Goats out in open areas now" description="From the RFID gate, a camera or by hand on the dashboard's Sheds and pens. Their home pen stays the same." actions={out.length ? <Button type="button" variant="secondary" onClick={() => router.post('/presence', { animal_ids: out.map((o) => o.goatId), direction: 'in' }, { preserveScroll: true })}>Bring all back in</Button> : null}>
+        <Panel flush title="Goats out in open areas now" description="From the RFID gate, a camera or by hand on the dashboard's Sheds and PENs. Their home PEN stays the same." actions={out.length ? <Button type="button" variant="secondary" onClick={() => router.post('/presence', { animal_ids: out.map((o) => o.goatId), direction: 'in' }, { preserveScroll: true })}>Bring all back in</Button> : null}>
             {out.length ? <ul className="divide-y divide-rule">{out.map((o) => <li key={o.goatId} className="flex justify-between px-4 py-2"><Link href={`/goats/${o.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{o.goat}</Link><span className={cx('text-sm', o.hours >= 8 ? 'font-semibold text-crit-700' : 'text-ink-soft')}>{o.area ?? 'Open area'} · {o.since}</span></li>)}</ul> : <p className="p-4 text-sm text-ink-soft">All goats are inside. Add an open area to a shed on the Sheds page.</p>}
         </Panel>
     );

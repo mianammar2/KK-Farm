@@ -40,7 +40,7 @@ class FeedRequirement
                 $bal = \App\Support\Feed::balance($rows->sum('kgDay'), $rows->sum('min'), $rows->sum('max'), $given, $tol);
 
                 return [
-                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a pen', 'kgDay' => round($rows->sum('kgDay'), 1), 'cpDay' => round($rows->sum('cpKg'), 2), 'kgMonth' => round($rows->sum('kgDay') * $md, 1), 'givenToday' => $given, 'balance' => $bal['state'], 'diff' => $bal['diff'],
+                    'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a PEN', 'kgDay' => round($rows->sum('kgDay'), 1), 'cpDay' => round($rows->sum('cpKg'), 2), 'kgMonth' => round($rows->sum('kgDay') * $md, 1), 'givenToday' => $given, 'balance' => $bal['state'], 'diff' => $bal['diff'],
                     'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
                     'goats' => $rows->map(fn ($r) => [
                         'id' => $r['id'], 'number' => $r['number'], 'group' => $r['group'], 'weight' => $r['weight'], 'state' => $r['state'], 'rule' => $r['rule'],
@@ -52,7 +52,7 @@ class FeedRequirement
             $all = $pens->flatMap(fn ($p) => $p['_rows']);
 
             return [
-                'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a pen', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1), 'cpDay' => round($all->sum('cpKg'), 2), 'kgMonth' => round($all->sum('kgDay') * $md, 1),
+                'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a PEN', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1), 'cpDay' => round($all->sum('cpKg'), 2), 'kgMonth' => round($all->sum('kgDay') * $md, 1),
                 'cost' => round($all->sum(fn ($r) => $cost($r['lines']))), 'count' => $all->count(), 'feeds' => $sum($all),
                 'pens' => $pens->map(fn ($p) => collect($p)->except('_rows')->all())->all(),
             ];

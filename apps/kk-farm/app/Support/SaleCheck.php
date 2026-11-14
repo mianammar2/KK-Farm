@@ -35,7 +35,7 @@ final class SaleCheck
             $out[] = 'Quality hold '.$h->qualityCase?->label();
         }
         if ($a->pen_id && isset(Biosecurity::restrictedPens()[(int) $a->pen_id])) {
-            $out[] = 'Pen under movement restriction';
+            $out[] = 'PEN under movement restriction';
         }
         $case = HealthCase::where('animal_id', $a->id)->whereIn('status', HealthCase::ACTIVE)->first();
         if ($case) {

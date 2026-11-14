@@ -139,7 +139,7 @@ class DashboardController extends Controller
             $dayGiven = array_sum(array_column($meals, 'givenKg'));
             $day = \App\Support\Feed::balance($dayPlan, array_sum(array_column($meals, 'minKg')), array_sum(array_column($meals, 'maxKg')), $dayGiven, (float) \App\Support\Feed::org()->feed_tolerance_pct);
 
-            return ['id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'goats' => $first['headcount'], 'onMilk' => $first['onMilk'], 'meals' => $out,
+            return ['id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'PEN', 'goats' => $first['headcount'], 'onMilk' => $first['onMilk'], 'meals' => $out,
                 'dayPlanned' => round($dayPlan, 2), 'dayGiven' => round($dayGiven, 2), 'over' => $day['state'] === 'over' || collect($out)->contains('balance', 'over'), 'diff' => $day['diff']];
         })->sortBy('name')->values();
 

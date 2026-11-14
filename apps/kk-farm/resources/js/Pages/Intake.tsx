@@ -90,7 +90,7 @@ function Clearance({ g, pens, close }: { g: Row; pens: PenOpt[]; close: () => vo
         <div className="grid w-full gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4">
             <Field label="Veterinary clearance granted?"><select className="field" value={granted ? 'yes' : 'no'} onChange={(x) => setGranted(x.target.value === 'yes')}><option value="yes">Yes: clear for the herd</option><option value="no">No: extend / treat / investigate</option></select></Field>
             {granted ? <>
-                <Field label="Move to operating pen" error={e.pen_id ?? e.to_pen_id} hint={g.ready ? undefined : `Early: day ${g.day} of ${g.days}`}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Keep in {g.pen ?? 'current pen'}</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                <Field label="Move to operating PEN" error={e.pen_id ?? e.to_pen_id} hint={g.ready ? undefined : `Early: day ${g.day} of ${g.days}`}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Keep in {g.pen ?? 'current PEN'}</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
                 <Field label="Clearance notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
             </> : <>
                 <Field label="Extend by (days)" error={e.days}><input type="number" min={1} max={60} className="field" value={form.data.days} onChange={(x) => form.setData('days', x.target.value)} /></Field>

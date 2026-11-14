@@ -155,7 +155,7 @@ export default function Breeding(props: Props) {
                         { key: 'birthKg', label: 'Birth weight (KG)', type: 'number', total: 'avg', unit: 'KG' },
                         { key: 'code', label: 'Class code', type: 'enum' },
                         { key: 'role', label: 'Role', type: 'enum' },
-                        { key: 'pen', label: 'Pen', type: 'enum' },
+                        { key: 'pen', label: 'PEN', type: 'enum' },
                         { key: 'status', label: 'Status', type: 'enum' },
                         { key: 'by', label: 'Entered by', type: 'enum' },
                         { key: 'entered', label: 'Entered on', type: 'text' },
@@ -279,7 +279,7 @@ function WeaningRow({ w, pens, options }: { w: Due } & Props) {
                     <Field label="Weaning date" error={e.weaned_on}><input type="date" max={today()} className="field" value={form.data.weaned_on} onChange={(x) => form.setData('weaned_on', x.target.value)} /></Field>
                     <Field label="Weight KG" error={e.weight_kg} hint="Saved to the weight log"><input type="number" step="0.1" min={1} className="field" value={form.data.weight_kg} onChange={(x) => form.setData('weight_kg', x.target.value)} /></Field>
                     <Field label="Method" error={e.method}><select className="field" value={form.data.method} onChange={(x) => form.setData('method', x.target.value)}>{Object.entries(options.weanMethods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-                    <Field label="Move to pen (optional)" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay in current pen</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                    <Field label="Move to PEN (optional)" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay in current PEN</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
                     <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                     <div className="flex items-end"><Button disabled={form.processing} onClick={() => submit('completed')}>Save weaning</Button></div>
                 </div>

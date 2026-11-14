@@ -119,7 +119,7 @@ class DiseaseController extends Controller
             'animal_id' => ['required', 'exists:animals,id'], 'report_id' => ['nullable', 'exists:health_records,id'], 'condition' => ['required', 'string', 'max:120'],
             'symptoms' => ['nullable', 'string', 'max:1000'], 'severity' => ['required', Rule::in(array_keys(HealthCase::SEVERITIES))], 'contagion' => ['required', Rule::in(array_keys(HealthCase::CONTAGION))],
             'isolate_pen_id' => ['nullable', Rule::exists('pens', 'id')->where('kind', 'pen')], 'restrict_pen' => ['boolean'], 'declare_outbreak' => ['boolean'],
-        ], [], ['isolate_pen_id' => 'isolation pen']);
+        ], [], ['isolate_pen_id' => 'isolation PEN']);
         $animal = Animal::findOrFail($data['animal_id']);
         $user = $request->user();
         $highRisk = $data['contagion'] !== 'none' || in_array($data['severity'], ['high', 'emergency'], true);
@@ -148,7 +148,7 @@ class DiseaseController extends Controller
                 Movements::transfer($animal, Pen::findOrFail($data['isolate_pen_id']), $user, ['care' => true, 'reason' => "Isolation: {$case->label()} {$data['condition']}"]);
             }
             if ($case->emergency) {
-                foreach (['Veterinary' => 'Isolation protocol, PPE, footbath and treatment as the vet decides. Check pen mates.', 'Management' => 'Emergency: no movements or sales from the affected pen until the vet clears it.'] as $dept => $what) {
+                foreach (['Veterinary' => 'Isolation protocol, PPE, footbath and treatment as the vet decides. Check PEN mates.', 'Management' => 'Emergency: no movements or sales from the affected pen until the vet clears it.'] as $dept => $what) {
                     Task::create(['title' => mb_substr("EMERGENCY {$case->label()}: {$data['condition']} ({$animal->farm_number})", 0, 190), 'type' => 'health', 'priority' => 'critical', 'status' => 'open',
                         'due_on' => now()->toDateString(), 'animal_id' => $animal->id, 'pen_id' => $homePen, 'department_id' => Department::where('name', $dept)->value('id'), 'notes' => $what]);
                 }
@@ -164,7 +164,7 @@ class DiseaseController extends Controller
         });
         Farm::log($user, "Triaged {$animal->farm_number}: {$case->label()}", '/disease');
 
-        return back()->with('success', "{$case->label()} opened".($case->emergency ? ': emergency alert sent' : '').($case->restricted_pen_id ? ', pen under movement restriction' : '').'.');
+        return back()->with('success', "{$case->label()} opened".($case->emergency ? ': emergency alert sent' : '').($case->restricted_pen_id ? ', PEN under movement restriction' : '').'.');
     }
 
     /** Investigations: lab test and result; the lab fee posts once to Veterinary services. */
@@ -218,7 +218,7 @@ class DiseaseController extends Controller
         });
         $left = Biosecurity::restrictedPens()[$case->restricted_pen_id] ?? null;
 
-        return back()->with('success', "{$case->label()} recovered and cleared.".($case->restricted_pen_id ? ($left ? " The pen stays restricted for {$left}." : ' The pen restriction is lifted.') : ''));
+        return back()->with('success', "{$case->label()} recovered and cleared.".($case->restricted_pen_id ? ($left ? " The PEN stays restricted for {$left}." : ' The PEN restriction is lifted.') : ''));
     }
 
     /** Close the outbreak with its report: every case resolved. */

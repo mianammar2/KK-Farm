@@ -85,7 +85,7 @@ export default function Feeding(props: Props) {
             <Head title="Feeding & Nutrition" />
             <PageHeader title="Feeding" description={`${today} · ${meals[meal]} meal (${mealTimes[meal]})`} />
             <StatRow>
-                <Stat label={`${meals[meal]} meal`} value={`${fed}/${expected}`} note="pens fed" tone={expected && fed === expected ? 'good' : undefined} />
+                <Stat label={`${meals[meal]} meal`} value={`${fed}/${expected}`} note="PENs fed" tone={expected && fed === expected ? 'good' : undefined} />
                 <Stat label="Planned / given" value={kg(board.reduce((s, p) => s + p.offeredKg, 0))} note={`of ${kg(board.reduce((s, p) => s + p.plannedKg, 0))} planned`} />
                 <Stat label="Feeds low or out" value={lowStock} tone={lowStock ? 'alert' : undefined} note={`${items.filter((i) => i.active).length} feeds in store`} />
                 <Stat label="Goats not planned" value={unplanned} tone={unplanned ? 'alert' : undefined} note={`need a weight · ${board.reduce((s, p) => s + p.auto, 0)} planned automatically`} />
@@ -124,7 +124,7 @@ function FeedNow(props: Props & { onTab: (t: string) => void }) {
             {!props.settings.tracking ? <Note>Feeding is not being recorded yet, so there are no meal or missed-feeding alerts. The plan below is what the goats need. Turn recording on in Settings when you start.</Note> : null}
             {!items.length ? <Note>No feeds yet. Add your feeds in the <button type="button" className="font-semibold underline" onClick={() => onTab('store')}>Feed store</button> first.</Note> : null}
             {items.length && noRations ? <Note>No approved ration yet, so each goat is planned automatically: body weight × the farm's intake % for its age (grower 3–4%, adult 2–3%), split 40/20/40 over the meals. You can change the KG given. For a ration of your own, use the <button type="button" className="font-semibold underline" onClick={() => onTab('rations')}>Rations</button> tab.</Note> : null}
-            {!board.length ? <Empty title="No goats in any pen">Goats appear here once they are registered into a pen.</Empty> : null}
+            {!board.length ? <Empty title="No goats in any PEN">Goats appear here once they are registered into a PEN.</Empty> : null}
             {board.map((pen) => (
                 <section key={pen.id} className="rounded-tile border border-rule bg-tile shadow-tile">
                     <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open === pen.id} onClick={() => setOpen(open === pen.id ? null : pen.id)}>
@@ -168,7 +168,7 @@ function PenFeed({ pen, meal, items, onDone }: { pen: PenRow; meal: Meal; items:
     return (
         <div className="border-t border-rule px-4 py-3">
             {recorded && first ? <p className="mb-2 flex items-center gap-1.5 text-sm text-ink-soft"><Check size={15} className="text-ok-700" aria-hidden /> Given at {first.at} by {first.by}</p> : null}
-            {!lines.length ? <p className="mb-2 text-sm text-ink-soft">No ration planned for this pen. Add the feed you gave below.</p> : null}
+            {!lines.length ? <p className="mb-2 text-sm text-ink-soft">No ration planned for this PEN. Add the feed you gave below.</p> : null}
             <div className="space-y-2">
                 {lines.map((l, i) => (
                     <div key={l.feedItemId} className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem_6.5rem]">
@@ -432,7 +432,7 @@ function HistoryTab({ history, meals }: Props) {
             <Panel flush>
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[56rem] text-sm">
-                        <thead className="bg-cobalt-100/50 text-left text-ink-soft"><tr>{['Date', 'Meal', 'Pen', 'Feed', 'Goats', 'Plan', 'Given', 'Leftover', 'Eaten', 'Per goat', 'Cost', 'By'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
+                        <thead className="bg-cobalt-100/50 text-left text-ink-soft"><tr>{['Date', 'Meal', 'PEN', 'Feed', 'Goats', 'Plan', 'Given', 'Leftover', 'Eaten', 'Per goat', 'Cost', 'By'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
                         <tbody className="divide-y divide-rule">
                             {history.map((h) => (
                                 <tr key={h.id}>
@@ -538,7 +538,7 @@ function Nutrition({ standards, nutritionCategories, methods, breeds, can }: Pro
             <Panel flush title="CP Requirements" description="Feeding & Nutrition → Nutrition Standards">
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[64rem] text-sm">
-                        <thead className="text-left text-xs text-ink-soft"><tr><th className="px-4 py-2 font-semibold">Nutrition Group</th><th className="px-3 font-semibold">Breed</th><th className="px-3 font-semibold">Weight Range</th><th className="px-3 font-semibold">Target CP</th><th className="px-3 font-semibold">Target Energy (TDN)</th><th className="px-3 font-semibold">Feeding</th><th className="px-3 font-semibold">Feed Formula</th><th className="px-3 font-semibold">Goats and Pens</th><th className="px-3 font-semibold">CP and Feed a Day</th><th className="px-3 font-semibold">Feed Cost per Day</th><th className="px-3 font-semibold">Last Review</th>{can.plan ? <th /> : null}</tr></thead>
+                        <thead className="text-left text-xs text-ink-soft"><tr><th className="px-4 py-2 font-semibold">Nutrition Group</th><th className="px-3 font-semibold">Breed</th><th className="px-3 font-semibold">Weight Range</th><th className="px-3 font-semibold">Target CP</th><th className="px-3 font-semibold">Target Energy (TDN)</th><th className="px-3 font-semibold">Feeding</th><th className="px-3 font-semibold">Feed Formula</th><th className="px-3 font-semibold">Goats and PENs</th><th className="px-3 font-semibold">CP and Feed a Day</th><th className="px-3 font-semibold">Feed Cost per Day</th><th className="px-3 font-semibold">Last Review</th>{can.plan ? <th /> : null}</tr></thead>
                         <tbody className="divide-y divide-rule">
                             {list.map((s) => (
                                 <Fragment key={s.id}>

@@ -20,7 +20,7 @@ class Access
 
     public const MODULE_LABELS = [
         'dashboard' => 'Dashboard', 'goats' => 'Livestock (goat register)', 'scan' => 'Tasks & RFID scan', 'breeding' => 'Breeding & Maternity', 'health' => 'Veterinary',
-        'weights' => 'Growth & weights', 'feeding' => 'Feeding', 'sheds' => 'Housing & pens', 'tasks' => 'Operations & tasks', 'employees' => 'Employees', 'finance' => 'Accounting & finance',
+        'weights' => 'Growth & weights', 'feeding' => 'Feeding', 'sheds' => 'Housing & PENs', 'tasks' => 'Operations & tasks', 'employees' => 'Employees', 'finance' => 'Accounting & finance',
         'value' => 'Herd value', 'milking' => 'Dairy', 'reports' => 'Reports', 'settings' => 'Settings', 'sensors' => 'Sensors & devices', 'inventory' => 'Inventory',
         'purchase' => 'Purchase', 'sales' => 'Sales', 'welfare' => 'Welfare', 'fattening' => 'Fattening', 'environment' => 'Environment (water & climate)', 'quality' => 'Quality',
         'animal_purchase' => 'Goat purchase lots', 'feed_cost' => 'Feed true cost', 'fodder' => 'Fodder', 'maintenance' => 'Maintenance',
@@ -28,13 +28,13 @@ class Access
 
     public const GATE_LABELS = [
         'clinical' => 'Diagnose and treat', 'approve_feeding_plan' => 'Approve feeding plans', 'exit_animal' => 'Record goats leaving the farm', 'record_weights' => 'Record weights', 'assign_tags' => 'Assign RFID tags',
-        'manage_sheds' => 'Add sheds and pens', 'manage_feed_store' => 'Feed store items and stock', 'plan_rations' => 'Draft rations', 'manage_general_store' => 'General store',
+        'manage_sheds' => 'Add sheds and PENs', 'manage_feed_store' => 'Feed store items and stock', 'plan_rations' => 'Draft rations', 'manage_general_store' => 'General store',
         'manage_purchase' => 'Suppliers and purchase orders', 'manage_sales' => 'Customers and sales', 'manage_medicine_store' => 'Medicine store', 'manage_devices' => 'Devices and keys',
         'edit_goats' => 'Edit goat details', 'remove_goats' => 'Remove or restore goat entries', 'health_checkup' => 'Routine health checkups', 'manage_market' => 'Market rates',
         'record_milk' => 'Record milk', 'manage_milking' => 'Milking settings', 'open_cases' => 'Open health cases', 'approve_breeding' => 'Approve goats for breeding',
         'health_entry' => 'New health entry', 'report_concern' => 'Report concern',
         'see_health_history' => 'See a goat\'s health history and treatments', 'see_goat_pedigree' => 'See a goat\'s parentage, offspring and records', 'manage_books' => 'Post to the books (journals, accounts)', 'manage_staff' => 'Add staff, record attendance and leave', 'request_end_of_life' => 'Ask for a humane end-of-life review', 'request_goat_purchase' => 'Raise a goat purchase',
-        'record_heat' => 'Record heat', 'record_mating' => 'Record mating', 'give_care' => 'Give vaccines and deworming', 'move_goats' => 'Move goats between pens',
+        'record_heat' => 'Record heat', 'record_mating' => 'Record mating', 'give_care' => 'Give vaccines and deworming', 'move_goats' => 'Move goats between PENs',
         'report_death' => 'Report a death', 'approve_death' => 'Approve a death (the goat leaves the farm)', 'cull_breeding' => 'Cull from breeding', 'check_teeth' => 'Check teeth', 'record_height' => 'Measure height',
     ];
 

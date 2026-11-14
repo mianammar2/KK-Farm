@@ -29,9 +29,9 @@ final class Sensors
     public const TYPES = [
         'weighing_scale' => ['Weighing scale', ['weight_kg' => ['Weight', 'KG']], 'Weighs a goat identified by its RFID tag; adds a weighing and watches for weight loss.'],
         'rfid_gate' => ['RFID gate / reader', ['passage' => ['Passage (1 = out, 0 = in)', '']], 'Reads tags at the door to an open area: records goats going out and coming in.'],
-        'camera' => ['Camera', ['headcount' => ['Goats counted', ''], 'motion' => ['Motion', '']], 'Counts goats in a pen or open area and compares with what the system expects.'],
+        'camera' => ['Camera', ['headcount' => ['Goats counted', ''], 'motion' => ['Motion', '']], 'Counts goats in a PEN or open area and compares with what the system expects.'],
         'environment' => ['Air / climate sensor', ['ammonia_ppm' => ['Ammonia', 'ppm'], 'temperature_c' => ['Temperature', '°C'], 'humidity_pct' => ['Humidity', '%']], 'Watches ammonia, temperature and humidity in a shed.'],
-        'water_meter' => ['Water meter', ['water_l' => ['Water', 'L']], 'Water used by a pen or shed.'],
+        'water_meter' => ['Water meter', ['water_l' => ['Water', 'L']], 'Water used by a PEN or shed.'],
         'feed_scale' => ['Feed scale / bin', ['feed_kg' => ['Feed', 'KG']], 'Feed in a bin or trough.'],
         'energy_meter' => ['Energy meter', ['kwh' => ['Energy', 'kWh']], 'Electricity used.'],
         'other' => ['Other sensor', [], 'Any other reading; stored for later.'],
@@ -165,7 +165,7 @@ final class Sensors
         $seen = (int) round($r->value);
         if ($seen !== $expected) {
             self::alert($d, $r, 'headcount', 'warning', "{$pen->fullName()}: camera counts {$seen}, system expects {$expected}",
-                $seen < $expected ? 'A goat may be missing, hidden or out without being recorded.' : 'A goat may be in the wrong pen or not registered.', pen: $pen, dedupeKey: (string) $pen->id);
+                $seen < $expected ? 'A goat may be missing, hidden or out without being recorded.' : 'A goat may be in the wrong PEN or not registered.', pen: $pen, dedupeKey: (string) $pen->id);
 
             return 'headcount mismatch alert';
         }
@@ -231,7 +231,7 @@ final class Sensors
             }
             AnimalPresence::create(['animal_id' => $goat->id, 'area_id' => $direction === 'out' ? $area?->id : $now[$goat->id]?->area_id, 'direction' => $direction,
                 'at' => $at ?? now(), 'device_id' => $device?->id, 'source' => $source, 'recorded_by' => $by]);
-            Farm::event($goat, 'move', $direction === 'out' ? 'Went out to '.($area?->fullName() ?? 'the open area') : 'Came back in to '.($goat->pen?->fullName() ?? 'its pen'), $by, $at);
+            Farm::event($goat, 'move', $direction === 'out' ? 'Went out to '.($area?->fullName() ?? 'the open area') : 'Came back in to '.($goat->pen?->fullName() ?? 'its PEN'), $by, $at);
             $n++;
         }
 

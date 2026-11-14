@@ -95,7 +95,7 @@ function CandidateRow({ c, pens, options, isLead, limit }: { c: Candidate } & Pr
                     {c.sex === 'female' && form.data.decision === 'replacement' ? (
                         <Field label="Planned buck" error={e.planned_sire_id} hint={picked ? `Kid inbreeding ${picked.coi}%` : undefined}><select className="field" value={form.data.planned_sire_id} onChange={(x) => form.setData('planned_sire_id', x.target.value)}><option value="">Decide later</option>{c.bucks.map((b) => <option key={b.id} value={b.id}>{b.number} · merit {b.merit ?? '—'} · COI {b.coi}%{b.coi > limit ? ' (over limit)' : ''}</option>)}</select></Field>
                     ) : null}
-                    <Field label="Move to pen (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
+                    <Field label="Move to PEN (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
                     <Field label="Reason" error={e.reason}><input className="field" placeholder="Needed if a check fails" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} /></Field>
                     <div className="flex items-end gap-2 sm:col-span-4"><Button type="submit" disabled={form.processing}>Save Decision</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></div>
                 </form>

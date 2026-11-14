@@ -70,7 +70,7 @@ class FeedingController extends Controller
                 $ids = collect(array_keys($m['lines']))->merge($rows->keys())->unique();
 
                 return [
-                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'Pen', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'], 'onMilk' => $m['onMilk'], 'auto' => $m['auto'],
+                    'id' => $penId, 'name' => $pens[$penId]?->fullName() ?? 'PEN', 'shed' => $pens[$penId]?->shed?->name, 'headcount' => $m['headcount'], 'unplanned' => $m['unplanned'], 'noWeight' => $m['noWeight'], 'onMilk' => $m['onMilk'], 'auto' => $m['auto'],
                     'plannedKg' => $m['plannedKg'], 'offeredKg' => round($m['rows']->sum('offered_kg'), 2), 'status' => $m['status'],
                     'balance' => $m['balance']['state'], 'diff' => $m['balance']['diff'], 'minKg' => $m['minKg'], 'maxKg' => $m['maxKg'],
                     'day' => $this->dayBalance($meals),

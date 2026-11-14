@@ -85,7 +85,7 @@ class WelfareController extends Controller
             'behaviour' => ['required', Rule::in(array_keys(WelfareCheck::BEHAVIOUR))], 'injury' => ['required', Rule::in(array_keys(WelfareCheck::INJURY))],
             'lameness' => ['required', 'integer', 'between:0,3'], 'pain' => ['boolean'], 'notes' => ['nullable', 'string', 'max:500'],
             'next_check_on' => ['nullable', 'date', 'after:checked_on'],
-        ], [], ['animal_id' => 'goat or pen']);
+        ], [], ['animal_id' => 'goat or PEN']);
         $issue = ! empty($data['pain']) || $data['injury'] !== 'none' || $data['lameness'] >= 2 || $data['behaviour'] !== 'normal' || (($data['bcs'] ?? 3) <= 1);
         $by = $request->user()->name;
         $case = DB::transaction(function () use ($data, $issue, $by) {
@@ -117,7 +117,7 @@ class WelfareController extends Controller
             'animal_id' => ['nullable', 'required_without:pen_id', 'exists:animals,id'], 'pen_id' => ['nullable', 'exists:pens,id'],
             'issue' => ['required', Rule::in(array_keys(WelfareCase::ISSUES))], 'severity' => ['required', Rule::in(array_keys(WelfareCase::SEVERITY))],
             'triage' => ['nullable', 'string', 'max:1000'],
-        ], [], ['animal_id' => 'goat or pen']);
+        ], [], ['animal_id' => 'goat or PEN']);
         $case = DB::transaction(fn () => $this->openCase($data['animal_id'] ?? null, $data['pen_id'] ?? null, $data['issue'], $data['severity'], $data['triage'] ?? null, $request->user()->name));
 
         return back()->with('success', "Welfare case {$case->label()} opened.");

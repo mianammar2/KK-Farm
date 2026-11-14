@@ -173,7 +173,7 @@ class ShedController extends Controller
         $data = $this->penData($request, $shed);
 
         $shed->pens()->create($data);
-        Farm::log($request->user(), "Added pen {$shed->name}-{$data['name']}", '/sheds');
+        Farm::log($request->user(), "Added PEN {$shed->name}-{$data['name']}", '/sheds');
 
         return back()->with('success', "{$shed->name}-{$data['name']} added.");
     }
@@ -183,11 +183,11 @@ class ShedController extends Controller
         abort_unless($request->user()->passes('manage_sheds'), 403);
         $data = $this->penData($request, $pen->shed, $pen);
         if ($data['capacity'] !== null && $data['capacity'] < $pen->animals()->active()->count()) {
-            throw ValidationException::withMessages(['capacity' => 'Capacity is lower than the goats already in this pen.']);
+            throw ValidationException::withMessages(['capacity' => 'Capacity is lower than the goats already in this PEN.']);
         }
 
         $pen->update($data);
-        Farm::log($request->user(), "Updated pen {$pen->fullName()}", '/sheds');
+        Farm::log($request->user(), "Updated PEN {$pen->fullName()}", '/sheds');
 
         return back()->with('success', "{$pen->fullName()} saved.");
     }
@@ -206,7 +206,7 @@ class ShedController extends Controller
             }],
             'purpose' => ['required', 'string', 'max:80'],
             'capacity' => ['nullable', 'integer', 'min:1', 'max:5000'],
-        ], ['name.required' => $area ? 'Enter the open area number, e.g. 1 for OA01.' : 'Enter the pen number, e.g. 1 for P01.']) + ['capacity' => null] + ($pen ? [] : ['kind' => $area ? 'open_area' : 'pen']);
+        ], ['name.required' => $area ? 'Enter the open area number, e.g. 1 for OA01.' : 'Enter the PEN number, e.g. 1 for P01.']) + ['capacity' => null] + ($pen ? [] : ['kind' => $area ? 'open_area' : 'pen']);
     }
 
     public function transfer(Request $request): RedirectResponse

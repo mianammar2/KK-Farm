@@ -22,7 +22,7 @@ final class HerdStats
         'kid_female' => 'Female Kids', 'kid_male' => 'Male Kids', 'grower_female' => 'Female Growers', 'grower_male' => 'Male Growers',
         'adult_female' => 'Adult Females', 'adult_male' => 'Adult Males', 'age_unknown_female' => 'Females, Age Not Known', 'age_unknown_male' => 'Males, Age Not Known',
         // Not CEO categories, but filters the dashboard links to.
-        'attention' => 'Need attention', 'not_improving' => 'On Watch: not improving', 'no_recheck' => 'On Watch: waiting for a recheck', 'improving' => 'On Watch: improving', 'recovered' => 'Recovered (off Watch, last 14 days)', 'no_pen' => 'Not in a pen', 'no_weight' => 'No weight yet', 'newborn' => 'Newborns to complete', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data', 'no_stage' => 'No age stage (no birth date)', 'no_stage_female' => 'Females with no age stage', 'no_stage_male' => 'Males with no age stage',
+        'attention' => 'Need attention', 'not_improving' => 'On Watch: not improving', 'no_recheck' => 'On Watch: waiting for a recheck', 'improving' => 'On Watch: improving', 'recovered' => 'Recovered (off Watch, last 14 days)', 'no_pen' => 'Not in a PEN', 'no_weight' => 'No weight yet', 'newborn' => 'Newborns to complete', 'age_conflict' => 'Birth date does not fit its category', 'missing' => 'Missing data', 'no_stage' => 'No age stage (no birth date)', 'no_stage_female' => 'Females with no age stage', 'no_stage_male' => 'Males with no age stage',
     ];
 
     /** D-123: labels for the class_* filters (/goats?show=class_breeding_female). */

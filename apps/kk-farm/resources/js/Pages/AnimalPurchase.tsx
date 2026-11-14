@@ -32,7 +32,7 @@ export default function AnimalPurchase(p: Props) {
     return (
         <>
             <Head title="Goat Purchase Lots" />
-            <PageHeader title="Goat Purchase Lots" description={`Purchase request → approval → receive, count and inspect → Animal IDs and RFID → dedicated quarantine pen (${p.quarantineDays} days) → vet clearance → herd. No mixing with the herd before clearance; each goat keeps its lot and cost.`} />
+            <PageHeader title="Goat Purchase Lots" description={`Purchase request → approval → receive, count and inspect → Animal IDs and RFID → dedicated quarantine PEN (${p.quarantineDays} days) → vet clearance → herd. No mixing with the herd before clearance; each goat keeps its lot and cost.`} />
             <StatRow>
                 <Stat label="In quarantine now" value={p.kpi.inQuarantine} />
                 <Stat label="Intake rejection" value={p.kpi.rejection === null ? '—' : `${p.kpi.rejection}%`} note="Goats rejected at inspection" />
@@ -140,7 +140,7 @@ function Receive({ l, pens, breeds, options, canTag, close }: Props & { l: Lot; 
         <div className="mt-2 space-y-3 rounded-tile bg-glaze p-3">
             <div className="grid gap-2 sm:grid-cols-3">
                 <Field label="Received on" error={e.received_on}><input type="date" max={today()} className="field" value={form.data.received_on} onChange={(x) => form.setData('received_on', x.target.value)} /></Field>
-                <Field label="Dedicated quarantine pen" error={e.quarantine_pen_id} hint="Empty or holding only quarantined goats"><select className="field" value={form.data.quarantine_pen_id} onChange={(x) => form.setData('quarantine_pen_id', x.target.value)}><option value="">Choose…</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}{p.biosecure ? ' (biosecurity)' : ''}{p.goats ? ` · ${p.goats} in quarantine` : ' · empty'}</option>)}</select></Field>
+                <Field label="Dedicated quarantine PEN" error={e.quarantine_pen_id} hint="Empty or holding only quarantined goats"><select className="field" value={form.data.quarantine_pen_id} onChange={(x) => form.setData('quarantine_pen_id', x.target.value)}><option value="">Choose…</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}{p.biosecure ? ' (biosecurity)' : ''}{p.goats ? ` · ${p.goats} in quarantine` : ' · empty'}</option>)}</select></Field>
                 <Field label="Paid to seller (PKR)" error={e.paid} hint="After any rejected goats"><input type="number" min={0} className="field" value={form.data.paid} onChange={(x) => form.setData('paid', x.target.value)} /></Field>
                 <Field label="Transport (PKR)" error={e.transport}><input type="number" min={0} className="field" value={form.data.transport} onChange={(x) => form.setData('transport', x.target.value)} /></Field>
                 <Field label="Supplier bill"><select className="field" value={form.data.bill_paid ? 'paid' : 'owed'} onChange={(x) => form.setData('bill_paid', x.target.value === 'paid')}><option value="owed">Owed (pay later)</option><option value="paid">Paid now</option></select></Field>

@@ -83,7 +83,7 @@ final class QualityCases
             }
         }
         if ($kind === 'isolate' && $case->animal) {
-            self::task("Isolate {$case->animal->farm_number} (quality {$case->label()})", 'high', 'Veterinary', 'Move to the isolation pen and assess under the vet plan as the vet decides.', $case, $case->animal_id);
+            self::task("Isolate {$case->animal->farm_number} (quality {$case->label()})", 'high', 'Veterinary', 'Move to the isolation PEN and assess under the vet plan as the vet decides.', $case, $case->animal_id);
         }
 
         return $hold;

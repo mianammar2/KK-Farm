@@ -21,17 +21,17 @@ export default function Housing(p: Props) {
     const open = p.cleanings.filter((c) => !c.verifiedBy).length;
     return (
         <>
-            <Head title="Pen Status & Cleaning" />
-            <PageHeader title="Pen Status, Capacity & Cleaning" description="Only active pens take goats. A full pen refuses a move unless the owner or manager authorises it with a reason; care moves (maternity, isolation, welfare, kid care) are never stopped. A deep clean or disinfection empties and closes the pen until someone else verifies it." />
+            <Head title="PEN Status & Cleaning" />
+            <PageHeader title="PEN Status, Capacity & Cleaning" description="Only active PENs take goats. A full PEN refuses a move unless the owner or manager authorises it with a reason; care moves (maternity, isolation, welfare, kid care) are never stopped. A deep clean or disinfection empties and closes the PEN until someone else verifies it." />
             <StatRow>
-                <Stat label="Occupancy" value={p.kpi.occupancy === null ? '—' : `${p.kpi.occupancy}%`} note="Of pens with a capacity" />
-                <Stat label="Full pens" value={p.kpi.full} />
+                <Stat label="Occupancy" value={p.kpi.occupancy === null ? '—' : `${p.kpi.occupancy}%`} note="Of PENs with a capacity" />
+                <Stat label="Full PENs" value={p.kpi.full} />
                 <Stat label="Over capacity" value={p.kpi.over} tone={p.kpi.over ? 'alert' : undefined} />
                 <Stat label="Closed or cleaning" value={p.kpi.closed} />
                 <Stat label="Cleanings to verify" value={p.kpi.toVerify} tone={p.kpi.toVerify ? 'alert' : undefined} />
             </StatRow>
             <Tabs value={tab} onChange={setTab} tabs={[
-                { id: 'pens', label: 'Pens', count: p.pens.length || undefined },
+                { id: 'pens', label: 'PENs', count: p.pens.length || undefined },
                 { id: 'cleaning', label: 'Cleaning', count: open || undefined },
                 { id: 'overrides', label: 'Capacity Overrides', count: p.overrides.length || undefined },
             ]} />
@@ -45,8 +45,8 @@ export default function Housing(p: Props) {
 function Pens(p: Props) {
     const [shown, more] = useFive(p.pens, 30);
     return (
-        <Panel flush title="Pens" description="Headcount comes from movements. Set a pen's capacity on Farms, Units & Pens.">
-            {p.pens.length ? <ul className="divide-y divide-rule">{shown.map((pen) => <PenItem key={pen.id} pen={pen} {...p} />)}</ul> : <Empty title="No pens yet" />}
+        <Panel flush title="PENs" description="Headcount comes from movements. Set a PEN's capacity on Farms, Units & PENs.">
+            {p.pens.length ? <ul className="divide-y divide-rule">{shown.map((pen) => <PenItem key={pen.id} pen={pen} {...p} />)}</ul> : <Empty title="No PENs yet" />}
             {more}
         </Panel>
     );
@@ -85,8 +85,8 @@ function PenItem({ pen, options, canSupervise }: Props & { pen: PenRow }) {
                     <Field label="Cleaning" error={e.kind}><select className="field" value={cl.data.kind} onChange={(x) => cl.setData('kind', x.target.value)}>{Object.entries(options.kinds).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Disinfectant" error={e.disinfectant}><input className="field" value={cl.data.disinfectant} onChange={(x) => cl.setData('disinfectant', x.target.value)} /></Field>
                     <Field label="Notes" error={e.notes}><input className="field" value={cl.data.notes} onChange={(x) => cl.setData('notes', x.target.value)} /></Field>
-                    <Button disabled={cl.processing} onClick={() => cl.post(`/housing/pens/${pen.id}/clean`, { preserveScroll: true, onSuccess: () => { cl.reset(); setMode(null); } })}>{cl.data.kind === 'routine' ? 'Record' : 'Close pen & start'}</Button>
-                    {cl.data.kind !== 'routine' ? <p className="text-xs text-ink-soft sm:col-span-4">The pen must be empty. It stays closed until the cleaning is finished and verified by someone else.</p> : null}
+                    <Button disabled={cl.processing} onClick={() => cl.post(`/housing/pens/${pen.id}/clean`, { preserveScroll: true, onSuccess: () => { cl.reset(); setMode(null); } })}>{cl.data.kind === 'routine' ? 'Record' : 'Close PEN & start'}</Button>
+                    {cl.data.kind !== 'routine' ? <p className="text-xs text-ink-soft sm:col-span-4">The PEN must be empty. It stays closed until the cleaning is finished and verified by someone else.</p> : null}
                 </div>
             ) : null}
         </li>
@@ -96,8 +96,8 @@ function PenItem({ pen, options, canSupervise }: Props & { pen: PenRow }) {
 function Cleanings(p: Props) {
     const [shown, more] = useFive(p.cleanings, 20);
     return (
-        <Panel flush title="Cleaning Records" description="Disinfection records the product and its contact time. A supervisor other than the cleaner verifies before the pen opens again.">
-            {p.cleanings.length ? <ul className="divide-y divide-rule">{shown.map((c) => <CleaningItem key={c.id} c={c} {...p} />)}</ul> : <Empty title="No cleanings recorded">Record one from the Pens tab.</Empty>}
+        <Panel flush title="Cleaning Records" description="Disinfection records the product and its contact time. A supervisor other than the cleaner verifies before the PEN opens again.">
+            {p.cleanings.length ? <ul className="divide-y divide-rule">{shown.map((c) => <CleaningItem key={c.id} c={c} {...p} />)}</ul> : <Empty title="No cleanings recorded">Record one from the PENs tab.</Empty>}
             {more}
         </Panel>
     );
@@ -115,7 +115,7 @@ function CleaningItem({ c, options, canSupervise, me }: Props & { c: Cleaning })
                 <span className="text-ink-soft">{c.started}{c.finished && c.finished !== c.started ? ` → ${c.finished}` : ''} · {c.by}</span>
                 {c.disinfectant ? <span className="text-ink-soft">{c.disinfectant}{c.minutes ? `, ${c.minutes} min contact` : ''}</span> : null}
                 {c.verifiedBy ? <Chip className="bg-ok-100 text-ok-700">Verified by {c.verifiedBy}</Chip> : c.finished ? <Chip className="bg-watch-100 text-watch-700">To verify</Chip> : <Chip className="bg-treat-100 text-treat-700">In progress</Chip>}
-                {c.finished && !c.verifiedBy && canSupervise && c.by !== me ? <Button className="ml-auto" disabled={ver.processing} onClick={() => ver.post(`/housing/cleanings/${c.id}/verify`, { preserveScroll: true })}>Verify & open pen</Button> : null}
+                {c.finished && !c.verifiedBy && canSupervise && c.by !== me ? <Button className="ml-auto" disabled={ver.processing} onClick={() => ver.post(`/housing/cleanings/${c.id}/verify`, { preserveScroll: true })}>Verify & open PEN</Button> : null}
             </div>
             {c.notes ? <p className="text-ink-soft">{c.notes}</p> : null}
             {!c.finished ? (
@@ -134,7 +134,7 @@ function CleaningItem({ c, options, canSupervise, me }: Props & { c: Cleaning })
 function Overrides(p: Props) {
     const [shown, more] = useFive(p.overrides, 10);
     return (
-        <Panel flush title="Moves Into Full Pens (90 days)" description="Each was authorised by the owner or manager with a reason (BR-004).">
+        <Panel flush title="Moves Into Full PENs (90 days)" description="Each was authorised by the owner or manager with a reason (BR-004).">
             {p.overrides.length ? <ul className="divide-y divide-rule">{shown.map((o, i) => <li key={i} className="px-4 py-3 text-sm"><span className="font-mono font-semibold">{o.goat}</span> → <span className="font-mono">{o.pen}</span> <span className="text-ink-soft">· {o.on}</span><p className="text-ink-soft">{o.why}</p></li>)}</ul> : <Empty title="No over-capacity moves" />}
             {more}
         </Panel>

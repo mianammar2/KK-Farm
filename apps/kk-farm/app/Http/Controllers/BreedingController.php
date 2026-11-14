@@ -488,7 +488,7 @@ class BreedingController extends Controller
             $changes = ['kid_stage' => 'weaned'];
             $moved = '';
             if (! empty($data['pen_id']) && (int) $data['pen_id'] !== (int) $kid->pen_id) {
-                $from = $kid->pen?->fullName() ?? 'no pen';
+                $from = $kid->pen?->fullName() ?? 'no PEN';
                 $to = Pen::with('shed')->find($data['pen_id']);
                 $changes['pen_id'] = $to->id;
                 Farm::event($kid, 'move', "Moved from {$from} to {$to->fullName()} at weaning", $request->user()->name);

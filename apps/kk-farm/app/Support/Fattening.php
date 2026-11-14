@@ -167,7 +167,7 @@ final class Fattening
         $data = collect(self::batch($b)['members'])->firstWhere('id', $m->id);
         $period = Carbon::parse($m->joined_on)->format('d/m').' to '.now()->format('d/m');
         $basis = $data['feedBasis'] === 'actual'
-            ? "Feed fed in its pens, shared per head per day ({$data['days']} days on feed, {$period})"
+            ? "Feed fed in its PENs, shared per head per day ({$data['days']} days on feed, {$period})"
             : "Estimate: ration {$data['kgDay']} KG/day × feed price × {$data['days']} days on feed ({$period}); no feeding recorded";
 
         return [(int) ($data['feedCost'] ?? 0), $basis, (int) ($data['healthCost'] ?? 0), $data['feedBasis']];

@@ -392,7 +392,7 @@ final class GoatRegistration
             }
             if (! empty($data['pen_id']) && (int) $data['pen_id'] !== (int) $animal->pen_id) {
                 \App\Support\Movements::transfer($animal->fresh('pen.shed'), \App\Models\Pen::with('shed')->findOrFail($data['pen_id']), $user, ['reason' => 'Corrected on the goat record', 'care' => true]);
-                $changes[] = 'Pen moved (see Movements)';
+                $changes[] = 'PEN moved (see Movements)';
             }
             if ($changes) {
                 Farm::event($animal, 'edit', 'Edited: '.implode('; ', $changes), $user->name);

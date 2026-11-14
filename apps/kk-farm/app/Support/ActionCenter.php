@@ -125,16 +125,16 @@ final class ActionCenter
             collect($alerts['edd_passed'] ?? [])->map(fn (Mating $m) => $goat($m->dam, 'expected '.$m->expected_kidding_on->format('d/m'))));
         // D-103: from 10 days before the expected kidding; urgent in the last 3 days.
         $left = fn (Mating $m) => (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false);
-        $add('breeding', 'kidding_imminent', 'Kidding within 3 days', 'critical', 'Move her to the kidding pen, keep watch and have the vet on call.', '/breeding',
+        $add('breeding', 'kidding_imminent', 'Kidding within 3 days', 'critical', 'Move her to the kidding PEN, keep watch and have the vet on call.', '/breeding',
             collect($alerts['kidding_imminent'] ?? [])->map(fn (Mating $m) => $goat($m->dam, ($left($m) === 0 ? 'due today' : "in {$left($m)} day".($left($m) === 1 ? '' : 's')).' · day '.$m->mated_on->diffInDays(now()->startOfDay()).' of pregnancy')));
-        $add('breeding', 'kidding_soon', 'Kidding in the next '.$org->kidding_alert_days.' days', 'warning', 'Prepare the kidding pen, bedding and colostrum; watch the doe.', '/breeding',
+        $add('breeding', 'kidding_soon', 'Kidding in the next '.$org->kidding_alert_days.' days', 'warning', 'Prepare the kidding PEN, bedding and colostrum; watch the doe.', '/breeding',
             collect($alerts['kidding_soon'] ?? [])->map(fn (Mating $m) => $goat($m->dam, "in {$left($m)} days · expected ".$m->expected_kidding_on->format('d/m'))));
 
         $weaningDue = Animal::active()->where('origin', 'born_on_farm')->where(fn ($q) => $q->whereNull('kid_stage')->orWhere('kid_stage', '!=', 'weaned'))
             ->whereNotNull('birth_date')->whereBetween('birth_date', [$today->copy()->subDays($org->weaning_age_days + 90)->toDateString(), $today->copy()->subDays($org->weaning_age_days)->toDateString()])
             ->whereNotIn('id', Weaning::where('status', 'completed')->select('kid_id'))
             ->whereNotIn('id', Weaning::where('status', 'postponed')->where('postponed_to', '>', $todayIso)->select('kid_id'))->orderBy('birth_date')->get();
-        $add('breeding', 'weaning', 'Kids due for weaning', 'warning', 'Wean (weight, method, pen) or postpone with a reason.', '/breeding',
+        $add('breeding', 'weaning', 'Kids due for weaning', 'warning', 'Wean (weight, method, PEN) or postpone with a reason.', '/breeding',
             $weaningDue->map(fn (Animal $a) => $goat($a, $a->birth_date->diffInDays($today).' days old')));
 
         // ---- Feeding ----
@@ -142,12 +142,12 @@ final class ActionCenter
         if ($user->canModule('feeding') && $org->feed_tracking) {
             $board = Feed::board(Feed::now($org)->toDateString(), $org);
             $pens = \App\Models\Pen::with('shed')->whereIn('id', $board->keys())->get()->keyBy('id');
-            $missed = $board->flatMap(fn ($meals, $penId) => collect($meals)->filter(fn ($m) => $m['status'] === 'missed')->map(fn ($m, $meal) => ['text' => $pens[$penId]?->fullName() ?? 'Pen', 'sub' => Feed::MEALS[$meal].' meal', 'url' => '/feeding']))->values();
-            $add('feeding', 'feeding_missed', 'Feeding missed today', 'critical', 'Find out why and feed the pen.', '/feeding', $missed);
+            $missed = $board->flatMap(fn ($meals, $penId) => collect($meals)->filter(fn ($m) => $m['status'] === 'missed')->map(fn ($m, $meal) => ['text' => $pens[$penId]?->fullName() ?? 'PEN', 'sub' => Feed::MEALS[$meal].' meal', 'url' => '/feeding']))->values();
+            $add('feeding', 'feeding_missed', 'Feeding missed today', 'critical', 'Find out why and feed the PEN.', '/feeding', $missed);
             // D-086: a pen given more than its goats need (e.g. goats moved out after it was fed).
             $over = $board->flatMap(fn ($meals, $penId) => collect($meals)->filter(fn ($m) => $m['balance']['state'] === 'over')
-                ->map(fn ($m, $meal) => ['text' => $pens[$penId]?->fullName() ?? 'Pen', 'sub' => Feed::MEALS[$meal].': '.round($m['givenKg'], 2).' KG given, plan '.round($m['plannedKg'], 2).' KG (+'.round($m['balance']['diff'], 2).' KG)', 'url' => '/feeding']))->values();
-            $add('feeding', 'feed_over', 'Pens fed more than they need', 'warning', 'Check the plan after goats moved, or record the leftover.', '/feeding', $over);
+                ->map(fn ($m, $meal) => ['text' => $pens[$penId]?->fullName() ?? 'PEN', 'sub' => Feed::MEALS[$meal].': '.round($m['givenKg'], 2).' KG given, plan '.round($m['plannedKg'], 2).' KG (+'.round($m['balance']['diff'], 2).' KG)', 'url' => '/feeding']))->values();
+            $add('feeding', 'feed_over', 'PENs fed more than they need', 'warning', 'Check the plan after goats moved, or record the leftover.', '/feeding', $over);
             $stock = Feed::stock();
             $low = FeedItem::where('active', true)->orderBy('name')->get()->filter(fn (FeedItem $i) => Feed::stockStatus($stock[$i->id] ?? 0, $i->reorder_level_kg) !== 'ok');
             // D-080: will the feed in store last? Need = every goat's intake % of body weight (or its fixed ration).
@@ -191,7 +191,7 @@ final class ActionCenter
         // ---- Sensors and open areas (D-087) ----
         if ($user->canModule('sensors')) {
             $alerts = \App\Models\SensorAlert::with(['animal', 'pen.shed'])->where('status', 'open')->orderByDesc('id')->get();
-            $add('sensors', 'sensor_alerts', 'Sensor alerts', $alerts->contains('severity', 'critical') ? 'critical' : 'warning', 'Check the goat or the pen; acknowledge or resolve the alert.', '/sensors',
+            $add('sensors', 'sensor_alerts', 'Sensor alerts', $alerts->contains('severity', 'critical') ? 'critical' : 'warning', 'Check the goat or the PEN; acknowledge or resolve the alert.', '/sensors',
                 $alerts->map(fn ($a) => ['text' => $a->title, 'sub' => \App\Models\SensorAlert::KINDS[$a->kind] ?? $a->kind, 'url' => $a->animal_id ? "/goats/{$a->animal_id}" : '/sensors'])->values());
             $quiet = \App\Models\Device::where('status', 'active')->where(fn ($q) => $q->whereNull('last_seen_at')->orWhere('last_seen_at', '<', now()->subHours(\App\Support\Sensors::DEFAULTS['offline_hours'])))->orderBy('code')->get();
             $add('sensors', 'devices_offline', 'Devices not reporting', 'warning', 'Check power and network at the device.', '/sensors',
@@ -206,7 +206,7 @@ final class ActionCenter
         // ---- Herd data ----
         $goats = Animal::with('pen')->active()->orderBy('farm_number')->get();
         $tags = HerdStats::tagsFor($goats);
-        $add('goats', 'missing', 'Goats with missing or wrong data', 'warning', 'Put the goat in a pen, weigh it, or correct its birth date, so feed can be planned.', '/goats?show=missing',
+        $add('goats', 'missing', 'Goats with missing or wrong data', 'warning', 'Put the goat in a PEN, weigh it, or correct its birth date, so feed can be planned.', '/goats?show=missing',
             $goats->filter(fn (Animal $a) => in_array('missing', $tags[$a->id], true))->map(fn (Animal $a) => $goat($a, implode(' · ', array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight', 'age_conflict'], $tags[$a->id]))))));
 
         // ---- Money ----

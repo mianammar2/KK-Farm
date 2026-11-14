@@ -13,7 +13,7 @@ class AnimalMovement extends Model
 
     /** type => [label, leaves the farm, lifecycle status after]. */
     public const TYPES = [
-        'transfer' => ['Pen transfer', false, null],
+        'transfer' => ['PEN transfer', false, null],
         'sale' => ['Sale', true, 'left_farm'],
         'death' => ['Death', true, 'deceased'],
         'culling' => ['Culling', true, 'left_farm'],

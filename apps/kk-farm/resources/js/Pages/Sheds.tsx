@@ -87,7 +87,7 @@ export default function Sheds({ farms, sheds, types, prefix, shedClock }: Props)
             <div>
                 <div className="space-y-4">
 
-                    {shown.length === 0 ? <Empty title={sheds.length ? 'No sheds on this farm yet' : 'No sheds yet'}>{canManage ? 'Add your first shed, then add pens inside it.' : 'The owner or manager adds sheds and pens.'}</Empty> : null}
+                    {shown.length === 0 ? <Empty title={sheds.length ? 'No sheds on this farm yet' : 'No sheds yet'}>{canManage ? 'Add your first shed, then add PENs inside it.' : 'The owner or manager adds sheds and PENs.'}</Empty> : null}
 
                     {/* D-141: each shed drawn as the barn, its pens with their real goats (white female, brown male, red tag unwell). */}
                     {[...active, ...planned].map((shed) => (
@@ -104,7 +104,7 @@ export default function Sheds({ farms, sheds, types, prefix, shedClock }: Props)
                                         <span className="flex flex-wrap gap-1.5">
                                             <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'shed', shed })} aria-label={`Edit ${shed.name}`}><Pencil className="size-3.5" aria-hidden />Edit</button>
                                             <DeleteButton type="shed" id={shed.id} name={shed.name} className="kk-fix kk-lift inline-flex items-center gap-1 text-crit-700" />
-                                            <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'pen', shed })}><Plus className="size-3.5" aria-hidden />Pen</button>
+                                            <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'pen', shed })}><Plus className="size-3.5" aria-hidden />PEN</button>
                                             <button type="button" className="kk-fix kk-lift inline-flex items-center gap-1" onClick={() => setEditing({ kind: 'pen', shed, area: true })}><Plus className="size-3.5" aria-hidden />Open Area</button>
                                         </span>
                                     ) : null}
@@ -117,7 +117,7 @@ export default function Sheds({ farms, sheds, types, prefix, shedClock }: Props)
                                             </div>
                                         )}
                                     </ShedView>
-                                ) : <p className="px-1 text-sm text-[#3d5446]">No pens yet.{canManage ? ' Tap “Pen” to add one.' : ''}</p>}
+                                ) : <p className="px-1 text-sm text-[#3d5446]">No PENs yet.{canManage ? ' Tap “PEN” to add one.' : ''}</p>}
                             </div>
                             <div className="kk-grass" aria-hidden />
                         </section>
@@ -188,7 +188,7 @@ function ShedForm({ shed, farms, sheds, types, prefix, onDone }: { shed?: Shed; 
                     <div className="rounded-tile border border-turq-400 bg-turq-100 px-3 py-2">
                         <div className="font-mono text-lg font-bold text-cobalt-900">{preview}</div>
                         <div className="text-sm text-cobalt-800">{chosen.name} · {chosen.purpose}</div>
-                        {shed && shed.type && (shed.type !== chosen.code || movingFarm) ? <div className="mt-1 text-sm text-watch-700">{shed.name} will be renamed. Its pens and goats stay where they are.</div> : null}
+                        {shed && shed.type && (shed.type !== chosen.code || movingFarm) ? <div className="mt-1 text-sm text-watch-700">{shed.name} will be renamed. Its PENs and goats stay where they are.</div> : null}
                     </div>
                 ) : null}
                 <div className="flex gap-2">
@@ -214,12 +214,12 @@ function PenForm({ shed, pen, area = false, onDone }: { shed: Shed; pen?: Pen; a
     };
 
     return (
-        <Panel title={pen ? `Edit ${pen.name}` : area ? `Add an open area to ${shed.name}` : `Add a pen to ${shed.name}`} description={pen ? (area ? 'Open area' : `${pen.count} goats`) : area ? 'Outdoor space where goats go out and come back in. Their home pen stays the same.' : undefined}>
+        <Panel title={pen ? `Edit ${pen.name}` : area ? `Add an open area to ${shed.name}` : `Add a PEN to ${shed.name}`} description={pen ? (area ? 'Open area' : `${pen.count} goats`) : area ? 'Outdoor space where goats go out and come back in. Their home PEN stays the same.' : undefined}>
             <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
-                <Field label={area ? 'Open area number' : 'Pen number'} error={form.errors.name} hint={penNumber(form.data.name) ? `Full name: ${shed.name}-${penCode(penNumber(form.data.name), area)}` : `Numbers only, e.g. 1 for ${area ? 'OA01' : 'P01'}`}>
+                <Field label={area ? 'Open area number' : 'PEN number'} error={form.errors.name} hint={penNumber(form.data.name) ? `Full name: ${shed.name}-${penCode(penNumber(form.data.name), area)}` : `Numbers only, e.g. 1 for ${area ? 'OA01' : 'P01'}`}>
                     <div className="flex items-stretch">
                         <span className="grid place-items-center whitespace-nowrap rounded-l-[4px] border border-r-0 border-rule bg-cobalt-100 px-2 font-mono text-sm font-semibold text-cobalt-800">{shed.name}-{area ? 'OA' : 'P'}</span>
-                        <input className="field min-w-0 rounded-l-none font-mono" autoFocus inputMode="numeric" value={form.data.name} onChange={(e) => form.setData('name', e.target.value.replace(/[^0-9]/g, ''))} placeholder="01" maxLength={3} required aria-label={`Pen number after ${shed.name}-P`} />
+                        <input className="field min-w-0 rounded-l-none font-mono" autoFocus inputMode="numeric" value={form.data.name} onChange={(e) => form.setData('name', e.target.value.replace(/[^0-9]/g, ''))} placeholder="01" maxLength={3} required aria-label={`PEN number after ${shed.name}-P`} />
                     </div>
                 </Field>
                 <Field label="Used for" error={form.errors.purpose}>
@@ -228,7 +228,7 @@ function PenForm({ shed, pen, area = false, onDone }: { shed: Shed; pen?: Pen; a
                 </Field>
                 <Field label="Capacity (goats)" error={form.errors.capacity} hint="Optional"><input className="field" type="number" inputMode="numeric" min={1} max={5000} value={form.data.capacity} onChange={(e) => form.setData('capacity', e.target.value)} /></Field>
                 <div className="flex gap-2 sm:col-span-3">
-                    <Button type="submit" disabled={form.processing}>{pen ? (area ? 'Save open area' : 'Save pen') : area ? 'Add open area' : 'Add pen'}</Button>
+                    <Button type="submit" disabled={form.processing}>{pen ? (area ? 'Save open area' : 'Save PEN') : area ? 'Add open area' : 'Add PEN'}</Button>
                     {pen ? <DeleteButton type="pen" id={pen.id} name={pen.name} /> : null}
                     <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
                 </div>
@@ -332,7 +332,7 @@ function FarmCard({ farm, sheds, onEdit }: { farm: FarmLoc; sheds: Shed[]; onEdi
     const penOf = new Map(pens.flatMap((p) => p.goats.map((g) => [g.id, p.name] as const)));
     const stats: Array<{ id: Detail; label: string; value: string | number; count: number }> = [
         { id: 'sheds', label: 'Sheds', value: `${inUse.length}${sheds.length > inUse.length ? ` + ${sheds.length - inUse.length} planned` : ''}`, count: sheds.length },
-        { id: 'pens', label: 'Pens', value: pens.length, count: pens.length },
+        { id: 'pens', label: 'PENs', value: pens.length, count: pens.length },
         { id: 'goats', label: 'Goats', value: capacity ? `${goats.length} of ${capacity}` : goats.length, count: goats.length },
         { id: 'sex', label: 'Female / Male', value: `${females} / ${goats.length - females}`, count: goats.length },
         { id: 'attention', label: 'Need Attention', value: watch, count: watch },
@@ -392,7 +392,7 @@ function FarmDetail({ detail, sheds, pens, goats, penOf, onClose }: { detail: De
     type Row = { key: string | number; href?: string; title: string; sub: string; right: ReactNode };
     const goatRow = (g: Goat, right: ReactNode): Row => ({ key: g.id, href: `/goats/${g.id}`, title: g.number, sub: [g.name, penOf.get(g.id)].filter(Boolean).join(' · '), right });
     const rows: Row[] = detail === 'sheds'
-        ? sheds.map((x) => ({ key: x.id, title: x.name, sub: `${x.typeName ?? 'No unit type'}${x.status === 'planned' ? ' · planned' : ''}`, right: `${x.pens.length} pen${x.pens.length === 1 ? '' : 's'} · ${x.pens.reduce((a, p) => a + p.count, 0)} goats` }))
+        ? sheds.map((x) => ({ key: x.id, title: x.name, sub: `${x.typeName ?? 'No unit type'}${x.status === 'planned' ? ' · planned' : ''}`, right: `${x.pens.length} PEN${x.pens.length === 1 ? '' : 's'} · ${x.pens.reduce((a, p) => a + p.count, 0)} goats` }))
         : detail === 'pens'
             ? pens.map((p) => ({ key: p.id, title: p.name, sub: p.purpose, right: `${p.count}${p.capacity ? ` of ${p.capacity}` : ''} goats` }))
             : detail === 'goats'
@@ -401,7 +401,7 @@ function FarmDetail({ detail, sheds, pens, goats, penOf, onClose }: { detail: De
                     ? [...goats].sort((a, b) => a.sex.localeCompare(b.sex) || a.number.localeCompare(b.number)).map((g) => goatRow(g, <Chip className={g.sex === 'female' ? 'bg-manganese-100 text-manganese-600' : 'bg-cobalt-100 text-cobalt-800'}>{g.sex === 'female' ? '♀ Female' : '♂ Male'}</Chip>))
                     : goats.filter((g) => g.health !== 'healthy').sort((a, b) => HEALTH_ORDER[a.health] - HEALTH_ORDER[b.health]).map((g) => goatRow(g, <HealthChip health={g.health} />));
     const [visible, more] = useFive(rows);
-    const title = { sheds: 'Sheds', pens: 'Pens', goats: 'Goats', sex: 'Female and Male', attention: 'Need Attention' }[detail];
+    const title = { sheds: 'Sheds', pens: 'PENs', goats: 'Goats', sex: 'Female and Male', attention: 'Need Attention' }[detail];
 
     return (
         <div className="kk-rise overflow-hidden rounded-tile border border-rule bg-white">
@@ -440,7 +440,7 @@ function PenRollCall({ pen }: { pen: Pen }) {
                         </ul>
                         {more ? <div className="-mx-3 pb-1">{more}</div> : null}
                     </>
-                ) : <p className="pb-3 text-sm text-[#5d7266]">This pen is empty.</p>}
+                ) : <p className="pb-3 text-sm text-[#5d7266]">This PEN is empty.</p>}
             </div>
         </section>
     );

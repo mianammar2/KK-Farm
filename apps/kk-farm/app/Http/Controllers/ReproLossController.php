@@ -51,7 +51,7 @@ class ReproLossController extends Controller
     {
         abort_unless(ReproLoss::canHandle($request->user()), 403, 'Only the vet or trained staff isolate a pregnancy loss.'); // D-266 F-05
         abort_unless($case->status === 'open', 422, 'Already contained.');
-        $data = $request->validate(['pen_id' => ['required', 'exists:pens,id']], [], ['pen_id' => 'isolation pen']);
+        $data = $request->validate(['pen_id' => ['required', 'exists:pens,id']], [], ['pen_id' => 'isolation PEN']);
         DB::transaction(function () use ($case, $data, $request) {
             if ($case->dam?->status === 'active') {
                 Movements::transfer($case->dam, Pen::findOrFail($data['pen_id']), $request->user(), ['care' => true, 'reason' => "Isolation after pregnancy loss {$case->label()}"]);

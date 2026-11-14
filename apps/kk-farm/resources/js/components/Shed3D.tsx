@@ -135,7 +135,7 @@ export default function Shed3D({ pens, meals, clock, selected = null, onPen, pen
     return (
         <>
             <div className="kk-shed3d" ref={frame}>
-                <div ref={host} className="kk-shed3d-view" role="img" aria-label={`${label}: ${pens.length} pens, ${goats} goats`} />
+                <div ref={host} className="kk-shed3d-view" role="img" aria-label={`${label}: ${pens.length} PENs, ${goats} goats`} />
                 {sky ? <SkyBand sky={sky} /> : null}
                 {card ? <GoatCard card={card} onClose={() => setCard(null)} /> : null}
                 {sky ? (
@@ -219,7 +219,7 @@ function GoatCard({ card, onClose }: { card: { x: number; y: number; info: Hover
                 <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-full text-ink-soft hover:bg-glaze"><X className="size-4" aria-hidden /></button>
             </div>
             <dl className="mt-2 space-y-1 text-xs">
-                {row('Pen', d?.pen ?? card.pen)}
+                {row('PEN', d?.pen ?? card.pen)}
                 {d ? <>
                     {row('Age', [d.age, d.ageCode].filter(Boolean).join(' · ') || null)}
                     {row('Roles', d.roles?.length ? d.roles.join(', ') : null)}

@@ -22,7 +22,7 @@ const HINT: Record<Job, string> = {
     weigh: 'Scan, enter the weight, next goat', temp: 'Scan, enter the temperature, next goat', health: 'Scan, mark fine or report a concern', heat: 'Scan a doe in heat, mark the signs',
     mating: 'Choose the buck, then scan each doe', milk: 'Choose the session, then scan each doe', care: 'Choose the vaccine or dewormer, then scan each goat',
     teeth: 'Scan, pick the teeth stage and condition, next goat', height: 'Scan, enter the height in inches, next goat',
-    move: 'Choose a pen, then scan each goat', lookup: 'Scan to see a goat',
+    move: 'Choose a PEN, then scan each goat', lookup: 'Scan to see a goat',
 };
 /** D-255: jobs that need something chosen once for the whole round */
 const SETUP: Job[] = ['weigh', 'temp', 'health', 'heat', 'mating', 'milk', 'care', 'teeth', 'height', 'move']; // every job but Look Up asks its date first (D-255)
@@ -58,7 +58,7 @@ export default function Worker({ jobs, job, goat, unknown, pens, can, myTasks, o
                             <span className="block text-sm text-ink-soft">{HINT[j]}</span>
                         </button>
                     ))}
-                    {can.feed ? <Link href="/feeding?tab=now" className="kk-sign kk-lift min-h-32 flex-col items-start! p-4!"><span className="kk-icon-tile size-14!" aria-hidden><Wheat size={30} /></span><span className="block text-lg font-extrabold text-cobalt-900">Feed Pens</span><span className="block text-sm text-ink-soft">Record feed given and leftover</span></Link> : null}
+                    {can.feed ? <Link href="/feeding?tab=now" className="kk-sign kk-lift min-h-32 flex-col items-start! p-4!"><span className="kk-icon-tile size-14!" aria-hidden><Wheat size={30} /></span><span className="block text-lg font-extrabold text-cobalt-900">Feed PENs</span><span className="block text-sm text-ink-soft">Record feed given and leftover</span></Link> : null}
                     {can.tasks ? <Link href="/tasks?tab=mine" className="kk-sign kk-lift min-h-32 flex-col items-start! p-4!"><span className="kk-icon-tile size-14!" aria-hidden><ClipboardCheck size={30} /></span><span className="block text-lg font-extrabold text-cobalt-900">My Tasks{myTasks ? ` · ${myTasks}` : ''}</span><span className="block text-sm text-ink-soft">Due today or overdue</span></Link> : null}
                 </div>
             </div>
@@ -120,8 +120,8 @@ function Setup({ job, pens, options, onBack }: { job: Job; pens: Props['pens']; 
         <form onSubmit={(ev) => { ev.preventDefault(); f.post('/worker/start'); }} className="space-y-3 rounded-tile border border-rule bg-tile p-4 shadow-tile">
             <Field label="Date" error={e.on} hint="Today unless you are entering an earlier round"><input type="date" className={big} max={today} value={f.data.on} onChange={(x) => f.setData('on', x.target.value)} /></Field>
             {job === 'move' ? <>
-                <Field label="Move goats to which pen?" error={e.pen_id}><select className={big} value={f.data.pen_id} onChange={(x) => f.setData('pen_id', x.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
-                <Field label="Reason" error={e.reason}><input className={big} list="w-reasons" required value={f.data.reason} onChange={(x) => f.setData('reason', x.target.value)} placeholder="Why are they moved?" /><datalist id="w-reasons">{['Weaning', 'Breeding group', 'Pregnant does group', 'Kidding / maternity', 'Sick: isolation', 'Back from isolation', 'Feeding group change', 'Fattening batch', 'Sale preparation', 'Pen cleaning or repair', 'Overcrowding'].map((r) => <option key={r} value={r} />)}</datalist></Field>
+                <Field label="Move goats to which PEN?" error={e.pen_id}><select className={big} value={f.data.pen_id} onChange={(x) => f.setData('pen_id', x.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                <Field label="Reason" error={e.reason}><input className={big} list="w-reasons" required value={f.data.reason} onChange={(x) => f.setData('reason', x.target.value)} placeholder="Why are they moved?" /><datalist id="w-reasons">{['Weaning', 'Breeding group', 'Pregnant does group', 'Kidding / maternity', 'Sick: isolation', 'Back from isolation', 'Feeding group change', 'Fattening batch', 'Sale preparation', 'PEN cleaning or repair', 'Overcrowding'].map((r) => <option key={r} value={r} />)}</datalist></Field>
             </> : null}
             {job === 'mating' ? <>
                 <Field label="Buck" error={e.sire_id} hint="Leave empty if the buck is not known (pasture)"><select className={big} value={f.data.sire_id} onChange={(x) => f.setData('sire_id', x.target.value)}><option value="">Not known</option>{options.bucks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>

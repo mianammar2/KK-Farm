@@ -56,7 +56,7 @@ export default function Checkups({ data }: { data: CheckupData }) {
             <Panel>
                 <div className="flex flex-wrap items-end gap-2">
                     <Field label="Checkup date" hint="Can be an earlier day, e.g. 21 Oct"><input type="date" className="field w-auto" max={TODAY} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-                    <Field label="Pen"><select className="field w-auto" value={pen} onChange={(e) => setPen(e.target.value)}><option value="">All pens</option>{pens.map((p) => <option key={p}>{p}</option>)}</select></Field>
+                    <Field label="PEN"><select className="field w-auto" value={pen} onChange={(e) => setPen(e.target.value)}><option value="">All PENs</option>{pens.map((p) => <option key={p}>{p}</option>)}</select></Field>
                     <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-cobalt-900"><input type="checkbox" className="size-5" checked={dueOnly} onChange={(e) => setDueOnly(e.target.checked)} /> Due only</label>
                     <p className="ml-auto text-sm text-ink-soft"><strong className="text-cobalt-900">{due}</strong> of {data.goats.length} due · every {data.interval} days</p>
                 </div>
@@ -73,7 +73,7 @@ export default function Checkups({ data }: { data: CheckupData }) {
                                         <Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-900 hover:underline">{g.number}</Link>
                                         <span className="ml-2 text-sm text-ink-soft">{g.sex === 'female' ? '♀' : '♂'}{g.name ? ` ${g.name}` : ''}</span>
                                         {g.matedOn ? <span className="ml-2 rounded-full bg-manganese-100 px-2 py-0.5 text-xs font-semibold text-manganese-600">Pregnant · day {Math.round((new Date(`${date}T12:00:00`).getTime() - new Date(`${g.matedOn}T12:00:00`).getTime()) / 86400000)}</span> : null}
-                                        <div className="truncate text-xs text-ink-soft">{g.pen ?? 'No pen'} · {g.last ? <>last {g.last.on} by {g.last.by} <Chip className={OUTCOME[g.last.outcome]?.chip}>{OUTCOME[g.last.outcome]?.label}</Chip></> : 'never checked'}</div>
+                                        <div className="truncate text-xs text-ink-soft">{g.pen ?? 'No PEN'} · {g.last ? <>last {g.last.on} by {g.last.by} <Chip className={OUTCOME[g.last.outcome]?.chip}>{OUTCOME[g.last.outcome]?.label}</Chip></> : 'never checked'}</div>
                                         {g.next || g.recheck ? <div className="text-xs text-ink-soft">{g.recheck ? <span className="font-semibold text-watch-700">Recheck {g.recheck} · </span> : null}{g.next ? `next routine ${g.next}` : ''}</div> : null}
                                     </div>
                                     {data.canCheck ? (

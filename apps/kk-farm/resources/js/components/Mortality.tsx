@@ -104,7 +104,7 @@ function DiseaseForm({ d, categories, onDone }: { d: DiseaseRow | null; categori
                 <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.zoonotic} onChange={(x) => form.setData('zoonotic', x.target.checked)} /> Zoonotic (spreads to people)</label>
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.notifiable} onChange={(x) => form.setData('notifiable', x.target.checked)} /> Notifiable</label>
-                <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.contagious} onChange={(x) => form.setData('contagious', x.target.checked)} /> Contagious (restrict the pen)</label>
+                <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.contagious} onChange={(x) => form.setData('contagious', x.target.checked)} /> Contagious (restrict the PEN)</label>
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> In use</label>
                 <div className="flex gap-2 sm:col-span-3"><Button type="submit" disabled={form.processing}>Save</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
             </form>

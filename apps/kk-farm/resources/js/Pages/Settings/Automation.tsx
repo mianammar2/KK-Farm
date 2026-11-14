@@ -20,7 +20,7 @@ export default function Automation(p: Props) {
     return (
         <>
             <Head title="Automation Rules" />
-            <PageHeader title="Automation Rules" description="The registry asks for origin, breed, gender code, age (birth date, age stage or teeth), purpose, weight and pen. Everything below is filled in by itself from these rules, for every goat at once."
+            <PageHeader title="Automation Rules" description="The registry asks for origin, breed, gender code, age (birth date, age stage or teeth), purpose, weight and PEN. Everything below is filled in by itself from these rules, for every goat at once."
                 actions={<Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link>} />
             <div className="space-y-4">
                 <Panel flush title="1. Gender codes" description="Picking a code in the Gender field fills in gender, purpose and category; for a bought goat with no age yet also the age stage (and so the teeth and an estimated birth date). Changes apply to new registrations.">

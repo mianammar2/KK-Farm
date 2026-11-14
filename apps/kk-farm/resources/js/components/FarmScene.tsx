@@ -56,7 +56,7 @@ function Barn({ shed, index, meals, clock }: { shed: SceneShed; index: number; m
                     <span />
                     <span className="font-semibold text-[#3d5446]"><CountUp to={shed.goats} /> goats{capacity ? <span className="font-normal opacity-75"> of {capacity}</span> : null}</span>
                 </div>
-                <Shed3D pens={pens3d} meals={meals} clock={clock} label={shed.name} penHref={(p) => `/goats?pen=${encodeURIComponent(p.name)}`}>
+                <Shed3D pens={pens3d} meals={meals} clock={clock} label={shed.name} penHref={(p) => `/goats?PEN=${encodeURIComponent(p.name)}`}>
                     {(ok) => ok ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                             {pens.map((p) => <PenChip key={p.id} pen={p} />)}
@@ -181,7 +181,7 @@ export function FigureLegend({ breeds = [], collars = false }: { breeds?: Array<
                 <AgeBadge stage={g.stage} code={g.code} withLabel />
                 <SexIcon sex={g.female ? 'female' : 'male'} label />
                 {g.health ? <HealthChip health={g.health} /> : null}
-                {g.pen ? <span className="text-xs font-semibold">Pen {g.pen}</span> : null}
+                {g.pen ? <span className="text-xs font-semibold">PEN {g.pen}</span> : null}
             </div>
         );
     }

@@ -30,7 +30,7 @@ final class Biosecurity
         $r = self::restrictedPens();
         foreach ([(int) $animal->pen_id => 'out of', (int) $to->id => 'into'] as $pen => $dir) {
             if (isset($r[$pen])) {
-                $name = Pen::find($pen)?->fullName() ?? 'this pen';
+                $name = Pen::find($pen)?->fullName() ?? 'this PEN';
                 throw ValidationException::withMessages(['to_pen_id' => "{$name} is under movement restriction ({$r[$pen]}). No goat moves {$dir} it until the vet clears the case."]);
             }
         }
@@ -40,7 +40,7 @@ final class Biosecurity
     {
         $r = self::restrictedPens();
         if ($animal->pen_id && isset($r[(int) $animal->pen_id])) {
-            throw ValidationException::withMessages(['type' => "{$animal->farm_number} is in a pen under movement restriction ({$r[(int) $animal->pen_id]}). It cannot be sold or leave for meat until the vet clears the case."]);
+            throw ValidationException::withMessages(['type' => "{$animal->farm_number} is in a PEN under movement restriction ({$r[(int) $animal->pen_id]}). It cannot be sold or leave for meat until the vet clears the case."]);
         }
     }
 }

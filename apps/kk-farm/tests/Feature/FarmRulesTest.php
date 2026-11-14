@@ -402,11 +402,11 @@ class FarmRulesTest extends TestCase
         $this->actingAs($owner)->get('/')->assertInertia(fn (AssertableInertia $page) => $page
             ->where('stats.goats', 3)->where('stats.unwell', 1)->where('stats.noPen', 1)->where('stats.toReview', 1)
             ->has('attention', 1)->where('attention.0.number', 'W-1')
-            ->where('missing', fn ($m) => collect($m)->contains(fn ($x) => $x['number'] === 'L-1' && in_array('Not in a pen', $x['missing'], true) && str_contains($x['source'], 'Born on the farm to H-1'))));
+            ->where('missing', fn ($m) => collect($m)->contains(fn ($x) => $x['number'] === 'L-1' && in_array('Not in a PEN', $x['missing'], true) && str_contains($x['source'], 'Born on the farm to H-1'))));
 
         $this->actingAs($owner)->get('/goats?show=attention')->assertInertia(fn (AssertableInertia $page) => $page
             ->where('goats', fn ($goats) => collect($goats)->filter(fn ($g) => in_array('attention', $g['tags'], true))->pluck('number')->values()->all() === ['W-1'])
-            ->where('showLabels.no_pen', 'Not in a pen'));
+            ->where('showLabels.no_pen', 'Not in a PEN'));
     }
 
     /** D-163: mother and kids move together into the Maternity Unit's Post-Kidding Care pen. */

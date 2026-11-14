@@ -153,7 +153,7 @@ class AnimalPurchaseController extends Controller
             'items.*.breed_id' => ['required', 'exists:breeds,id'], 'items.*.weight_kg' => ['nullable', 'numeric', 'between:0.5,150'],
             'items.*.screening' => ['required', Rule::in(array_keys(AnimalPurchaseItem::SCREENING))], 'items.*.notes' => ['nullable', 'string', 'max:300'],
             'items.*.rfid_epc' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'], 'items.*.tag_id' => ['nullable', 'string', 'max:40'],
-        ], ['items.*.notes.required' => 'Say what is wrong.'], ['quarantine_pen_id' => 'quarantine pen']);
+        ], ['items.*.notes.required' => 'Say what is wrong.'], ['quarantine_pen_id' => 'quarantine PEN']);
         $items = collect($data['items']);
         foreach ($items as $i => $it) {
             if ($it['screening'] !== 'ok' && empty($it['notes'])) {
@@ -177,7 +177,7 @@ class AnimalPurchaseController extends Controller
         $pen = Pen::findOrFail($data['quarantine_pen_id']);
         $others = Animal::active()->where('pen_id', $pen->id)->pluck('id')->all();
         if (array_diff($others, Intake::quarantinedIds())) {
-            throw ValidationException::withMessages(['quarantine_pen_id' => "{$pen->fullName()} holds herd goats. Choose an empty pen or one with only goats in quarantine."]);
+            throw ValidationException::withMessages(['quarantine_pen_id' => "{$pen->fullName()} holds herd goats. Choose an empty PEN or one with only goats in quarantine."]);
         }
         $paid = (int) round($data['paid'] * 100);
         $transport = (int) round(($data['transport'] ?? 0) * 100);

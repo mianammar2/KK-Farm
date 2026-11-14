@@ -115,7 +115,7 @@ function RecordMilk({ today, sessions, does }: Props) {
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm sm:min-w-[36rem]">
-                        <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-2 font-semibold sm:px-4">Doe</th><th className="px-3 font-semibold max-sm:hidden">Pen</th><th className="px-3 font-semibold max-sm:hidden">Day in Milk</th><th className="px-3 font-semibold max-sm:hidden">7-Day Average</th><th className="px-3 text-right font-semibold sm:text-left">Litres</th></tr></thead>
+                        <thead className="text-left text-xs text-ink-soft"><tr><th className="px-3 py-2 font-semibold sm:px-4">Doe</th><th className="px-3 font-semibold max-sm:hidden">PEN</th><th className="px-3 font-semibold max-sm:hidden">Day in Milk</th><th className="px-3 font-semibold max-sm:hidden">7-Day Average</th><th className="px-3 text-right font-semibold sm:text-left">Litres</th></tr></thead>
                         <tbody className="divide-y divide-rule">
                             {eligible.map((d, i) => {
                                 const done = on === today ? d.todayBySession[session] : undefined;

@@ -618,7 +618,7 @@ class GoatController extends Controller
             if (config('kkfarm.demo')) { // D-228: only the demo install says so; the live farm's export is its real register
                 fputcsv($out, ['Synthetic demonstration data']);
             }
-            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Classification code', 'Age stage', 'Teeth', 'Dental condition', 'Role codes', 'Pen', 'Status', 'Health', 'Latest weight (KG)']); // D-227: age stage code
+            fputcsv($out, ['Number', 'Name', 'Sex', 'Breed', 'Born', 'Classification code', 'Age stage', 'Teeth', 'Dental condition', 'Role codes', 'PEN', 'Status', 'Health', 'Latest weight (KG)']); // D-227: age stage code
             Animal::with(['breed', 'pen', 'latestWeight'])->orderBy('farm_number')->each(function (Animal $a) use ($out): void {
                 fputcsv($out, [$a->farm_number, $a->name, $a->sex, $a->breed?->name, $a->birth_date?->toDateString(), $a->classCode(), $a->ageStageCode(), \App\Support\Teeth::code($a->teeth), \App\Support\Teeth::CONDITIONS[$a->dental_condition] ?? null, implode(' ', \App\Support\Designations::codes($a)), $a->pen?->fullName(), $a->status, $a->health_status, $a->latestWeight?->weight_kg]);
             });

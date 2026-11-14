@@ -56,7 +56,7 @@ export default function Tasks({ tasks, departments, users, pens, goats, types, p
                                 { key: 'dueIso', label: 'Due', type: 'date', render: (t) => <span className={t.alert === 'overdue' ? 'font-semibold text-crit-700' : ''}>{t.due}</span> },
                                 { key: 'late', label: 'Days late', type: 'number', total: 'avg', value: (t) => (t.open ? Math.max(0, Math.round((Date.now() - new Date(`${t.dueIso}T23:59:00`).getTime()) / 86400000)) : null) },
                                 { key: 'goat', label: 'Goat', type: 'text' },
-                                { key: 'pen', label: 'Pen', type: 'enum' },
+                                { key: 'pen', label: 'PEN', type: 'enum' },
                                 { key: 'assignee', label: 'Assigned to', type: 'enum' },
                                 { key: 'department', label: 'Department', type: 'enum' },
                                 { key: 'completedBy', label: 'Done by', type: 'enum' },
@@ -130,7 +130,7 @@ function AssignForm({ departments, users, pens, goats, types, priorities, onDone
                 </Field>
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Goat (optional)"><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">None</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
-                    <Field label="Pen (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">None</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                    <Field label="PEN (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">None</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
                 </div>
                 <Field label="Notes"><textarea rows={2} className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                 <Button type="submit" className="w-full" disabled={form.processing}>Assign task</Button>

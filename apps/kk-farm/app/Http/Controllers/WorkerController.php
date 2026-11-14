@@ -37,7 +37,7 @@ class WorkerController extends Controller
         'care' => ['Vaccinate / Deworm', 'health', 'give_care'],
         'teeth' => ['Teeth Check', 'health', 'check_teeth'], // D-262
         'height' => ['Measure Height', 'health', 'record_height'], // D-262
-        'move' => ['Move to a Pen', 'sheds', 'move_goats'],
+        'move' => ['Move to a PEN', 'sheds', 'move_goats'],
         'lookup' => ['Look Up Goats', 'goats', null],
     ];
 

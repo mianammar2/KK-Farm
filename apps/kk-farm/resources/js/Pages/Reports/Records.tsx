@@ -22,7 +22,7 @@ const ABOUT: Record<Kind, string> = {
     weight: 'Every weighing, by date: how many goats, the average, and how many gained or lost since their weighing before.',
     temp: 'Every temperature taken, by date: how many goats, the average, and how many were outside the normal 101.3–103.5 °F.',
     height: 'Every height measured, by date: how many goats, the average, and how many grew.',
-    move: 'Every move between pens, by date: how many goats and where they went.',
+    move: 'Every move between PENs, by date: how many goats and where they went.',
 };
 const fmt = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const signed = (n: number) => `${n > 0 ? '+' : ''}${n}`;
@@ -41,8 +41,8 @@ export default function Records({ kind, kinds, rows }: Props) {
             { key: 'change', label: `Change (${unit})`, type: 'number' as const, total: 'avg' as const, unit, render: (r: Row) => (r.change === null ? <span className="text-ink-faint">First</span> : <span className={tone(r.change, kind)}>{r.change > 0 ? '▲ ' : r.change < 0 ? '▼ ' : ''}{signed(r.change)}</span>) },
             { key: 'days', label: 'Days since last', type: 'number' as const },
         ] : [
-            { key: 'from', label: 'From pen', type: 'enum' as const },
-            { key: 'to', label: 'To pen', type: 'enum' as const },
+            { key: 'from', label: 'From PEN', type: 'enum' as const },
+            { key: 'to', label: 'To PEN', type: 'enum' as const },
             { key: 'reason', label: 'Reason', type: 'text' as const },
         ]),
         ...(kind === 'weight' ? [{ key: 'bcs', label: 'Body score', type: 'number' as const, total: 'avg' as const }] : []),
@@ -51,7 +51,7 @@ export default function Records({ kind, kinds, rows }: Props) {
         { key: 'sex', label: 'Sex', type: 'enum' },
         { key: 'role', label: 'Role', type: 'enum' },
         { key: 'code', label: 'Class code', type: 'enum' },
-        { key: 'pen', label: 'Pen now', type: 'enum' },
+        { key: 'pen', label: 'PEN now', type: 'enum' },
         { key: 'status', label: 'Status', type: 'enum' },
         { key: 'by', label: 'By', type: 'enum' },
     ], [kind, unit]);

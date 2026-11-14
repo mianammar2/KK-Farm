@@ -22,7 +22,7 @@ type Props = {
 
 const pkr = (n: number | null) => (n === null ? '—' : `PKR ${Math.round(n).toLocaleString()}`);
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-const FLOW = ['Group & CP target', 'Pen forecast', 'Stock OK? / Purchase', 'TMR mix (batch)', '3 meals: offered KG', 'Refusals', 'Issue & value', 'Cost to goats', 'ADG / health check', 'Cost per KG gain & margin'];
+const FLOW = ['Group & CP target', 'PEN forecast', 'Stock OK? / Purchase', 'TMR mix (batch)', '3 meals: offered KG', 'Refusals', 'Issue & value', 'Cost to goats', 'ADG / health check', 'Cost per KG gain & margin'];
 
 /** D-192: V3 cross-app journey C, Feed-to-True-Cost (flow 26). */
 export default function FeedCost(p: Props) {
@@ -33,7 +33,7 @@ export default function FeedCost(p: Props) {
     return (
         <>
             <Head title="Feed True Cost" />
-            <PageHeader title="Feed True Cost" description="What the feed really cost per goat and per KG gained: meals offered and refused, cost split to the goats in each pen, weight gain, feed conversion and margin." />
+            <PageHeader title="Feed True Cost" description="What the feed really cost per goat and per KG gained: meals offered and refused, cost split to the goats in each PEN, weight gain, feed conversion and margin." />
             <ol className="mb-3 flex flex-wrap items-center gap-1 text-xs font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
             <div className="mb-3 flex flex-wrap items-end gap-2">
                 <Field label="From"><input type="date" className="field" value={p.period.from} max={p.period.to} onChange={(e) => go(e.target.value, p.period.to)} /></Field>
@@ -41,14 +41,14 @@ export default function FeedCost(p: Props) {
                 <span className="pb-2 text-xs text-ink-soft">Up to 3 months at a time.</span>
             </div>
             <StatRow>
-                <Stat label="Feed cost" value={pkr(t.cost)} note={t.unallocated ? `${pkr(t.unallocated)} not split (empty pen)` : `${t.offered.toLocaleString()} KG offered`} />
+                <Stat label="Feed cost" value={pkr(t.cost)} note={t.unallocated ? `${pkr(t.unallocated)} not split (empty PEN)` : `${t.offered.toLocaleString()} KG offered`} />
                 <Stat label="Cost per KG gained" value={pkr(t.costPerKg)} note={`${t.gain} KG gained`} />
                 <Stat label="Feed conversion" value={t.fcr ?? '—'} note="KG DM per KG gain" tone={t.fcr !== null && t.fcr > t.fcrAlert ? 'alert' : undefined} />
                 <Stat label="Refused / wasted" value={t.refusedPct === null ? '—' : `${t.refusedPct}%`} />
                 <Stat label="CP compliance" value={t.cpCompliance === null ? '—' : `${t.cpCompliance}%`} note="Rations meeting CP target" />
                 <Stat label="Margin over feed" value={pkr(t.margin)} note="Value of gain − feed" tone={t.margin !== null && t.margin < 0 ? 'alert' : 'good'} />
             </StatRow>
-            <Tabs value={tab} onChange={setTab} tabs={[{ id: 'pens', label: 'Pens', count: flagged || undefined }, { id: 'goats', label: 'Per Goat' }, { id: 'stock', label: 'Stock, Purchase & Shrinkage' }, { id: 'rules', label: 'How It Is Worked Out' }]} />
+            <Tabs value={tab} onChange={setTab} tabs={[{ id: 'pens', label: 'PENs', count: flagged || undefined }, { id: 'goats', label: 'Per Goat' }, { id: 'stock', label: 'Stock, Purchase & Shrinkage' }, { id: 'rules', label: 'How It Is Worked Out' }]} />
             {tab === 'pens' ? <Pens {...p} /> : null}
             {tab === 'goats' ? <Goats {...p} /> : null}
             {tab === 'stock' ? <Stock {...p} /> : null}
@@ -60,9 +60,9 @@ export default function FeedCost(p: Props) {
 function Pens({ pens, canReview, totals }: Props) {
     const review = (pen: PenRow) => router.post(`/feed-cost/pens/${pen.id}/review`, { issues: pen.issues.join('; ') }, { preserveScroll: true });
     return (
-        <Panel flush title="Pens" description={`Poor response (feed conversion above ${totals.fcrAlert}, no gain, over 10% refused or sick goats) needs a review of intake, ration and illness.`}>
+        <Panel flush title="PENs" description={`Poor response (feed conversion above ${totals.fcrAlert}, no gain, over 10% refused or sick goats) needs a review of intake, ration and illness.`}>
             {pens.length ? <DataGrid id="feedcost-pens" name="Feed cost by pen" rows={pens} rowKey={(x) => String(x.id)} cols={[
-                { key: 'name', label: 'Pen', type: 'enum', total: 'count', render: (x) => <b>{x.name}</b> },
+                { key: 'name', label: 'PEN', type: 'enum', total: 'count', render: (x) => <b>{x.name}</b> },
                 { key: 'goats', label: 'Goats', type: 'number', total: 'sum', render: (x) => <>{x.goats}{x.weighed < x.goats ? <span className="text-ink-soft"> ({x.weighed} weighed)</span> : null}</> },
                 { key: 'cost', label: 'Feed cost (PKR)', type: 'number', total: 'sum', render: (x) => money(x.cost) },
                 { key: 'costHeadDay', label: 'Cost / head / day', type: 'number', total: 'avg' },
@@ -80,7 +80,7 @@ function Pens({ pens, canReview, totals }: Props) {
 
 function Goats({ goats }: Props) {
     return (
-        <Panel flush title="Feed Cost per Goat" description="Each meal's cost split among the goats in the pen at that meal.">
+        <Panel flush title="Feed Cost per Goat" description="Each meal's cost split among the goats in the PEN at that meal.">
             {goats.length ? <DataGrid id="feedcost-goats" name="Feed cost per goat" rows={goats} rowKey={(g) => g.id} cols={[
                 { key: 'number', label: 'Goat', type: 'text', total: 'count', render: (g) => <span className="inline-flex items-center gap-1"><Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{g.number}</Link>{g.sick ? <Chip className="bg-treat-100 text-treat-700">Sick</Chip> : null}</span> },
                 { key: 'breed', label: 'Breed', type: 'enum' },

@@ -29,7 +29,7 @@ class HomeController extends Controller
             ['/feeding?tab=now', 'Daily Feeding'], ['/feeding?tab=rations', 'Feeding Plans & Rations'], ['/feeding?tab=store', 'Feed Store'],
             ['/fodder?tab=crops', 'Fodder'], ['/tasks?tab=mine', 'My Tasks']]],
         'cleaning' => [['tasks_overdue'], [
-            ['/tasks?tab=mine', 'My Tasks'], ['/housing', 'Pen Status & Cleaning'], ['/environment?tab=sheds', 'Shed Rounds'],
+            ['/tasks?tab=mine', 'My Tasks'], ['/housing', 'PEN Status & Cleaning'], ['/environment?tab=sheds', 'Shed Rounds'],
             ['/inventory?tab=general', 'Cleaning Supplies'], ['/maintenance?tab=jobs', 'Report a Fault']]],
         'finance' => [['tasks_overdue', 'unpaid'], [
             ['/finance', 'Income & Farm Expenses'], ['/sales', 'Sales'], ['/sales/orders?tab=done', 'Invoices & Collections'], ['/purchase', 'Purchase Orders'],

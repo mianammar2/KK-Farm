@@ -179,10 +179,10 @@ export function WasteReport({ data }: { data: WasteReportData }) {
                     <div key={label} className="kk-sack"><span className="kk-sack-tag">{label}</span><span className="kk-lcd self-start text-lg">{kg(v)}</span></div>
                 ))}
             </div>
-            <Panel flush title="By Pen and Feed" description={`Refused + wasted as a share of what was given · ${t.wastePct} % overall`}>
+            <Panel flush title="By PEN and Feed" description={`Refused + wasted as a share of what was given · ${t.wastePct} % overall`}>
                 {data.rows.length ? (
                     <DataGrid id="feed-waste" name="Feed offered refused wasted" rows={data.rows} rowKey={(r) => `${r.pen}|${r.feed}`} cols={[
-                        { key: 'pen', label: 'Pen', type: 'enum', render: (r) => <span className="font-mono">{r.pen}</span> },
+                        { key: 'pen', label: 'PEN', type: 'enum', render: (r) => <span className="font-mono">{r.pen}</span> },
                         { key: 'feed', label: 'Feed', type: 'enum' },
                         { key: 'offered', label: 'Offered KG', type: 'number', total: 'sum' },
                         { key: 'refused', label: 'Refused KG', type: 'number', total: 'sum' },

@@ -45,7 +45,7 @@ export default function FeedRequirement({ req, focusPen = null }: { req: Require
                                 <button type="button" onClick={() => setOpen(isOpen ? 'none' : s.id)} aria-expanded={isOpen} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left hover:bg-glaze">
                                     <span className="min-w-0 flex-1">
                                         <span className="font-mono font-semibold text-cobalt-900">{s.name}</span>
-                                        <span className="block text-xs text-ink-soft">{s.typeName ? `${s.typeName} · ` : ''}{plural(s.count, 'goat', 'goats')} · {s.pens.length} pen{s.pens.length === 1 ? '' : 's'}</span>
+                                        <span className="block text-xs text-ink-soft">{s.typeName ? `${s.typeName} · ` : ''}{plural(s.count, 'goat', 'goats')} · {s.pens.length} PEN{s.pens.length === 1 ? '' : 's'}</span>
                                     </span>
                                     <span className="hidden flex-wrap gap-1 md:flex">{s.feeds.slice(0, 3).map((f) => <span key={f.name} className="rounded-[4px] bg-glaze px-1.5 py-0.5 text-xs text-ink-soft">{f.name} {f.kg} KG</span>)}</span>
                                     <span className="text-right"><span className="block font-bold text-cobalt-900">{s.kgDay} KG/day</span><span className="block text-xs text-ink-soft">{req.supply.cpDay !== null ? `CP ${s.cpDay} KG/day · ` : ''}{s.kgMonth} KG this month{s.cost ? ` · PKR ${s.cost.toLocaleString('en-PK')}/day` : ''}</span></span>

@@ -26,7 +26,7 @@ export default function WeightChange({ rows, since, kpi }: Props) {
         { key: 'breed', label: 'Breed', type: 'enum' },
         { key: 'sex', label: 'Sex', type: 'enum', value: (r) => (r.sex ? r.sex.charAt(0).toUpperCase() + r.sex.slice(1) : null) },
         { key: 'batch', label: 'Batch', type: 'enum' },
-        { key: 'pen', label: 'Pen', type: 'enum' },
+        { key: 'pen', label: 'PEN', type: 'enum' },
         { key: 'fromKg', label: 'From (KG)', type: 'number', value: (r) => (diff(r).kg !== null ? from(r)?.kg ?? null : null), total: 'avg', unit: 'KG' },
         { key: 'fromOn', label: 'From date', type: 'text', value: (r) => (diff(r).kg !== null ? from(r)?.on ?? null : null) },
         { key: 'latestKg', label: 'Latest (KG)', type: 'number', value: (r) => r.latest?.kg ?? null, total: 'avg', unit: 'KG' },

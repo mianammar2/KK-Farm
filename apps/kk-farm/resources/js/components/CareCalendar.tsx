@@ -48,7 +48,7 @@ function CalendarCard({ p, isVet }: { p: CalendarRow; isVet: boolean }) {
                         {isVet ? <input type="checkbox" checked={picked.includes(g.id)} onChange={() => toggle(g.id)} aria-label={`Select ${g.number}`} /> : null}
                         <Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{g.number}</Link>
                         <BreedBadge breed={g.breed} />
-                        <span className="text-ink-soft">{g.pen ?? 'No pen'}{g.last ? ` · last ${g.last}` : ' · never given'}</span>
+                        <span className="text-ink-soft">{g.pen ?? 'No PEN'}{g.last ? ` · last ${g.last}` : ' · never given'}</span>
                         <span className={`ml-auto font-semibold ${g.overdue ? 'text-crit-700' : 'text-watch-700'}`}>{g.overdue ? `Overdue since ${g.dueLabel}` : `Due ${g.dueLabel}`}</span>
                     </li>
                 ))}

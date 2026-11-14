@@ -11,7 +11,7 @@ class Weaning extends Model
 
     protected $casts = ['weaned_on' => 'date', 'postponed_to' => 'date', 'weight_kg' => 'float'];
 
-    public const METHODS = ['gradual' => 'Gradual', 'separate_pen' => 'Separate pen', 'other' => 'Other'];
+    public const METHODS = ['gradual' => 'Gradual', 'separate_pen' => 'Separate PEN', 'other' => 'Other'];
 
     public function kid()
     {

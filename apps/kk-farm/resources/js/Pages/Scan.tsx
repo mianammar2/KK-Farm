@@ -129,7 +129,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                             goat.can?.health && gates.includes('health_entry') ? { href: 'entry', label: 'New health entry', icon: <ClipboardPlus size={18} aria-hidden /> } : null,
                             goat.can?.health && gates.includes('report_concern') ? { href: 'concern', label: 'Report concern', icon: <TriangleAlert size={18} aria-hidden /> } : null,
                             goat.can?.weigh ? { href: 'weight', label: 'Add weight', icon: <Scale size={18} aria-hidden /> } : null,
-                            goat.can?.move ? { href: 'move', label: 'Move pen', icon: <MoveRight size={18} aria-hidden /> } : null,
+                            goat.can?.move ? { href: 'move', label: 'Move PEN', icon: <MoveRight size={18} aria-hidden /> } : null,
                             { href: '', label: 'Open record', icon: <FileText size={18} aria-hidden /> },
                         ].filter(Boolean).map((a) => (
                             <Link key={a!.label} href={`/goats/${goat.id}${a!.href ? `?do=${a!.href}` : ''}`}

@@ -177,8 +177,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                     <select aria-label="Gender" value={sex} onChange={(e) => setSex(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">All genders</option><option value="female">Female</option><option value="male">Male</option>
                     </select>
-                    <select aria-label="Pen" value={pen} onChange={(e) => setPen(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
-                        <option value="">All pens</option>
+                    <select aria-label="PEN" value={pen} onChange={(e) => setPen(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                        <option value="">All PENs</option>
                         {pens.map((p) => <option key={p.id} value={p.name}>{p.name}: {p.purpose}</option>)}
                     </select>
                     <select aria-label="Health" value={health} onChange={(e) => setHealth(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
@@ -199,7 +199,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 ) : view === 'table' ? (
                     <div className="overflow-x-auto">
                         <table className="data-table min-w-[900px]">
-                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="Pen" /><th>Status</th><th>Current Tag</th></tr></thead>
+                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="PEN" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
@@ -261,7 +261,7 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
                 <Field label="Breed" error={form.errors.breed_id}><select className="field" value={form.data.breed_id} onChange={(e) => form.setData('breed_id', e.target.value)}>{Object.entries(breeds).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field>
                 <Field label="Birth date" error={form.errors.birth_date}><input type="date" className="field" value={form.data.birth_date} onChange={(e) => form.setData('birth_date', e.target.value)} /></Field>
                 <Field label="Origin" error={form.errors.origin}><select className="field" value={form.data.origin} onChange={(e) => form.setData('origin', e.target.value)}><option value="purchased">Purchased</option><option value="born_on_farm">Born on farm</option></select></Field>
-                <Field label="Pen" error={form.errors.pen_id}><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</select></Field>
+                <Field label="PEN" error={form.errors.pen_id}><select className="field" value={form.data.pen_id} onChange={(e) => form.setData('pen_id', e.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</select></Field>
                 <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-3"><input type="checkbox" className="size-4 accent-turq-700" checked={form.data.birth_date_is_estimate} onChange={(e) => form.setData('birth_date_is_estimate', e.target.checked)} /> Birth date is an estimate</label>
                 <div className="flex gap-2 sm:col-span-2 lg:col-span-3"><Button type="submit" disabled={form.processing}>Register goat</Button><Button variant="quiet" onClick={onDone}>Cancel</Button></div>
             </form>

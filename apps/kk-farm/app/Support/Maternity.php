@@ -22,8 +22,8 @@ final class Maternity
     /** pen code => [name, purpose, capacity] */
     public const PENS = [
         'PKU-01' => ['Pre-Kidding Unit', 'Does approaching delivery', 10],
-        'KDP-01' => ['Kidding Pen', 'Individual delivery enclosure', 2],
-        'KDP-02' => ['Kidding Pen', 'Individual delivery enclosure', 2],
+        'KDP-01' => ['Kidding PEN', 'Individual delivery enclosure', 2],
+        'KDP-02' => ['Kidding PEN', 'Individual delivery enclosure', 2],
         'PCU-01' => ['Post-Kidding Care Unit', 'Mothers and newborn kids after delivery', 20],
         'NCU-01' => ['Neonatal Care Unit', 'Newborn kids needing special care', 10],
         'ISO-01' => ['Maternity Isolation', 'Does after an abortion or early loss, apart from mothers and kids', 4],

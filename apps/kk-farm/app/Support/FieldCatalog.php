@@ -82,7 +82,7 @@ final class FieldCatalog
             // D-091: arrival check, saved as a health record (and the body score with the first weighing).
             ['key' => 'body_score', 'label' => 'Body Condition (1–5)', 'type' => 'select', 'section' => 'Status'],
             ['key' => 'temperature_f', 'label' => 'Body Temperature (°F)', 'type' => 'number', 'section' => 'Status', 'help' => 'Normal 101.3–103.5 °F. Required for a pregnant goat. Outside normal, the vet is alerted.'], // D-093
-            ['key' => 'pen_id', 'label' => 'Shed / Pen', 'type' => 'lookup', 'section' => 'Housing', 'required' => true],
+            ['key' => 'pen_id', 'label' => 'Shed / PEN', 'type' => 'lookup', 'section' => 'Housing', 'required' => true],
             ['key' => 'ownership', 'label' => 'Ownership', 'type' => 'select', 'section' => 'Ownership', 'active' => false], // D-066
             ['key' => 'name', 'label' => 'Name (optional)', 'type' => 'text', 'section' => 'Notes'], // D-096: goats are known by their Tag ID
             ['key' => 'notes', 'label' => 'Notes', 'type' => 'long_text', 'section' => 'Notes'],

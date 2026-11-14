@@ -55,7 +55,7 @@ class HousingController extends Controller
         abort_if($pen->status === 'cleaning', 422, 'Finish and verify the cleaning first.');
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'maintenance', 'closed'])], 'reason' => ['nullable', 'required_unless:status,active', 'string', 'max:300']]);
         if ($data['status'] === 'closed' && $pen->animals()->active()->exists()) {
-            throw ValidationException::withMessages(['status' => 'Move the goats out before closing the pen.']);
+            throw ValidationException::withMessages(['status' => 'Move the goats out before closing the PEN.']);
         }
         $pen->update(['status' => $data['status'], 'status_reason' => $data['status'] === 'active' ? null : $data['reason'], 'status_by' => $request->user()->name, 'status_at' => now()]);
 
@@ -91,7 +91,7 @@ class HousingController extends Controller
         }
         $cleaning->update(array_filter($data, fn ($v) => $v !== null) + ['finished_at' => now()]);
 
-        return back()->with('success', 'Cleaning finished. Someone else verifies it before the pen opens.');
+        return back()->with('success', 'Cleaning finished. Someone else verifies it before the PEN opens.');
     }
 
     /** Verification by a supervisor other than the cleaner; the pen opens again. */
@@ -107,6 +107,6 @@ class HousingController extends Controller
             }
         });
 
-        return back()->with('success', 'Verified. The pen is open again.');
+        return back()->with('success', 'Verified. The PEN is open again.');
     }
 }

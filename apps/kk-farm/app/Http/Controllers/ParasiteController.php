@@ -59,7 +59,7 @@ class ParasiteController extends Controller
             'reason' => ['required', Rule::in(array_keys(ParasiteSample::REASONS))], 'epg' => ['nullable', 'required_without:famacha', 'integer', 'between:0,200000'],
             'famacha' => ['nullable', 'integer', 'between:1,5'], 'bcs' => ['nullable', 'integer', 'between:1,5'], 'lab' => ['nullable', 'string', 'max:120'],
             'cost' => ['nullable', 'numeric', 'min:0'], 'retest_of_id' => ['nullable', 'required_if:reason,retest', 'exists:parasite_samples,id'], 'notes' => ['nullable', 'string', 'max:500'],
-        ], [], ['animal_id' => 'goat or pen', 'epg' => 'egg count (EPG)', 'retest_of_id' => 'sample being retested']);
+        ], [], ['animal_id' => 'goat or PEN', 'epg' => 'egg count (EPG)', 'retest_of_id' => 'sample being retested']);
         $user = $request->user();
         $s = DB::transaction(function () use ($data, $user) {
             DB::statement('LOCK TABLE parasite_samples IN SHARE ROW EXCLUSIVE MODE');
@@ -106,7 +106,7 @@ class ParasiteController extends Controller
         if ($data['decision'] === 'treat') {
             $allowed = $sample->animal_id ? [$sample->animal_id] : Animal::active()->where('pen_id', $sample->pen_id)->pluck('id')->all();
             if ($goats->count() !== count($data['animal_ids']) || $goats->pluck('id')->diff($allowed)->isNotEmpty()) {
-                throw ValidationException::withMessages(['animal_ids' => 'Treat only goats from this sample'.($sample->pen_id ? "'s pen" : '').'.']);
+                throw ValidationException::withMessages(['animal_ids' => 'Treat only goats from this sample'.($sample->pen_id ? "'s PEN" : '').'.']);
             }
         }
         $short = 0.0;

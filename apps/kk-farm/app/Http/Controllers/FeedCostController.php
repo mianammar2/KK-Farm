@@ -130,8 +130,8 @@ class FeedCostController extends Controller
     {
         abort_unless(in_array($request->user()->role, ['ceo', 'manager', 'vet', 'feeding'], true), 403);
         $data = $request->validate(['issues' => ['nullable', 'string', 'max:400']]);
-        abort_if(Task::where('pen_id', $pen->id)->where('title', "Feed response review: {$pen->fullName()}")->whereIn('status', Task::OPEN)->exists(), 422, 'A review for this pen is already open.');
-        foreach (['Feeding' => 'Check intake and refusals, and adjust the ration plan if needed.', 'Veterinary' => 'Check the pen for illness or parasites that would explain the poor response.'] as $dept => $what) {
+        abort_if(Task::where('pen_id', $pen->id)->where('title', "Feed response review: {$pen->fullName()}")->whereIn('status', Task::OPEN)->exists(), 422, 'A review for this PEN is already open.');
+        foreach (['Feeding' => 'Check intake and refusals, and adjust the ration plan if needed.', 'Veterinary' => 'Check the PEN for illness or parasites that would explain the poor response.'] as $dept => $what) {
             Task::create(['title' => "Feed response review: {$pen->fullName()}", 'type' => $dept === 'Feeding' ? 'feeding' : 'health', 'priority' => 'medium', 'status' => 'open',
                 'due_on' => now()->addDays(2)->toDateString(), 'pen_id' => $pen->id, 'department_id' => Department::where('name', $dept)->value('id'),
                 'notes' => mb_substr(($data['issues'] ?? '').' '.$what, 0, 500)]);

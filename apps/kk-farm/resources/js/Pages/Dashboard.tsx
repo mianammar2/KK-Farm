@@ -106,7 +106,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
             <FarmStatRow>
                 {/* D-119: a number that is zero is not shown. */}
                 {/* D-165: Total, Healthy, Need Attention, Pregnant */}
-                <FarmStat icon="herd" href="/goats" label="Total goats" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a pen` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
+                <FarmStat icon="herd" href="/goats" label="Total goats" value={stats.goats} note={stats.noPen ? `${plural(stats.noPen, 'goat', 'goats')} not in a PEN` : [stats.does ? plural(stats.does, 'female', 'females') : null, stats.bucks ? plural(stats.bucks, 'male', 'males') : null].filter(Boolean).join(', ')} tone={stats.noPen ? 'alert' : undefined} />
                 {stats.healthy ? <FarmStat icon="healthy" href="/goats?tone=healthy" label="Healthy" value={stats.healthy} note={stats.goats ? `${Math.round((stats.healthy / stats.goats) * 100)}% of the herd` : undefined} tone="good" /> : null}
                 {stats.unwell || stats.overdueCare ? <FarmStat icon="attention" href="/goats?show=attention" label="Need attention" value={stats.unwell} note={stats.overdueCare ? `${plural(stats.overdueCare, 'goat', 'goats')} overdue for care` : 'Sick or on watch'} tone="alert" /> : null}
                 {stats.pregnant ? <FarmStat icon="pregnant" href="/goats?show=pregnant" label="Pregnant" value={stats.pregnant} note={[stats.pregnantNear ? `${stats.pregnantNear} near kidding` : null, stats.awaitingScan ? `${stats.awaitingScan} awaiting scan` : null].filter(Boolean).join(' · ') || 'Confirmed pregnancies'} /> : null}
@@ -128,7 +128,7 @@ export default function Dashboard({ pensSummary, requirement, stats, feeding, he
             {missing.length || charts || kiddings.length ? (
                 <div className="mt-4 grid items-start gap-4 lg:grid-cols-2 lg:[&>*:last-child:nth-child(odd)]:col-span-2">
                     {missing.length ? (
-                <Panel title="Missing data" description="No pen, no weight or a wrong birth date · where each came from" flush
+                <Panel title="Missing data" description="No PEN, no weight or a wrong birth date · where each came from" flush
                     actions={<Link href="/goats?show=missing" className="text-sm font-semibold text-turq-800 hover:underline">Open as table</Link>}>
                     {/* D-138: the farm's to-fix clipboard: yellow ear tags, red pencil circles, a wooden Fix button. */}
                     <div className="kk-clipboard">
@@ -224,7 +224,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
         <Panel title="Feeding today" description={`${kg(feeding.givenKg)} given of ${kg(feeding.plannedKg)} planned · PKR ${feeding.cost.toLocaleString('en-PK')}`}
             actions={<Link href="/feeding" className="text-sm font-semibold text-turq-800 hover:underline">Feed now</Link>}>
             {feeding.lowStock.length ? <p className="kk-paper-note mb-3 text-sm">Low or out of stock: {feeding.lowStock.join(', ')}</p> : null}
-            {feeding.overPens ? <p className="kk-paper-note kk-paper-alert mb-3 text-sm font-semibold">{plural(feeding.overPens, 'pen was', 'pens were')} given more feed today than its goats need now. Plans follow the goats, so a move after feeding shows here.</p> : null}
+            {feeding.overPens ? <p className="kk-paper-note kk-paper-alert mb-3 text-sm font-semibold">{plural(feeding.overPens, 'PEN was', 'PENs were')} given more feed today than its goats need now. Plans follow the goats, so a move after feeding shows here.</p> : null}
             {feeding.pens.length ? (
                 <div className="kk-chalkboard"> {/* D-137: the farm's feeding chalkboard */}
                 {/* Phones and the gun: one row per pen with its three meals side by side. */}
@@ -255,7 +255,7 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                     <table className="w-full min-w-[34rem] text-sm">
                         <thead className="text-left">
                             <tr>
-                                <th className="py-1.5 pr-3 font-semibold">Pen</th>
+                                <th className="py-1.5 pr-3 font-semibold">PEN</th>
                                 {meals.map((m) => <th key={m} className={`px-2 py-1.5 font-semibold ${m === feeding.meal ? 'kk-chalk-now-head' : ''}`}><span className="inline-flex items-center gap-1.5"><MealSun meal={m} />{feeding.meals[m]} <span className="kk-chalk-soft font-normal">{feeding.times[m]}</span></span></th>)}
                             </tr>
                         </thead>
@@ -283,11 +283,11 @@ function FeedingToday({ feeding }: { feeding: Feeding }) {
                 </div>
                 {feeding.pens.length > 5 ? (
                     <button type="button" onClick={() => setAll(!all)} className="kk-chalk-more mt-1 flex w-full items-center justify-center gap-1 rounded-tile py-2 text-sm font-semibold">
-                        <ChevronDown size={15} className={all ? 'rotate-180' : ''} aria-hidden />{all ? 'Show less' : `Show ${feeding.pens.length - 5} more pens`}
+                        <ChevronDown size={15} className={all ? 'rotate-180' : ''} aria-hidden />{all ? 'Show less' : `Show ${feeding.pens.length - 5} more PENs`}
                     </button>
                 ) : null}
                 </div>
-            ) : <p className="text-sm text-ink-soft">No goats in any pen yet.</p>}
+            ) : <p className="text-sm text-ink-soft">No goats in any PEN yet.</p>}
         </Panel>
     );
 }
@@ -366,10 +366,10 @@ type PensSummary = {
 /** D-120: sheds, then their pens with how many goats; a pen opens its goats. Moving goats is on the Sheds page. */
 function PensAtAGlance({ data }: { data: PensSummary }) {
     return (
-        <Panel title="Sheds and Pens" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a pen` : ''}`} className="mt-4" flush
+        <Panel title="Sheds and PENs" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a PEN` : ''}`} className="mt-4" flush
             actions={<Link href="/movements?kind=transfer" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
             <FarmScene sheds={data.sheds} meals={data.meals} clock={data.clock} /> {/* D-133: drawn like the real farm */}
-            {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a pen →</Link> : null}
+            {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a PEN →</Link> : null}
         </Panel>
     );
 }

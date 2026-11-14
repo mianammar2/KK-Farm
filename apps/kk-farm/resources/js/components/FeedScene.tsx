@@ -78,7 +78,7 @@ function Trough({ pen, share, tracking }: { pen: FeedPen; share: number; trackin
                 <span className="kk-icon-tile size-10!" aria-hidden><img src="/icons/mod-feeding.png" alt="" className="size-[86%] object-contain" /></span>
                 <span className="kk-kg-sign"><CountUp to={pen.kgDay} /> KG/day</span>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e9efeb]" role="img" aria-label={`${fill}% of the shed's biggest pen`}>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e9efeb]" role="img" aria-label={`${fill}% of the shed's biggest PEN`}>
                 <div className="kk-grow h-full rounded-full bg-gradient-to-r from-[#12663f] to-[#6fe39a]" style={{ width: `${fill}%` }} />
             </div>
             <span className="mt-1 block text-xs text-[#3d5446]">

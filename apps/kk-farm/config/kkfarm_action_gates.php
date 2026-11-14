@@ -49,7 +49,7 @@ return [
         'record_breeding' => 'Record kidding, kid care and weaning',
         'record_parasite_samples' => 'Record parasite samples',
         'record_feeding' => 'Record feed given and left over',
-        'record_cleaning' => 'Record pen cleaning',
+        'record_cleaning' => 'Record PEN cleaning',
         'manage_milk_lots' => 'Hold or recall milk lots',
     ],
 ];

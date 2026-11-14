@@ -33,11 +33,11 @@ export default function Disease(p: Props) {
     return (
         <>
             <Head title="Disease Control" />
-            <PageHeader title="Disease Control & Recovery" description="Triage reported symptoms, isolate and alert for contagious risk, keep affected pens still until the vet clears them, follow cases to recovery with their true cost, and report outbreaks." />
+            <PageHeader title="Disease Control & Recovery" description="Triage reported symptoms, isolate and alert for contagious risk, keep affected PENs still until the vet clears them, follow cases to recovery with their true cost, and report outbreaks." />
             <ol className="mb-3 flex flex-wrap items-center gap-1 text-xs font-semibold">{FLOW.map((s, i) => <li key={s} className="flex items-center gap-1"><span className="rounded-full bg-glaze px-2 py-0.5 text-ink-soft ring-1 ring-rule">{s}</span>{i < FLOW.length - 1 ? <span className="text-ink-faint">→</span> : null}</li>)}</ol>
             <StatRow>
                 <Stat label="Active cases" value={p.kpi.active} note={p.kpi.emergencies ? `${p.kpi.emergencies} emergencies` : undefined} tone={p.kpi.emergencies ? 'alert' : undefined} />
-                <Stat label="Restricted pens" value={p.kpi.restrictedPens} tone={p.kpi.restrictedPens ? 'alert' : undefined} note="No moves or sales" />
+                <Stat label="Restricted PENs" value={p.kpi.restrictedPens} tone={p.kpi.restrictedPens ? 'alert' : undefined} note="No moves or sales" />
                 <Stat label="Recovery time" value={p.kpi.recoveryDays === null ? '—' : `${p.kpi.recoveryDays} days`} note="90 days" />
                 <Stat label="Attack rate" value={`${p.kpi.attackRate}%`} note="Goats with a case, 90 days" />
                 <Stat label="Average case cost" value={pkr(p.kpi.caseCost)} note="Medicine + lab + labour" />
@@ -45,7 +45,7 @@ export default function Disease(p: Props) {
             </StatRow>
             <Tabs value={tab} onChange={setTab} tabs={[
                 { id: 'triage', label: 'Triage Reports', count: p.concerns.length || undefined }, { id: 'cases', label: 'Active Cases', count: p.cases.length || undefined },
-                { id: 'restricted', label: 'Restricted Pens', count: p.restricted.length || undefined }, { id: 'outbreaks', label: 'Outbreaks', count: p.outbreaks.filter((o) => o.status === 'open').length || undefined },
+                { id: 'restricted', label: 'Restricted PENs', count: p.restricted.length || undefined }, { id: 'outbreaks', label: 'Outbreaks', count: p.outbreaks.filter((o) => o.status === 'open').length || undefined },
                 { id: 'settings', label: 'Cost Settings' },
             ]} />
             {tab === 'triage' ? <Triage {...p} /> : null}
@@ -87,10 +87,10 @@ function TriageForm({ c, diseases, conditions, pens, options, close }: Props & {
                 <datalist id="disease-list">{[...diseases.map((d) => d.name), ...conditions].filter((v, i, a) => a.indexOf(v) === i).map((n) => <option key={n} value={n} />)}</datalist></Field>
             <Field label="Severity" error={e.severity}><select className="field" value={form.data.severity} onChange={(x) => form.setData('severity', x.target.value)}>{Object.entries(options.severity).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Contagion risk" error={e.contagion} hint={known?.notifiable ? 'Notifiable: a reporting task is created' : undefined}><select className="field" value={form.data.contagion} onChange={(x) => form.setData((f) => ({ ...f, contagion: x.target.value, restrict_pen: x.target.value !== 'none' ? true : f.restrict_pen }))}>{Object.entries(options.contagion).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="Isolate now in" error={e.isolate_pen_id ?? e.to_pen_id}><select className="field" value={form.data.isolate_pen_id} onChange={(x) => form.setData('isolate_pen_id', x.target.value)}><option value="">{risky ? 'Choose an isolation pen…' : 'No isolation'}</option>{pens.map((pn) => <option key={pn.id} value={pn.id}>{pn.name}{pn.isolation ? ' (isolation)' : ''}</option>)}</select></Field>
+            <Field label="Isolate now in" error={e.isolate_pen_id ?? e.to_pen_id}><select className="field" value={form.data.isolate_pen_id} onChange={(x) => form.setData('isolate_pen_id', x.target.value)}><option value="">{risky ? 'Choose an isolation PEN…' : 'No isolation'}</option>{pens.map((pn) => <option key={pn.id} value={pn.id}>{pn.name}{pn.isolation ? ' (isolation)' : ''}</option>)}</select></Field>
             <Field label="Symptoms" error={e.symptoms}><input className="field" value={form.data.symptoms} onChange={(x) => form.setData('symptoms', x.target.value)} /></Field>
             <div className="flex flex-col justify-end gap-1 text-sm">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={form.data.restrict_pen} onChange={(x) => form.setData('restrict_pen', x.target.checked)} /> Restrict {c.pen ?? 'the pen'} (no moves or sales)</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={form.data.restrict_pen} onChange={(x) => form.setData('restrict_pen', x.target.checked)} /> Restrict {c.pen ?? 'the PEN'} (no moves or sales)</label>
                 {form.data.contagion !== 'none' ? <label className="flex items-center gap-2"><input type="checkbox" checked={form.data.declare_outbreak} onChange={(x) => form.setData('declare_outbreak', x.target.checked)} /> Declare an outbreak</label> : null}
             </div>
             <div className="flex items-end gap-2 sm:col-span-3"><Button disabled={form.processing} onClick={() => { form.transform((d) => ({ ...d, isolate_pen_id: d.isolate_pen_id || null })); form.post('/disease/triage', { preserveScroll: true, onSuccess: close }); }}><LibIcon name="app-veterinary" size={16} /> {risky ? 'Open Case, Isolate & Alert' : 'Open Veterinary Case'}</Button><Button variant="secondary" onClick={close}>Cancel</Button></div>
@@ -153,7 +153,7 @@ function CaseItem({ c, pens, options, isVet }: Props & { c: CaseRow }) {
                 <div className="flex items-end gap-2"><Button disabled={ext.processing} onClick={() => ext.post(`/disease/cases/${c.id}/extend`, { preserveScroll: true, onSuccess: done })}>Save</Button><Button variant="secondary" onClick={done}>Cancel</Button></div>
             </div> : null}
             {mode === 'clear' ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4">
-                <Field label="Move to suitable housing" error={clr.errors.to_pen_id ?? (clr.errors as Record<string, string>).to_pen_id}><select className="field" value={clr.data.to_pen_id} onChange={(x) => clr.setData('to_pen_id', x.target.value)}><option value="">Stay in {c.pen ?? 'current pen'}</option>{pens.filter((pn) => !pn.isolation).map((pn) => <option key={pn.id} value={pn.id}>{pn.name}</option>)}</select></Field>
+                <Field label="Move to suitable housing" error={clr.errors.to_pen_id ?? (clr.errors as Record<string, string>).to_pen_id}><select className="field" value={clr.data.to_pen_id} onChange={(x) => clr.setData('to_pen_id', x.target.value)}><option value="">Stay in {c.pen ?? 'current PEN'}</option>{pens.filter((pn) => !pn.isolation).map((pn) => <option key={pn.id} value={pn.id}>{pn.name}</option>)}</select></Field>
                 <Field label="Labour hours on the case" error={clr.errors.labour_hours}><input type="number" step="0.5" className="field" value={clr.data.labour_hours} onChange={(x) => clr.setData('labour_hours', x.target.value)} /></Field>
                 <Field label="Notes" error={clr.errors.notes}><input className="field" value={clr.data.notes} onChange={(x) => clr.setData('notes', x.target.value)} /></Field>
                 <div className="flex items-end gap-2"><Button disabled={clr.processing} onClick={() => { clr.transform((d) => ({ ...d, to_pen_id: d.to_pen_id || null, labour_hours: d.labour_hours || null })); clr.post(`/disease/cases/${c.id}/clear`, { preserveScroll: true, onSuccess: done }); }}>Clear</Button><Button variant="secondary" onClick={done}>Cancel</Button></div>
@@ -164,8 +164,8 @@ function CaseItem({ c, pens, options, isVet }: Props & { c: CaseRow }) {
 
 function Restricted({ restricted }: Props) {
     return (
-        <Panel flush title="Pens under Movement Restriction" description="No goat moves in or out and none is sold or sent for meat until the vet clears the case. Only the vet moves goats of these pens (for example into isolation).">
-            {restricted.length ? <ul className="divide-y divide-rule">{restricted.map((r) => <li key={r.pen} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm"><Chip className="bg-crit-100 text-crit-700">Restricted</Chip><strong>{r.pen}</strong><span className="text-ink-soft">{r.goats} goats · {r.cases}</span></li>)}</ul> : <Empty title="No pen is restricted" />}
+        <Panel flush title="PENs under Movement Restriction" description="No goat moves in or out and none is sold or sent for meat until the vet clears the case. Only the vet moves goats of these PENs (for example into isolation).">
+            {restricted.length ? <ul className="divide-y divide-rule">{restricted.map((r) => <li key={r.pen} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm"><Chip className="bg-crit-100 text-crit-700">Restricted</Chip><strong>{r.pen}</strong><span className="text-ink-soft">{r.goats} goats · {r.cases}</span></li>)}</ul> : <Empty title="No PEN is restricted" />}
         </Panel>
     );
 }

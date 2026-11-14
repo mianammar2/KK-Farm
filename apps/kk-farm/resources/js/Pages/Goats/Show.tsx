@@ -143,7 +143,7 @@ export default function GoatShow(props: Props) {
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}
                             {fact('Latest gain', last ? <Ticker kg={last.kg} pct={last.pct} days={last.days} perDay={last.perDay} /> : '—')}
-                            {fact('Pen', goat.pen ?? '—')}
+                            {fact('PEN', goat.pen ?? '—')}
                             {fact('RFID tag', tags.find((t) => !t.to)?.code ?? 'No open tag')}
                         </dl>
                         {/* Phones: the everyday actions as one tidy grid of icons; rarer ones as links below it. */}
@@ -198,7 +198,7 @@ export default function GoatShow(props: Props) {
                 {onFarm && goat.origin === 'born_on_farm' && !goat.weight && panel !== 'weight' ? (
                     <div className="flex flex-wrap items-center gap-3 border-t border-rule bg-turq-100/60 px-4 py-3 text-sm">
                         <LibIcon name="cls-kid" size={34} />
-                        <span className="min-w-0 flex-1"><strong className="text-cobalt-900">Newborn: complete its details.</strong> It was added from the kidding record (mother, father, breed, birth date and pen are already filled). Enter the birth weight; add teeth or a photo when ready.</span>
+                        <span className="min-w-0 flex-1"><strong className="text-cobalt-900">Newborn: complete its details.</strong> It was added from the kidding record (mother, father, breed, birth date and PEN are already filled). Enter the birth weight; add teeth or a photo when ready.</span>
                         <Button onClick={() => setPanel('weight')}><LibIcon name="app-growth" size={18} /> Enter birth weight</Button>
                     </div>
                 ) : null}
@@ -458,7 +458,7 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
             <form onSubmit={(e) => { e.preventDefault(); move.post('/sheds/transfer', options); }} className="flex flex-wrap items-end gap-2">
                 <div className="w-64"><Field label="Move to" error={(move.errors as Record<string, string>).to_pen_id}><select className="field" value={move.data.pen_id} onChange={(e) => move.setData('pen_id', e.target.value)}>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}: {p.purpose}</option>)}</select></Field></div>
                 <div className="w-64"><Field label="Reason" error={move.errors.reason}><input className="field" list="move-reasons" required value={move.data.reason} onChange={(e) => move.setData('reason', e.target.value)} placeholder="Why is it moved?" /></Field>
-                    <datalist id="move-reasons">{['Weaning', 'Breeding group', 'Pregnant does group', 'Kidding / maternity', 'Sick: isolation', 'Back from isolation', 'Feeding group change', 'Fattening batch', 'Sale preparation', 'Pen cleaning or repair', 'Overcrowding'].map((r) => <option key={r} value={r} />)}</datalist></div>
+                    <datalist id="move-reasons">{['Weaning', 'Breeding group', 'Pregnant does group', 'Kidding / maternity', 'Sick: isolation', 'Back from isolation', 'Feeding group change', 'Fattening batch', 'Sale preparation', 'PEN cleaning or repair', 'Overcrowding'].map((r) => <option key={r} value={r} />)}</datalist></div>
                 {(move.errors as Record<string, string>).to_pen_id?.includes(' is full') || move.data.capacity_override ? <div className="w-64"><Field label="Over-capacity reason (owner or manager)"><input className="field" value={move.data.capacity_override} onChange={(e) => move.setData('capacity_override', e.target.value)} /></Field></div> : null}
                 <Button type="submit" disabled={move.processing}>Move goat</Button>
             </form>
@@ -511,7 +511,7 @@ function PregnancyPanel({ p }: { p: Pregnancy }) {
             {p.daysLeft !== null && p.daysLeft <= p.alertDays ? (
                 <div role="alert" className={cx('mb-3 flex items-start gap-2 rounded-tile border px-3 py-2 text-sm font-semibold', p.daysLeft <= 3 ? 'border-crit-500 bg-crit-100 text-crit-700' : 'border-watch-400 bg-watch-100 text-watch-700')}>
                     <span className={cx('kk-beat mt-1.5 size-2.5 shrink-0 rounded-full', p.daysLeft <= 3 ? 'bg-crit-500' : 'bg-watch-400')} aria-hidden />
-                    <span>{p.daysLeft < 0 ? `Kidding overdue by ${-p.daysLeft} day${p.daysLeft === -1 ? '' : 's'}: check her now.` : p.daysLeft === 0 ? 'Kidding expected today.' : `Kidding in ${p.daysLeft} day${p.daysLeft === 1 ? '' : 's'}.`} Kidding pen, clean bedding, colostrum ready; watch her closely.</span>
+                    <span>{p.daysLeft < 0 ? `Kidding overdue by ${-p.daysLeft} day${p.daysLeft === -1 ? '' : 's'}: check her now.` : p.daysLeft === 0 ? 'Kidding expected today.' : `Kidding in ${p.daysLeft} day${p.daysLeft === 1 ? '' : 's'}.`} Kidding PEN, clean bedding, colostrum ready; watch her closely.</span>
                 </div>
             ) : null}
             <div className="h-2.5 overflow-hidden rounded-full bg-manganese-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Pregnancy progress">

@@ -29,7 +29,7 @@ final class Movements
             throw ValidationException::withMessages(['animal_id' => "{$animal->farm_number} is no longer on the farm."]);
         }
         if ($to->kind === 'open_area') {
-            throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is an open area: send goats out to it instead. Their home pen stays the same."]);
+            throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is an open area: send goats out to it instead. Their home PEN stays the same."]);
         }
         if ((int) $animal->pen_id === (int) $to->id) {
             return null;
@@ -37,7 +37,7 @@ final class Movements
         // D-207: only an active pen takes goats; BR-004: a full pen takes one more only with the owner's or manager's reason.
         // Care moves (maternity, isolation, welfare, kid care) are never stopped by capacity: humane handling comes first.
         if (($to->status ?? 'active') !== 'active') {
-            throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is ".($to->status === 'cleaning' ? 'being cleaned' : "under {$to->status}").($to->status_reason ? " ({$to->status_reason})" : '').'. Choose another pen.']);
+            throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is ".($to->status === 'cleaning' ? 'being cleaned' : "under {$to->status}").($to->status_reason ? " ({$to->status_reason})" : '').'. Choose another PEN.']);
         }
         $override = null;
         if ($to->capacity && empty($extra['care']) && $to->animals()->active()->count() >= $to->capacity) {
@@ -45,7 +45,7 @@ final class Movements
                 throw ValidationException::withMessages(['to_pen_id' => "{$to->fullName()} is full ({$to->capacity} goats). The owner or manager can authorise one more with a reason."]);
             }
             if (! in_array($by->role, ['ceo', 'manager'], true)) {
-                throw ValidationException::withMessages(['to_pen_id' => 'Only the owner or manager authorises a move into a full pen.']);
+                throw ValidationException::withMessages(['to_pen_id' => 'Only the owner or manager authorises a move into a full PEN.']);
             }
             $override = mb_substr("Over capacity ({$to->capacity}), authorised by {$by->name}: {$extra['capacity_override']}", 0, 300);
         }
@@ -61,7 +61,7 @@ final class Movements
                 'capacity_override' => $override,
             ]);
             $animal->update(['pen_id' => $to->id]);
-            Farm::event($animal, 'move', 'Moved from '.($from?->fullName() ?? 'no pen')." to {$to->fullName()}".(! empty($extra['reason']) ? " ({$extra['reason']})" : ''), $by->name, $on);
+            Farm::event($animal, 'move', 'Moved from '.($from?->fullName() ?? 'no PEN')." to {$to->fullName()}".(! empty($extra['reason']) ? " ({$extra['reason']})" : ''), $by->name, $on);
 
             return $movement;
         });
