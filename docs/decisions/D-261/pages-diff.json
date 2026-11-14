@@ -1,0 +1,1536 @@
+{
+ "diffs": [
+  {
+   "module": "Fieldwork",
+   "spec": "Feed Pens (record given / leftover)",
+   "key": "feeding.feed_pens",
+   "role": "vet",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Dashboard",
+   "spec": "Executive Dashboard",
+   "key": "dashboard.executive_dashboard",
+   "role": "vet",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Dashboard",
+   "spec": "Executive Dashboard",
+   "key": "dashboard.executive_dashboard",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Dashboard",
+   "spec": "Executive Dashboard",
+   "key": "dashboard.executive_dashboard",
+   "role": "feeding",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Dashboard",
+   "spec": "Executive Dashboard",
+   "key": "dashboard.executive_dashboard",
+   "role": "cleaning",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Dashboard",
+   "spec": "Executive Dashboard",
+   "key": "dashboard.executive_dashboard",
+   "role": "finance",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Livestock",
+   "spec": "Animal Exit",
+   "key": "sheds.animal_exit",
+   "role": "vet",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Livestock",
+   "spec": "Animal Exit",
+   "key": "sheds.animal_exit",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Livestock",
+   "spec": "Animal Exit",
+   "key": "sheds.animal_exit",
+   "role": "finance",
+   "spec_mark": "s",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Maternity",
+   "spec": "Maternity Unit",
+   "key": "sheds.maternity_unit",
+   "role": "feeding",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Feeding",
+   "spec": "TMR Mixing Batches",
+   "key": "feeding.tmr_mixing_batches",
+   "role": "vet",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Operations",
+   "spec": "Departments & Staff",
+   "key": "employees.departments_staff",
+   "role": "finance",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Inventory",
+   "spec": "Feed Inventory",
+   "key": "feeding.feed_master",
+   "role": "finance",
+   "spec_mark": "v",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Inventory",
+   "spec": "Medicine Inventory",
+   "key": "health.medicines_vaccines",
+   "role": "finance",
+   "spec_mark": "v",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Purchase",
+   "spec": "Animal Intake & Quarantine",
+   "key": "goats.intake_quarantine",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Sales",
+   "spec": "Other Exits",
+   "key": "sheds.animal_exit",
+   "role": "vet",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Sales",
+   "spec": "Other Exits",
+   "key": "sheds.animal_exit",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Reports",
+   "spec": "CEO Dashboard link ()",
+   "key": "dashboard.executive_dashboard",
+   "role": "manager",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Reports",
+   "spec": "CEO Dashboard link ()",
+   "key": "dashboard.executive_dashboard",
+   "role": "vet",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Reports",
+   "spec": "CEO Dashboard link ()",
+   "key": "dashboard.executive_dashboard",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Reports",
+   "spec": "CEO Dashboard link ()",
+   "key": "dashboard.executive_dashboard",
+   "role": "feeding",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Reports",
+   "spec": "CEO Dashboard link ()",
+   "key": "dashboard.executive_dashboard",
+   "role": "cleaning",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Reports",
+   "spec": "CEO Dashboard link ()",
+   "key": "dashboard.executive_dashboard",
+   "role": "finance",
+   "spec_mark": "-",
+   "actual": 302,
+   "kind": "OVER"
+  },
+  {
+   "module": "Fattening",
+   "spec": "Herd Value & Market Rates",
+   "key": "value.herd_value_pricing",
+   "role": "finance",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Environment",
+   "spec": "Sensor Alarms",
+   "key": "sensors.sensor_alerts",
+   "role": "cleaning",
+   "spec_mark": "s",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Quality",
+   "spec": "Incident Register",
+   "key": "tasks.incident_register",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Quality",
+   "spec": "Incident Register",
+   "key": "tasks.incident_register",
+   "role": "feeding",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Quality",
+   "spec": "Incident Register",
+   "key": "tasks.incident_register",
+   "role": "cleaning",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Quality",
+   "spec": "Incident Register",
+   "key": "tasks.incident_register",
+   "role": "finance",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Quality",
+   "spec": "Withdrawal Holds",
+   "key": "health.withdrawal_biosecurity",
+   "role": "caretaker",
+   "spec_mark": "-",
+   "actual": 200,
+   "kind": "OVER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Crops & Fields",
+   "key": "fodder.crops_fields",
+   "role": "manager",
+   "spec_mark": "F",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Crops & Fields",
+   "key": "fodder.crops_fields",
+   "role": "caretaker",
+   "spec_mark": "v",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Crops & Fields",
+   "key": "fodder.crops_fields",
+   "role": "feeding",
+   "spec_mark": "F",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Harvest Lots: Test & Release",
+   "key": "fodder.harvest_lots_test_release",
+   "role": "manager",
+   "spec_mark": "F",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Harvest Lots: Test & Release",
+   "key": "fodder.harvest_lots_test_release",
+   "role": "feeding",
+   "spec_mark": "F",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Field Registry",
+   "key": "fodder.field_registry",
+   "role": "manager",
+   "spec_mark": "F",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Field Registry",
+   "key": "fodder.field_registry",
+   "role": "feeding",
+   "spec_mark": "v",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Yield & Cost per KG DM",
+   "key": "fodder.yield_cost_per_kg_dm",
+   "role": "manager",
+   "spec_mark": "F",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Yield & Cost per KG DM",
+   "key": "fodder.yield_cost_per_kg_dm",
+   "role": "feeding",
+   "spec_mark": "s",
+   "actual": 403,
+   "kind": "UNDER"
+  },
+  {
+   "module": "Fodder",
+   "spec": "Fodder Settings",
+   "key": "fodder.fodder_settings",
+   "role": "manager",
+   "spec_mark": "F",
+   "actual": 403,
+   "kind": "UNDER"
+  }
+ ],
+ "spec_rows_without_registry_key": [
+  {
+   "module": "Fieldwork",
+   "label": "Weigh Goats",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "F",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Fieldwork",
+   "label": "Health Check (scan, mark fine / report concern)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "F",
+    "caretaker": "F",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Fieldwork",
+   "label": "Move to a Pen",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "F",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Fieldwork",
+   "label": "Look Up Goats",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "F",
+    "caretaker": "F",
+    "feeding": "v",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Dashboard",
+   "label": "Role home (own dashboard, Section 6)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "F",
+    "caretaker": "F",
+    "feeding": "F",
+    "cleaning": "F",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Dashboard",
+   "label": "Users & Roles",
+   "path": "/settings/users",
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Livestock",
+   "label": "Exits & Mortality report",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Livestock",
+   "label": "Breed Master / Age Groups / Automation Rules / Register Fields ()",
+   "path": "/settings/*",
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Breeding",
+   "label": "Breeding Eligibility Rules",
+   "path": null,
+   "vet_locked": true,
+   "marks": {
+    "ceo": "v",
+    "manager": "v",
+    "vet": "F",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Maternity",
+   "label": "Upcoming Deliveries",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "F",
+    "caretaker": "F",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Maternity",
+   "label": "Kidding Rate & Litter Size",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Maternity",
+   "label": "Weaning & Kidding Alerts (config)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Veterinary",
+   "label": "Sick & Under Watch",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "v",
+    "manager": "v",
+    "vet": "F",
+    "caretaker": "v",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Feeding",
+   "label": "Daily Feeding",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "v",
+    "feeding": "F",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Feeding",
+   "label": "Today's Requirement",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "v",
+    "feeding": "F",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Feeding",
+   "label": "TMR Formulas",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "F",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Housing",
+   "label": "Farms, Units & Pens",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "v",
+    "feeding": "v",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Housing",
+   "label": "Pen Occupancy",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "F",
+    "feeding": "v",
+    "cleaning": "s",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Housing",
+   "label": "Unit & Pen Setup (add sheds and pens)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Growth",
+   "label": "Growth vs Plan",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "F",
+    "feeding": "v",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Growth",
+   "label": "Breeder / Sale Selection",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Growth",
+   "label": "Daily Gain (ADG)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "F",
+    "feeding": "v",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Growth",
+   "label": "Breed Weight Lines ()",
+   "path": "/settings/breeds",
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Operations",
+   "label": "Today's Checklists",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "s",
+    "caretaker": "s",
+    "feeding": "s",
+    "cleaning": "s",
+    "finance": "s"
+   }
+  },
+  {
+   "module": "Operations",
+   "label": "Today's Tasks (all open)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "s",
+    "caretaker": "s",
+    "feeding": "s",
+    "cleaning": "s",
+    "finance": "s"
+   }
+  },
+  {
+   "module": "Inventory",
+   "label": "TMR Mixing",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "F",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Inventory",
+   "label": "Store Items",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Purchase",
+   "label": "New Purchase Order",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "s",
+    "caretaker": "-",
+    "feeding": "s",
+    "cleaning": "-",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Purchase",
+   "label": "Purchase Analysis",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "v",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Sales",
+   "label": "Sell Products",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Sales",
+   "label": "Sales & Exits report",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Sales",
+   "label": "Market Rates",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Accounting",
+   "label": "Chart of Accounts",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Employees",
+   "label": "Employees & Departments",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "v",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "v"
+   }
+  },
+  {
+   "module": "Employees",
+   "label": "Task Completion",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Employees",
+   "label": "Users & Permissions",
+   "path": "/settings/users",
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Maintenance",
+   "label": "Asset Categories & Intervals",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Reports",
+   "label": "Reports & Analytics (hub, lists only permitted reports)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "s",
+    "caretaker": "-",
+    "feeding": "s",
+    "cleaning": "-",
+    "finance": "s"
+   }
+  },
+  {
+   "module": "Reports",
+   "label": "Livestock Reports",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Reports",
+   "label": "Breeding Reports",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Reports",
+   "label": "Financial Reports",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "v",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "F"
+   }
+  },
+  {
+   "module": "Reports",
+   "label": "Report Access ()",
+   "path": "/settings/access",
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Dairy",
+   "label": "Lactations",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "F",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Dairy",
+   "label": "Lot Traceability & Revenue",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "v"
+   }
+  },
+  {
+   "module": "Dairy",
+   "label": "Milking Settings",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Fattening",
+   "label": "Daily Feed & Water",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "v",
+    "feeding": "F",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Fattening",
+   "label": "Market Rates",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Welfare",
+   "label": "Mortality",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "v",
+    "manager": "v",
+    "vet": "F",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Welfare",
+   "label": "Condition List",
+   "path": null,
+   "vet_locked": true,
+   "marks": {
+    "ceo": "v",
+    "manager": "-",
+    "vet": "F",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Environment",
+   "label": "Water & Heat Compliance",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "v",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Quality",
+   "label": "Checklists (templates)",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "F",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Settings",
+   "label": "Master Settings",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Settings",
+   "label": "Users",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Settings",
+   "label": "Access Rights by Role",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  },
+  {
+   "module": "Settings",
+   "label": "Breeds / Age Groups / Register Fields / System",
+   "path": null,
+   "vet_locked": false,
+   "marks": {
+    "ceo": "F",
+    "manager": "-",
+    "vet": "-",
+    "caretaker": "-",
+    "feeding": "-",
+    "cleaning": "-",
+    "finance": "-"
+   }
+  }
+ ],
+ "registry_keys_without_spec_row": [
+  {
+   "key": "dashboard.app_dashboards",
+   "label": "App dashboards",
+   "path": "/dashboard/app",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding",
+    "cleaning",
+    "finance"
+   ],
+   "lock": "always"
+  },
+  {
+   "key": "dashboard.my_home",
+   "label": "My Home",
+   "path": "/home",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding",
+    "cleaning",
+    "finance"
+   ],
+   "lock": "always"
+  },
+  {
+   "key": "settings.settings_every_settings_page",
+   "label": "Settings (every Settings page)",
+   "path": "/settings",
+   "query": null,
+   "roles": [
+    "ceo"
+   ],
+   "lock": "admin"
+  },
+  {
+   "key": "reports.age_wise_report",
+   "label": "Age-Wise Report",
+   "path": "/reports",
+   "query": {
+    "section": "age"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": null
+  },
+  {
+   "key": "reports.breed_wise_population",
+   "label": "Breed-Wise Population",
+   "path": "/reports",
+   "query": {
+    "section": "breeds"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": null
+  },
+  {
+   "key": "reports.exits_mortality",
+   "label": "Exits & Mortality",
+   "path": "/reports",
+   "query": {
+    "section": "exits"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "finance"
+   ],
+   "lock": null
+  },
+  {
+   "key": "breeding.breeding_opening_page",
+   "label": "Breeding (opening page)",
+   "path": "/breeding",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "breeding.genetics_opening_page",
+   "label": "Genetics (opening page)",
+   "path": "/genetics",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "health.health_opening_page",
+   "label": "Health (opening page)",
+   "path": "/health",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "health.disease_opening_page",
+   "label": "Disease (opening page)",
+   "path": "/disease",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "feeding.feeding_opening_page",
+   "label": "Feeding (opening page)",
+   "path": "/feeding",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "weights.growth_opening_page",
+   "label": "Growth (opening page)",
+   "path": "/growth",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "tasks.tasks_opening_page",
+   "label": "Tasks (opening page)",
+   "path": "/tasks",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding",
+    "cleaning",
+    "finance"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "tasks.operations_opening_page",
+   "label": "Operations (opening page)",
+   "path": "/operations",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding",
+    "cleaning",
+    "finance"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "finance.finance_books_opening_page",
+   "label": "Finance · Books (opening page)",
+   "path": "/finance/books",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "finance"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "employees.hr_opening_page",
+   "label": "Hr (opening page)",
+   "path": "/hr",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "finance"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "maintenance.maintenance_opening_page",
+   "label": "Maintenance (opening page)",
+   "path": "/maintenance",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "caretaker",
+    "feeding",
+    "cleaning"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "sensors.sensors_opening_page",
+   "label": "Sensors (opening page)",
+   "path": "/sensors",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "milking.dairy_opening_page",
+   "label": "Dairy (opening page)",
+   "path": "/dairy",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "finance"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "fattening.fattening_opening_page",
+   "label": "Fattening (opening page)",
+   "path": "/fattening",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "welfare.welfare_opening_page",
+   "label": "Welfare (opening page)",
+   "path": "/welfare",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "environment.environment_opening_page",
+   "label": "Environment (opening page)",
+   "path": "/environment",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "cleaning"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "quality.quality_opening_page",
+   "label": "Quality (opening page)",
+   "path": "/quality",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "fodder.fodder_opening_page",
+   "label": "Fodder (opening page)",
+   "path": "/fodder",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "caretaker",
+    "feeding"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "breeding.sire_dam_progeny_performance",
+   "label": "Sire & Dam Progeny Performance",
+   "path": "/genetics",
+   "query": {
+    "tab": "progeny"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": null
+  }
+ ],
+ "counts": {
+  "spec_rows": 233,
+  "registry": 180,
+  "diffs": 40
+ }
+}
