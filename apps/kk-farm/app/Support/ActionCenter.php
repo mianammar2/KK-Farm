@@ -47,6 +47,7 @@ final class ActionCenter
         'sensor_alerts' => ['ceo', 'manager'], 'devices_offline' => ['ceo'], 'unpaid' => ['ceo', 'manager', 'finance'],
         // own / department tasks (the list itself is scoped)
         'tasks_overdue' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'cleaning', 'finance'],
+        'death_approvals' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding', 'cleaning', 'finance'], // whoever holds Approve a death (D-260)
     ];
 
     public static function items(User $user): array
@@ -65,6 +66,13 @@ final class ActionCenter
             $out[] = ['key' => $key, 'label' => $label, 'severity' => $severity, 'count' => $rows->count(), 'action' => $action, 'url' => $url, 'items' => $rows->take(5)->values()->all()];
         };
         $goat = fn (?Animal $a, ?string $sub = null) => ['text' => $a?->farm_number ?? '?', 'sub' => $sub, 'url' => $a ? "/goats/{$a->id}" : null];
+
+        // D-260: deaths the vet reported, waiting for the administrator's approval before the goat leaves the farm.
+        if ($user->passes('approve_death')) {
+            $deaths = \App\Models\DeathReport::with('animal')->where('status', 'pending')->orderBy('died_at')->get();
+            $add('goats', 'death_approvals', 'Deaths to approve', 'critical', 'Read the vet\'s report, then approve the exit or send it back.', '/goats',
+                $deaths->map(fn ($r) => $goat($r->animal, "{$r->cause} · {$r->died_at->format('j M H:i')} · {$r->reported_by}")));
+        }
 
         // D-231: goats that passed every breeding check and wait for an authorised approval.
         if ($user->passes('approve_breeding')) {

@@ -99,7 +99,9 @@ class HealthCaseTest extends TestCase
     {
         $case = $this->openCase();
         $this->treat($case, ['meat_clear_on' => now()->addDays(10)->toDateString()]);
-        $this->actingAs($this->user('manager'))->post("/goats/{$this->goat->id}/exit", ['reason' => 'died'])->assertSessionHasNoErrors();
+        // D-260: the vet reports the death, the administrator approves it; a withdrawal never blocks it
+        $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/death", ['died_at' => now()->subHour()->format('Y-m-d H:i'), 'cause' => 'Pneumonia', 'circumstances' => 'Found dead in the pen'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->post('/death-reports/'.\App\Models\DeathReport::first()->id, ['decision' => 'approved'])->assertSessionHasNoErrors();
         $this->assertSame('deceased', $this->goat->fresh()->status);
     }
 

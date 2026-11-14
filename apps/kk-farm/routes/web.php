@@ -250,6 +250,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/photos', [GoatController::class, 'addPhoto']);
         Route::post('/goats/{animal}/photos/{photo}/profile', [GoatController::class, 'setProfilePhoto']);
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);
+        Route::post('/goats/{animal}/death', [\App\Http\Controllers\DeathController::class, 'store']); // D-260: the vet reports
+        Route::post('/goats/{animal}/cull', [\App\Http\Controllers\DeathController::class, 'cull']); // D-260: out of breeding, not off the farm
+        Route::post('/death-reports/{report}', [\App\Http\Controllers\DeathController::class, 'decide']); // D-260: the administrator approves
         Route::post('/goats/{animal}/birth-date', [GoatController::class, 'correctBirth']); // D-080
         Route::get('/goats/{animal}/edit', [GoatController::class, 'edit']); // D-091
         Route::post('/goats/{animal}/edit', [GoatController::class, 'update']);

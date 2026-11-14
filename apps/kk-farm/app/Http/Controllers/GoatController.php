@@ -315,6 +315,41 @@ class GoatController extends Controller
         return array_values(array_map(fn ($r) => ['by' => array_values(array_unique(array_filter($r['by'])))] + $r, $days));
     }
 
+    /**
+     * D-260: the death report (pending, approved or returned) and, once the goat has died, its review: time, cause,
+     * who reported and approved it, and everything medical in the 60 days before (cases, treatments and medicines,
+     * checkups and temperatures, care given, weights).
+     */
+    private function death(Animal $animal, bool $seeHealth): ?array
+    {
+        $r = \App\Models\DeathReport::where('animal_id', $animal->id)->latest('id')->first();
+        if (! $r && $animal->exit_reason !== 'died') {
+            return null;
+        }
+        $out = $r ? ['id' => $r->id, 'status' => $r->status, 'diedAt' => $r->died_at->format('j M Y, H:i'), 'cause' => $r->cause, 'circumstances' => $seeHealth ? $r->circumstances : null,
+            'postmortem' => $seeHealth ? $r->postmortem : null, 'reportedBy' => $r->reported_by, 'decidedBy' => $r->decided_by, 'decidedAt' => $r->decided_at?->format('j M Y'), 'note' => $r->decision_note] : null;
+        if ($animal->exit_reason !== 'died' || ! $seeHealth) {
+            return $out ? ['report' => $out, 'review' => null] : null;
+        }
+        $end = $r?->died_at ?? $animal->exit_date ?? now();
+        $from = $end->copy()->subDays(60)->toDateString();
+        $cases = \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->where(fn ($q) => $q->whereDate('onset_on', '>=', $from)->orWhereIn('status', \App\Models\HealthCase::ACTIVE))->orderBy('onset_on')->get();
+        $treatments = \App\Models\Treatment::where('animal_id', $animal->id)->whereDate('given_on', '>=', $from)->orderBy('given_on')->get();
+        $checks = \App\Models\HealthCheckup::where('animal_id', $animal->id)->whereDate('checked_on', '>=', $from)->orderBy('checked_on')->get();
+        $weights = \App\Models\WeightRecord::where('animal_id', $animal->id)->whereDate('measured_on', '>=', $from)->orderBy('measured_on')->get();
+        $care = \App\Models\HealthRecord::where('animal_id', $animal->id)->whereDate('occurred_on', '>=', $from)->whereNotIn('kind', ['postmortem'])->orderBy('occurred_on')->get();
+
+        return ['report' => $out, 'review' => [
+            'from' => \Illuminate\Support\Carbon::parse($from)->format('j M Y'),
+            'cases' => $cases->map(fn ($c) => ['label' => $c->label(), 'condition' => $c->condition, 'onset' => $c->onset_on->format('j M'), 'status' => \App\Models\HealthCase::STATUSES[$c->status] ?? $c->status,
+                'severity' => $c->severity, 'vet' => $c->vet, 'diagnosis' => $c->diagnosis])->values(),
+            'treatments' => $treatments->map(fn ($t) => ['on' => $t->given_on->format('j M'), 'product' => $t->product, 'dose' => $t->dose, 'route' => $t->route, 'by' => $t->recorded_by])->values(),
+            'checkups' => $checks->map(fn ($c) => ['on' => $c->checked_on->format('j M'), 'temp' => $c->temperature_f, 'result' => \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome, 'by' => $c->examiner, 'findings' => $c->findings])->values(),
+            'care' => $care->map(fn ($h) => ['on' => $h->occurred_on->format('j M'), 'what' => ucfirst(str_replace('_', ' ', $h->kind)).': '.$h->title, 'by' => $h->recorded_by])->values(),
+            'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('j M'), 'kg' => (float) $w->weight_kg])->values(),
+        ]];
+    }
+
     /** D-248: a goat's card for the 3D shed (tap a goat): the essentials, health only for the roles that see it (RBAC §7). */
     public function peek(Request $request, Animal $animal): \Illuminate\Http\JsonResponse
     {
@@ -348,6 +383,7 @@ class GoatController extends Controller
                 'origin' => $animal->origin, 'birthDate' => $animal->birth_date?->format('j M Y'), 'estimated' => $animal->birth_date_is_estimate, 'height' => $animal->height_cm !== null ? round((float) $animal->height_cm / 2.54, 1) : null, // inches (D-065)
                 'shed' => $animal->pen?->shed?->name, 'penPurpose' => $animal->pen?->purpose, 'feedingGroup' => $animal->feedingGroup?->name ?? FeedingGroup::where('code', \App\Support\Feed::groupCode($animal))->value('name'), // D-054: automatic group
                 'withdrawal' => \App\Support\Withdrawal::summary($animal), // D-073
+                'inBreeding' => in_array($animal->effectiveCategory(), ['breeding_male', 'breeding_female', 'replacement_male', 'replacement_female'], true), // D-260: can be culled
                 'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('j M Y'), 'adg' => Farm::adg($weights),
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
                 'identity' => $animal->id,
@@ -365,6 +401,7 @@ class GoatController extends Controller
                 ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('j M Y'), 'to' => $r->valid_to?->format('j M Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
             'records' => $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
+            'death' => $this->death($animal, $seeHealth), // D-260: the vet's death report, and the review once it is approved
             // D-251: how it is doing since a watch began, or when it last came off Watch
             'recovery' => $seeHealth || in_array($request->user()->role, ['caretaker'], true) ? ((($p = \App\Support\Recovery::progress($animal)) ? ($seeHealth ? $p : ['title' => 'Health watch', 'temp' => null] + $p) : null) ?? (($e = \App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(30))->latest('occurred_at')->first())
                 ? ['state' => 'recovered', 'on' => $e->occurred_at->format('j M'), 'why' => trim(substr($e->summary, strlen('Out of Watch:')))] : null)) : null,
@@ -465,9 +502,10 @@ class GoatController extends Controller
     {
         abort_unless($request->user()->passes('exit_animal'), 403);
         $data = $request->validate([
-            'reason' => ['required', Rule::in(array_keys(\App\Support\Movements::REASON_TO_TYPE))],
+            // D-260: a death goes through the vet's report and the administrator's approval; culling takes a goat out of breeding, not off the farm
+            'reason' => ['required', Rule::in(array_diff(array_keys(\App\Support\Movements::REASON_TO_TYPE), ['died', 'culled']))],
             'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'destination' => ['nullable', 'string', 'max:120'], 'notes' => ['nullable', 'string', 'max:500'],
-        ]);
+        ], ['reason.in' => 'A death is reported by the vet and approved by the administrator; culling is done from the breeding lists.']);
         abort_unless($animal->status === 'active', 422);
         try {
             \App\Support\Movements::exit($animal, \App\Support\Movements::REASON_TO_TYPE[$data['reason']], $request->user(), $data);

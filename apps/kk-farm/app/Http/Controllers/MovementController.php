@@ -35,7 +35,7 @@ class MovementController extends Controller
                 'withdrawal' => isset($withdrawal[$a->id]['meat']) && $withdrawal[$a->id]['meat'] ? \Illuminate\Support\Carbon::parse($withdrawal[$a->id]['meat'])->format('j M') : null,
             ]),
             'pens' => Pen::with('shed')->where('kind', 'pen')->whereHas('shed', fn ($q) => $q->where('status', 'active'))->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName()])->sortBy('name')->values(),
-            'types' => collect(AnimalMovement::TYPES)->map(fn ($t) => ['label' => $t[0], 'exit' => $t[1]]),
+            'types' => collect(AnimalMovement::TYPES)->except(['death', 'culling'])->map(fn ($t) => ['label' => $t[0], 'exit' => $t[1]]), // D-260
             'month' => AnimalMovement::where('moved_on', '>=', now()->startOfMonth())->groupBy('type')->selectRaw('type, count(*) as n')->pluck('n', 'type'),
             'canExit' => $request->user()->passes('exit_animal'),
             'saleCategories' => Sale::CATEGORIES,
@@ -47,7 +47,7 @@ class MovementController extends Controller
     {
         $data = $request->validate([
             'animal_ids' => ['required', 'array', 'min:1', 'max:500'], 'animal_ids.*' => ['uuid', 'distinct', 'exists:animals,id'],
-            'type' => ['required', Rule::in(array_keys(AnimalMovement::TYPES))], 'moved_on' => ['required', 'date', 'before_or_equal:today'],
+            'type' => ['required', Rule::in(array_diff(array_keys(AnimalMovement::TYPES), ['death', 'culling']))], // D-260 'moved_on' => ['required', 'date', 'before_or_equal:today'],
             'to_pen_id' => ['nullable', 'required_if:type,transfer', 'exists:pens,id'],
             'destination' => ['nullable', 'string', 'max:120'], 'reason' => ['nullable', 'string', 'max:200'], 'authorized_by' => ['nullable', 'string', 'max:80'],
             'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'fee' => ['nullable', 'numeric', 'min:0', 'max:100000000'],

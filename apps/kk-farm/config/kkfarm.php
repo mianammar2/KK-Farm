@@ -74,6 +74,10 @@ return [
         'record_mating' => ['ceo', 'manager', 'vet', 'caretaker'],
         'give_care' => ['ceo', 'vet'], // vaccination, deworming and other preventive care given
         'move_goats' => ['ceo', 'manager', 'vet', 'caretaker', 'feeding'],
+        // D-260: a death is the vet's finding, approved by the administrator; culling takes a goat out of breeding
+        'report_death' => ['vet'],
+        'approve_death' => ['ceo'],
+        'cull_breeding' => ['ceo', 'vet'],
         'manage_medicine_store' => ['ceo', 'vet'],
         'approve_feeding_plan' => ['ceo', 'manager'],
         'plan_rations' => ['ceo', 'manager', 'feeding'],

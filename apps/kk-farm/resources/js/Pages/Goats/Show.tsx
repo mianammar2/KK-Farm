@@ -17,13 +17,14 @@ import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
 type Dental = { code: string; fromAge?: boolean; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
-type Goat = GoatCard & { ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Goat = GoatCard & { inBreeding?: boolean; ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
     tags: Array<{ code: string; from: string; to: string | null; reason: string; closed: string | null; by: string }>;
     weights: Array<{ on: string; kg: number }>;
     records: GoatRecord[]; // D-249
+    death: DeathData | null; // D-260
     recovery: { state: 'improving' | 'not_improving' | 'no_recheck'; since: string; title: string; then: number | null; now: number | null; nowOn: string | null; goal: number | null; temp: number | null }
         | { state: 'recovered'; on: string; why: string } | null; // D-251
     timeline: Array<{ id: number; type: string; summary: string; by: string; on: string }>;
@@ -58,7 +59,7 @@ type Pregnancy = {
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { recovery, records, goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
+    const { death, recovery, records, goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
     const [outcome, setOutcome] = useState(false); // D-161
     const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
@@ -169,6 +170,7 @@ export default function GoatShow(props: Props) {
                         ) : null}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm sm:hidden">
                             {onFarm && auth?.gates.includes('edit_goats') ? <button type="button" className="font-semibold text-cobalt-800" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}>Correct Birth Date</button> : null}
+                            {onFarm && auth?.gates.includes('report_death') && death?.report?.status !== 'pending' ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'death' ? null : 'death')}>Report Death</button> : null}
                             {onFarm && auth?.gates.includes('exit_animal') ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}>Record Exit</button> : null}
                             {!removed && can.edit && !goat.removal ? <button type="button" className="font-semibold text-ink-soft" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}>Remove (Wrong Entry)</button> : null}
                         </div>
@@ -188,7 +190,9 @@ export default function GoatShow(props: Props) {
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                 {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Temp check</Button> : null}
                                 {auth?.gates.includes('move_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button> : null}
+                                {goat.inBreeding && auth?.gates.includes('cull_breeding') ? <Button variant="secondary" onClick={() => setPanel(panel === 'cull' ? null : 'cull')}><LibIcon name="ic-sold" size={18} /> Cull from breeding</Button> : null}
                                 {auth?.gates.includes('edit_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
+                                {auth?.gates.includes('report_death') && death?.report?.status !== 'pending' ? <Button variant="danger" onClick={() => setPanel(panel === 'death' ? null : 'death')}><LibIcon name="ic-died" size={18} /> Report death</Button> : null}
                                 {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
                             </div>
                         ) : null}
@@ -202,7 +206,8 @@ export default function GoatShow(props: Props) {
                         <Button onClick={() => setPanel('weight')}><LibIcon name="app-growth" size={18} /> Enter birth weight</Button>
                     </div>
                 ) : null}
-                {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} /></div> : null}
+                {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} conditions={healthEntry?.conditions ?? []} /></div> : null}
+                {death?.report && death.report.status !== 'approved' ? <DeathBanner r={death.report} canDecide={!!auth?.gates.includes('approve_death')} /> : null}
             </section>
 
             {scan && scanMating ? (
@@ -229,6 +234,7 @@ export default function GoatShow(props: Props) {
             {tab === 'overview' ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                     <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg > 0 ? '▲ +' : gain.kg < 0 ? '▼ ' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
+                        {death?.review ? <DeathReview d={death} /> : null}
                         {recovery ? <RecoveryNote r={recovery} /> : null}
                         {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={240} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
                         <RecordsTable rows={records} />
@@ -238,10 +244,9 @@ export default function GoatShow(props: Props) {
                         {milking ? <MilkingPanel m={milking} /> : null}
                         <Panel title="Identity">
                             <dl className="space-y-2">
-                                {fact('Permanent ID', <span className="text-sm font-medium break-all whitespace-normal">{goat.identity}</span>)}
+                                {fact('Permanent ID (tag ID)', <span className="font-mono text-sm font-semibold">{goat.number}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
                                 {goat.ageCode ? fact('Classification code', <span className="font-mono font-semibold text-cobalt-900">{goat.ageCode}</span>) : null}
-                                {goat.ageStage ? fact('Age stage', `${goat.ageStage.code} · ${goat.ageStage.label} (${goat.ageStage.range})${goat.estimated ? ', age estimated' : ''}`) : null}
                                 {eligibility && eligibility.status !== 'breeder' ? fact('Breeding eligibility', <span><Link href="/breeding/eligibility" className="font-semibold text-cobalt-800 hover:underline">{eligibility.label}</Link>{eligibility.review ? <span className="block text-xs font-semibold text-watch-700">Maturity review: look at this goat (not an approval)</span> : null}{eligibility.recommendation ? <span className="block text-xs text-watch-700">{eligibility.recommendation}</span> : null}{eligibility.failed.length ? <span className="block text-xs text-ink-soft">Not yet: {eligibility.failed.join('; ')}</span> : null}</span>) : null}
                                 {castration ? fact('Castration', <Castration goatId={goat.id} c={castration} onFarm={onFarm} />) : null}
                                 {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit || !!auth?.gates.includes('health_checkup')} options={dentalOptions} />) : null}
@@ -251,7 +256,7 @@ export default function GoatShow(props: Props) {
                                 {fact('Dam', parentLink(goat.dam))}
                                 {fact('Feeding group', goat.feedingGroup)}
                             </dl>
-                            <p className="mt-2 text-sm text-ink-soft">This ID never changes and is never reused, even when the RFID tag does.</p>
+                            <p className="mt-2 text-sm text-ink-soft">The tag ID is the goat's permanent ID: it never changes and is never reused, even when the RFID tag does. The classification code gives its age.</p>
                         </Panel>
                         {cost ? (
                             <Panel title="Lifetime cost">
@@ -376,7 +381,7 @@ export default function GoatShow(props: Props) {
     );
 }
 
-function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pens: Props['pens']; close: () => void }) {
+function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: string; goat: Goat; pens: Props['pens']; close: () => void; conditions?: string[] }) {
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     const weight = useForm({ animal_id: goat.id, weight_kg: '', measured_on: today }); // D-252: the day it was weighed
     const concern = useForm({ animal_id: goat.id, title: '', severity: 'low', notes: '' });
@@ -422,6 +427,8 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
             </form>
         );
     }
+    if (kind === 'cull') return <CullForm goatId={goat.id} onDone={close} />;
+    if (kind === 'death') return <DeathForm goatId={goat.id} conditions={conditions} onDone={close} />;
     if (kind === 'temp') {
         const t = Number(temp.data.temperature_f);
         const normal = temp.data.temperature_f !== '' && t >= 101.3 && t <= 103.5;
@@ -468,11 +475,11 @@ function ActionPanel({ kind, goat, pens, close }: { kind: string; goat: Goat; pe
     return (
         <form onSubmit={async (e) => { e.preventDefault(); if (await ask({ title: `Record ${goat.number} as ${EXIT_WORD[exit.data.reason] ?? 'left the farm'}?`, message: 'It leaves the farm lists and counts. This is kept in its history.', confirm: 'Yes, record exit' })) exit.post(`/goats/${goat.id}/exit`, options); }} className="flex flex-wrap items-end gap-2">
             {confirmBox}
-            <div className="w-52"><Field label="Reason" error={exit.errors.reason}><select className="field" value={exit.data.reason} onChange={(e) => exit.setData('reason', e.target.value)}><option value="sold">Sold</option><option value="sacrificed">Qurbani / sacrifice</option><option value="culled">Culled</option><option value="gifted">Gifted</option><option value="transferred">Transferred out</option><option value="died">Died</option><option value="other">Other</option></select></Field></div>
+            <div className="w-52"><Field label="Reason" error={exit.errors.reason}><select className="field" value={exit.data.reason} onChange={(e) => exit.setData('reason', e.target.value)}><option value="sold">Sold</option><option value="sacrificed">Qurbani / sacrifice</option><option value="gifted">Gifted</option><option value="transferred">Transferred out</option><option value="other">Other</option></select></Field></div>
             {exit.data.reason === 'sold' ? <div className="w-40"><Field label="Price (PKR)" error={exit.errors.amount}><input inputMode="decimal" className="field" value={exit.data.amount} onChange={(e) => exit.setData('amount', e.target.value)} /></Field></div> : null}
             {exit.data.reason !== 'died' ? <div className="w-48"><Field label={exit.data.reason === 'sold' ? 'Buyer' : 'Destination'}><input className="field" value={exit.data.destination} onChange={(e) => exit.setData('destination', e.target.value)} /></Field></div> : null}
             <Button type="submit" variant="danger" disabled={exit.processing}>Confirm exit</Button>
-            <p className="w-full text-sm text-ink-soft">The RFID tag is released. Nothing about this goat is deleted.</p>
+            <p className="w-full text-sm text-ink-soft">The RFID tag is released. Nothing about this goat is deleted. A death is reported by the vet and approved by the administrator; culling is done from the breeding lists.</p>
         </form>
     );
 }
@@ -595,6 +602,9 @@ function Castration({ goatId, c, onFarm }: { goatId: string; c: { on: string | n
     );
 }
 
+/** D-261: a status shows only when it is a "yes" (Pregnant, Lactating, In fattening, Under treatment, Sale ready …), not "Not ready", "Dry", "Not for sale". */
+const NO_STATE: Record<string, string[]> = { breeding: ['not_ready', 'not_breeding', 'blocked', 'open'], lactation: ['dry'], fattening: ['none'], health: ['healthy'], sale: ['not_for_sale'] };
+
 const DIM_LABEL: Record<string, string> = { breeding: 'Breeding', lactation: 'Milk', fattening: 'Fattening', health: 'Health', sale: 'Sale', age: 'Age stage', teeth: 'Teeth', role: 'Role' };
 
 /** D-232: the goat's independent statuses (several can be true at once) and their recent changes with the rule. */
@@ -602,7 +612,7 @@ function StatusStrip({ statuses, history }: { statuses: Record<string, { code: s
     const tone = (d: string, c: string) => (['blocked', 'vet_hold', 'treatment', 'critical'].includes(c) ? 'bg-crit-100 text-crit-700' : ['market_weight', 'pregnant', 'sale_ready', 'ready'].includes(c) ? 'bg-ok-100 text-ok-700' : d === 'sale' && c === 'not_for_sale' ? 'bg-glaze text-ink-soft' : 'bg-glaze text-cobalt-800');
     return (
         <div className="mt-2">
-            <ul className="flex flex-wrap gap-1.5" aria-label="Statuses">{Object.entries(statuses).map(([d, s]) => (
+            <ul className="flex flex-wrap gap-1.5" aria-label="Statuses">{Object.entries(statuses).filter(([d, s]) => !(NO_STATE[d] ?? []).includes(s.code)).map(([d, s]) => (
                 <li key={d} className={`rounded-[4px] px-2 py-1 text-xs ring-1 ring-rule ${tone(d, s.code)}`} title={[s.note, ...(s.blockers ?? [])].filter(Boolean).join(' · ') || undefined}>
                     <span className="font-semibold">{DIM_LABEL[d] ?? d}:</span> {s.label}{s.note ? <span className="block text-[11px] opacity-80">{s.note}</span> : null}{s.blockers?.length ? <span className="block text-[11px]">{s.blockers.join('; ')}</span> : null}
                 </li>
@@ -687,5 +697,93 @@ function Ticker({ kg, pct, days, perDay, small }: { kg: number; pct?: number | n
             {days ? <span className={`font-normal text-ink-soft ${small ? 'text-[11px]' : 'text-xs'}`}>in {days} {days === 1 ? 'day' : 'days'}{perDay !== undefined ? ` · ${perDay > 0 ? '+' : ''}${perDay} g/day` : ''}</span> : null}
             <span className="sr-only">{up ? 'gained' : down ? 'lost' : 'no change'}</span>
         </span>
+    );
+}
+
+/** D-260: the death report and, once approved, the review of the goat's last 60 days. */
+type DeathData = {
+    report: { id: number; status: 'pending' | 'approved' | 'rejected'; diedAt: string; cause: string; circumstances: string | null; postmortem: string | null; reportedBy: string; decidedBy: string | null; decidedAt: string | null; note: string | null } | null;
+    review: {
+        from: string;
+        cases: Array<{ label: string; condition: string; onset: string; status: string; severity: string; vet: string | null; diagnosis: string | null }>;
+        treatments: Array<{ on: string; product: string; dose: string | null; route: string | null; by: string }>;
+        checkups: Array<{ on: string; temp: number | null; result: string; by: string; findings: string | null }>;
+        care: Array<{ on: string; what: string; by: string }>;
+        weights: Array<{ on: string; kg: number }>;
+    } | null;
+};
+
+function DeathForm({ goatId, conditions, onDone }: { goatId: string; conditions: string[]; onDone: () => void }) {
+    const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const f = useForm({ died_at: now, cause: '', circumstances: '', postmortem: '' });
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); f.post(`/goats/${goatId}/death`, { preserveScroll: true, onSuccess: onDone }); }} className="grid gap-3 sm:grid-cols-2">
+            <Field label="Time of death" error={f.errors.died_at}><input type="datetime-local" className="field" max={now} value={f.data.died_at} onChange={(e) => f.setData('died_at', e.target.value)} required /></Field>
+            <Field label="Cause" error={f.errors.cause} hint="From the Disease Master, or type it"><input className="field" list="death-causes" value={f.data.cause} onChange={(e) => f.setData('cause', e.target.value)} required /><datalist id="death-causes">{conditions.map((c) => <option key={c} value={c} />)}</datalist></Field>
+            <div className="sm:col-span-2"><Field label="What was seen" error={f.errors.circumstances} hint="Signs, when and where it was found, what was done"><textarea className="field min-h-20" value={f.data.circumstances} onChange={(e) => f.setData('circumstances', e.target.value)} required /></Field></div>
+            <div className="sm:col-span-2"><Field label="Postmortem findings (if done)" error={f.errors.postmortem}><textarea className="field min-h-16" value={f.data.postmortem} onChange={(e) => f.setData('postmortem', e.target.value)} /></Field></div>
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2"><Button type="submit" variant="danger" disabled={f.processing}>Send to the administrator</Button><span className="text-sm text-ink-soft">The goat stays on the farm until the administrator approves.</span></div>
+        </form>
+    );
+}
+
+function DeathBanner({ r, canDecide }: { r: NonNullable<DeathData['report']>; canDecide: boolean }) {
+    const f = useForm({ decision: 'approved', note: '' });
+    const [returning, setReturning] = useState(false);
+    const send = (decision: string) => { f.transform((d) => ({ ...d, decision })); f.post(`/death-reports/${r.id}`, { preserveScroll: true }); };
+    return (
+        <div className={`border-t px-4 py-3 text-sm ${r.status === 'pending' ? 'border-crit-500/30 bg-crit-100' : 'border-watch-400/40 bg-watch-100'}`} role="status">
+            <p className="font-semibold text-crit-700">{r.status === 'pending' ? `Death reported by ${r.reportedBy}, waiting for approval` : `Death report returned by ${r.decidedBy}`}</p>
+            <p className="mt-0.5 text-ink">Died {r.diedAt} · <b>{r.cause}</b>{r.circumstances ? ` · ${r.circumstances}` : ''}</p>
+            {r.status === 'rejected' && r.note ? <p className="mt-0.5 text-watch-700">Note: {r.note}. Report it again with the correction.</p> : null}
+            {r.status === 'pending' && canDecide ? (
+                <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <Button variant="danger" disabled={f.processing} onClick={() => send('approved')}>Approve: record the death</Button>
+                    {returning ? <>
+                        <div className="w-72"><Field label="Why it goes back to the vet" error={f.errors.note}><input className="field" autoFocus value={f.data.note} onChange={(e) => f.setData('note', e.target.value)} /></Field></div>
+                        <Button variant="secondary" disabled={f.processing || !f.data.note} onClick={() => send('rejected')}>Send back</Button>
+                    </> : <Button variant="secondary" onClick={() => setReturning(true)}>Send back to the vet</Button>}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
+function DeathReview({ d }: { d: DeathData }) {
+    const r = d.report;
+    const v = d.review!;
+    const first = v.weights[0]?.kg;
+    const last = v.weights[v.weights.length - 1]?.kg;
+    const list = (title: string, rows: Array<{ k: string; on: string; text: ReactNode; by?: string | null }>) => rows.length ? (
+        <div><p className="mb-1 text-xs font-semibold tracking-wide text-ink-soft uppercase">{title}</p>
+            <ul className="space-y-1">{rows.map((x) => <li key={x.k} className="flex gap-3 text-sm"><span className="w-14 shrink-0 font-mono text-xs text-ink-soft">{x.on}</span><span className="flex-1">{x.text}</span>{x.by ? <span className="text-xs text-ink-faint">{x.by}</span> : null}</li>)}</ul></div>
+    ) : null;
+    return (
+        <div className="mb-4 rounded-tile border border-crit-500/30 bg-crit-100/50 p-4">
+            <p className="text-base font-bold text-crit-700">Death review</p>
+            {r ? <p className="mt-1 text-sm">Died <b>{r.diedAt}</b> · cause <b>{r.cause}</b> · reported by {r.reportedBy}{r.decidedBy ? `, approved by ${r.decidedBy} on ${r.decidedAt}` : ''}</p> : null}
+            {r?.circumstances ? <p className="mt-1 text-sm text-ink"><span className="font-semibold">Seen:</span> {r.circumstances}</p> : null}
+            {r?.postmortem ? <p className="mt-1 text-sm text-ink"><span className="font-semibold">Postmortem:</span> {r.postmortem}</p> : null}
+            <p className="mt-2 text-xs text-ink-soft">The 60 days before the death (from {v.from}){first !== undefined && last !== undefined && v.weights.length > 1 ? ` · weight ${first} → ${last} KG` : ''}</p>
+            <div className="mt-2 grid gap-3 md:grid-cols-2">
+                {list('Health cases', v.cases.map((c, i) => ({ k: `c${i}`, on: c.onset, text: <><b>{c.condition}</b> · {c.status}{c.diagnosis ? ` · ${c.diagnosis}` : ''}</>, by: c.vet })))}
+                {list('Medicines and treatments', v.treatments.map((t, i) => ({ k: `t${i}`, on: t.on, text: <><b>{t.product}</b>{t.dose ? ` ${t.dose}` : ''}{t.route ? ` · ${t.route}` : ''}</>, by: t.by })))}
+                {list('Checkups', v.checkups.map((c, i) => ({ k: `k${i}`, on: c.on, text: <>{c.temp !== null ? <b>{c.temp} °F</b> : null}{c.temp !== null ? ' · ' : ''}{c.result}{c.findings ? ` · ${c.findings}` : ''}</>, by: c.by })))}
+                {list('Care and observations', v.care.map((c, i) => ({ k: `h${i}`, on: c.on, text: c.what, by: c.by })))}
+            </div>
+            {!v.cases.length && !v.treatments.length && !v.checkups.length && !v.care.length ? <p className="mt-2 text-sm text-ink-soft">No health records in the 60 days before the death.</p> : null}
+        </div>
+    );
+}
+
+/** D-260: out of breeding (a Cull goat, for sale); it stays on the farm and on record. */
+function CullForm({ goatId, onDone }: { goatId: string; onDone: () => void }) {
+    const f = useForm({ reason: '' });
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); f.post(`/goats/${goatId}/cull`, { preserveScroll: true, onSuccess: onDone }); }} className="flex flex-wrap items-end gap-3">
+            <div className="w-80"><Field label="Why it leaves breeding" error={f.errors.reason} hint="e.g. repeat breeder, poor kids, udder problem, old age"><input className="field" autoFocus value={f.data.reason} onChange={(e) => f.setData('reason', e.target.value)} required /></Field></div>
+            <Button type="submit" variant="danger" disabled={f.processing}>Cull from breeding</Button>
+            <p className="w-full text-sm text-ink-soft">It becomes a Cull goat (for sale) and leaves the breeding lists. It stays on the farm and on record until it is sold.</p>
+        </form>
     );
 }

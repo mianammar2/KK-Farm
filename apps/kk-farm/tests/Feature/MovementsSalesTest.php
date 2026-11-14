@@ -118,7 +118,10 @@ class MovementsSalesTest extends TestCase
 
         $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [$g1->id, $g2->id], 'type' => 'sacrificed', 'moved_on' => now()->toDateString()])->assertSessionHasErrors('type');
         $this->assertSame(['active', 'active'], [$g1->fresh()->status, $g2->fresh()->status], 'all or nothing');
-        $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [$g2->id], 'type' => 'death', 'moved_on' => now()->toDateString(), 'reason' => 'pneumonia'])->assertSessionHasNoErrors();
+        // D-260: a death is not a movement any more: the vet reports it and the administrator approves; the withdrawal does not block it
+        $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [$g2->id], 'type' => 'death', 'moved_on' => now()->toDateString(), 'reason' => 'pneumonia'])->assertSessionHasErrors('type');
+        $this->actingAs($this->user('vet'))->post("/goats/{$g2->id}/death", ['died_at' => now()->subHour()->format('Y-m-d H:i'), 'cause' => 'Pneumonia', 'circumstances' => 'Found dead in the pen'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->post('/death-reports/'.\App\Models\DeathReport::where('animal_id', $g2->id)->first()->id, ['decision' => 'approved'])->assertSessionHasNoErrors();
         $this->assertSame('deceased', $g2->fresh()->status);
     }
 

@@ -34,6 +34,7 @@ class Access
         'record_milk' => 'Record milk', 'manage_milking' => 'Milking settings', 'open_cases' => 'Open health cases', 'approve_breeding' => 'Approve goats for breeding',
         'health_entry' => 'New health entry', 'report_concern' => 'Report concern',
         'record_heat' => 'Record heat', 'record_mating' => 'Record mating', 'give_care' => 'Give vaccines and deworming', 'move_goats' => 'Move goats between pens',
+        'report_death' => 'Report a death', 'approve_death' => 'Approve a death (the goat leaves the farm)', 'cull_breeding' => 'Cull from breeding',
     ];
 
     /** The farm business's saved role settings, cached for the request (Tenant::memo is cleared per request). */
