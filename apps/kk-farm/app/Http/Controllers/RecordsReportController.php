@@ -41,7 +41,7 @@ class RecordsReportController extends Controller
 
         return Inertia::render('Reports/Records', [
             'kind' => $kind, 'kinds' => collect(self::KINDS)->when(! self::seesHealth($request->user()), fn ($c) => $c->except('temp')),
-            'days' => $this->days($kind)->values(),
+            'rows' => $this->rows($kind)->sortByDesc('on')->values(), // D-273: every record with its goat's details, for the grid's filters
         ]);
     }
 
@@ -58,6 +58,12 @@ class RecordsReportController extends Controller
     private function rows(string $kind): Collection
     {
         $numbers = Animal::pluck('farm_number', 'id');
+        // D-273: the goat's details on every record, so the report can be filtered by any of them
+        $goat = Animal::with(['breed', 'pen'])->get()->mapWithKeys(fn (Animal $a) => [$a->id => [
+            'breed' => $a->breed?->name, 'sex' => $a->sex === 'female' ? 'Female' : ($a->sex === 'male' ? 'Male' : null), 'pen' => $a->pen?->name,
+            'role' => \App\Support\Designations::main($a), 'code' => $a->classCode(), 'status' => $a->status === 'active' ? 'On farm' : 'Left',
+        ]]);
+        $with = fn (Collection $rows) => $rows->map(fn ($r) => $r + ($goat[$r['goatId']] ?? []));
         $series = function (Collection $recs, string $date, callable $value, callable $by, ?callable $extra = null) use ($numbers) {
             return $recs->groupBy('animal_id')->flatMap(function ($list) use ($date, $value, $by, $extra, $numbers) {
                 $prev = null;
@@ -75,7 +81,7 @@ class RecordsReportController extends Controller
             });
         };
 
-        return match ($kind) {
+        return $with(match ($kind) {
             'weight' => $series(WeightRecord::orderBy('measured_on')->get(), 'measured_on', fn ($w) => (float) $w->weight_kg, fn ($w) => $w->measured_by, fn ($w) => ['bcs' => $w->body_score]),
             'height' => $series(HeightRecord::get()->concat(WeightRecord::whereNotNull('height_cm')->get()), 'measured_on', fn ($h) => round((float) $h->height_cm / 2.54, 1), fn ($h) => $h->measured_by),
             'temp' => $series(HealthCheckup::whereNotNull('temperature_f')->get(), 'checked_on', fn ($c) => (float) $c->temperature_f, fn ($c) => $c->examiner, function ($c) {
@@ -85,23 +91,6 @@ class RecordsReportController extends Controller
             }),
             'move' => AnimalMovement::with(['fromPen', 'toPen'])->where('type', 'transfer')->get()->map(fn ($m) => ['on' => $m->moved_on->format('Y-m-d'), 'goatId' => $m->animal_id,
                 'number' => $numbers[$m->animal_id] ?? '?', 'value' => null, 'change' => null, 'days' => null, 'by' => $m->authorized_by, 'from' => $m->fromPen?->name, 'to' => $m->toPen?->name, 'reason' => $m->reason]),
-        };
-    }
-
-    /** Per date: how many goats and the day's numbers. */
-    private function days(string $kind): Collection
-    {
-        return $this->rows($kind)->groupBy('on')->map(function (Collection $d, string $on) use ($kind) {
-            $vals = $d->pluck('value')->filter(fn ($v) => $v !== null);
-            $ch = $d->pluck('change')->filter(fn ($v) => $v !== null);
-
-            return [
-                'on' => $on, 'goats' => $d->pluck('goatId')->unique()->count(), 'by' => $d->pluck('by')->filter()->unique()->values()->take(3),
-                'avg' => $vals->count() ? round($vals->avg(), 1) : null, 'min' => $vals->min(), 'max' => $vals->max(),
-                'up' => $ch->filter(fn ($v) => $v > 0)->count(), 'down' => $ch->filter(fn ($v) => $v < 0)->count(), 'avgChange' => $ch->count() ? round($ch->avg(), 2) : null,
-                'fever' => $kind === 'temp' ? $d->where('fever', true)->count() : null,
-                'routes' => $kind === 'move' ? $d->groupBy(fn ($r) => ($r['from'] ?? '?').' → '.($r['to'] ?? '?'))->map->count()->sortDesc()->take(3) : null,
-            ];
-        })->sortByDesc('on');
+        });
     }
 }

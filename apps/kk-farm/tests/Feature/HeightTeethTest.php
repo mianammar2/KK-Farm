@@ -74,10 +74,10 @@ class HeightTeethTest extends TestCase
         \App\Models\HealthCheckup::create(['animal_id' => $this->goat->id, 'checked_on' => now()->subDays(3), 'temperature_f' => 104.5, 'outcome' => 'monitor', 'examiner' => 'Dr Sana']);
         $day = now()->subDays(3)->toDateString();
         $this->actingAs($this->user('caretaker'))->get('/reports/records?kind=weight')->assertOk()->assertInertia(fn ($p) => $p
-            ->component('Reports/Records')->where('days.0.on', $day)->where('days.0.goats', 1)->where('days.0.up', 1)->where('days.0.avgChange', 2.5));
+            ->component('Reports/Records')->where('rows.0.on', $day)->where('rows.0.change', 2.5)->where('rows.0.breed', 'Beetal')->where('rows.0.sex', 'Female')->where('rows.0.status', 'On farm'));
         $this->actingAs($this->user('caretaker'))->getJson("/reports/records/day?kind=weight&on={$day}")->assertOk()->assertJsonPath('rows.0.number', 'H-1')->assertJsonPath('rows.0.change', 2.5);
         $this->actingAs($this->user('caretaker'))->get('/reports/records?kind=temp')->assertForbidden();
-        $this->actingAs($this->user('vet'))->get('/reports/records?kind=temp')->assertOk()->assertInertia(fn ($p) => $p->where('days.0.fever', 1));
+        $this->actingAs($this->user('vet'))->get('/reports/records?kind=temp')->assertOk()->assertInertia(fn ($p) => $p->where('rows.0.fever', true));
 
         $vet = $this->actingAs($this->user('vet'))->getJson("/goats/{$this->goat->id}/day/{$day}")->assertOk();
         $this->assertSame(32.5, $vet->json('weights.0.kg'));

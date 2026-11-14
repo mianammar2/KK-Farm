@@ -91,7 +91,7 @@ export default function GoatShow(props: Props) {
     })() : null;
 
     const fact = (label: string, value: React.ReactNode) => (
-        <div className="min-w-0"><dt className="text-sm text-ink-soft">{label}</dt><dd className="truncate font-semibold text-cobalt-900">{value ?? '—'}</dd></div>
+        <div className="min-w-0"><dt className="text-sm text-ink-soft">{label}</dt><dd className="text-base font-semibold break-words text-cobalt-900">{value ?? '—'}</dd></div>
     );
 
     return (
@@ -138,7 +138,7 @@ export default function GoatShow(props: Props) {
                             <ReproChip repro={goat.repro} until={goat.monitorUntil} />
                         </div>
                         <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft sm:text-base">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName size={22} /><span>·</span><AgeBadge stage={goat.stage} code={goat.ageCode} withLabel /><span>{goat.age}</span></p>
-                        {Object.keys(roleLabels).length ? <p className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Role codes">{Object.entries(roleLabels).map(([c, l], i) => <span key={c} className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${i === 0 ? 'bg-turq-100 text-turq-800' : 'bg-glaze text-cobalt-800 ring-1 ring-rule'}`}><span className="font-mono">{c}</span> · {l}</span>)}</p> : null}
+                        {Object.keys(roleLabels).length ? <p className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Role codes">{Object.entries(roleLabels).map(([c, l], i) => <span key={c} className={`rounded-full px-3 py-1 text-sm font-semibold ${i === 0 ? 'bg-turq-100 text-turq-800' : 'bg-glaze text-cobalt-800 ring-1 ring-rule'}`}><span className="font-mono">{c}</span> · {l}</span>)}</p> : null}
                         {statuses ? <StatusStrip statuses={statuses} history={statusHistory} /> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
                             {fact('Current weight', goat.weight ? `${goat.weight} KG` : 'No weighing yet')}
@@ -242,10 +242,10 @@ export default function GoatShow(props: Props) {
                         {milking ? <MilkingPanel m={milking} /> : null}
                         <Panel title="Identity">
                             <dl className="space-y-2">
-                                {fact('Permanent ID (tag ID)', <span className="font-mono text-sm font-semibold">{goat.number}</span>)}
+                                {fact('Permanent ID (tag ID)', <span className="font-mono">{goat.number}</span>)}
                                 {fact('Born', `${goat.birthDate ?? 'Unknown'}${goat.estimated ? ' (estimated)' : ''}`)}
                                 {goat.ageCode ? fact('Classification code', <span className="font-mono font-semibold text-cobalt-900">{goat.ageCode}</span>) : null}
-                                {eligibility && eligibility.status !== 'breeder' ? fact('Breeding eligibility', <span><Link href="/breeding/eligibility" className="font-semibold text-cobalt-800 hover:underline">{eligibility.label}</Link>{eligibility.review ? <span className="block text-xs font-semibold text-watch-700">Maturity review: look at this goat (not an approval)</span> : null}{eligibility.recommendation ? <span className="block text-xs text-watch-700">{eligibility.recommendation}</span> : null}{eligibility.failed.length ? <span className="block text-xs text-ink-soft">Not yet: {eligibility.failed.join('; ')}</span> : null}</span>) : null}
+                                {eligibility && eligibility.status !== 'breeder' ? fact('Breeding eligibility', <span><Link href="/breeding/eligibility" className="font-semibold text-cobalt-800 hover:underline">{eligibility.label}</Link>{eligibility.review ? <span className="mt-0.5 block text-sm font-medium text-watch-700">Maturity review: look at this goat (not an approval)</span> : null}{eligibility.recommendation ? <span className="mt-0.5 block text-sm font-medium text-watch-700">{eligibility.recommendation}</span> : null}{eligibility.failed.length ? <span className="mt-0.5 block text-sm font-normal text-ink-soft">Not yet: {eligibility.failed.join('; ')}</span> : null}</span>) : null}
                                 {castration ? fact('Castration', <Castration goatId={goat.id} c={castration} onFarm={onFarm} />) : null}
                                 {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit || !!auth?.gates.includes('health_checkup') || !!auth?.gates.includes('check_teeth')} options={dentalOptions} />) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
@@ -565,9 +565,9 @@ function DentalFact({ dental, teeth, goatId, canEdit, options }: { dental: Denta
     const form = useForm({ teeth: dental.code === 'UNK' ? '' : dental.code, dental_condition: 'normal', examined_on: new Date().toISOString().slice(0, 10) });
     return (
         <span className="block">
-            {dental.code === 'UNK' ? <span className="text-ink-soft">Not known (no age, no check)</span> : dental.fromAge ? <span>{dental.code} <span className="text-xs text-ink-soft">(from age, not checked)</span></span> : <span>{teeth ?? dental.code}{dental.condition && dental.condition !== 'Normal' ? <Chip className="ml-1.5 bg-watch-100 text-watch-700">{dental.condition}</Chip> : null}</span>}
-            {dental.checkedOn ? <span className="block text-xs text-ink-faint">Checked {dental.checkedOn}{dental.history.length > 1 ? ` · ${dental.history.length} checks on record` : ''}</span> : null}
-            {canEdit && !open ? <button type="button" className="mt-1 text-xs font-semibold text-cobalt-800 hover:underline" onClick={() => setOpen(true)}>Record a teeth check</button> : null}
+            {dental.code === 'UNK' ? <span className="text-ink-soft">Not known (no age, no check)</span> : dental.fromAge ? <span>{dental.code} <span className="text-sm font-normal text-ink-soft">(from age, not checked)</span></span> : <span>{teeth ?? dental.code}{dental.condition && dental.condition !== 'Normal' ? <Chip className="ml-1.5 bg-watch-100 text-watch-700">{dental.condition}</Chip> : null}</span>}
+            {dental.checkedOn ? <span className="block text-sm font-normal text-ink-soft">Checked {dental.checkedOn}{dental.history.length > 1 ? ` · ${dental.history.length} checks on record` : ''}</span> : null}
+            {canEdit && !open ? <button type="button" className="mt-1 block text-sm font-semibold text-cobalt-800 underline-offset-2 hover:underline" onClick={() => setOpen(true)}>Record a teeth check</button> : null}
             {open ? (
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-2" onSubmit={(e) => { e.preventDefault(); form.post(`/goats/${goatId}/teeth`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <Field label="Teeth (dental code)" error={form.errors.teeth}><select className="field" value={form.data.teeth} onChange={(e) => form.setData('teeth', e.target.value)}><option value="">Choose</option>{Object.entries(options.codes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -614,11 +614,11 @@ function StatusStrip({ statuses, history }: { statuses: Record<string, { code: s
     return (
         <div className="mt-2">
             <ul className="flex flex-wrap gap-1.5" aria-label="Statuses">{Object.entries(statuses).filter(([d, s]) => !(NO_STATE[d] ?? []).includes(s.code)).map(([d, s]) => (
-                <li key={d} className={`rounded-[4px] px-2 py-1 text-xs ring-1 ring-rule ${tone(d, s.code)}`} title={[s.note, ...(s.blockers ?? [])].filter(Boolean).join(' · ') || undefined}>
+                <li key={d} className={`rounded-md px-2.5 py-1 text-sm ring-1 ring-rule ${tone(d, s.code)}`} title={[s.note, ...(s.blockers ?? [])].filter(Boolean).join(' · ') || undefined}>
                     <span className="font-semibold">{DIM_LABEL[d] ?? d}:</span> {s.label}{s.note ? <span className="block text-xs opacity-80">{s.note}</span> : null}{s.blockers?.length ? <span className="block text-xs">{s.blockers.join('; ')}</span> : null}
                 </li>
             ))}</ul>
-            {history.length ? <details className="mt-1 text-xs text-ink-soft"><summary className="cursor-pointer">Status changes ({history.length})</summary><ul className="mt-1 space-y-0.5">{history.map((h, i) => <li key={i}>{h.at} · {DIM_LABEL[h.dimension] ?? h.dimension}: {h.from} → <span className="font-semibold">{h.to}</span> <span className="font-mono">({h.rule})</span></li>)}</ul></details> : null}
+            {history.length ? <details className="mt-1.5 text-sm text-ink-soft"><summary className="cursor-pointer">Status changes ({history.length})</summary><ul className="mt-1 space-y-0.5">{history.map((h, i) => <li key={i}>{h.at} · {DIM_LABEL[h.dimension] ?? h.dimension}: {h.from} → <span className="font-semibold">{h.to}</span> <span className="font-mono">({h.rule})</span></li>)}</ul></details> : null}
         </div>
     );
 }

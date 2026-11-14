@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
 import { Button, PageHeader, Panel, pkr, Stat, StatRow } from '../components/ui';
+import DataGrid, { type Col } from '../components/DataGrid';
 
 type Props = {
     breeds: Array<{ name: string; total: number; female: number; male: number; unwell: number }>;
@@ -15,6 +16,20 @@ type Props = {
     costs: Array<{ name: string; value: number }> | null;
     allowed: string[]; // D-243: the reports this person may open
 };
+
+/** D-273: every report table is a spreadsheet (sort, filter, totals, export). */
+const BREED_COLS: Col<Props['breeds'][number]>[] = [
+    { key: 'name', label: 'Breed', type: 'enum', render: (b) => <b>{b.name}</b> },
+    { key: 'total', label: 'Goats', type: 'number', total: 'sum' }, { key: 'female', label: 'Female', type: 'number', total: 'sum' },
+    { key: 'male', label: 'Male', type: 'number', total: 'sum' }, { key: 'unwell', label: 'Unwell', type: 'number', total: 'sum' },
+];
+const SIRE_COLS: Col<Props['sires'][number]>[] = [
+    { key: 'number', label: 'Buck', type: 'text', render: (s) => <Link href={`/goats/${s.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{s.number}</Link> },
+    { key: 'name', label: 'Name', type: 'text' }, { key: 'offspring', label: 'Kids sired', type: 'number', total: 'sum' },
+];
+const EXIT_COLS: Col<Props['exits'][number]>[] = [{ key: 'name', label: 'Reason', type: 'enum', value: (e) => e.name.charAt(0).toUpperCase() + e.name.slice(1) }, { key: 'value', label: 'Goats', type: 'number', total: 'sum' }];
+const COST_COLS: Col<{ name: string; value: number }>[] = [{ key: 'name', label: 'Category', type: 'enum' }, { key: 'value', label: 'Spent (PKR)', type: 'number', total: 'sum', render: (c) => pkr(c.value) }];
+const BAND_COLS: Col<{ band: string; value: number }>[] = [{ key: 'band', label: 'Age band', type: 'enum' }, { key: 'value', label: 'Goats', type: 'number', total: 'sum' }];
 
 const TITLES: Record<string, string> = { herd: 'Herd by Breed and Sex', age: 'Herd by Age', breeds: 'Breed Summary', sires: 'Most Used Sires', exits: 'Exits from the Herd', spending: 'Spending, Last 12 Months' };
 
@@ -62,20 +77,11 @@ export default function Reports({ breeds, ages, teeth, exits, breeding, sires, c
                 {show('herd') ? <Panel id="herd" title="Herd by breed and sex"><Chart option={breedChart} label="Goats by breed and sex" height={250} /></Panel> : null}
                 {show('age') ? <Panel id="age" title="Herd by age"><Chart option={ageChart} label="Goats by age band" height={250} /></Panel> : null}
                 {show('age') && teeth.length ? <Panel id="teeth" title="Herd by teeth" description="Dental code from each goat's latest mouth check. UNK = not examined."><Chart option={teethChart} label="Goats by dental code" height={250} /></Panel> : null}
-                {show('breeds') ? <Panel id="breeds" title="Breed summary" flush>
-                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Breed</th><th>Goats</th><th>Female</th><th>Male</th><th>Unwell</th></tr></thead><tbody>{breeds.map((b) => <tr key={b.name}><td className="font-semibold">{b.name}</td><td>{b.total}</td><td>{b.female}</td><td>{b.male}</td><td>{b.unwell}</td></tr>)}</tbody></table></div>
-                </Panel> : null}
-                {show('sires') ? <Panel id="sires" title="Most used sires" flush>
-                    <ul className="divide-y divide-rule text-sm">{sires.map((s) => <li key={s.id} className="flex justify-between px-4 py-2"><Link href={`/goats/${s.id}`} className="font-semibold text-cobalt-800 hover:underline">{s.name ?? s.number}</Link><span className="text-ink-soft">{s.offspring} offspring</span></li>)}</ul>
-                </Panel> : null}
-                {show('exits') ? <Panel id="exits" title="Exits from the herd" flush>
-                    <ul className="divide-y divide-rule text-sm">{exits.map((e) => <li key={e.name} className="flex justify-between px-4 py-2 capitalize"><span>{e.name}</span><span className="font-semibold">{e.value}</span></li>)}</ul>
-                </Panel> : null}
-                {costs && show('spending') ? (
-                    <Panel id="spending" title="Spending, last 12 months" flush>
-                        <ul className="divide-y divide-rule text-sm">{costs.map((c) => <li key={c.name} className="flex justify-between px-4 py-2"><span>{c.name}</span><span className="font-semibold">{pkr(c.value)}</span></li>)}</ul>
-                    </Panel>
-                ) : null}
+                {show('breeds') ? <Panel id="breeds" title="Breed summary" flush className={solo ? '' : 'lg:col-span-2'}><DataGrid id="report-breeds" name="Breed summary" cols={BREED_COLS} rows={breeds} /></Panel> : null}
+                {show('sires') ? <Panel id="sires" title="Most used sires" flush><DataGrid id="report-sires" name="Most used sires" cols={SIRE_COLS} rows={sires} /></Panel> : null}
+                {show('exits') ? <Panel id="exits" title="Exits from the herd" flush><DataGrid id="report-exits" name="Exits from the herd" cols={EXIT_COLS} rows={exits} /></Panel> : null}
+                {costs && show('spending') ? <Panel id="spending" title="Spending, last 12 months" flush><DataGrid id="report-spending" name="Spending last 12 months" cols={COST_COLS} rows={costs} /></Panel> : null}
+                {show('age') ? <Panel id="age-table" title="Herd by age: table" flush><DataGrid id="report-ages" name="Herd by age" cols={BAND_COLS} rows={ages} /></Panel> : null}
             </div>
         </>
     );
