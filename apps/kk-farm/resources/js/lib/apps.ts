@@ -53,11 +53,11 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings/fields', 'Register Fields'),
     ] },
     { key: 'breeding', no: '03', label: 'Breeding', art: 'app-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
+        S('Operations', '/breeding/eligibility', 'Breeding Eligibility & Approval'), // D-231; D-308: first in the menu (owner)
         S('Operations', '/breeding?tab=cycle', 'Mating Records'), // D-294/D-296
         S('Operations', '/breeding?tab=ultrasound', 'Ultrasound'), // D-298: the vet's scans after mating
         S('Operations', '/genetics?tab=review', 'Replacement Review (Genetic Merit)'),
         S('Reporting', '/genetics?tab=progeny', 'Sire & Dam Progeny Performance'),
-        S('Operations', '/breeding/eligibility', 'Breeding Eligibility & Approval'), // D-231
         S('Records', '/breeding?tab=pedigree', 'Genetics & Family Tree'),
         S('Reporting', '/breeding?tab=performance', 'Doe Performance'),
         S('Configuration', '/breeding?tab=settings', 'Gestation & Check Days'),
