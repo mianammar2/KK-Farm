@@ -104,7 +104,7 @@ export default function Breeding(props: Props) {
             {tab === 'ultrasound' ? <UltrasoundList rows={ultrasound} isVet={isVet} options={options} does={props.does} /> : null}
 
             {tab === 'pregnancies' ? (
-                <Panel title="Pregnancies to Follow" description="Open matings and pregnancies: the expected kidding and the outcome. The ultrasound is recorded on Breeding → Ultrasound." flush={!active.length}>
+                <Panel description="Open matings and pregnancies: the expected kidding and the outcome. The ultrasound is recorded on Breeding → Ultrasound." flush={!active.length}>
                     {active.length ? <div className="min-w-0 space-y-3 p-3">{active.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} {...props} />)}</div>
                         : <Empty title="Nothing to follow">Every mating has its outcome.</Empty>}
                 </Panel>
