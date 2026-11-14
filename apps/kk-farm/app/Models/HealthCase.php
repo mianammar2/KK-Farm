@@ -76,4 +76,11 @@ class HealthCase extends Model
     {
         return (int) $this->onset_on->diffInDays($this->resolved_on ?? now()->startOfDay());
     }
+
+    /** D-292: the Disease Master entry this case is about. */
+    public function disease()
+    {
+        return $this->belongsTo(Disease::class);
+    }
+
 }

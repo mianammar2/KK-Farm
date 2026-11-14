@@ -149,7 +149,9 @@ class HeightTeethTest extends TestCase
         \App\Models\WeightRecord::create(['animal_id' => $this->goat->id, 'measured_on' => now()->subDays(10), 'weight_kg' => 30, 'measured_by' => 'x', 'source' => 'manual']);
         \App\Models\WeightRecord::create(['animal_id' => $this->goat->id, 'measured_on' => now(), 'weight_kg' => 32, 'measured_by' => 'x', 'source' => 'manual']);
         \App\Models\HealthCheckup::create(['animal_id' => $this->goat->id, 'checked_on' => now(), 'temperature_f' => 104.2, 'outcome' => 'monitor', 'examiner' => 'Dr Sana']);
-        $this->actingAs($this->user('vet'))->getJson("/goats/{$this->goat->id}/profile")->assertOk()
+        $ppr = \App\Models\Disease::create(['name' => 'Peste des Petits Ruminants (PPR)', 'code' => 'DIS-001', 'category' => 'infectious', 'active' => true]);
+        \App\Models\HealthCase::create(['case_no' => 1, 'animal_id' => $this->goat->id, 'onset_on' => now(), 'condition' => 'Peste des Petits Ruminants (PPR)', 'disease_id' => $ppr->id, 'severity' => 'high', 'status' => 'under_treatment', 'recorded_by' => 'vet']);
+        $this->actingAs($this->user('vet'))->getJson("/goats/{$this->goat->id}/profile")->assertOk()->assertJsonPath('healthDetail.cases.0.code', 'DIS-001')
             ->assertJsonPath('number', 'H-1')->assertJsonPath('growth.latestKg', 32)->assertJsonPath('growth.gain.kg', 2)->assertJsonPath('healthDetail.lastCheck.temp', 104.2)->assertJsonPath('healthDetail.lastCheck.fever', true);
         $care = $this->actingAs($this->user('caretaker'))->getJson("/goats/{$this->goat->id}/profile")->assertOk();
         $this->assertNull($care->json('healthDetail'));
