@@ -84,14 +84,14 @@ class HealthCaseTest extends TestCase
         $this->treat($case, ['meat_clear_on' => now()->addDays(10)->toDateString()])->assertSessionHasNoErrors();
         $manager = $this->user('manager');
 
-        $this->actingAs($manager)->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold'])->assertSessionHasErrors('reason');
+        $this->actingAs($manager)->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold', 'sale_reason' => 'business'])->assertSessionHasErrors('reason');
         $this->actingAs($manager)->post("/goats/{$this->goat->id}/exit", ['reason' => 'sacrificed'])->assertSessionHasErrors('reason');
         $this->assertSame('active', $this->goat->fresh()->status);
         $this->actingAs($manager)->get("/goats/{$this->goat->id}")->assertInertia(fn (AssertableInertia $p) => $p->where('goat.withdrawal.meat', now()->addDays(10)->format('d/m/Y')));
 
         $this->travel(11)->days();
         $this->assertNull(Withdrawal::forAnimal($this->goat->id)['meat']);
-        $this->actingAs($manager)->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold'])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold', 'sale_reason' => 'business'])->assertSessionHasNoErrors();
         $this->assertSame('left_farm', $this->goat->fresh()->status);
     }
 

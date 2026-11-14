@@ -19,6 +19,55 @@ use Illuminate\Validation\ValidationException;
 final class Movements
 {
     /** Old exit reasons (goat page, register) to movement types. */
+    /** D-290: why a goat was sold. Sick names the disease (from the Disease Master); Other has the reason typed. */
+    public const SALE_REASONS = ['business' => 'Business', 'profit' => 'Profit', 'sick' => 'Sick', 'other' => 'Other'];
+
+    /** Validation for the sale reason, for any form that sells a goat. */
+    public static function saleReasonRules(string $when): array
+    {
+        return [
+            'sale_reason' => ['nullable', "required_if:$when", \Illuminate\Validation\Rule::in(array_keys(self::SALE_REASONS))],
+            'disease_id' => ['nullable', 'required_if:sale_reason,sick', 'exists:diseases,id'],
+            'sale_reason_note' => ['nullable', 'required_if:sale_reason,other', 'string', 'max:200'],
+        ];
+    }
+
+    /** D-290: the Disease Master for the Sick option: code, name, local name. */
+    public static function diseaseOptions(): array
+    {
+        return \App\Models\Disease::where('active', true)->orderByRaw('code is null')->orderBy('code')->orderBy('name')->get(['id', 'code', 'name', 'local_name'])
+            ->map(fn ($d) => ['id' => $d->id, 'label' => trim(($d->code ? "{$d->code} · " : '').$d->name.($d->local_name && $d->local_name !== $d->name ? " ({$d->local_name})" : ''))])->values()->all();
+    }
+
+    /**
+     * D-290: why this goat would be sold, from its health: an open case names the disease (Sick), so the sale form fills
+     * it in. The vet's diagnosis is the source; nothing is decided here.
+     */
+    public static function saleHint(\App\Models\Animal $animal): ?array
+    {
+        $case = \App\Models\HealthCase::where('animal_id', $animal->id)->whereIn('status', \App\Models\HealthCase::ACTIVE)->latest('onset_on')->first();
+        if (! $case) {
+            return null;
+        }
+        $name = trim((string) ($case->diagnosis ?: $case->condition));
+        $disease = \App\Models\Disease::where('active', true)->where(fn ($q) => $q->whereRaw('lower(name) = lower(?)', [$name])->orWhereRaw('lower(local_name) = lower(?)', [$name])->orWhere('code', $name))->first()
+            ?? \App\Models\Disease::where('active', true)->whereRaw('lower(?) like lower(concat(\'%\', name, \'%\'))', [$name])->first();
+
+        return ['reason' => 'sick', 'diseaseId' => $disease?->id, 'note' => $disease ? null : $name, 'from' => "Open health case {$case->label()}: {$name}"];
+    }
+
+    /** "Sold: Sick (PPR)" for the movement's reason line. */
+    public static function saleReasonText(array $data): ?string
+    {
+        $r = $data['sale_reason'] ?? null;
+        if (! $r) {
+            return null;
+        }
+        $extra = $r === 'sick' ? \App\Models\Disease::find($data['disease_id'] ?? 0)?->name : ($r === 'other' ? ($data['sale_reason_note'] ?? null) : null);
+
+        return 'Sold: '.self::SALE_REASONS[$r].($extra ? " ($extra)" : '');
+    }
+
     public const REASON_TO_TYPE = ['sold' => 'sale', 'died' => 'death', 'culled' => 'culling', 'sacrificed' => 'sacrificed', 'gifted' => 'gifted', 'transferred' => 'transferred_out', 'other' => 'other'];
 
     public const TYPE_TO_REASON = ['sale' => 'sold', 'death' => 'died', 'culling' => 'culled', 'sacrificed' => 'sacrificed', 'gifted' => 'gifted', 'transferred_out' => 'transferred', 'other' => 'other'];
@@ -101,6 +150,8 @@ final class Movements
                 'animal_id' => $animal->id, 'moved_on' => $on, 'type' => $type, 'from_pen_id' => $animal->pen_id, 'destination' => $data['destination'] ?? null,
                 'reason' => $data['reason'] ?? null, 'authorized_by' => $data['authorized_by'] ?? $by->name, 'amount_minor' => $amount,
                 'evidence_ref' => $data['evidence_ref'] ?? null, 'notes' => $data['notes'] ?? null, 'recorded_by' => $by->name,
+                'sale_reason' => $type === 'sale' ? ($data['sale_reason'] ?? null) : null, 'disease_id' => $type === 'sale' ? ($data['disease_id'] ?? null) : null,
+                'sale_reason_note' => $type === 'sale' ? ($data['sale_reason_note'] ?? null) : null, // D-290
             ]);
             Farm::closeOpenTag($animal, self::TYPE_TO_REASON[$type], $by);
             $animal->update([

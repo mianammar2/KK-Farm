@@ -66,6 +66,8 @@ const DEFS: Def[] = [
     { section: 'Movement & exit', ...dated('exitIso', 'exitOn'), label: 'Left on' } as Def,
     { section: 'Movement & exit', key: 'exitReason', label: 'Exit reason', type: 'enum' },
     { section: 'Movement & exit', key: 'buyer', label: 'Buyer / destination', type: 'text' },
+    { section: 'Movement & exit', key: 'saleReason', label: 'Why sold', type: 'enum' },
+    { section: 'Movement & exit', key: 'saleDetail', label: 'Sale disease / reason', type: 'enum' },
     { section: 'Movement & exit', key: 'salePkr', label: 'Sale (PKR)', type: 'number', total: 'sum', agg: 'sum' },
     { section: 'Record', ...dated('enteredIso', 'entered'), label: 'Entered on' } as Def,
     { section: 'Record', key: 'enteredBy', label: 'Entered by', type: 'enum' },

@@ -96,9 +96,9 @@ class MovementsSalesTest extends TestCase
     {
         $g1 = $this->goat('G-1');
         $g2 = $this->goat('G-2');
-        $this->actingAs($this->user('caretaker'))->post('/movements', ['animal_ids' => [$g1->id], 'type' => 'sale', 'moved_on' => now()->toDateString(), 'amount' => 50000])->assertForbidden();
-        $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [$g1->id, $g2->id], 'type' => 'sale', 'moved_on' => now()->toDateString()])->assertSessionHasErrors('amount');
-        $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [$g1->id, $g2->id], 'type' => 'sale', 'moved_on' => now()->toDateString(), 'amount' => 50000, 'fee' => 2000, 'destination' => 'Mandi trader', 'evidence_ref' => 'R-77'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('caretaker'))->post('/movements', ['animal_ids' => [$g1->id], 'type' => 'sale', 'sale_reason' => 'business', 'moved_on' => now()->toDateString(), 'amount' => 50000])->assertForbidden();
+        $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [$g1->id, $g2->id], 'type' => 'sale', 'sale_reason' => 'business', 'moved_on' => now()->toDateString()])->assertSessionHasErrors('amount');
+        $this->actingAs($this->user('manager'))->post('/movements', ['animal_ids' => [$g1->id, $g2->id], 'type' => 'sale', 'sale_reason' => 'business', 'moved_on' => now()->toDateString(), 'amount' => 50000, 'fee' => 2000, 'destination' => 'Mandi trader', 'evidence_ref' => 'R-77'])->assertSessionHasNoErrors();
 
         $g1->refresh();
         $this->assertSame(['left_farm', 'sold', null], [$g1->status, $g1->exit_reason, $g1->pen_id]);
@@ -128,7 +128,7 @@ class MovementsSalesTest extends TestCase
     public function test_the_goat_page_exit_uses_the_same_movement_and_sale(): void
     {
         $g = $this->goat('G-1');
-        $this->actingAs($this->user('manager'))->post("/goats/{$g->id}/exit", ['reason' => 'sold', 'amount' => 30000, 'destination' => 'Neighbour'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post("/goats/{$g->id}/exit", ['reason' => 'sold', 'sale_reason' => 'business', 'amount' => 30000, 'destination' => 'Neighbour'])->assertSessionHasNoErrors();
         $this->assertSame(['sale', 3000000], [AnimalMovement::sole()->type, AnimalMovement::sole()->amount_minor]);
         $this->assertSame(3000000, Sale::sole()->gross_minor);
     }

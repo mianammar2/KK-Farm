@@ -36,6 +36,12 @@ class AnimalMovement extends Model
         return $this->belongsTo(Pen::class, 'from_pen_id');
     }
 
+    /** D-290: the disease when a goat was sold sick. */
+    public function disease()
+    {
+        return $this->belongsTo(Disease::class);
+    }
+
     public function toPen()
     {
         return $this->belongsTo(Pen::class, 'to_pen_id');

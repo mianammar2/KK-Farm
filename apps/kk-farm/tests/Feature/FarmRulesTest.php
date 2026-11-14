@@ -123,7 +123,7 @@ class FarmRulesTest extends TestCase
         Farm::assignTag($goat, $tag, 'initial', $manager);
         WeightRecord::create(['animal_id' => $goat->id, 'measured_on' => now(), 'weight_kg' => 30, 'measured_by' => 'x']);
 
-        $this->actingAs($manager)->post("/goats/{$goat->id}/exit", ['reason' => 'sold'])->assertRedirect();
+        $this->actingAs($manager)->post("/goats/{$goat->id}/exit", ['reason' => 'sold', 'sale_reason' => 'business'])->assertRedirect();
 
         $goat->refresh();
         $this->assertSame('left_farm', $goat->status);

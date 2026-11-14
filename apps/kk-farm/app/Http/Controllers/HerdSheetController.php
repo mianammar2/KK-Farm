@@ -42,7 +42,7 @@ class HerdSheetController extends Controller
         $matDam = $by("select dam_id, count(*) n, max(mated_on) last_on from matings group by dam_id", 'dam_id');
         $matSire = $by("select sire_id, count(*) n from matings where sire_id is not null group by sire_id", 'sire_id');
         $moves = $by("select animal_id, count(*) filter (where type = 'transfer') n from animal_movements group by animal_id");
-        $exits = $by("select distinct on (animal_id) animal_id, type, destination, amount_minor from animal_movements where type <> 'transfer' order by animal_id, moved_on desc, id desc");
+        $exits = $by("select distinct on (m.animal_id) m.animal_id, m.type, m.destination, m.amount_minor, m.sale_reason, coalesce(d.name, m.sale_reason_note) sale_detail from animal_movements m left join diseases d on d.id = m.disease_id where m.type <> 'transfer' order by m.animal_id, m.moved_on desc, m.id desc");
         $tags = $by("select a.animal_id, t.tag_code from rfid_assignments a join rfid_tags t on t.id = a.rfid_tag_id where a.valid_to is null");
         $entered = $by("select distinct on (animal_id) animal_id, recorded_by from animal_events where type = 'origin' order by animal_id, occurred_at");
         $numbers = Animal::pluck('farm_number', 'id');
@@ -80,7 +80,7 @@ class HerdSheetController extends Controller
                 'matings' => $a->sex === 'female' ? (int) ($md->n ?? 0) : (int) ($matSire[$a->id]->n ?? 0),
                 'penMoves' => (int) ($moves[$a->id]->n ?? 0),
                 'exitIso' => $iso($a->exit_date), 'exitOn' => $d($a->exit_date), 'exitReason' => $a->exit_reason ? ucfirst($a->exit_reason) : null,
-                'buyer' => $ex->destination ?? null, 'salePkr' => $ex && $ex->amount_minor !== null ? (int) round($ex->amount_minor / 100) : null,
+                'buyer' => $ex->destination ?? null, 'saleReason' => isset($ex->sale_reason) ? (\App\Support\Movements::SALE_REASONS[$ex->sale_reason] ?? $ex->sale_reason) : null, 'saleDetail' => $ex->sale_detail ?? null, 'salePkr' => $ex && $ex->amount_minor !== null ? (int) round($ex->amount_minor / 100) : null,
                 'enteredIso' => $iso($a->created_at?->setTimezone('Asia/Karachi')), 'entered' => $a->created_at?->setTimezone('Asia/Karachi')->format('d/m/Y g:i A'), 'enteredBy' => $entered[$a->id]->recorded_by ?? null,
             ];
         });

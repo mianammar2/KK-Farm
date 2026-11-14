@@ -4,22 +4,24 @@ import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow } from '../components/ui';
 import DataGrid, { type Col } from '../components/DataGrid';
+import SaleReasonFields, { saleReasonDefaults, type DiseaseOption } from '../components/SaleReason';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 
-type Move = { id: number; on: string; type: string; typeLabel: string; goatId: string; goat: string; from: string | null; to: string | null; reason: string | null; by: string; amount: number | null; evidence: string | null };
+type Move = { saleReason?: string | null; saleDisease?: string | null; id: number; on: string; type: string; typeLabel: string; goatId: string; goat: string; from: string | null; to: string | null; reason: string | null; by: string; amount: number | null; evidence: string | null };
 type Goat = { id: string; number: string; name: string | null; pen: string | null; penId: number | null; withdrawal: string | null };
 type Props = {
     kind: 'transfer' | 'exit';
     movements: Move[]; goats: Goat[]; pens: Array<{ id: number; name: string }>; types: Record<string, { label: string; exit: boolean }>;
     month: Record<string, number>; canExit: boolean; saleCategories: Record<string, string>;
+    saleReasons?: Record<string, string>; diseases?: DiseaseOption[]; // D-290
 };
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const TYPE_CLASS: Record<string, string> = { transfer: 'bg-cobalt-100 text-cobalt-800', sale: 'bg-ok-100 text-ok-700', death: 'bg-crit-100 text-crit-700', culling: 'bg-treat-100 text-treat-700', sacrificed: 'bg-turq-100 text-turq-800', gifted: 'bg-glaze text-ink-soft', transferred_out: 'bg-glaze text-ink-soft', other: 'bg-glaze text-ink-soft' };
 
 /** D-076: workbook "Animal Movements": move one goat or a batch, or record exits; every movement is kept. */
-export default function Movements({ kind = 'transfer', movements, goats, pens, types, month, canExit, saleCategories }: Props) {
+export default function Movements({ kind = 'transfer', movements, goats, pens, types, month, canExit, saleCategories, saleReasons, diseases }: Props) {
     usePoll(LIVE_MS, { only: ['movements', 'goats', 'pens', 'month'] }); // D-086: live
     const [adding, setAdding] = useState(false); // D-127: the movement form opens from a + button
     const exits = Object.entries(month).filter(([t]) => t !== 'transfer').reduce((s, [, n]) => s + n, 0);
@@ -31,6 +33,8 @@ export default function Movements({ kind = 'transfer', movements, goats, pens, t
         { key: 'typeLabel', label: 'Exit', type: 'enum', render: (m) => <Chip className={TYPE_CLASS[m.type] ?? 'bg-glaze text-ink-soft'}>{m.typeLabel}</Chip> },
         { key: 'from', label: 'Last PEN', type: 'enum' },
         { key: 'to', label: 'Buyer / destination', type: 'text' },
+        { key: 'saleReason', label: 'Why sold', type: 'enum' },
+        { key: 'saleDisease', label: 'Disease / reason', type: 'enum' },
         { key: 'reason', label: 'Reason', type: 'text', wrap: true, value: (m) => [m.reason, m.evidence].filter(Boolean).join(' · ') || null },
         { key: 'amount', label: 'Amount (PKR)', type: 'number', total: 'sum', render: (m) => (m.amount !== null ? m.amount.toLocaleString('en-PK') : '—') },
         { key: 'by', label: 'Authorised by', type: 'enum' },
@@ -49,7 +53,7 @@ export default function Movements({ kind = 'transfer', movements, goats, pens, t
             <PageHeader title={isExit ? 'Animal Exit' : 'PEN Movements'}
                 description={isExit ? 'Goats leaving the farm: sold, Qurbani, gifted, transferred out, and deaths approved by the administrator. The goat leaves the farm; its record stays.' : 'Goats moved from one PEN to another, with the reason. The goat stays on the farm; its PEN follows the latest move.'}
                 actions={isExit && !canExit ? null : <AddButton label={isExit ? 'Record an exit' : 'Move goats'} onClick={() => setAdding(true)} />} />
-            {adding ? <Sheet onClose={() => setAdding(false)}><MoveForm goats={goats} pens={pens} types={types} canExit={canExit} saleCategories={saleCategories} onDone={() => setAdding(false)} /></Sheet> : null}
+            {adding ? <Sheet onClose={() => setAdding(false)}><MoveForm goats={goats} pens={pens} types={types} canExit={canExit} saleCategories={saleCategories} saleReasons={saleReasons} diseases={diseases} onDone={() => setAdding(false)} /></Sheet> : null}
             <StatRow>
                 <Stat label="Goats on the farm" value={goats.length} />
                 {isExit ? <>
@@ -68,9 +72,9 @@ export default function Movements({ kind = 'transfer', movements, goats, pens, t
     );
 }
 
-function MoveForm({ goats, pens, types, canExit, saleCategories, onDone }: Omit<Props, 'movements' | 'month' | 'kind'> & { onDone?: () => void }) {
+function MoveForm({ goats, pens, types, canExit, saleCategories, saleReasons = {}, diseases = [], onDone }: Omit<Props, 'movements' | 'month' | 'kind'> & { onDone?: () => void }) {
     const [query, setQuery] = useState('');
-    const form = useForm({ animal_ids: [] as string[], type: Object.keys(types)[0] ?? 'transfer', moved_on: today(), to_pen_id: '', destination: '', reason: '', authorized_by: '', amount: '', fee: '', evidence_ref: '', notes: '', sale_category: 'live_goat', capacity_override: '' });
+    const form = useForm({ animal_ids: [] as string[], type: Object.keys(types)[0] ?? 'transfer', moved_on: today(), to_pen_id: '', destination: '', reason: '', authorized_by: '', amount: '', fee: '', evidence_ref: '', notes: '', sale_category: 'live_goat', capacity_override: '', ...saleReasonDefaults() });
     const e = form.errors as Record<string, string>;
     const exit = types[form.data.type]?.exit;
     const picked = goats.filter((g) => form.data.animal_ids.includes(g.id));
@@ -121,6 +125,7 @@ function MoveForm({ goats, pens, types, canExit, saleCategories, onDone }: Omit<
                             <Field label={form.data.type === 'sale' ? 'Buyer' : 'Destination'} error={e.destination}><input className="field" value={form.data.destination} onChange={(x) => form.setData('destination', x.target.value)} placeholder={form.data.type === 'sale' ? 'Name or market' : 'Farm, place or person'} /></Field>
                             {form.data.type === 'sale' ? (
                                 <>
+                                    <div className="flex flex-wrap gap-2"><SaleReasonFields data={form.data} set={(k, v) => form.setData(k, v)} errors={e} reasons={saleReasons} diseases={diseases} /></div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <Field label="Price per goat (PKR)" error={e.amount}><input type="number" min={0} className="field" value={form.data.amount} onChange={(x) => form.setData('amount', x.target.value)} /></Field>
                                         <Field label="Fee / discount (PKR)" error={e.fee}><input type="number" min={0} className="field" value={form.data.fee} onChange={(x) => form.setData('fee', x.target.value)} /></Field>

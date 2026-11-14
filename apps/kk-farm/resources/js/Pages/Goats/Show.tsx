@@ -10,6 +10,7 @@ import Chart from '../../components/LazyChart';
 import { axis } from '../../lib/chartTheme';
 import GoatPortrait from '../../components/GoatPortrait';
 import { usePaged } from '../../components/Pager';
+import SaleReasonFields, { saleReasonDefaults, type DiseaseOption, type SaleHint } from '../../components/SaleReason';
 import PregnancyOutcomeForm, { type OutcomeOptions } from '../../components/PregnancyOutcomeForm';
 import UltrasoundForm, { type UltrasoundOptions } from '../../components/UltrasoundForm';
 import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
@@ -18,7 +19,7 @@ import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
 
 type Dental = { code: string; fromAge?: boolean; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
-type Goat = GoatCard & { arrivedOn?: string | null; arrivedEntered?: boolean; sourceFarm?: string | null; inBreeding?: boolean; ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
+type Goat = GoatCard & { saleHint?: SaleHint; arrivedOn?: string | null; arrivedEntered?: boolean; sourceFarm?: string | null; inBreeding?: boolean; ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
 type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
@@ -388,7 +389,8 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
     // D-253: a quick temperature reading with its date, saved as a checkup (the vet can change the result)
     const temp = useForm({ animal_id: goat.id, temperature_f: '', checked_on: today, outcome: 'healthy' });
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? ''), capacity_override: '', reason: '' });
-    const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '' });
+    const { saleReasons = {}, diseases = [] } = usePage<{ saleReasons?: Record<string, string>; diseases?: DiseaseOption[] }>().props; // D-290
+    const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '', ...saleReasonDefaults(goat.saleHint) });
     const [ask, confirmBox] = useConfirm(); // D-133
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
     const birth = useForm({ birth_date: '', age_months: '', reason: '' });
@@ -477,6 +479,7 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
         <form onSubmit={async (e) => { e.preventDefault(); if (await ask({ title: `Record ${goat.number} as ${EXIT_WORD[exit.data.reason] ?? 'left the farm'}?`, message: 'It leaves the farm lists and counts. This is kept in its history.', confirm: 'Yes, record exit' })) exit.post(`/goats/${goat.id}/exit`, options); }} className="flex flex-wrap items-end gap-2">
             {confirmBox}
             <div className="w-52"><Field label="Reason" error={exit.errors.reason}><select className="field" value={exit.data.reason} onChange={(e) => exit.setData('reason', e.target.value)}><option value="sold">Sold</option><option value="sacrificed">Qurbani / sacrifice</option><option value="gifted">Gifted</option><option value="transferred">Transferred out</option><option value="other">Other</option></select></Field></div>
+            {exit.data.reason === 'sold' ? <SaleReasonFields data={exit.data} set={(k, v) => exit.setData(k, v)} errors={exit.errors as Record<string, string>} reasons={saleReasons} diseases={diseases} hint={goat.saleHint} /> : null}
             {exit.data.reason === 'sold' ? <div className="w-40"><Field label="Price (PKR)" error={exit.errors.amount}><input inputMode="decimal" className="field" value={exit.data.amount} onChange={(e) => exit.setData('amount', e.target.value)} /></Field></div> : null}
             {exit.data.reason !== 'died' ? <div className="w-48"><Field label={exit.data.reason === 'sold' ? 'Buyer' : 'Destination'}><input className="field" value={exit.data.destination} onChange={(e) => exit.setData('destination', e.target.value)} /></Field></div> : null}
             <Button type="submit" variant="danger" disabled={exit.processing}>Confirm exit</Button>

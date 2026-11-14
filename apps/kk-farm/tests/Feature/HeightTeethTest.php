@@ -109,4 +109,17 @@ class HeightTeethTest extends TestCase
             ->where('rows.0.tag', 'H-1')->where('rows.0.breed', 'Beetal')->where('rows.0.weighings', 2)->where('rows.0.gainKg', 2)->where('rows.0.adg', 200)->where('rows.0.cases', 0)->where('seeHealth', true));
         $this->actingAs($this->user('caretaker'))->get('/reports/sheet')->assertForbidden();
     }
+
+    /** D-290: a sale says why: business, profit, sick (with the disease) or other (in words); an open case fills in Sick. */
+    public function test_a_sale_records_why_and_sick_names_the_disease(): void
+    {
+        $ppr = \App\Models\Disease::where('code', 'DIS-001')->first() ?? \App\Models\Disease::create(['name' => 'Peste des Petits Ruminants (PPR)', 'code' => 'DIS-001', 'category' => 'infectious', 'active' => true]);
+        \App\Models\HealthCase::create(['case_no' => 1, 'animal_id' => $this->goat->id, 'onset_on' => now()->subDays(2), 'condition' => 'Peste des Petits Ruminants (PPR)', 'severity' => 'high', 'status' => 'under_treatment', 'recorded_by' => 'vet']);
+        $this->actingAs($this->user('ceo'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('goat.saleHint.reason', 'sick')->where('goat.saleHint.diseaseId', $ppr->id));
+        $this->actingAs($this->user('ceo'))->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold', 'amount' => 20000])->assertSessionHasErrors('sale_reason');
+        $this->actingAs($this->user('ceo'))->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold', 'amount' => 20000, 'sale_reason' => 'sick'])->assertSessionHasErrors('disease_id');
+        $this->actingAs($this->user('ceo'))->post("/goats/{$this->goat->id}/exit", ['reason' => 'sold', 'amount' => 20000, 'sale_reason' => 'sick', 'disease_id' => $ppr->id])->assertSessionHasNoErrors();
+        $m = \App\Models\AnimalMovement::where('animal_id', $this->goat->id)->where('type', 'sale')->sole();
+        $this->assertSame(['sick', $ppr->id, 'Sold: Sick (Peste des Petits Ruminants (PPR))'], [$m->sale_reason, $m->disease_id, $m->reason]);
+    }
 }

@@ -31,11 +31,12 @@ class MovementController extends Controller
 
         return Inertia::render('Movements', [
             'kind' => $kind,
-            'movements' => AnimalMovement::with(['animal', 'fromPen.shed', 'toPen.shed'])->when($kind === 'transfer', fn ($q) => $q->where('type', 'transfer'), fn ($q) => $q->where('type', '!=', 'transfer'))
+            'movements' => AnimalMovement::with(['animal', 'fromPen.shed', 'toPen.shed', 'disease'])->when($kind === 'transfer', fn ($q) => $q->where('type', 'transfer'), fn ($q) => $q->where('type', '!=', 'transfer'))
                 ->orderByDesc('moved_on')->orderByDesc('id')->limit(1000)->get()->map(fn (AnimalMovement $m) => [
                 'id' => $m->id, 'on' => $m->moved_on->format('d/m/Y'), 'type' => $m->type, 'typeLabel' => AnimalMovement::TYPES[$m->type][0] ?? $m->type,
                 'goatId' => $m->animal_id, 'goat' => $m->animal->farm_number, 'from' => $m->fromPen?->fullName(), 'to' => $m->toPen?->fullName() ?? $m->destination,
-                'reason' => $m->reason, 'by' => $m->authorized_by ?? $m->recorded_by, 'amount' => $m->amount_minor !== null ? $m->amount_minor / 100 : null, 'evidence' => $m->evidence_ref,
+                'reason' => $m->reason, 'saleReason' => $m->sale_reason ? Movements::SALE_REASONS[$m->sale_reason] ?? $m->sale_reason : null,
+                'saleDisease' => $m->disease?->name ?? $m->sale_reason_note, 'by' => $m->authorized_by ?? $m->recorded_by, 'amount' => $m->amount_minor !== null ? $m->amount_minor / 100 : null, 'evidence' => $m->evidence_ref,
             ]),
             'goats' => Animal::with('pen.shed')->active()->orderBy('farm_number')->get()->map(fn (Animal $a) => [
                 'id' => $a->id, 'number' => $a->farm_number, 'name' => $a->name, 'pen' => $a->pen?->fullName(), 'penId' => $a->pen_id,
@@ -46,6 +47,7 @@ class MovementController extends Controller
             'month' => AnimalMovement::where('moved_on', '>=', now()->startOfMonth())->groupBy('type')->selectRaw('type, count(*) as n')->pluck('n', 'type'),
             'canExit' => $request->user()->passes('exit_animal'),
             'saleCategories' => Sale::CATEGORIES,
+            'saleReasons' => Movements::SALE_REASONS, 'diseases' => \App\Support\Movements::diseaseOptions(), // D-290
         ]);
     }
 
@@ -60,7 +62,11 @@ class MovementController extends Controller
             'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'fee' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
             'evidence_ref' => ['nullable', 'string', 'max:80'], 'notes' => ['nullable', 'string', 'max:500'],
             'sale_category' => ['nullable', Rule::in(['live_goat', 'breeding_goat'])], 'capacity_override' => ['nullable', 'string', 'max:200'], // D-207
-        ], ['to_pen_id.required_if' => 'Choose the PEN to move to.'], ['animal_ids' => 'goats', 'amount' => 'price']);
+        ] + Movements::saleReasonRules('type,sale') + [
+        ], ['to_pen_id.required_if' => 'Choose the PEN to move to.', 'sale_reason.required_if' => 'Choose why the goats were sold.', 'disease_id.required_if' => 'Choose the disease.', 'sale_reason_note.required_if' => 'Write the reason.'], ['animal_ids' => 'goats', 'amount' => 'price']);
+        if ($data['type'] === 'sale' && empty($data['reason'])) {
+            $data['reason'] = Movements::saleReasonText($data); // D-290
+        }
         $exit = AnimalMovement::TYPES[$data['type']][1];
         abort_if($exit && ! $request->user()->passes('exit_animal'), 403, 'Only the owner or manager records a goat leaving the farm.');
         if ($data['type'] === 'sale' && empty($data['amount'])) {

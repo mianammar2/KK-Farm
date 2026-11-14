@@ -430,6 +430,7 @@ class GoatController extends Controller
                 'withdrawal' => \App\Support\Withdrawal::summary($animal), // D-073
                 // D-267: when it came to the farm: the purchase or transfer date (the registration date when none was entered), and from where
                 'arrivedOn' => ($animal->acquired_on ?? ($animal->origin !== 'born_on_farm' ? $animal->created_at : null))?->format('d/m/Y'), 'arrivedEntered' => (bool) $animal->acquired_on, 'sourceFarm' => $animal->source_farm,
+                'saleHint' => $animal->status === 'active' ? \App\Support\Movements::saleHint($animal) : null, // D-290: Sick and the disease from an open case
                 'inBreeding' => in_array($animal->effectiveCategory(), ['breeding_male', 'breeding_female', 'replacement_male', 'replacement_female'], true), // D-260: can be culled
                 'exitReason' => $animal->exit_reason, 'exitDate' => $animal->exit_date?->format('d/m/Y'), 'adg' => Farm::adg($weights),
                 'lifetimeAdg' => $weightDays ? (int) round(($weights->last()->weight_kg - $weights->first()->weight_kg) * 1000 / $weightDays) : null,
@@ -448,6 +449,7 @@ class GoatController extends Controller
                 ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('d/m/Y'), 'to' => $r->valid_to?->format('d/m/Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
             'records' => ! $pedigree ? [] : $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
+            'saleReasons' => \App\Support\Movements::SALE_REASONS, 'diseases' => \App\Support\Movements::diseaseOptions(), // D-290
             'death' => $this->death($animal, $seeHealth), // D-260: the vet's death report, and the review once it is approved
             // D-251: how it is doing since a watch began, or when it last came off Watch
             'recovery' => $seeHealth || $request->user()->passes('see_recovery_progress') ? ((($p = \App\Support\Recovery::progress($animal)) ? ($seeHealth ? $p : ['title' => 'Health watch', 'temp' => null] + $p) : null) ?? (($e = \App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(30))->latest('occurred_at')->first())
@@ -599,10 +601,15 @@ class GoatController extends Controller
             // D-260: a death goes through the vet's report and the administrator's approval; culling takes a goat out of breeding, not off the farm
             'reason' => ['required', Rule::in(array_diff(array_keys(\App\Support\Movements::REASON_TO_TYPE), ['died', 'culled']))],
             'amount' => ['nullable', 'numeric', 'min:0', 'max:100000000'], 'destination' => ['nullable', 'string', 'max:120'], 'notes' => ['nullable', 'string', 'max:500'],
-        ], ['reason.in' => 'A death is reported by the vet and approved by the administrator; culling is done from the breeding lists.']);
+        ] + \App\Support\Movements::saleReasonRules('reason,sold'), ['reason.in' => 'A death is reported by the vet and approved by the administrator; culling is done from the breeding lists.',
+            'sale_reason.required_if' => 'Choose why the goat was sold.', 'disease_id.required_if' => 'Choose the disease.', 'sale_reason_note.required_if' => 'Write the reason.']);
         abort_unless($animal->status === 'active', 422);
+        $type = \App\Support\Movements::REASON_TO_TYPE[$data['reason']];
+        if ($type === 'sale') {
+            $data['reason'] = \App\Support\Movements::saleReasonText($data) ?? 'sold'; // D-290: the reason line says why
+        }
         try {
-            \App\Support\Movements::exit($animal, \App\Support\Movements::REASON_TO_TYPE[$data['reason']], $request->user(), $data);
+            \App\Support\Movements::exit($animal, $type, $request->user(), $data);
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw \Illuminate\Validation\ValidationException::withMessages(['reason' => collect($e->errors())->flatten()->first()]);
         }
