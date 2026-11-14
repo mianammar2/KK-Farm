@@ -84,4 +84,11 @@ class HeightTeethTest extends TestCase
         $this->assertSame('Watch', $vet->json('checkups.0.result'));
         $this->assertSame([], $this->actingAs($this->user('caretaker'))->getJson("/goats/{$this->goat->id}/day/{$day}")->json('checkups'), 'health is not shown to a caretaker');
     }
+
+    /** D-280: the register page lists every goat with its entry type and when it was entered. */
+    public function test_the_register_page_lists_registered_goats(): void
+    {
+        $this->actingAs($this->user('ceo'))->get('/goats/register')->assertOk()->assertInertia(fn ($p) => $p
+            ->where('registered.0.number', 'H-1')->where('registered.0.origin', 'Purchased')->where('registered.0.status', 'On farm')->has('registered.0.entered'));
+    }
 }

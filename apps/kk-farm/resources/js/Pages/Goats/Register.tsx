@@ -3,6 +3,7 @@ import { Copy, ScanLine, Sparkles, Tag } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import PhotoPicker from '../../components/PhotoPicker';
+import DataGrid, { type Col } from '../../components/DataGrid';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
 
@@ -13,7 +14,8 @@ type Classify = { categories: Record<string, string>; statuses: Record<string, s
 type AgeStage = { code: string; label: string; group: string; at: number; unit: 'days' | 'months'; range: string; estimate: number }; // D-229
 type RoleOption = { value: string; label: string; sex: string; group: string; purpose: string | null; class: string; stage: string | null };
 type TeethRange = { code: string; label: string; from: number; to: number | null };
-type Props = { roleOptions: RoleOption[]; teethRanges: TeethRange[]; epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; ageStages: AgeStage[]; canAssignTags: boolean; untagged: Option[];
+type RegRow = { id: string; number: string; origin: string; breed: string | null; sex: string | null; code: string | null; role: string | null; pen: string | null; arrived: string | null; source: string | null; enteredIso: string | null; entered: string | null; by: string | null; status: string };
+type Props = { registered?: RegRow[]; roleOptions: RoleOption[]; teethRanges: TeethRange[]; epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; ageStages: AgeStage[]; canAssignTags: boolean; untagged: Option[];
     goat?: { id: string; number: string; values: Record<string, any> } };
 
 /** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
@@ -24,7 +26,7 @@ const TEMP_HIGH = 103.5;
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
-export default function Register({ epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, ageStages, canAssignTags, untagged, goat, roleOptions, teethRanges }: Props) {
+export default function Register({ registered = [], epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, ageStages, canAssignTags, untagged, goat, roleOptions, teethRanges }: Props) {
     const editing = Boolean(goat);
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
     const [estMonths, setEstMonths] = useState('');
@@ -406,7 +408,39 @@ export default function Register({ epc, fields, lookups, classSex, classificatio
                     </form>
                 </Panel>
             ) : null}
+            {!goat && registered.length ? <RegisteredGoats rows={registered} /> : null}
         </>
+    );
+}
+
+/** D-280: every goat in the register: how many of each kind of entry, and when each was entered and by whom. */
+const REG_COLS: Col<RegRow>[] = [
+    { key: 'number', label: 'Tag ID', type: 'text', total: 'count', render: (r) => <Link href={`/goats/${r.id}`} className="font-mono text-cobalt-800 hover:underline">{r.number}</Link> },
+    { key: 'origin', label: 'Entry type', type: 'enum' },
+    { key: 'breed', label: 'Breed', type: 'enum' },
+    { key: 'sex', label: 'Sex', type: 'enum' },
+    { key: 'code', label: 'Class code', type: 'enum' },
+    { key: 'role', label: 'Role', type: 'enum' },
+    { key: 'pen', label: 'Pen', type: 'enum' },
+    { key: 'arrived', label: 'Arrived / born on', type: 'text' },
+    { key: 'source', label: 'From farm', type: 'enum' },
+    { key: 'enteredIso', label: 'Entered on', type: 'date', render: (r) => r.entered ?? '—' },
+    { key: 'by', label: 'Entered by', type: 'enum' },
+    { key: 'status', label: 'Status', type: 'enum' },
+];
+function RegisteredGoats({ rows }: { rows: RegRow[] }) {
+    const counts = rows.reduce<Record<string, number>>((c, r) => ({ ...c, [r.origin]: (c[r.origin] ?? 0) + 1 }), {});
+    const today = new Date().toLocaleDateString('en-CA');
+    const todayN = rows.filter((r) => r.enteredIso === today).length;
+    return (
+        <Panel flush title="Registered Goats" description="Every goat in the register: how it came to the farm, when it arrived, and when it was entered and by whom." className="mt-6">
+            <div className="flex flex-wrap gap-2 border-b border-rule px-3 py-3 text-sm">
+                <span className="rounded-md bg-cobalt-100 px-2.5 py-1 text-cobalt-800">All: {rows.length}</span>
+                {Object.entries(counts).map(([k, n]) => <span key={k} className="rounded-md bg-glaze px-2.5 py-1 text-ink ring-1 ring-rule">{k}: {n}</span>)}
+                <span className="rounded-md bg-ok-100 px-2.5 py-1 text-ok-700">Entered today: {todayN}</span>
+            </div>
+            <DataGrid<RegRow> id="registered-goats" name="Registered goats" cols={REG_COLS} rows={rows} rowKey={(r) => r.id} />
+        </Panel>
     );
 }
 
