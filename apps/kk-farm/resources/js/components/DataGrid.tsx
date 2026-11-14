@@ -18,6 +18,7 @@ export type Col<T> = {
     total?: 'sum' | 'avg' | 'count'; // the totals row
     unit?: string; // shown after numbers in the totals row
     width?: string;
+    wrap?: boolean; // long text wraps instead of widening the table
 };
 type Filter = { id: number; col: string; op: string; a: string; b: string };
 
@@ -146,7 +147,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
     }) : null;
     const num = (c: Col<T>) => c.type === 'number';
     const head = 'border border-rule bg-[#eef1ea] px-2.5 py-2 text-xs font-semibold whitespace-nowrap text-ink';
-    const cell = 'border border-rule px-2.5 py-2 align-middle whitespace-nowrap';
+    const cell = 'border border-rule px-2.5 py-2 align-middle';
     const key = (r: T, i: number) => (rowKey ? rowKey(r, i) : String(i + (at - 1) * size));
     return (
         <div>
@@ -175,7 +176,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
                                 <Fragment key={k}>
                                     <tr className={cx('hover:bg-cobalt-100/40', expand && 'cursor-pointer', isOpen && 'bg-cobalt-100/50')} onClick={expand ? () => setOpen(isOpen ? null : k) : undefined} aria-expanded={expand ? isOpen : undefined}>
                                         <td className={cx(cell, 'bg-[#f4f6f1] text-center text-xs text-ink-soft tabular-nums')}>{expand ? <span className="inline-flex items-center gap-0.5">{isOpen ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}{(at - 1) * size + i + 1}</span> : (at - 1) * size + i + 1}</td>
-                                        {cols.map((c) => { const v = val(c, r); return <td key={c.key} className={cx(cell, num(c) ? 'text-end tabular-nums whitespace-nowrap' : 'text-start', c.type === 'date' && 'whitespace-nowrap')}>{c.render ? c.render(r) : v === null || v === undefined || v === '' ? <span className="text-ink-faint">—</span> : String(v)}</td>; })}
+                                        {cols.map((c) => { const v = val(c, r); return <td key={c.key} className={cx(cell, num(c) ? 'text-end tabular-nums' : 'text-start', c.wrap ? 'min-w-[14rem] max-w-[28rem] whitespace-normal' : 'whitespace-nowrap')}>{c.render ? c.render(r) : v === null || v === undefined || v === '' ? <span className="text-ink-faint">—</span> : String(v)}</td>; })}
                                     </tr>
                                     {isOpen && expand ? <tr><td colSpan={cols.length + 1} className="border border-rule bg-glaze/40 p-3">{expand(r)}</td></tr> : null}
                                 </Fragment>

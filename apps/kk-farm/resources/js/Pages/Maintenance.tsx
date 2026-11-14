@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 
@@ -37,7 +38,7 @@ export default function Maintenance(p: Props) {
                 { id: 'assets', label: 'Asset Register', count: p.assets.length || undefined }, { id: 'history', label: 'Repair History' },
             ]} />
             {tab === 'jobs' ? <Jobs {...p} jobs={open} empty="No open jobs. Report a breakdown when something stops working." /> : null}
-            {tab === 'history' ? <Jobs {...p} jobs={p.jobs.filter((j) => j.status === 'done')} empty="No finished jobs in the last 90 days." /> : null}
+            {tab === 'history' ? <History {...p} jobs={p.jobs.filter((j) => j.status === 'done')} /> : null}
             {tab === 'due' ? (
                 <Panel flush title="Preventive Services Due" description="From each asset's service interval">
                     {due.length ? <ul className="divide-y divide-rule">{due.map((a) => (
@@ -51,6 +52,26 @@ export default function Maintenance(p: Props) {
             ) : null}
             {tab === 'assets' ? <Assets {...p} /> : null}
         </>
+    );
+}
+
+/** D-273: repair history and cost as a spreadsheet. */
+function History({ jobs, options }: Props & { jobs: Job[] }) {
+    return (
+        <Panel flush>
+            {jobs.length ? <DataGrid<Job> id="maintenance-history" name="Repair history and cost" rows={jobs} rowKey={(j) => String(j.id)} cols={[
+                { key: 'doneOn', label: 'Done on', type: 'text' },
+                { key: 'asset', label: 'Asset', type: 'enum', total: 'count', render: (j) => <><b className="text-cobalt-900">{j.asset}</b> <span className="font-mono text-ink-soft">{j.assetCode}</span></> },
+                { key: 'kind', label: 'Kind', type: 'enum', value: (j) => options.kinds[j.kind] ?? j.kind },
+                { key: 'priority', label: 'Priority', type: 'enum', value: (j) => options.priority[j.priority] ?? j.priority },
+                { key: 'problem', label: 'Problem', type: 'text', wrap: true },
+                { key: 'work', label: 'Work done', type: 'text', wrap: true },
+                { key: 'cost', label: 'Cost (PKR)', type: 'number', total: 'sum', render: (j) => (j.cost ? pkr(j.cost) : '—') },
+                { key: 'doneBy', label: 'Done by', type: 'enum' },
+                { key: 'on', label: 'Reported', type: 'text' },
+                { key: 'by', label: 'Reported by', type: 'enum' },
+            ]} /> : <Empty title="No finished jobs in the last 90 days." />}
+        </Panel>
     );
 }
 

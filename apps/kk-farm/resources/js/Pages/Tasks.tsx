@@ -2,6 +2,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import type { SharedProps } from '../types';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
@@ -45,7 +46,22 @@ export default function Tasks({ tasks, departments, users, pens, goats, types, p
                 <div className="min-w-0">
                     <Tabs value={tab} onChange={setTab} tabs={[{ id: 'open', label: 'To do', count: open.length }, { id: 'mine', label: 'Mine', count: mine.length }, { id: 'overdue', label: 'Overdue', count: overdue.length }, { id: 'closed', label: 'Done this week', count: closed.length }]} />
                     <Panel flush>
-                        {rows.length ? (
+                        {rows.length && (tab === 'overdue' || tab === 'closed') ? (
+                            // D-273: the delayed and finished lists are reports: a spreadsheet; open a row to act on it
+                            <DataGrid<Task> id={`tasks-${tab}`} name={tab === 'overdue' ? 'Delayed tasks' : 'Tasks done this week'} rows={rows} rowKey={(t) => String(t.id)} expand={(t) => <ul className="rounded-tile bg-tile ring-1 ring-rule"><TaskRow t={t} statuses={statuses} priorities={priorities} /></ul>} cols={[
+                                { key: 'title', label: 'Task', type: 'text', total: 'count', wrap: true, render: (t) => <b className="text-cobalt-900">{t.title}</b> },
+                                { key: 'type', label: 'Type', type: 'enum' },
+                                { key: 'priority', label: 'Priority', type: 'enum', value: (t) => priorities[t.priority] ?? t.priority },
+                                { key: 'status', label: 'Status', type: 'enum', value: (t) => statuses[t.status] ?? t.status },
+                                { key: 'dueIso', label: 'Due', type: 'date', render: (t) => <span className={t.alert === 'overdue' ? 'font-semibold text-crit-700' : ''}>{t.due}</span> },
+                                { key: 'late', label: 'Days late', type: 'number', total: 'avg', value: (t) => (t.open ? Math.max(0, Math.round((Date.now() - new Date(`${t.dueIso}T23:59:00`).getTime()) / 86400000)) : null) },
+                                { key: 'goat', label: 'Goat', type: 'text' },
+                                { key: 'pen', label: 'Pen', type: 'enum' },
+                                { key: 'assignee', label: 'Assigned to', type: 'enum' },
+                                { key: 'department', label: 'Department', type: 'enum' },
+                                { key: 'completedBy', label: 'Done by', type: 'enum' },
+                            ]} />
+                        ) : rows.length ? (
                             <ul className="divide-y divide-rule">
                                 {rows.map((t) => <TaskRow key={t.id} t={t} statuses={statuses} priorities={priorities} />)}
                             </ul>

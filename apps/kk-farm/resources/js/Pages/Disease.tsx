@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 
@@ -172,8 +173,36 @@ function Restricted({ restricted }: Props) {
 function Outbreaks({ outbreaks, isVet }: Props) {
     return (
         <Panel flush title="Outbreaks" description="Declared at triage for a contagious condition; later cases of the same condition join it. Close it with the outbreak report when every case is resolved.">
-            {outbreaks.length ? <ul className="divide-y divide-rule">{outbreaks.map((o) => <OutbreakItem key={o.id} o={o} isVet={isVet} />)}</ul> : <Empty title="No outbreaks" />}
+            {outbreaks.length ? <DataGrid<OutbreakRow> id="disease-outbreaks" name="Outbreak reports" rows={outbreaks} rowKey={(o) => String(o.id)} expand={(o) => <OutbreakDetail o={o} isVet={isVet} />} cols={[
+                { key: 'code', label: 'Outbreak', type: 'text', total: 'count', render: (o) => <b className="font-mono text-cobalt-900">{o.code}</b> },
+                { key: 'condition', label: 'Condition', type: 'enum', render: (o) => <b>{o.condition}</b> },
+                { key: 'state', label: 'Status', type: 'enum', value: (o) => (o.status === 'open' ? 'Open' : 'Closed'), render: (o) => <Chip className={o.status === 'open' ? 'bg-crit-100 text-crit-700' : 'bg-ok-100 text-ok-700'}>{o.status === 'open' ? 'Open' : `Closed ${o.closed}`}</Chip> },
+                { key: 'opened', label: 'Since', type: 'text' },
+                { key: 'cases', label: 'Cases', type: 'number', total: 'sum' },
+                { key: 'active', label: 'Active', type: 'number', total: 'sum' },
+                { key: 'recovered', label: 'Recovered', type: 'number', total: 'sum' },
+                { key: 'deaths', label: 'Died', type: 'number', total: 'sum' },
+                { key: 'attackRate', label: 'Attack rate %', type: 'number', total: 'avg' },
+                { key: 'cost', label: 'Cost (PKR)', type: 'number', total: 'sum', render: (o) => pkr(o.cost) },
+            ]} /> : <Empty title="No outbreaks" />}
         </Panel>
+    );
+}
+
+/** D-273: an outbreak opened in the grid: its goats, the report, and Close with Report for the vet. */
+function OutbreakDetail({ o, isVet }: { o: OutbreakRow; isVet: boolean }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({ report: '' });
+    return (
+        <div className="space-y-2 text-sm whitespace-normal">
+            <p className="text-ink-soft">Goats: {o.goats.join(', ') || '—'}{o.population ? ` · population ${o.population}` : ''}</p>
+            {o.report ? <p className="whitespace-pre-wrap">{o.report}</p> : null}
+            {isVet && o.status === 'open' && !open ? <Button variant="secondary" onClick={() => setOpen(true)}>Close with Report</Button> : null}
+            {open ? <div className="space-y-2 rounded-tile bg-tile p-3 ring-1 ring-rule">
+                <Field label="Outbreak report" error={form.errors.report} hint="Source, spread, control measures, losses and lessons"><textarea className="field" rows={4} value={form.data.report} onChange={(x) => form.setData('report', x.target.value)} /></Field>
+                <Button disabled={form.processing} onClick={() => form.post(`/disease/outbreaks/${o.id}/close`, { preserveScroll: true, onSuccess: () => setOpen(false) })}>Close Outbreak</Button>
+            </div> : null}
+        </div>
     );
 }
 

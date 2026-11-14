@@ -3,6 +3,7 @@ import DeleteButton from '../components/DeleteButton';
 import { useConfirm } from '../components/Confirm';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 import { useTabParam } from '../lib/useTabParam';
@@ -53,11 +54,13 @@ export default function Books(p: Props) {
             {tab === 'ledger' ? <LedgerTab ledger={p.ledger} accounts={p.accounts} pick={(id) => go({ account: id, tab: 'ledger' })} /> : null}
             {tab === 'trial' ? (
                 <Panel flush title={`Trial balance at ${p.to}`} description={p.trial.balanced ? 'Total debits equal total credits.' : 'Debits and credits differ: tell support.'}>
-                    <div className="overflow-x-auto"><table className="data-table min-w-[520px]">
-                        <thead><tr><th>Code</th><th>Account</th><th>Type</th><th className="text-right">Debit</th><th className="text-right">Credit</th></tr></thead>
-                        <tbody>{p.trial.rows.map((r) => <tr key={r.id}><td className="font-mono">{r.code}</td><td><button type="button" className="font-semibold text-cobalt-800 hover:underline" onClick={() => openLedger(r.id)}>{r.name}</button></td><td className="capitalize text-ink-soft">{r.type}</td><td className="text-right tabular-nums">{money(r.debit)}</td><td className="text-right tabular-nums">{money(r.credit)}</td></tr>)}</tbody>
-                        <tfoot><tr className="font-bold"><td colSpan={3}>Total</td><td className="text-right tabular-nums">{pkr(p.trial.debit)}</td><td className="text-right tabular-nums">{pkr(p.trial.credit)}</td></tr></tfoot>
-                    </table></div>
+                    <DataGrid<(typeof p.trial.rows)[number]> id="books-trial" name={`Trial balance ${p.to}`} rows={p.trial.rows} rowKey={(r) => String(r.id)} pageSize={100} cols={[
+                        { key: 'code', label: 'Code', type: 'text', render: (r) => <span className="font-mono">{r.code}</span> },
+                        { key: 'name', label: 'Account', type: 'text', render: (r) => <button type="button" className="font-semibold text-cobalt-800 hover:underline" onClick={() => openLedger(r.id)}>{r.name}</button> },
+                        { key: 'type', label: 'Type', type: 'enum', value: (r) => r.type.charAt(0).toUpperCase() + r.type.slice(1) },
+                        { key: 'debit', label: 'Debit (PKR)', type: 'number', total: 'sum', render: (r) => money(r.debit) },
+                        { key: 'credit', label: 'Credit (PKR)', type: 'number', total: 'sum', render: (r) => money(r.credit) },
+                    ]} />
                 </Panel>
             ) : null}
             {tab === 'pl' ? (
@@ -85,10 +88,12 @@ export default function Books(p: Props) {
 function Statement({ title, rows, total, openLedger }: { title: string; rows: Row[]; total: number; openLedger: (id: number) => void }) {
     return (
         <Panel flush title={title}>
-            <table className="data-table">
-                <tbody>{rows.length ? rows.map((r) => <tr key={`${r.id}-${r.name}`}><td className="w-16 font-mono text-ink-soft">{r.code}</td><td>{r.id ? <button type="button" className="text-cobalt-800 hover:underline" onClick={() => openLedger(r.id)}>{r.name}</button> : r.name}</td><td className="text-right tabular-nums">{pkr(r.amount)}</td></tr>) : <tr><td className="text-ink-soft">Nothing yet</td></tr>}</tbody>
-                <tfoot><tr className="font-bold"><td colSpan={2}>Total</td><td className="text-right tabular-nums">{pkr(total)}</td></tr></tfoot>
-            </table>
+            {rows.length ? <DataGrid<Row> id={`books-${title}`} name={title} rows={rows} rowKey={(r) => `${r.id}-${r.name}`} pageSize={100} cols={[
+                { key: 'code', label: 'Code', type: 'text', render: (r) => <span className="font-mono text-ink-soft">{r.code}</span> },
+                { key: 'name', label: 'Account', type: 'text', render: (r) => (r.id ? <button type="button" className="text-cobalt-800 hover:underline" onClick={() => openLedger(r.id)}>{r.name}</button> : r.name) },
+                { key: 'amount', label: 'Amount (PKR)', type: 'number', total: 'sum', render: (r) => pkr(r.amount) },
+            ]} /> : <p className="px-4 py-3 text-sm text-ink-soft">Nothing yet</p>}
+            <p className="border-t border-rule px-4 py-2.5 text-end font-bold">Total {pkr(total)}</p>
         </Panel>
     );
 }

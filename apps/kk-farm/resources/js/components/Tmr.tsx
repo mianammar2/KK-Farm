@@ -1,3 +1,4 @@
+import DataGrid from './DataGrid';
 import { router, useForm } from '@inertiajs/react';
 import DeleteButton from './DeleteButton';
 import { Blend, FlaskConical, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -166,7 +167,6 @@ function MixForm({ formula, onDone }: { formula: Formula; onDone: () => void }) 
 
 /** D-177: feed offered, refused (left in the trough) and wasted (spilled, spoiled) per pen and feed. */
 export function WasteReport({ data }: { data: WasteReportData }) {
-    const [rows, more] = useFive(data.rows, 10);
     const t = data.total;
     const tone = (p: number) => (p >= 15 ? 'text-crit-700' : p >= 8 ? 'text-watch-700' : 'text-ok-700');
     return (
@@ -181,15 +181,15 @@ export function WasteReport({ data }: { data: WasteReportData }) {
             </div>
             <Panel flush title="By Pen and Feed" description={`Refused + wasted as a share of what was given · ${t.wastePct} % overall`}>
                 {data.rows.length ? (
-                    <>
-                        <div className="overflow-x-auto">
-                            <table className="data-table min-w-[40rem]">
-                                <thead><tr><th>Pen</th><th>Feed</th><th className="text-right">Offered</th><th className="text-right">Refused</th><th className="text-right">Wasted</th><th className="text-right">Eaten</th><th className="text-right">Lost %</th></tr></thead>
-                                <tbody>{rows.map((r) => <tr key={`${r.pen}|${r.feed}`}><td className="font-mono text-sm">{r.pen}</td><td>{r.feed}</td><td className="text-right tabular-nums">{kg(r.offered)}</td><td className="text-right tabular-nums">{kg(r.refused)}</td><td className="text-right tabular-nums">{kg(r.wasted)}</td><td className="text-right tabular-nums">{kg(r.eaten)}</td><td className={`text-right font-semibold tabular-nums ${tone(r.wastePct)}`}>{r.wastePct} %</td></tr>)}</tbody>
-                            </table>
-                        </div>
-                        {more}
-                    </>
+                    <DataGrid id="feed-waste" name="Feed offered refused wasted" rows={data.rows} rowKey={(r) => `${r.pen}|${r.feed}`} cols={[
+                        { key: 'pen', label: 'Pen', type: 'enum', render: (r) => <span className="font-mono">{r.pen}</span> },
+                        { key: 'feed', label: 'Feed', type: 'enum' },
+                        { key: 'offered', label: 'Offered KG', type: 'number', total: 'sum' },
+                        { key: 'refused', label: 'Refused KG', type: 'number', total: 'sum' },
+                        { key: 'wasted', label: 'Wasted KG', type: 'number', total: 'sum' },
+                        { key: 'eaten', label: 'Eaten KG', type: 'number', total: 'sum' },
+                        { key: 'wastePct', label: 'Lost %', type: 'number', total: 'avg', render: (r) => <span className={`font-semibold ${tone(r.wastePct)}`}>{r.wastePct} %</span> },
+                    ]} />
                 ) : <p className="p-4 text-sm text-ink-soft">No feeding recorded in these days. Record feed given and leftover on Feed Now.</p>}
             </Panel>
         </div>

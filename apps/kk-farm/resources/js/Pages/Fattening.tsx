@@ -2,6 +2,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { BreedBadge } from '../components/GoatBadges';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 
 type Member = {
@@ -75,16 +76,36 @@ export default function Fattening(p: Props) {
             ) : null}
             {tab === 'profit' ? (
                 <Panel flush title="Batch Profitability" description="Per goat: purchase / entry + feed actually fed (ration estimate only when no feeding was recorded) + health (treatments and lab) = total cost. Fixed at exit.">
-                    {p.batches.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Batch</th><th>Status</th><th>Started</th><th>Head</th><th>Days on feed</th><th>ADG g/day</th><th>Feed cost</th><th>Health cost</th><th>Cost / KG gain</th><th>Sold</th><th>Revenue</th><th>Margin</th><th>Return / head</th></tr></thead><tbody>
-                        {p.batches.map((b) => <tr key={b.id}><td className="font-mono font-semibold">{b.code}</td><td>{p.options.status[b.status]}</td><td>{b.started}</td><td>{b.headcount}</td><td>{b.avgDaysOnFeed ?? '—'}</td><td>{b.adg ?? '—'}</td><td>{money(b.feedCost)}{b.feedBasis !== 'actual' ? <span className="block text-xs text-watch-700">{b.feedBasis === 'mixed' ? 'part estimate' : 'estimate'}</span> : null}</td><td>{money(b.healthCost)}</td><td>{money(b.costPerKgGain)}</td><td>{b.sold}{b.died ? ` (${b.died} died)` : ''}</td><td>{money(b.revenue)}</td><td className={b.margin !== null && b.margin < 0 ? 'font-semibold text-crit-700' : 'font-semibold'}>{money(b.margin)}</td><td>{money(b.returnPerHead)}</td></tr>)}
-                    </tbody></table></div> : <Empty title="No batches yet" />}
+                    {p.batches.length ? <DataGrid id="fattening-batches" name="Batch profitability" rows={p.batches} rowKey={(b) => String(b.id)} cols={[
+                        { key: 'code', label: 'Batch', type: 'text', total: 'count', render: (b) => <b className="font-mono">{b.code}</b> },
+                        { key: 'status', label: 'Status', type: 'enum', value: (b) => p.options.status[b.status] ?? b.status },
+                        { key: 'started', label: 'Started', type: 'text' },
+                        { key: 'headcount', label: 'Head', type: 'number', total: 'sum' },
+                        { key: 'avgDaysOnFeed', label: 'Days on feed', type: 'number', total: 'avg' },
+                        { key: 'adg', label: 'ADG g/day', type: 'number', total: 'avg' },
+                        { key: 'feedCost', label: 'Feed cost (PKR)', type: 'number', total: 'sum', render: (b) => <>{money(b.feedCost)}{b.feedBasis !== 'actual' ? <span className="ms-1 text-watch-700">({b.feedBasis === 'mixed' ? 'part estimate' : 'estimate'})</span> : null}</> },
+                        { key: 'healthCost', label: 'Health cost (PKR)', type: 'number', total: 'sum', render: (b) => money(b.healthCost) },
+                        { key: 'costPerKgGain', label: 'Cost / KG gain', type: 'number', total: 'avg', render: (b) => money(b.costPerKgGain) },
+                        { key: 'sold', label: 'Sold', type: 'number', total: 'sum', render: (b) => <>{b.sold}{b.died ? ` (${b.died} died)` : ''}</> },
+                        { key: 'revenue', label: 'Revenue (PKR)', type: 'number', total: 'sum', render: (b) => money(b.revenue) },
+                        { key: 'margin', label: 'Margin (PKR)', type: 'number', total: 'sum', render: (b) => <span className={b.margin !== null && b.margin < 0 ? 'font-semibold text-crit-700' : 'font-semibold'}>{money(b.margin)}</span> },
+                        { key: 'returnPerHead', label: 'Return / head', type: 'number', total: 'avg', render: (b) => money(b.returnPerHead) },
+                    ]} /> : <Empty title="No batches yet" />}
                 </Panel>
             ) : null}
             {tab === 'profit' && sold.length ? (
                 <Panel flush title="Goat Profitability" description="Every goat sold from a finishing batch">
-                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Goat</th><th>Days</th><th>Gain KG</th><th>Entry</th><th>Feed</th><th>Health</th><th>Total cost</th><th>Sale</th><th>Profit</th></tr></thead><tbody>
-                        {sold.map((m) => <tr key={m.id}><td><Link href={`/goats/${m.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{m.number}</Link></td><td>{m.days}</td><td>{m.gain ?? '—'}</td><td>{money(m.entryCost)}</td><td>{money(m.feedCost)}{m.feedBasis === 'estimate' ? <span className="text-xs text-watch-700"> est.</span> : null}</td><td>{money(m.healthCost)}</td><td>{money(m.totalCost)}</td><td>{money(m.revenue)}</td><td className={m.profit !== null && m.profit < 0 ? 'font-semibold text-crit-700' : 'font-semibold'}>{money(m.profit)}</td></tr>)}
-                    </tbody></table></div>
+                    <DataGrid id="fattening-goats" name="Goat profitability" rows={sold} rowKey={(m) => String(m.id)} cols={[
+                        { key: 'number', label: 'Goat', type: 'text', total: 'count', render: (m) => <Link href={`/goats/${m.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{m.number}</Link> },
+                        { key: 'days', label: 'Days', type: 'number', total: 'avg' },
+                        { key: 'gain', label: 'Gain KG', type: 'number', total: 'sum' },
+                        { key: 'entryCost', label: 'Entry (PKR)', type: 'number', total: 'sum', render: (m) => money(m.entryCost) },
+                        { key: 'feedCost', label: 'Feed (PKR)', type: 'number', total: 'sum', render: (m) => <>{money(m.feedCost)}{m.feedBasis === 'estimate' ? <span className="text-watch-700"> est.</span> : null}</> },
+                        { key: 'healthCost', label: 'Health (PKR)', type: 'number', total: 'sum', render: (m) => money(m.healthCost) },
+                        { key: 'totalCost', label: 'Total cost (PKR)', type: 'number', total: 'sum', render: (m) => money(m.totalCost) },
+                        { key: 'revenue', label: 'Sale (PKR)', type: 'number', total: 'sum', render: (m) => money(m.revenue) },
+                        { key: 'profit', label: 'Profit (PKR)', type: 'number', total: 'sum', render: (m) => <span className={m.profit !== null && m.profit < 0 ? 'font-semibold text-crit-700' : 'font-semibold'}>{money(m.profit)}</span> },
+                    ]} />
                 </Panel>
             ) : null}
         </>

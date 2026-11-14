@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Chip, Empty, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid, { type Col } from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 
@@ -37,33 +38,37 @@ export default function Antimicrobials(p: Props) {
     );
 }
 
+/** D-273: each summary and the treatments list are spreadsheets (sort, filter, totals, export). */
+const GROUP_COLS = (title: string): Col<Group>[] => [
+    { key: 'name', label: title.replace('By ', ''), type: 'text', total: 'count', render: (r) => <span>{r.name} {r.cia ? CIA : null}</span> },
+    { key: 'courses', label: 'Courses', type: 'number', total: 'sum' },
+    { key: 'goats', label: 'Goats', type: 'number', total: 'sum' },
+    { key: 'qty', label: 'Quantity', type: 'number', total: 'sum', render: (r) => (r.qty ? `${r.qty}${r.unit ? ` ${r.unit}` : ''}` : '—') },
+    { key: 'ciaText', label: 'Critically important', type: 'enum', value: (r) => (r.cia ? 'Yes' : 'No') },
+];
 function Table({ title, rows }: { title: string; rows: Group[] }) {
     return (
         <Panel flush title={title}>
-            {rows.length ? (
-                <div className="overflow-x-auto"><table className="w-full text-sm">
-                    <thead><tr className="text-left text-xs text-ink-soft"><th className="px-4 py-2">Name</th><th className="px-2 py-2 text-right">Courses</th><th className="px-2 py-2 text-right">Goats</th><th className="px-4 py-2 text-right">Quantity</th></tr></thead>
-                    <tbody className="divide-y divide-rule">{rows.map((r) => <tr key={r.name}><td className="px-4 py-2">{r.name} {r.cia ? CIA : null}</td><td className="px-2 py-2 text-right">{r.courses}</td><td className="px-2 py-2 text-right">{r.goats}</td><td className="px-4 py-2 text-right">{r.qty ? `${r.qty}${r.unit ? ` ${r.unit}` : ''}` : '—'}</td></tr>)}</tbody>
-                </table></div>
-            ) : <Empty title="No antibiotic use in this period" />}
+            {rows.length ? <DataGrid id={`antimicrobial-${title}`} name={`Antimicrobial use ${title.toLowerCase()}`} cols={GROUP_COLS(title)} rows={rows} /> : <Empty title="No antibiotic use in this period" />}
         </Panel>
     );
 }
 
+type Treat = Props['recent'][number];
+const TREAT_COLS: Col<Treat>[] = [
+    { key: 'on', label: 'Date', type: 'text' },
+    { key: 'goat', label: 'Goat', type: 'text', total: 'count', render: (t) => <Link href={`/goats/${t.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{t.goat}</Link> },
+    { key: 'product', label: 'Medicine', type: 'enum', render: (t) => <span className="font-semibold">{t.product} {t.cia ? CIA : null}</span> },
+    { key: 'dose', label: 'Dose', type: 'text' },
+    { key: 'route', label: 'Route', type: 'enum' },
+    { key: 'condition', label: 'For', type: 'enum', render: (t) => t.condition ?? <Chip className="bg-watch-100 text-watch-700">No case</Chip> },
+    { key: 'batch', label: 'Batch', type: 'text', render: (t) => t.batch ?? <Chip className="bg-watch-100 text-watch-700">No batch</Chip> },
+    { key: 'by', label: 'By', type: 'enum' },
+];
 function Recent({ recent }: Props) {
-    const [shown, more] = useFive(recent, 20);
     return (
         <Panel flush title="Antibiotic Treatments">
-            {recent.length ? <ul className="divide-y divide-rule">{shown.map((t) => (
-                <li key={t.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-                    <Link href={`/goats/${t.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{t.goat}</Link>
-                    <span className="font-semibold">{t.product}</span><span className="text-ink-soft">{t.dose} · {t.route} · {t.on} · {t.by}</span>
-                    {t.condition ? <span className="text-ink-soft">for {t.condition}</span> : <Chip className="bg-watch-100 text-watch-700">No case</Chip>}
-                    {t.batch ? <span className="font-mono text-xs text-ink-faint">Batch {t.batch}</span> : <Chip className="bg-watch-100 text-watch-700">No batch</Chip>}
-                    {t.cia ? CIA : null}
-                </li>
-            ))}</ul> : <Empty title="No antibiotic treatments" />}
-            {more}
+            {recent.length ? <DataGrid id="antimicrobial-treatments" name="Antibiotic treatments" cols={TREAT_COLS} rows={recent} rowKey={(t) => String(t.id)} /> : <Empty title="No antibiotic treatments" />}
         </Panel>
     );
 }

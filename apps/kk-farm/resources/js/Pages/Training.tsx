@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 
@@ -39,17 +40,18 @@ export default function Training(p: Props) {
 }
 
 function Matrix({ matrix, options }: Props) {
-    const [shown, more] = useFive(matrix, 30);
     return (
         <Panel flush title="Training Each Person Needs">
-            {matrix.length ? <ul className="divide-y divide-rule">{shown.map((m) => (
-                <li key={m.id} className="px-4 py-3 text-sm">
-                    <div className="flex flex-wrap items-center gap-2"><strong>{m.name}</strong><span className="text-ink-soft">{m.role} · {m.code}</span>{m.compliant ? <Chip className="bg-ok-100 text-ok-700">Compliant</Chip> : <Chip className="bg-crit-100 text-crit-700">Not compliant</Chip>}</div>
-                    <div className="mt-1 flex flex-wrap gap-1.5">{Object.entries(m.cells).map(([topic, c]) => <Chip key={topic} className={STATE[c.state][1]}>{options.topics[topic]}: {STATE[c.state][0]}{c.expires ? ` (${c.expires})` : ''}</Chip>)}</div>
-                    {m.skills.length ? <p className="mt-1 text-xs text-ink-soft">Skills: {m.skills.join(', ')}</p> : null}
-                </li>
-            ))}</ul> : <Empty title="No active employees">Add staff under Employees & Departments.</Empty>}
-            {more}
+            {matrix.length ? <DataGrid<Person> id="training-matrix" name="Skills compliance" rows={matrix} rowKey={(m) => String(m.id)} cols={[
+                { key: 'name', label: 'Person', type: 'text', total: 'count', render: (m) => <b>{m.name}</b> },
+                { key: 'role', label: 'Role', type: 'enum' },
+                { key: 'code', label: 'Code', type: 'text' },
+                { key: 'compliance', label: 'Compliance', type: 'enum', value: (m) => (m.compliant ? 'Compliant' : 'Not compliant'), render: (m) => (m.compliant ? <Chip className="bg-ok-100 text-ok-700">Compliant</Chip> : <Chip className="bg-crit-100 text-crit-700">Not compliant</Chip>) },
+                ...Object.entries(options.topics).map(([topic, label]) => ({ key: `t-${topic}`, label, type: 'enum' as const,
+                    value: (m: Person) => (m.cells[topic] ? STATE[m.cells[topic].state][0] : null),
+                    render: (m: Person) => { const c = m.cells[topic]; return c ? <Chip className={STATE[c.state][1]}>{STATE[c.state][0]}{c.expires ? ` (${c.expires})` : ''}</Chip> : '—'; } })),
+                { key: 'skills', label: 'Skills', type: 'text', wrap: true, value: (m) => m.skills.join(', ') || null },
+            ]} /> : <Empty title="No active employees">Add staff under Employees & Departments.</Empty>}
         </Panel>
     );
 }

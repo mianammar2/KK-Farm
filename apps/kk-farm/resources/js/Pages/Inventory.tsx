@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useFive } from '../lib/useFive';
 import { useTabParam } from '../lib/useTabParam';
 
@@ -57,24 +58,15 @@ export default function Inventory({ overview, moves, items, categories, units, m
                     </select>
                 ) : null}>
                     {(tab === 'reorder' ? reorder : rows).length ? (
-                        <div className="overflow-x-auto">
-                            <table className="data-table min-w-[44rem]">
-                                <thead><tr><th>Item</th><th>Store</th><th>Category</th><th className="text-right">On hand</th><th className="text-right">Reorder at</th><th className="text-right">Value</th><th>Status</th></tr></thead>
-                                <tbody>
-                                    {(tab === 'reorder' ? reorder : rows).map((r) => (
-                                        <tr key={`${r.kind}-${r.id}`}>
-                                            <td><Link href={KIND[r.kind].href} className="font-semibold text-cobalt-800 hover:underline">{r.name}</Link>{r.code ? <span className="ml-1.5 font-mono text-xs text-ink-faint">{r.code}</span> : null}</td>
-                                            <td><Chip className={KIND[r.kind].chip}>{KIND[r.kind].label}</Chip></td>
-                                            <td className="text-sm text-ink-soft">{r.category}</td>
-                                            <td className={cx('text-right font-semibold tabular-nums', r.qty <= 0 && 'text-crit-700')}>{num(r.qty)} {r.unit}</td>
-                                            <td className="text-right tabular-nums text-ink-soft">{r.reorder ? `${num(r.reorder)} ${r.unit}` : '—'}</td>
-                                            <td className="text-right tabular-nums">{pkr(r.value)}</td>
-                                            <td><Chip className={STATUS[r.status].chip}>{STATUS[r.status].label}</Chip></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <DataGrid<Row> id={`inventory-${tab}`} name={tab === 'reorder' ? 'Reorder list' : 'Stock'} rows={tab === 'reorder' ? reorder : rows} rowKey={(r) => `${r.kind}-${r.id}`} cols={[
+                            { key: 'name', label: 'Item', type: 'text', total: 'count', render: (r) => <><Link href={KIND[r.kind].href} className="font-semibold text-cobalt-800 hover:underline">{r.name}</Link>{r.code ? <span className="ml-1.5 font-mono text-ink-faint">{r.code}</span> : null}</> },
+                            { key: 'store', label: 'Store', type: 'enum', value: (r) => KIND[r.kind].label, render: (r) => <Chip className={KIND[r.kind].chip}>{KIND[r.kind].label}</Chip> },
+                            { key: 'category', label: 'Category', type: 'enum' },
+                            { key: 'qty', label: 'On hand', type: 'number', render: (r) => <span className={cx('font-semibold', r.qty <= 0 && 'text-crit-700')}>{num(r.qty)} {r.unit}</span> },
+                            { key: 'reorder', label: 'Reorder at', type: 'number', render: (r) => (r.reorder ? `${num(r.reorder)} ${r.unit}` : '—') },
+                            { key: 'value', label: 'Value (PKR)', type: 'number', total: 'sum', render: (r) => pkr(r.value) },
+                            { key: 'status', label: 'Status', type: 'enum', value: (r) => STATUS[r.status].label, render: (r) => <Chip className={STATUS[r.status].chip}>{STATUS[r.status].label}</Chip> },
+                        ]} />
                     ) : <Empty title={tab === 'reorder' ? 'Nothing to reorder' : 'No items in store yet'}>{tab === 'reorder' ? 'Every item is above its reorder level.' : 'Feeds are added in Feeding, medicines in Veterinary, general items here.'}</Empty>}
                 </Panel>
             ) : null}

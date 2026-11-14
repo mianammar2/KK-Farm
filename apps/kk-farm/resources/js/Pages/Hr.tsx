@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 
 type Reg = { id: number; name: string; code: string; role: string; shift: string; status: string | null; in: string | null; out: string | null; onLeave: boolean };
@@ -31,9 +32,14 @@ export default function Hr(p: Props) {
             {tab === 'leave' ? <Leave {...p} /> : null}
             {tab === 'report' ? (
                 <Panel flush title="Last 30 Days">
-                    {p.report.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Employee</th><th>Shift</th><th>Present</th><th>Half Day</th><th>Absent</th><th>Leave</th></tr></thead><tbody>
-                        {p.report.map((r) => <tr key={r.name}><td className="font-semibold">{r.name}</td><td>{r.shift}</td><td>{r.present}</td><td>{r.half}</td><td className={r.absent ? 'font-semibold text-crit-700' : ''}>{r.absent}</td><td>{r.leave}</td></tr>)}
-                    </tbody></table></div> : <Empty title="No employees yet" />}
+                    {p.report.length ? <DataGrid id="hr-attendance" name="Attendance last 30 days" rows={p.report} rowKey={(r) => r.name} cols={[
+                        { key: 'name', label: 'Employee', type: 'text', total: 'count', render: (r) => <b>{r.name}</b> },
+                        { key: 'shift', label: 'Shift', type: 'enum' },
+                        { key: 'present', label: 'Present', type: 'number', total: 'sum' },
+                        { key: 'half', label: 'Half day', type: 'number', total: 'sum' },
+                        { key: 'absent', label: 'Absent', type: 'number', total: 'sum', render: (r) => <span className={r.absent ? 'font-semibold text-crit-700' : ''}>{r.absent}</span> },
+                        { key: 'leave', label: 'Leave', type: 'number', total: 'sum' },
+                    ]} /> : <Empty title="No employees yet" />}
                 </Panel>
             ) : null}
         </>

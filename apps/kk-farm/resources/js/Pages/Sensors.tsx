@@ -2,6 +2,7 @@ import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { useState } from 'react';
 import { Button, Chip, cx, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useConfirm } from '../components/Confirm';
 import { useTabParam } from '../lib/useTabParam';
 
@@ -174,15 +175,14 @@ function AlertsTab({ alerts }: { alerts: Alert[] }) {
 function ReadingsTab({ readings }: { readings: Reading[] }) {
     return (
         <Panel flush title="Latest readings" description="Raw data from every device, newest first. Kept as received; never edited.">
-            <div className="overflow-x-auto"><table className="data-table min-w-[720px]">
-                <thead><tr><th>Time</th><th>Device</th><th>Reading</th><th>Value</th><th>Goat / Tag</th><th>Made</th></tr></thead>
-                <tbody>{readings.map((r) => (
-                    <tr key={r.id}><td className="whitespace-nowrap text-sm">{r.at}</td><td>{r.device}</td><td className="font-mono text-sm">{r.metric}</td><td className="tabular-nums">{r.value ?? '—'} {r.unit ?? ''}</td>
-                        <td>{r.goat ? <Link href={`/goats/${r.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{r.goat}</Link> : r.rfid ? <span className="font-mono text-xs text-ink-soft">{r.rfid}</span> : '—'}</td>
-                        <td className="text-sm text-ink-soft">{r.result ?? ''}</td></tr>
-                ))}</tbody>
-            </table></div>
-            {!readings.length ? <p className="p-4 text-sm text-ink-soft">No readings yet.</p> : null}
+            {readings.length ? <DataGrid<Reading> id="sensor-readings" name="Sensor readings" rows={readings} rowKey={(r) => String(r.id)} pageSize={50} cols={[
+                { key: 'at', label: 'Time', type: 'text' },
+                { key: 'device', label: 'Device', type: 'enum' },
+                { key: 'metric', label: 'Reading', type: 'enum', render: (r) => <span className="font-mono">{r.metric}</span> },
+                { key: 'value', label: 'Value', type: 'number', total: 'avg', render: (r) => `${r.value ?? '—'} ${r.unit ?? ''}` },
+                { key: 'goat', label: 'Goat / tag', type: 'text', value: (r) => r.goat ?? r.rfid, render: (r) => (r.goat ? <Link href={`/goats/${r.goatId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{r.goat}</Link> : r.rfid ? <span className="font-mono text-ink-soft">{r.rfid}</span> : '—') },
+                { key: 'result', label: 'Made', type: 'text' },
+            ]} /> : <p className="p-4 text-sm text-ink-soft">No readings yet.</p>}
         </Panel>
     );
 }

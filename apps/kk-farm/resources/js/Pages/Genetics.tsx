@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 
 type Parent = { id: string; number: string; role: string; breed: string | null; active: boolean; purpose: string | null; kids: number; litters: number; litter: number | null; stillPct: number | null; survival: number | null; adg: number | null; casesPerKid: number | null; interval: number | null; merit: number | null; measured: boolean };
@@ -42,10 +43,20 @@ export default function Genetics(p: Props) {
             ) : null}
             {tab === 'progeny' ? (
                 <Panel flush title="Progeny Performance" description={`Measured from at least 3 kids. Herd: litter ${p.herd.litter ?? '—'}, survival ${p.herd.survival ?? '—'}%, ADG ${p.herd.adg ?? '—'} g/day, ${p.herd.casesPerKid ?? '—'} cases per kid.`}>
-                    {p.parents.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Parent</th><th>Kids</th><th>Litter size</th><th>Stillborn</th><th>Survival</th><th>Kid ADG</th><th>Cases / kid</th><th>Kidding interval</th><th>Merit</th></tr></thead><tbody>
-                        {p.parents.map((x) => <tr key={x.id} className={x.active ? '' : 'opacity-60'}><td><Link href={`/goats/${x.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{x.number}</Link> <span className="text-xs text-ink-soft">{x.role === 'sire' ? 'Buck' : 'Doe'}{x.breed ? ` · ${x.breed}` : ''}{x.active ? '' : ' · left'}</span></td>
-                            <td>{x.kids}</td><td>{x.litter ?? '—'}</td><td>{x.stillPct !== null ? `${x.stillPct}%` : '—'}</td><td>{x.survival !== null ? `${x.survival}%` : '—'}</td><td>{x.adg !== null ? `${x.adg} g` : '—'}</td><td>{x.casesPerKid ?? '—'}</td><td>{x.interval ? `${x.interval} d` : '—'}</td><td>{meritChip(x.merit)}</td></tr>)}
-                    </tbody></table></div> : <Empty title="No kids with recorded parents yet" />}
+                    {p.parents.length ? <DataGrid id="genetics-progeny" name="Progeny performance" rows={p.parents} rowKey={(x) => x.id} cols={[
+                        { key: 'number', label: 'Parent', type: 'text', total: 'count', render: (x) => <Link href={`/goats/${x.id}`} className={`font-mono font-semibold text-cobalt-800 hover:underline ${x.active ? '' : 'opacity-60'}`}>{x.number}</Link> },
+                        { key: 'role', label: 'Role', type: 'enum', value: (x) => (x.role === 'sire' ? 'Buck' : 'Doe') },
+                        { key: 'breed', label: 'Breed', type: 'enum' },
+                        { key: 'activeText', label: 'Status', type: 'enum', value: (x) => (x.active ? 'On farm' : 'Left') },
+                        { key: 'kids', label: 'Kids', type: 'number', total: 'sum' },
+                        { key: 'litter', label: 'Litter size', type: 'number', total: 'avg' },
+                        { key: 'stillPct', label: 'Stillborn %', type: 'number', total: 'avg' },
+                        { key: 'survival', label: 'Survival %', type: 'number', total: 'avg' },
+                        { key: 'adg', label: 'Kid ADG g', type: 'number', total: 'avg' },
+                        { key: 'casesPerKid', label: 'Cases / kid', type: 'number', total: 'avg' },
+                        { key: 'interval', label: 'Kidding interval (days)', type: 'number', total: 'avg' },
+                        { key: 'merit', label: 'Merit', type: 'enum', render: (x) => meritChip(x.merit) },
+                    ]} /> : <Empty title="No kids with recorded parents yet" />}
                 </Panel>
             ) : null}
             {tab === 'mating' ? <MatingCheck {...p} /> : null}

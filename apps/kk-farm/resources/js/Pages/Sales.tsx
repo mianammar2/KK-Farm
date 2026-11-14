@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
 import { Button, Chip, cx, Empty, Field, monthLabel, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useFive } from '../lib/useFive';
 import { useTabParam } from '../lib/useTabParam';
 
@@ -95,6 +96,10 @@ export default function Sales({ sales, kpis, monthly, customers, types, can }: P
                             </div>
                         ))}
                     </div>
+                    <div className="-mx-3 mt-4 border-t border-rule sm:-mx-4"><DataGrid id="sales-monthly" name="Net sales by month" rows={monthly} rowKey={(m) => m.month} cols={[
+                        { key: 'month', label: 'Month', type: 'text', render: (m) => <b>{monthLabel(m.month)}</b> },
+                        { key: 'net', label: 'Net sales (PKR)', type: 'number', total: 'sum', render: (m) => pkr(m.net) },
+                    ]} /></div>
                 </Panel>
             ) : null}
 

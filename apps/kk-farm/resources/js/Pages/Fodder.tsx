@@ -1,6 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 
 type Crop = {
@@ -45,9 +46,17 @@ export default function Fodder(p: Props) {
             {tab === 'fields' ? <Fields {...p} /> : null}
             {tab === 'report' ? (
                 <Panel flush title="Released Lots" description="Cost = the lot's share of its crop's inputs (by weight against the expected yield; the final cut takes the rest)">
-                    {p.lots.some((l) => l.status === 'released') ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Lot</th><th>Crop</th><th>KG</th><th>DM %</th><th>Cost</th><th>Per KG</th><th>Per KG DM</th><th>Feed item</th><th>Used in TMR</th></tr></thead><tbody>
-                        {p.lots.filter((l) => l.status === 'released').map((l) => <tr key={l.id}><td className="font-mono">{l.no}</td><td>{l.crop}</td><td>{l.kg.toLocaleString()}</td><td>{l.dm}</td><td>{money(l.cost)}</td><td>{money(l.perKg)}</td><td>{money(l.perKgDm)}</td><td>{l.item}</td><td>{l.formulas.length ? l.formulas.map((f) => `${f.name} (${f.pct}%)`).join(', ') : '—'}</td></tr>)}
-                    </tbody></table></div> : <Empty title="No released lots yet" />}
+                    {p.lots.some((l) => l.status === 'released') ? <DataGrid id="fodder-lots" name="Released fodder lots" rows={p.lots.filter((l) => l.status === 'released')} rowKey={(l) => String(l.id)} cols={[
+                        { key: 'no', label: 'Lot', type: 'text', total: 'count', render: (l) => <span className="font-mono">{l.no}</span> },
+                        { key: 'crop', label: 'Crop', type: 'enum' },
+                        { key: 'kg', label: 'KG', type: 'number', total: 'sum' },
+                        { key: 'dm', label: 'DM %', type: 'number', total: 'avg' },
+                        { key: 'cost', label: 'Cost (PKR)', type: 'number', total: 'sum', render: (l) => money(l.cost) },
+                        { key: 'perKg', label: 'Per KG', type: 'number', total: 'avg', render: (l) => money(l.perKg) },
+                        { key: 'perKgDm', label: 'Per KG DM', type: 'number', total: 'avg', render: (l) => money(l.perKgDm) },
+                        { key: 'item', label: 'Feed item', type: 'enum' },
+                        { key: 'formulas', label: 'Used in TMR', type: 'text', wrap: true, value: (l) => (l.formulas.length ? l.formulas.map((f) => `${f.name} (${f.pct}%)`).join(', ') : null) },
+                    ]} /> : <Empty title="No released lots yet" />}
                 </Panel>
             ) : null}
             {tab === 'setup' && p.isOwner ? <Setup {...p} /> : null}

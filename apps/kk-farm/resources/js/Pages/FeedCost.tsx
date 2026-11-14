@@ -1,6 +1,9 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
+
+const money = (v: number | null | undefined) => (v === null || v === undefined ? '—' : pkr(v));
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 
@@ -58,29 +61,41 @@ function Pens({ pens, canReview, totals }: Props) {
     const review = (pen: PenRow) => router.post(`/feed-cost/pens/${pen.id}/review`, { issues: pen.issues.join('; ') }, { preserveScroll: true });
     return (
         <Panel flush title="Pens" description={`Poor response (feed conversion above ${totals.fcrAlert}, no gain, over 10% refused or sick goats) needs a review of intake, ration and illness.`}>
-            {pens.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Pen</th><th>Goats</th><th>Feed cost</th><th>Cost / head / day</th><th>Refused</th><th>Gain KG</th><th>ADG g</th><th>Cost / KG gain</th><th>FCR</th><th>Margin</th><th>Response</th></tr></thead><tbody>
-                {pens.map((x) => <tr key={x.id}>
-                    <td className="font-semibold">{x.name}</td><td>{x.goats}{x.weighed < x.goats ? <span className="text-xs text-ink-soft"> ({x.weighed} weighed)</span> : null}</td><td>{pkr(x.cost)}</td><td>{x.costHeadDay ?? '—'}</td>
-                    <td>{x.refusedPct === null ? '—' : `${x.refusedPct}%`}</td><td>{x.gain}</td><td>{x.adg ?? '—'}</td><td>{pkr(x.costPerKg)}</td><td>{x.fcr ?? '—'}</td><td className={x.margin !== null && x.margin < 0 ? 'text-crit-700' : ''}>{pkr(x.margin)}</td>
-                    <td>{x.issues.length ? <div className="space-y-1"><Chip className="bg-crit-100 text-crit-700">Poor response</Chip><div className="text-xs text-ink-soft">{x.issues.join(' · ')}</div>{canReview ? <Button variant="secondary" onClick={() => review(x)}>Review Intake, Ration & Illness</Button> : null}</div> : <Chip className="bg-ok-100 text-ok-700">Acceptable</Chip>}</td>
-                </tr>)}
-            </tbody></table></div> : <Empty title="No feeding recorded in this period" />}
+            {pens.length ? <DataGrid id="feedcost-pens" name="Feed cost by pen" rows={pens} rowKey={(x) => String(x.id)} cols={[
+                { key: 'name', label: 'Pen', type: 'enum', total: 'count', render: (x) => <b>{x.name}</b> },
+                { key: 'goats', label: 'Goats', type: 'number', total: 'sum', render: (x) => <>{x.goats}{x.weighed < x.goats ? <span className="text-ink-soft"> ({x.weighed} weighed)</span> : null}</> },
+                { key: 'cost', label: 'Feed cost (PKR)', type: 'number', total: 'sum', render: (x) => money(x.cost) },
+                { key: 'costHeadDay', label: 'Cost / head / day', type: 'number', total: 'avg' },
+                { key: 'refusedPct', label: 'Refused %', type: 'number', total: 'avg' },
+                { key: 'gain', label: 'Gain KG', type: 'number', total: 'sum' },
+                { key: 'adg', label: 'ADG g', type: 'number', total: 'avg' },
+                { key: 'costPerKg', label: 'Cost / KG gain', type: 'number', total: 'avg', render: (x) => money(x.costPerKg) },
+                { key: 'fcr', label: 'FCR', type: 'number', total: 'avg' },
+                { key: 'margin', label: 'Margin (PKR)', type: 'number', total: 'sum', render: (x) => <span className={x.margin !== null && x.margin < 0 ? 'text-crit-700' : ''}>{money(x.margin)}</span> },
+                { key: 'response', label: 'Response', type: 'enum', value: (x) => (x.issues.length ? 'Poor response' : 'Acceptable'), wrap: true, render: (x) => (x.issues.length ? <div className="space-y-1"><Chip className="bg-crit-100 text-crit-700">Poor response</Chip><div className="text-ink-soft">{x.issues.join(' · ')}</div>{canReview ? <Button variant="secondary" onClick={() => review(x)}>Review Intake, Ration & Illness</Button> : null}</div> : <Chip className="bg-ok-100 text-ok-700">Acceptable</Chip>) },
+            ]} /> : <Empty title="No feeding recorded in this period" />}
         </Panel>
     );
 }
 
 function Goats({ goats }: Props) {
-    const [shown, more] = useFive(goats, 25);
     return (
         <Panel flush title="Feed Cost per Goat" description="Each meal's cost split among the goats in the pen at that meal.">
-            {goats.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Goat</th><th>Days fed</th><th>Feed cost</th><th>Per day</th><th>Weight</th><th>Gain</th><th>ADG g</th><th>Cost / KG gain</th><th>FCR</th><th>Value of gain</th><th>Margin</th></tr></thead><tbody>
-                {shown.map((g) => <tr key={g.id}>
-                    <td><Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{g.number}</Link>{g.sick ? <Chip className="ml-1 bg-treat-100 text-treat-700">Sick</Chip> : null}</td>
-                    <td>{g.days}</td><td>{pkr(g.cost)}</td><td>{g.costDay ?? '—'}</td><td>{g.start !== null && g.end !== null ? `${g.start} → ${g.end}` : '—'}</td><td>{g.gain ?? '—'}</td><td>{g.adg ?? '—'}</td>
-                    <td>{pkr(g.costPerKg)}</td><td>{g.fcr ?? '—'}</td><td>{pkr(g.valueGain)}</td><td className={g.margin !== null && g.margin < 0 ? 'text-crit-700' : ''}>{pkr(g.margin)}</td>
-                </tr>)}
-            </tbody></table></div> : <Empty title="No feed cost in this period" />}
-            {more}
+            {goats.length ? <DataGrid id="feedcost-goats" name="Feed cost per goat" rows={goats} rowKey={(g) => g.id} cols={[
+                { key: 'number', label: 'Goat', type: 'text', total: 'count', render: (g) => <span className="inline-flex items-center gap-1"><Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{g.number}</Link>{g.sick ? <Chip className="bg-treat-100 text-treat-700">Sick</Chip> : null}</span> },
+                { key: 'breed', label: 'Breed', type: 'enum' },
+                { key: 'days', label: 'Days fed', type: 'number', total: 'avg' },
+                { key: 'cost', label: 'Feed cost (PKR)', type: 'number', total: 'sum', render: (g) => money(g.cost) },
+                { key: 'costDay', label: 'Per day', type: 'number', total: 'avg' },
+                { key: 'start', label: 'Start KG', type: 'number', total: 'avg' },
+                { key: 'end', label: 'End KG', type: 'number', total: 'avg' },
+                { key: 'gain', label: 'Gain KG', type: 'number', total: 'sum' },
+                { key: 'adg', label: 'ADG g', type: 'number', total: 'avg' },
+                { key: 'costPerKg', label: 'Cost / KG gain', type: 'number', total: 'avg', render: (g) => money(g.costPerKg) },
+                { key: 'fcr', label: 'FCR', type: 'number', total: 'avg' },
+                { key: 'valueGain', label: 'Value of gain', type: 'number', total: 'sum', render: (g) => money(g.valueGain) },
+                { key: 'margin', label: 'Margin (PKR)', type: 'number', total: 'sum', render: (g) => <span className={g.margin !== null && g.margin < 0 ? 'text-crit-700' : ''}>{money(g.margin)}</span> },
+            ]} /> : <Empty title="No feed cost in this period" />}
         </Panel>
     );
 }

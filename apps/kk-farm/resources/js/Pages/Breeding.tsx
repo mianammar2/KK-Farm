@@ -4,6 +4,7 @@ import { useState } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
 import PedigreeTree, { type PedigreeNode } from '../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import type { Option, SharedProps } from '../types';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
@@ -161,7 +162,14 @@ export default function Breeding(props: Props) {
 
             {tab === 'performance' ? (
                 <Panel title="Does by live kids" flush>
-                    {performance.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Doe</th><th>Kiddings</th><th>Born Alive</th><th>Stillborn</th><th>Average Litter</th></tr></thead><tbody>{performance.map((p) => <tr key={p.id}><td><Link href={`/goats/${p.id}`} className="font-semibold text-cobalt-800 hover:underline">{p.name ?? p.number}</Link></td><td>{p.kiddings}</td><td>{p.alive}</td><td>{p.stillborn}</td><td>{p.litter}</td></tr>)}</tbody></table></div>
+                    {performance.length ? <DataGrid id="doe-performance" name="Doe performance" rows={performance} rowKey={(p) => p.id} cols={[
+                        { key: 'number', label: 'Doe', type: 'text', total: 'count', render: (p) => <Link href={`/goats/${p.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{p.number}</Link> },
+                        { key: 'name', label: 'Name', type: 'text' },
+                        { key: 'kiddings', label: 'Kiddings', type: 'number', total: 'sum' },
+                        { key: 'alive', label: 'Born alive', type: 'number', total: 'sum' },
+                        { key: 'stillborn', label: 'Stillborn', type: 'number', total: 'sum' },
+                        { key: 'litter', label: 'Average litter', type: 'number', total: 'avg' },
+                    ]} />
                         : <Empty title="No kiddings yet" />}
                 </Panel>
             ) : null}

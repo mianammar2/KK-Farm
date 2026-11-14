@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 import { MilkTracePanel, RecallKpis, type RecallKpi, type TraceData } from '../components/MilkTrace';
@@ -237,19 +238,50 @@ function Orders({ orders, customers, canQuality }: Props) {
 
 /** D-195: milk invoices (paid or owed) and the monthly milk profit view. */
 function Money({ invoices, monthly, kpi }: Props) {
-    const [shown, more] = useFive(invoices, 10);
     return (
         <div className="space-y-3">
             <Panel flush title="Milk Profit by Month" description="Produced, lost (held or discarded), kept for kids and colostrum, sold; revenue less the feed of the does in milk.">
-                <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Month</th><th>Produced L</th><th>Saleable</th><th>Held / discarded</th><th>Kids</th><th>Colostrum</th><th>Sold L</th><th>Revenue</th><th>Revenue / L</th><th>Feed cost</th><th>Contribution</th></tr></thead><tbody>
-                    {monthly.map((m) => <tr key={m.month}><td className="font-semibold">{m.month}</td><td>{m.produced}</td><td>{m.saleable}</td><td>{m.lost}</td><td>{m.kid}</td><td>{m.colostrum}</td><td>{m.sold}</td><td>{pkr(m.revenue)}</td><td>{m.revenuePerLitre !== null ? pkr(m.revenuePerLitre) : '—'}</td><td>{m.feed !== null ? pkr(m.feed) : '—'}</td><td className={m.contribution !== null && m.contribution < 0 ? 'text-crit-700' : ''}>{m.contribution !== null ? pkr(m.contribution) : '—'}</td></tr>)}
-                </tbody></table></div>
+                <DataGrid id="dairy-monthly" name="Milk profit by month" rows={monthly} rowKey={(m) => m.month} cols={[
+                    { key: 'month', label: 'Month', type: 'text', render: (m) => <b>{m.month}</b> },
+                    { key: 'produced', label: 'Produced L', type: 'number', total: 'sum' },
+                    { key: 'saleable', label: 'Saleable L', type: 'number', total: 'sum' },
+                    { key: 'lost', label: 'Held / discarded L', type: 'number', total: 'sum' },
+                    { key: 'kid', label: 'Kids L', type: 'number', total: 'sum' },
+                    { key: 'colostrum', label: 'Colostrum L', type: 'number', total: 'sum' },
+                    { key: 'sold', label: 'Sold L', type: 'number', total: 'sum' },
+                    { key: 'revenue', label: 'Revenue (PKR)', type: 'number', total: 'sum', render: (m) => pkr(m.revenue) },
+                    { key: 'revenuePerLitre', label: 'Revenue / L', type: 'number', total: 'avg', render: (m) => (m.revenuePerLitre !== null ? pkr(m.revenuePerLitre) : '—') },
+                    { key: 'feed', label: 'Feed cost (PKR)', type: 'number', total: 'sum', render: (m) => (m.feed !== null ? pkr(m.feed) : '—') },
+                    { key: 'contribution', label: 'Contribution (PKR)', type: 'number', total: 'sum', render: (m) => <span className={m.contribution !== null && m.contribution < 0 ? 'text-crit-700' : ''}>{m.contribution !== null ? pkr(m.contribution) : '—'}</span> },
+                ]} />
             </Panel>
             <Panel flush title="Milk Invoices" description={kpi.owed ? `Customers owe ${pkr(kpi.owed)} for milk.` : 'Nothing owed for milk.'}>
-                {invoices.length ? <ul className="divide-y divide-rule">{shown.map((i) => <InvoiceRow key={i.id} i={i} />)}</ul> : <Empty title="No milk invoices yet" />}
-                {more}
+                {invoices.length ? <DataGrid<Invoice> id="dairy-invoices" name="Milk invoices" rows={invoices} rowKey={(i) => String(i.id)} cols={[
+                    { key: 'invoice', label: 'Invoice', type: 'text', total: 'count', render: (i) => <b className="font-mono text-cobalt-900">{i.invoice}</b> },
+                    { key: 'on', label: 'Date', type: 'text' },
+                    { key: 'to', label: 'Customer', type: 'enum', render: (i) => <b>{i.to}</b> },
+                    { key: 'litres', label: 'Litres', type: 'number', total: 'sum' },
+                    { key: 'amount', label: 'Amount (PKR)', type: 'number', total: 'sum', render: (i) => pkr(i.amount) },
+                    { key: 'lot', label: 'Lot', type: 'text' },
+                    { key: 'order', label: 'Order', type: 'text' },
+                    { key: 'temp', label: 'Temp °C', type: 'number' },
+                    { key: 'state', label: 'Payment', type: 'enum', value: (i) => (i.collected ? 'Paid' : i.overdue ? 'Overdue' : 'Owed'), render: (i) => <Collect i={i} /> },
+                ]} /> : <Empty title="No milk invoices yet" />}
             </Panel>
         </div>
+    );
+}
+
+/** D-273: the payment cell of a milk invoice: paid, or owed with Record Payment. */
+function Collect({ i }: { i: Invoice }) {
+    const form = useForm({ collected_on: today() });
+    if (i.collected) return <Chip className="bg-ok-100 text-ok-700">Paid {i.collected}</Chip>;
+    return (
+        <span className="inline-flex items-center gap-2">
+            <Chip className={i.overdue ? 'bg-crit-100 text-crit-700' : 'bg-treat-100 text-treat-700'}>{i.overdue ? `Overdue since ${i.due}` : `Owed, due ${i.due}`}</Chip>
+            <input type="date" max={today()} className="field !w-40" value={form.data.collected_on} onChange={(x) => form.setData('collected_on', x.target.value)} />
+            <Button variant="secondary" disabled={form.processing} onClick={() => form.post(`/dairy/dispatches/${i.id}/collect`, { preserveScroll: true })}>Record Payment</Button>
+        </span>
     );
 }
 

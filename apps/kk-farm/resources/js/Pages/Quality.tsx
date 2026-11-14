@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
+import DataGrid from '../components/DataGrid';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
 
@@ -134,8 +135,23 @@ function CaseList(p: Props & { list: Case[]; empty: string }) {
     const [shown, more] = useFive(p.list);
     return (
         <Panel flush title={p.list[0]?.status === 'closed' ? 'Closed Cases & Shared Learning' : 'Quality Cases'}>
-            {p.list.length ? <ul className="divide-y divide-rule">{shown.map((c) => <CaseItem key={c.id} c={c} {...p} />)}</ul> : <Empty title={p.empty} />}
-            {more}
+            {p.list.length && p.list[0]?.status === 'closed' ? (
+                // D-273: closed cases are a report: a spreadsheet; open a case for its full story
+                <DataGrid<Case> id="quality-closed" name="Closed cases and learning" rows={p.list} rowKey={(c) => String(c.id)} expand={(c) => <ul className="rounded-tile bg-tile whitespace-normal ring-1 ring-rule"><CaseItem c={c} {...p} /></ul>} cols={[
+                    { key: 'no', label: 'Case', type: 'text', total: 'count', render: (c) => <b className="font-mono text-cobalt-900">{c.no}</b> },
+                    { key: 'title', label: 'Title', type: 'text', wrap: true },
+                    { key: 'what', label: 'About', type: 'text', render: (c) => (c.goatId ? <Link href={`/goats/${c.goatId}`} className="font-mono text-cobalt-800 hover:underline" onClick={(e) => e.stopPropagation()}>{c.what}</Link> : c.what) },
+                    { key: 'severity', label: 'Severity', type: 'enum', value: (c) => p.options.severity[c.severity] ?? c.severity, render: (c) => <Chip className={SEV[c.severity]}>{p.options.severity[c.severity]}</Chip> },
+                    { key: 'source', label: 'Source', type: 'enum', value: (c) => p.options.sources[c.source] ?? c.source },
+                    { key: 'opened', label: 'Opened', type: 'text' },
+                    { key: 'by', label: 'Opened by', type: 'enum' },
+                    { key: 'closedAt', label: 'Closed', type: 'text' },
+                    { key: 'closedBy', label: 'Closed by', type: 'enum' },
+                    { key: 'rootCause', label: 'Root cause', type: 'text', wrap: true },
+                    { key: 'learning', label: 'Learning', type: 'text', wrap: true },
+                ]} />
+            ) : p.list.length ? <ul className="divide-y divide-rule">{shown.map((c) => <CaseItem key={c.id} c={c} {...p} />)}</ul> : <Empty title={p.empty} />}
+            {p.list[0]?.status === 'closed' ? null : more}
         </Panel>
     );
 }
