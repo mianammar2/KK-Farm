@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, LayoutGrid, List, Search } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
+import { useHideAppStrip } from '../../components/AppStrip';
 import { inScannerApp } from '../../lib/native';
 import GoatPortrait from '../../components/GoatPortrait';
 import { RfidAttachSheet, RfidButton } from '../../components/RfidAttach';
@@ -75,6 +76,22 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
         });
     }, [goats, query, show, breed, sex, pen, health, status, sort, tone]);
     const counts = useMemo(() => goats.reduce((c, g) => { const t = toneOf(g); c[t] = (c[t] ?? 0) + 1; return c; }, {} as Partial<Record<Tone, number>>), [goats]);
+    useHideAppStrip(); // D-259: these cards are the registry's numbers; the app strip is not shown as well
+    // D-259: health cards split the goats on the farm (each in one); the others count every goat they fit (pregnant, lactating …)
+    const onFarm = goats.filter((g) => g.status === 'active');
+    const tagged = (t: string) => onFarm.filter((g) => (g.tags ?? []).includes(t)).length;
+    const only = (next: () => void) => () => { setTone(''); setShow(''); setSex(''); setStatus('active'); setLimit(PAGE); next(); };
+    const cards: Array<{ key: string; label: string; n: number; on: boolean; pick: () => void; dot: string; art?: string; always?: boolean }> = [
+        { key: 'all', label: 'On the farm', n: onFarm.length, on: !tone && !show && !sex && status === 'active', pick: only(() => undefined), dot: 'bg-cobalt-600', always: true },
+        { key: 'female', label: 'Females', n: onFarm.filter((g) => g.sex === 'female').length, on: sex === 'female' && !tone && !show, pick: sex === 'female' ? only(() => undefined) : only(() => setSex('female')), dot: 'bg-[#e5739a]' },
+        { key: 'male', label: 'Males', n: onFarm.filter((g) => g.sex === 'male').length, on: sex === 'male' && !tone && !show, pick: sex === 'male' ? only(() => undefined) : only(() => setSex('male')), dot: 'bg-[#3b82c4]' },
+        ...(['healthy', 'watch', 'treatment', 'critical'] as const).map((t) => ({ key: t, label: TONES[t].label, n: onFarm.filter((g) => g.health === t || (t === 'healthy' && g.health === 'healthy')).length, on: tone === t,
+            pick: tone === t ? only(() => undefined) : only(() => setTone(t)), dot: TONES[t].bar, art: CHIP_ART[t] })),
+        { key: 'pregnant', label: 'Pregnant', n: tagged('pregnant'), on: show === 'pregnant', pick: show === 'pregnant' ? only(() => undefined) : only(() => setShow('pregnant')), dot: TONES.pregnant.bar, art: CHIP_ART.pregnant },
+        { key: 'lactating', label: 'Lactating', n: tagged('lactating'), on: show === 'lactating', pick: show === 'lactating' ? only(() => undefined) : only(() => setShow('lactating')), dot: TONES.lactating.bar, art: CHIP_ART.lactating },
+        { key: 'missing', label: 'Missing data', n: tagged('missing'), on: show === 'missing', pick: show === 'missing' ? only(() => undefined) : only(() => setShow('missing')), dot: 'bg-watch-400' },
+        { key: 'left', label: 'Left the farm', n: goats.length - onFarm.length, on: tone === 'left', pick: tone === 'left' ? only(() => undefined) : only(() => { setTone('left'); setStatus('all'); }), dot: TONES.left.bar, art: CHIP_ART.left },
+    ];
     const shown = rows.slice(0, limit);
     const pickTone = (t: Tone | '') => { setTone(t); setLimit(PAGE); if (t === 'left') setStatus('all'); };
 
@@ -124,15 +141,18 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
 
             {adding ? <AddGoat breeds={breeds} pens={pens} onDone={() => setAdding(false)} /> : null}
 
-            {/* D-089: status pills, each with its colour and count; tap to filter. */}
-            <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by status">
-                <button type="button" aria-pressed={!tone} onClick={() => pickTone('')} className={cx('kk-pill shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold', !tone ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900')}>
-                    All <span className="tabular-nums opacity-75">{goats.filter((g) => g.status === 'active').length}</span>
-                </button>
-                {(Object.keys(TONES) as Tone[]).filter((t) => counts[t]).map((t) => (
-                    <button key={t} type="button" aria-pressed={tone === t} onClick={() => pickTone(tone === t ? '' : t)}
-                        className={cx('kk-pill flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold', tone === t ? `${TONES[t].pill} ring-2 ring-offset-1 ring-current` : 'border-rule bg-tile text-cobalt-900')}>
-                        <img src={`/icons/${CHIP_ART[t]}.png`} alt="" aria-hidden className={cx('size-5 rounded-md bg-white object-contain', t === 'critical' && 'kk-beat')} />{TONES[t].label} <span className="tabular-nums opacity-75">{counts[t]}</span>
+            {/* D-259: one row of filter cards (it replaces both the status pills and the app strip): each card counts and filters */}
+            <div className="mb-3 grid grid-cols-3 gap-2 sm:flex sm:gap-2 sm:[&>*]:min-w-0 sm:[&>*]:flex-1" role="group" aria-label="Filter the herd">
+                {cards.filter((c) => c.n || c.always).map((c) => (
+                    <button key={c.key} type="button" aria-pressed={c.on} onClick={c.pick}
+                        className={cx('kk-lift relative flex min-h-[4.25rem] flex-col items-start justify-between overflow-hidden rounded-tile border px-3 py-2 text-start shadow-tile transition-colors',
+                            c.on ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900 hover:border-cobalt-200')}>
+                        <span className="flex w-full items-center justify-between gap-2">
+                            <span className="text-xl leading-none font-bold tabular-nums">{c.n.toLocaleString('en-PK')}</span>
+                            {c.art ? <img src={`/icons/${c.art}.png`} alt="" aria-hidden className={cx('size-6 rounded-md bg-white object-contain', c.key === 'critical' && 'kk-beat')} /> : <span aria-hidden className={cx('size-2.5 rounded-full', c.dot)} />}
+                        </span>
+                        <span className={cx('truncate text-xs font-semibold max-w-full', c.on ? 'text-white/85' : 'text-ink-soft')} title={c.label}>{c.label}</span>
+                        {!c.on ? <span aria-hidden className={cx('absolute inset-x-0 bottom-0 h-1', c.dot)} /> : null}
                     </button>
                 ))}
             </div>
