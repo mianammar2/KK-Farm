@@ -191,8 +191,19 @@ class GoatRegistrationTest extends TestCase
 
         $this->actingAs($manager)->post('/goats', $this->payload(['origin' => 'transferred_in', 'acquired_on' => '2026-11-05']))->assertSessionHasNoErrors();
 
-        // D-060: P bought, T transferred, B born.
-        $this->assertSame(['BT-021126B-02', 'BT-051126T-03', 'BT-141026P-01'], Animal::orderBy('farm_number')->pluck('farm_number')->all(), 'the number keeps counting per breed, whatever the date');
+        // D-060: P bought, T transferred, B born. D-291: the number counts that breed's goats of that date and origin, so each starts at 01.
+        $this->assertSame(['BT-021126B-01', 'BT-051126T-01', 'BT-141026P-01'], Animal::orderBy('farm_number')->pluck('farm_number')->all());
+
+        // a second goat bought the same day is -02; a goat bought another day starts again at -01
+        $this->actingAs($manager)->post('/goats', $this->payload(['origin' => 'purchased', 'acquired_on' => '2026-10-14']))->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post('/goats', $this->payload(['origin' => 'purchased', 'acquired_on' => '2026-11-07']))->assertSessionHasNoErrors();
+        $this->assertTrue(Animal::where('farm_number', 'BT-141026P-02')->exists());
+        $this->assertTrue(Animal::where('farm_number', 'BT-071126P-01')->exists());
+
+        // a number is never given twice: after the highest of a day, even if a lower one was typed by hand or removed
+        Animal::where('farm_number', 'BT-141026P-02')->update(['farm_number' => 'BT-141026P-07']);
+        $this->actingAs($manager)->post('/goats', $this->payload(['origin' => 'purchased', 'acquired_on' => '2026-10-14']))->assertSessionHasNoErrors();
+        $this->assertTrue(Animal::where('farm_number', 'BT-141026P-08')->exists());
     }
 
     public function test_a_typed_tag_id_is_kept_and_generated_ids_skip_numbers_already_in_use(): void
@@ -217,7 +228,7 @@ class GoatRegistrationTest extends TestCase
     public function test_the_register_page_shows_the_tag_id_each_breed_will_give(): void
     {
         $this->actingAs($this->user('manager'))->get('/goats/register')
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('lookups.breed_id.0.label', 'Beetal')->where('lookups.breed_id.0.next', 'BT-'.now('Asia/Karachi')->format('dmy').'-01')->where('lookups.breed_id.0.nextNumber', 1));
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('lookups.breed_id.0.label', 'Beetal')->where('lookups.breed_id.0.next', 'BT-'.now('Asia/Karachi')->format('dmy').'-01')->where('lookups.breed_id.0.used', [])); // D-291: no Beetal number used yet on any day
     }
 
     public function test_the_owner_can_add_a_breed_with_its_own_tag_code(): void

@@ -7,7 +7,7 @@ import DataGrid, { type Col } from '../../components/DataGrid';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
 
-type Choice = { value: string | number; label: string; next?: string; nextNumber?: number; breed?: number | null; code?: string; shed?: number; shedName?: string };
+type Choice = { value: string | number; label: string; next?: string; used?: Record<string, number>; breed?: number | null; code?: string; shed?: number; shedName?: string };
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
 type FieldDef = { key: string; label: string; type: string; section: string; help: string | null; builtin: boolean; required: boolean; options: Choice[] | null };
 type Classify = { categories: Record<string, string>; statuses: Record<string, string>; purposes: Record<string, string>; kidStages: Record<string, string>; growerFrom: number; adultFrom: number };
@@ -325,7 +325,8 @@ export default function Register({ registered = [], epc, fields, lookups, classS
                     const iso: string = (farmBorn ? form.data.birth_date : form.data.acquired_on) || TODAY;
                     const letter = ({ purchased: 'P', transferred_in: 'T', born_on_farm: 'B' } as Record<string, string>)[form.data.origin]; // D-060
                     // D-062: TD-141026P-03 (date and origin joined)
-                    const next = breed?.code && breed.nextNumber ? `${breed.code}-${iso.slice(8, 10)}${iso.slice(5, 7)}${iso.slice(2, 4)}${letter ?? ''}-${String(breed.nextNumber).padStart(2, '0')}` : breed?.next;
+                    const day = `${iso.slice(8, 10)}${iso.slice(5, 7)}${iso.slice(2, 4)}${letter ?? ''}`; // D-291: the number restarts at 01 for each breed, date and origin
+                    const next = breed?.code ? `${breed.code}-${day}-${String((breed.used?.[day] ?? 0) + 1).padStart(2, '0')}` : breed?.next;
                     return (
                         <div>
                             <input className="field font-mono" value={v} onChange={(e) => set(f, e.target.value.toUpperCase())} placeholder={next ? `${next} (automatic)` : 'Choose a breed first'} autoComplete="off" />

@@ -55,41 +55,68 @@ class Breed extends Model
     /** The Tag ID the next goat of this breed would get. A preview only: the number is reserved on save. */
     public function nextTagId(Carbon|string|null $date = null, ?string $origin = null): string
     {
-        return self::formatTagId($this->code, $this->last_number + 1, $date, $origin);
+        $prefix = self::tagPrefix($this->code, $date, $origin);
+
+        return $prefix.sprintf('%02d', (self::usedNumbers()[$this->code][substr($prefix, strlen($this->code) + 1, -1)] ?? 0) + 1);
+    }
+
+    /**
+     * D-291: the highest number used so far for each breed, date and origin, e.g. ['MC' => ['101026P' => 18, '071126P' => 1]],
+     * so the Register form can show the Tag ID a goat will get for the date chosen. Removed goats count: a number is never given twice.
+     *
+     * @return array<string, array<string, int>>
+     */
+    public static function usedNumbers(): array
+    {
+        $out = [];
+        foreach (Animal::withoutGlobalScopes()->pluck('farm_number') as $t) {
+            if (preg_match('/^([A-Z0-9]+)-(\d{6}[A-Z]?)-(\d+)$/', (string) $t, $m)) {
+                $out[$m[1]][$m[2]] = max($out[$m[1]][$m[2]] ?? 0, (int) $m[3]);
+            }
+        }
+
+        return $out;
     }
 
     /** D-060: origin letter in the Tag ID. */
     public const ORIGIN_LETTERS = ['purchased' => 'P', 'transferred_in' => 'T', 'born_on_farm' => 'B'];
 
     /**
-     * D-061: breed code, date as DDMMYY, origin letter (P bought, T transferred, B born) and the breed's running
-     * number with two digits, e.g. TD-141026P-03 for a Teddy bought on 14 October 2026. The number keeps counting
-     * per breed (it never restarts; after 99 it simply grows to 100), so a Tag ID is never reused. Without a known
-     * origin the letter is left out.
+     * D-061: breed code, date as DDMMYY, origin letter (P bought, T transferred, B born) and a two-digit number, e.g.
+     * TD-141026P-03 for the third Teddy bought on 14 October 2026. D-291 (owner's rule): the number counts the goats of that
+     * breed, date and origin, so the first goat of a day is -01 and it starts again at 01 the next day. Without a known origin
+     * the letter is left out.
      */
     public static function formatTagId(string $code, int $number, Carbon|string|null $date = null, ?string $origin = null): string
     {
-        $letter = self::ORIGIN_LETTERS[$origin] ?? null;
+        return self::tagPrefix($code, $date, $origin).sprintf('%02d', $number);
+    }
 
+    /** "TD-141026P-": everything before the number. */
+    public static function tagPrefix(string $code, Carbon|string|null $date = null, ?string $origin = null): string
+    {
+        $letter = self::ORIGIN_LETTERS[$origin] ?? null;
         $day = ($date ? Carbon::parse($date) : (\App\Support\Tenant::current() ? \App\Support\Feed::now() : now()))->format('dmy'); // today on the farm's clock
 
-        return sprintf('%s-%s%s-%02d', $code, $day, $letter ?? '', $number); // D-062: date and origin joined
+        return sprintf('%s-%s%s-', $code, $day, $letter ?? ''); // D-062: date and origin joined
     }
 
     /**
-     * Reserves and returns the next free Tag ID for this breed. The counter is incremented in one UPDATE,
-     * so two people registering at the same moment never get the same number. Numbers already used by a
-     * goat (for example typed by hand) are skipped.
+     * Reserves and returns the next free Tag ID for this breed, date and origin: one more than the highest number already used
+     * for them, by any goat ever registered (removed goats included), so a Tag ID is never given twice. A transaction lock on
+     * the prefix means two people registering at the same moment never get the same number.
      */
     public function issueTagId(Carbon|string|null $date = null, ?string $origin = null): string
     {
         return DB::transaction(function () use ($date, $origin) {
+            $prefix = self::tagPrefix($this->code, $date, $origin);
+            DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', [$prefix]);
+            $used = Animal::withoutGlobalScopes()->where('farm_number', 'like', str_replace(['%', '_'], ['\\%', '\\_'], $prefix).'%')->pluck('farm_number')
+                ->map(fn ($t) => preg_match('/-(\d+)$/', $t, $m) ? (int) $m[1] : 0)->max() ?? 0;
+            $n = $used;
             do {
-                $row = DB::selectOne('UPDATE breeds SET last_number = last_number + 1, updated_at = now() WHERE id = ? RETURNING code, last_number', [$this->id]);
-                $tagId = self::formatTagId($row->code, $row->last_number, $date, $origin);
-            } while (Animal::where('farm_number', $tagId)->exists());
-
-            $this->last_number = $row->last_number;
+                $tagId = $prefix.sprintf('%02d', ++$n);
+            } while (Animal::withoutGlobalScopes()->where('farm_number', $tagId)->exists());
 
             return $tagId;
         });

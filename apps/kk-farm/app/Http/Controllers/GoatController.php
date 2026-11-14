@@ -220,7 +220,7 @@ class GoatController extends Controller
                 'options' => $f->type !== 'select' ? null : ($f->key === 'teeth' ? collect($f->optionMap())->map(fn ($label, $value) => ['value' => (string) $value, 'label' => $label])->values() : $f->options), // D-220
             ])->values(),
             'lookups' => [
-                'breed_id' => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['value' => $b->id, 'label' => $b->name, 'next' => $b->nextTagId(), 'code' => $b->code, 'nextNumber' => $b->last_number + 1]),
+                'breed_id' => (fn ($used) => Breed::orderBy('name')->get()->map(fn (Breed $b) => ['value' => $b->id, 'label' => $b->name, 'next' => $b->nextTagId(), 'code' => $b->code, 'used' => (object) ($used[$b->code] ?? [])]))(Breed::usedNumbers()), // D-291: the number restarts at 01 for each breed, date and origin
                 // Shed and pen are two linked dropdowns: choosing a shed lists only its pens. Planned sheds are not offered.
                 'pen_id' => Pen::with('shed')->whereHas('shed', fn ($q) => $q->where('status', 'active'))->orderBy('name')->get()
                     ->map(fn (Pen $p) => ['value' => $p->id, 'label' => $p->fullName().($p->purpose ? " · {$p->purpose}" : ''), 'shed' => $p->shed_id, 'shedName' => trim($p->shed?->name.($p->shed?->typeName() ? ' · '.$p->shed->typeName() : ''))]),
