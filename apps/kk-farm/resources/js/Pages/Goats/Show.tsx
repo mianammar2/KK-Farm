@@ -138,7 +138,6 @@ export default function GoatShow(props: Props) {
                             <ReproChip repro={goat.repro} until={goat.monitorUntil} />
                         </div>
                         <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft sm:text-base">{goat.name ? <span className="font-semibold text-cobalt-800">{goat.name} ·</span> : null}<BreedBadge breed={goat.breed} withName size={22} /><span>·</span><AgeBadge stage={goat.stage} code={goat.ageCode} withLabel /><span>{goat.age}</span></p>
-                        {goat.classification ? <p className="mt-1 inline-flex rounded-full bg-cobalt-900 px-3 py-1 text-sm font-semibold text-white">{goat.classification}</p> : null}
                         {Object.keys(roleLabels).length ? <p className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Role codes">{Object.entries(roleLabels).map(([c, l], i) => <span key={c} className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${i === 0 ? 'bg-turq-100 text-turq-800' : 'bg-glaze text-cobalt-800 ring-1 ring-rule'}`}><span className="font-mono">{c}</span> · {l}</span>)}</p> : null}
                         {statuses ? <StatusStrip statuses={statuses} history={statusHistory} /> : null}
                         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4">
@@ -168,27 +167,29 @@ export default function GoatShow(props: Props) {
                             {onFarm && auth?.gates.includes('exit_animal') ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}>Record Exit</button> : null}
                             {!removed && can.edit && !goat.removal ? <button type="button" className="font-semibold text-ink-soft" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}>Remove (Wrong Entry)</button> : null}
                         </div>
-                        {!removed && can.edit ? (
-                            <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
-                                <Button onClick={() => router.visit(`/goats/${goat.id}/edit`)}><LibIcon name="app-settings" size={18} /> Edit details</Button>
-                                {!goat.removal ? <Button variant="quiet" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}><Trash2 size={16} aria-hidden /> Remove (wrong entry)</Button> : null}
-                            </div>
-                        ) : null}
-                        {onFarm ? (
-                            <div className="mt-3 flex flex-wrap gap-2 max-sm:hidden">
-                                {scanMating ? <Button variant="secondary" onClick={() => setScan(true)}><LibIcon name="app-reports" size={18} /> Ultrasound</Button> : null}
-                                {pregnancy && can.breeding ? <Button onClick={() => setOutcome(true)}><LibIcon name="ic-pregnant" size={18} /> Pregnancy Outcome</Button> : null}
-                                {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="app-veterinary" size={18} /> Health checkup</Button> : null}
-                                {healthEntry?.canEntry ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
-                                {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
-                                {auth?.gates.includes('record_height') ? <Button variant="secondary" onClick={() => setPanel(panel === 'height' ? null : 'height')}><LibIcon name="app-growth" size={18} /> Add height</Button> : null}
-                                <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
-                                {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Temp check</Button> : null}
-                                {auth?.gates.includes('move_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button> : null}
-                                {goat.inBreeding && auth?.gates.includes('cull_breeding') ? <Button variant="secondary" onClick={() => setPanel(panel === 'cull' ? null : 'cull')}><LibIcon name="ic-sold" size={18} /> Cull from breeding</Button> : null}
-                                {auth?.gates.includes('edit_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
-                                {auth?.gates.includes('report_death') && death?.report?.status !== 'pending' ? <Button variant="danger" onClick={() => setPanel(panel === 'death' ? null : 'death')}><LibIcon name="ic-died" size={18} /> Report death</Button> : null}
-                                {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
+                        {onFarm || (!removed && can.edit) ? (
+                            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-rule pt-3 max-sm:hidden" role="toolbar" aria-label="Actions">
+                                {onFarm ? <>
+                                    {scanMating ? <Button variant="secondary" onClick={() => setScan(true)}><LibIcon name="app-reports" size={18} /> Ultrasound</Button> : null}
+                                    {pregnancy && can.breeding ? <Button onClick={() => setOutcome(true)}><LibIcon name="ic-pregnant" size={18} /> Pregnancy Outcome</Button> : null}
+                                    {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="app-veterinary" size={18} /> Health checkup</Button> : null}
+                                    {healthEntry?.canEntry ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
+                                    {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
+                                    {auth?.gates.includes('record_height') ? <Button variant="secondary" onClick={() => setPanel(panel === 'height' ? null : 'height')}><LibIcon name="app-growth" size={18} /> Add height</Button> : null}
+                                    {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Temp check</Button> : null}
+                                    <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
+                                    {auth?.gates.includes('move_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button> : null}
+                                </> : null}
+                                {onFarm ? <>
+                                    {goat.inBreeding && auth?.gates.includes('cull_breeding') ? <Button variant="secondary" onClick={() => setPanel(panel === 'cull' ? null : 'cull')}><LibIcon name="ic-sold" size={18} /> Cull from breeding</Button> : null}
+                                    {auth?.gates.includes('edit_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}><LibIcon name="ic-farm-born" size={18} /> Correct birth date</Button> : null}
+                                </> : null}
+                                {!removed && can.edit ? <Button variant="secondary" onClick={() => router.visit(`/goats/${goat.id}/edit`)}><LibIcon name="app-settings" size={18} /> Edit details</Button> : null}
+                                {onFarm ? <>
+                                    {auth?.gates.includes('report_death') && death?.report?.status !== 'pending' ? <Button variant="danger" onClick={() => setPanel(panel === 'death' ? null : 'death')}><LibIcon name="ic-died" size={18} /> Report death</Button> : null}
+                                    {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
+                                </> : null}
+                                {!removed && can.edit && !goat.removal ? <Button variant="quiet" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}><Trash2 size={16} aria-hidden /> Remove (wrong entry)</Button> : null}
                             </div>
                         ) : null}
                     </div>
@@ -227,13 +228,15 @@ export default function GoatShow(props: Props) {
             />
 
             {tab === 'overview' ? (
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                    <div className="min-w-0 space-y-4">
                     <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg > 0 ? '▲ +' : gain.kg < 0 ? '▼ ' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
                         {death?.review ? <DeathReview d={death} /> : null}
                         {recovery ? <RecoveryNote r={recovery} /> : null}
                         <GrowthView rows={records} number={goat.number} />
-                        <RecordsTable rows={records} />
                     </Panel>
+                    {records.length ? <Panel flush title="Measurements and care" description={`${records.length} ${records.length === 1 ? 'day' : 'days'}: what was measured, what was found and what was done`}><div className="px-4 pb-1"><RecordsTable rows={records} /></div></Panel> : null}
+                    </div>
                     <div className="space-y-4">
                         {pregnancy ? <PregnancyPanel p={pregnancy} /> : null}
                         {milking ? <MilkingPanel m={milking} /> : null}
@@ -625,13 +628,12 @@ export type GoatRecord = {
     temp: number | null; tempFlag: boolean; heart: number | null; breaths: number | null; teeth: string | null; ultrasound: string | null;
     care: string[]; treatments: string[]; actions: string[]; result: string | null; by: string[]; // D-262: care = what was found, actions = what was done
 };
-const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean; cell: (r: GoatRecord) => ReactNode; num?: boolean }> = [
-    { key: 'weight', label: 'Weight', num: true, has: (r) => r.weight !== null, cell: (r) => (r.weight !== null ? `${r.weight} KG` : '') },
-    { key: 'change', label: 'Change', num: true, has: (r) => r.change !== null, cell: (r) => (r.change === null ? '' : <Ticker kg={r.change} pct={r.pct} days={r.days} small />) },
-    { key: 'adg', label: 'Daily gain', num: true, has: (r) => r.adg !== null, cell: (r) => (r.adg === null ? '' : <span className={r.adg < 0 ? 'text-crit-700' : r.adg > 0 ? 'text-ok-700' : ''}>{r.adg > 0 ? '+' : ''}{r.adg} g</span>) },
+const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean; cell: (r: GoatRecord) => ReactNode; num?: boolean; always?: boolean }> = [
+    { key: 'weight', label: 'Weight', num: true, always: true, has: (r) => r.weight !== null, cell: (r) => (r.weight !== null ? `${r.weight} KG` : <span className="text-ink-faint">—</span>) },
+    { key: 'change', label: 'Change', num: true, has: (r) => r.change !== null, cell: (r) => (r.change === null ? '' : <Ticker kg={r.change} pct={r.pct} days={r.days} perDay={r.adg ?? undefined} small />) },
     { key: 'bcs', label: 'Body score', num: true, has: (r) => r.bcs !== null, cell: (r) => r.bcs ?? '' },
-    { key: 'height', label: 'Height', num: true, has: (r) => r.height !== null, cell: (r) => (r.height !== null ? `${r.height} in` : '') },
-    { key: 'temp', label: 'Temp °F', num: true, has: (r) => r.temp !== null, cell: (r) => (r.temp === null ? '' : <span className={r.tempFlag ? 'rounded bg-crit-100 px-1 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span>) },
+    { key: 'height', label: 'Height', num: true, always: true, has: (r) => r.height !== null, cell: (r) => (r.height !== null ? `${r.height} in` : <span className="text-ink-faint">—</span>) },
+    { key: 'temp', label: 'Temp °F', num: true, always: true, has: (r) => r.temp !== null, cell: (r) => (r.temp === null ? <span className="text-ink-faint">—</span> : <span className={r.tempFlag ? 'rounded bg-crit-100 px-1 font-semibold text-crit-700' : ''} title={r.tempFlag ? 'Outside 101.3–103.5 °F' : undefined}>{r.temp}</span>) },
     { key: 'heart', label: 'Heart /min', num: true, has: (r) => r.heart !== null, cell: (r) => (r.heart === null ? '' : <span className={r.heart < 60 || r.heart > 100 ? 'rounded bg-watch-100 px-1 text-watch-700' : ''} title={r.heart < 60 || r.heart > 100 ? 'Outside the usual 60–100' : undefined}>{r.heart}</span>) },
     { key: 'breaths', label: 'Breaths /min', num: true, has: (r) => r.breaths !== null, cell: (r) => (r.breaths === null ? '' : <span className={r.breaths < 12 || r.breaths > 40 ? 'rounded bg-watch-100 px-1 text-watch-700' : ''} title={r.breaths < 12 || r.breaths > 40 ? 'Outside the usual 12–40' : undefined}>{r.breaths}</span>) },
     { key: 'teeth', label: 'Teeth', has: (r) => !!r.teeth, cell: (r) => r.teeth ?? '' },
@@ -639,21 +641,19 @@ const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean;
     { key: 'care', label: 'Found', has: (r) => r.care.length > 0, cell: (r) => r.care.join('; ') },
     { key: 'actions', label: 'Action taken', has: (r) => (r.actions ?? []).length > 0, cell: (r) => <ul className="space-y-0.5">{(r.actions ?? []).map((a, i) => <li key={i} className="flex gap-1.5"><span aria-hidden className="text-ok-700">✓</span><span>{a}</span></li>)}</ul> },
     { key: 'result', label: 'Checkup', has: (r) => !!r.result, cell: (r) => (r.result ? <span className={r.result === 'Sick' ? 'font-semibold text-crit-700' : r.result === 'Watch' ? 'text-watch-700' : 'text-ok-700'}>{r.result}</span> : '') },
-    { key: 'by', label: 'By', has: (r) => r.by.length > 0, cell: (r) => <span className="text-ink-soft">{r.by.join(', ')}</span> },
 ];
 function RecordsTable({ rows }: { rows: GoatRecord[] }) {
     const { rows: shown, pager } = usePaged(rows, { size: 10, id: 'goat-records' }); // D-263: numbered pages
     if (!rows.length) return null;
-    const cols = COLS.filter((c) => rows.some(c.has)); // a column with nothing in it is not shown
+    const cols = COLS.filter((c) => c.always || rows.some(c.has)); // a column with nothing in it is not shown (D-264: weight, height and temperature always are)
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     return (
-        <div className="mt-4 border-t border-rule pt-3">
-            <h3 className="mb-2 text-sm font-semibold text-cobalt-900">Measurements and care <span className="font-normal text-ink-soft">· {rows.length} {rows.length === 1 ? 'day' : 'days'}</span></h3>
+        <div>
             <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                 <table className="data-table min-w-[560px] text-sm">
                     <thead><tr><th className="text-start">Date</th>{cols.map((c) => <th key={c.key} className={c.num ? 'text-end' : 'text-start'}>{c.label}</th>)}</tr></thead>
                     <tbody>{shown.map((r) => (
-                        <tr key={r.on}><td className="whitespace-nowrap font-medium">{date(r.on)}</td>{cols.map((c) => <td key={c.key} className={c.num ? 'text-end tabular-nums whitespace-nowrap' : 'max-w-[16rem]'}>{c.cell(r)}</td>)}</tr>
+                        <tr key={r.on}><td className="whitespace-nowrap font-medium">{date(r.on)}{r.by.length ? <span className="block text-xs font-normal text-ink-soft">{r.by.join(', ')}</span> : null}</td>{cols.map((c) => <td key={c.key} className={c.num ? 'text-end tabular-nums whitespace-nowrap' : 'min-w-[10rem] max-w-[16rem]'}>{c.cell(r)}</td>)}</tr>
                     ))}</tbody>
                 </table>
             </div>
@@ -776,7 +776,7 @@ function CullForm({ goatId, onDone }: { goatId: string; onDone: () => void }) {
     const f = useForm({ reason: '' });
     return (
         <form onSubmit={(e) => { e.preventDefault(); f.post(`/goats/${goatId}/cull`, { preserveScroll: true, onSuccess: onDone }); }} className="flex flex-wrap items-end gap-3">
-            <div className="w-80"><Field label="Why it leaves breeding" error={f.errors.reason} hint="e.g. repeat breeder, poor kids, udder problem, old age"><input className="field" autoFocus value={f.data.reason} onChange={(e) => f.setData('reason', e.target.value)} required /></Field></div>
+            <div className="w-80"><Field label="Why it leaves breeding" error={f.errors.reason}><input className="field" placeholder="e.g. repeat breeder, poor kids, udder problem" autoFocus value={f.data.reason} onChange={(e) => f.setData('reason', e.target.value)} required /></Field></div>
             <Button type="submit" variant="danger" disabled={f.processing}>Cull from breeding</Button>
             <p className="w-full text-sm text-ink-soft">It becomes a Cull goat (for sale) and leaves the breeding lists. It stays on the farm and on record until it is sold.</p>
         </form>
@@ -789,7 +789,7 @@ function HeightForm({ goatId, onDone }: { goatId: string; onDone: () => void }) 
     const f = useForm({ height_in: '', measured_on: today });
     return (
         <form onSubmit={(e) => { e.preventDefault(); f.post(`/goats/${goatId}/height`, { preserveScroll: true, onSuccess: onDone }); }} className="flex flex-wrap items-end gap-2">
-            <div className="w-44"><Field label="Height (inches)" error={f.errors.height_in} hint="At the withers"><input inputMode="decimal" autoFocus className="field" value={f.data.height_in} onChange={(e) => f.setData('height_in', e.target.value.replace(/[^0-9.]/g, ''))} required /></Field></div>
+            <div className="w-44"><Field label="Height in inches (withers)" error={f.errors.height_in}><input inputMode="decimal" autoFocus className="field" value={f.data.height_in} onChange={(e) => f.setData('height_in', e.target.value.replace(/[^0-9.]/g, ''))} required /></Field></div>
             <div className="w-44"><Field label="Measured on" error={f.errors.measured_on}><input type="date" className="field" max={today} value={f.data.measured_on} onChange={(e) => f.setData('measured_on', e.target.value)} required /></Field></div>
             <Button type="submit" disabled={f.processing}>Save height</Button>
         </form>
@@ -837,9 +837,9 @@ function GrowthView({ rows, number }: { rows: GoatRecord[]; number: string }) {
                 </div>
                 {last && first && pts.length > 1 ? <span className="text-sm"><Ticker kg={Math.round((last.v - first.v) * 10) / 10} pct={first.v ? Math.round(((last.v - first.v) / first.v) * 1000) / 10 : null} unit={unit} small /> <span className="text-ink-soft">since {label(first.on)}</span></span> : null}
                 <span className="ms-auto flex items-center gap-3 text-xs text-ink-soft">
-                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: UP }} />Up</span>
-                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: DOWN }} />Down</span>
-                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: FLAT }} />First / same</span>
+                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: UP }} />Gain</span>
+                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: DOWN }} />Loss</span>
+                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: FLAT }} />First / no change</span>
                 </span>
                 <div className="inline-flex overflow-hidden rounded-tile border border-rule" role="group" aria-label="View">
                     <button type="button" aria-pressed={view === 'chart'} className={seg(view === 'chart')} onClick={() => setView('chart')}>Chart</button>
