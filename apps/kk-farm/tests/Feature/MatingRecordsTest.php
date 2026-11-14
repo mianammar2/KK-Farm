@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
-/** D-294: every recorded mating is listed on Breeding → Mating Records, for the people who may see breeding. */
+/** D-294/D-296: every recorded mating is listed on Breeding → Mating Records (the cycle page), for the people who may see breeding. */
 class MatingRecordsTest extends TestCase
 {
     use RefreshDatabase;
@@ -35,7 +35,7 @@ class MatingRecordsTest extends TestCase
 
         $this->actingAs($manager)->post('/breeding/matings', ['dam_id' => $doe->id, 'sire_id' => $buck->id, 'mated_on' => now()->subDay()->toDateString(), 'method' => 'natural', 'heat_observed' => 'yes'])->assertSessionHasNoErrors();
 
-        $this->actingAs($manager)->get('/breeding?tab=matings')->assertOk()->assertInertia(fn (AssertableInertia $p) => $p
+        $this->actingAs($manager)->get('/breeding?tab=cycle')->assertOk()->assertInertia(fn (AssertableInertia $p) => $p
             ->has('matingRecords', 1)
             ->where('matingRecords.0.dam', 'MC-101026P-14')->where('matingRecords.0.sire', 'MC-221026P-01')
             ->where('matingRecords.0.method', 'Natural')->where('matingRecords.0.by', 'Test manager')

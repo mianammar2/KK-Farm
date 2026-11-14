@@ -59,7 +59,7 @@ class BreedingController extends Controller
         return Inertia::render('Breeding', [
             'farmBorn' => $farmBorn,
             // D-294: every mating recorded on the farm, as a sheet (Breeding → Mating Records), newest first; D-295: not the pregnancies found at a checkup or on arrival
-            'matingRecords' => \App\Support\Pages::allowsKey($request->user(), 'breeding.mating_records') ? Mating::with(['dam.breed', 'sire.breed'])->where('source', 'mating')->orderByDesc('mated_on')->orderByDesc('id')->get()->map(fn (Mating $m) => [
+            'matingRecords' => \App\Support\Pages::allowsKey($request->user(), 'breeding.mating_pregnancy_ultrasound') ? Mating::with(['dam.breed', 'sire.breed'])->where('source', 'mating')->orderByDesc('mated_on')->orderByDesc('id')->get()->map(fn (Mating $m) => [
                 'id' => $m->id, 'matedIso' => $m->mated_on->toDateString(), 'mated' => $m->mated_on->format('d/m/Y'),
                 'dam' => $m->dam?->farm_number, 'damId' => $m->dam_id, 'damBreed' => $m->dam?->breed?->name,
                 'sire' => $m->sire?->farm_number, 'sireId' => $m->sire_id, 'sireBreed' => $m->sire?->breed?->name,

@@ -53,20 +53,13 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'breeding', no: '03', label: 'Breeding', art: 'app-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
         S('Operations', '/breeding?tab=heat', 'Heat Detection'),
-        S('Operations', '/breeding?tab=cycle', 'Mating, Pregnancy & Ultrasound'),
-        S('Records', '/breeding?tab=matings', 'Mating Records'), // D-294
-        S('Records', '/breeding?tab=calendar', 'Pregnancy Calendar'),
+        S('Operations', '/breeding?tab=cycle', 'Mating Records'), // D-294/D-296: the farm's matings and the pregnancies to check, one page
         S('Operations', '/genetics?tab=review', 'Replacement Review (Genetic Merit)'),
         S('Reporting', '/genetics?tab=progeny', 'Sire & Dam Progeny Performance'),
-        S('Operations', '/genetics?tab=mating', 'Inbreeding Check'),
-        S('Operations', '/growth?tab=selection', 'Replacement Breeder Selection'),
         S('Operations', '/breeding/eligibility', 'Breeding Eligibility & Approval'), // D-231
         S('Records', '/breeding?tab=pedigree', 'Genetics & Family Tree'),
-        S('Records', '/goats?show=pregnant', 'Pregnant Does'),
         S('Reporting', '/breeding?tab=performance', 'Doe Performance'),
-        S('Reporting', '/reports?section=sires', 'Buck Performance'),
         S('Configuration', '/breeding?tab=settings', 'Gestation & Check Days'),
-        S('Configuration', '/breeding/eligibility#rules', 'Breeding Eligibility Rules'),
     ] },
     { key: 'maternity', no: '04', label: 'Maternity', art: 'app-maternity', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
         S('Overview', '/breeding?tab=calendar', 'Upcoming Deliveries'),
@@ -78,8 +71,6 @@ export const APPS: ErpApp[] = [
         S('Operations', '/growth?tab=growth', 'Kid Growth vs Plan'),
         S('Operations', '/milking', 'Mother Care & Lactation'),
         S('Records', '/sheds', 'Maternity Unit'),
-        S('Reporting', '/breeding?tab=performance', 'Kidding Rate & Litter Size'),
-        S('Configuration', '/breeding?tab=settings', 'Weaning & Kidding Alerts'),
     ] },
     { key: 'veterinary', no: '05', label: 'Veterinary', art: 'app-veterinary', modules: ['health'], linked: ['livestock', 'maternity', 'inventory', 'operations'], sections: [
         S('Operations', '/health?tab=checkups', 'Daily Health & Checkups'),

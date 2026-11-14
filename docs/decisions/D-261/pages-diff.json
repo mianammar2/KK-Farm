@@ -1593,21 +1593,6 @@
    "lock": "opening"
   },
   {
-   "key": "breeding.mating_records",
-   "label": "Mating Records",
-   "path": "/breeding",
-   "query": {
-    "tab": "matings"
-   },
-   "roles": [
-    "ceo",
-    "manager",
-    "vet",
-    "caretaker"
-   ],
-   "lock": null
-  },
-  {
    "key": "breeding.sire_dam_progeny_performance",
    "label": "Sire & Dam Progeny Performance",
    "path": "/genetics",
@@ -1624,7 +1609,7 @@
  ],
  "counts": {
   "spec_rows": 233,
-  "registry": 190,
+  "registry": 189,
   "diffs": 36
  }
 }

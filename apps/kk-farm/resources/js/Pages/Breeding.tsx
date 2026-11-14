@@ -80,19 +80,12 @@ export default function Breeding(props: Props) {
     return (
         <>
             <Head title="Breeding & Pedigree" />
-            <PageHeader title="Breeding & pedigree" description={`Gestation ${settings.gestation} days · pregnancy check ${settings.check} days after mating · weaning at ${settings.weaning} days. Your vet confirms these.`} actions={auth?.gates.includes('record_mating') ? <AddButton label="Record a mating" onClick={() => setAdding(true)} /> : undefined} />
+            <PageHeader title="Breeding & pedigree" description={`Gestation ${settings.gestation} days · pregnancy check ${settings.check} days after mating · weaning at ${settings.weaning} days. Your vet confirms these.`} actions={auth?.gates.includes('record_mating') && ['heat', 'cycle', 'matings'].includes(tab) ? <AddButton label="Record a mating" onClick={() => setAdding(true)} /> : undefined} /> {/* D-296: only where matings are handled */}
             {adding ? <Sheet onClose={() => { setAdding(false); setPresetDam(null); }}><MatingForm {...props} presetDam={presetDam} onDone={() => { setAdding(false); setPresetDam(null); }} /></Sheet> : null}
-            <StatRow>
-                <Stat label="Confirmed pregnant" value={active.filter((m) => m.status === 'pregnant').length} />
-                <Stat label="Waiting for a check" value={active.filter((m) => m.status === 'open' || m.status === 'inconclusive').length} note={`${active.filter((m) => m.alert === 'check_overdue' || m.alert === 'recheck_overdue').length} overdue`} tone={active.some((m) => m.alert === 'check_overdue' || m.alert === 'recheck_overdue') ? 'alert' : undefined} />
-                <Stat label={`Kidding in ${settings.alert} days`} value={active.filter((m) => m.alert === 'kidding_soon' || m.alert === 'edd_passed').length} tone={active.some((m) => m.alert === 'edd_passed') ? 'alert' : undefined} note={active.some((m) => m.alert === 'edd_passed') ? 'Some past the due date' : undefined} />
-                <Stat label="Due for weaning" value={due.length} tone={due.length ? 'alert' : undefined} />
-            </StatRow>
-            {kpis.events ? <div className="mb-4"><ReproKpiTiles k={kpis} /></div> : null}
+            {/* D-296: no number row on every tab: the app's numbers show once, on its main page (the app strip), like the other apps */}
             <Tabs value={tab} onChange={setTab} tabs={[
                 { id: 'heat', label: 'Heat Detection', count: props.heat.filter((h) => h.status === 'in_heat').length || undefined },
-                { id: 'cycle', label: 'Breeding cycle', count: active.length },
-                { id: 'matings', label: 'Mating Records' }, // D-294
+                { id: 'cycle', label: 'Mating Records', count: active.length },
                 { id: 'calendar', label: 'Pregnancy Calendar' },
                 { id: 'kidding', label: 'Kidding', count: kiddings.length },
                 { id: 'kidcare', label: 'Kid Care', count: props.kidCare.filter((k) => k.colostrumDue || k.weak).length || undefined },
@@ -105,12 +98,13 @@ export default function Breeding(props: Props) {
             {tab === 'heat' ? <HeatDetection rows={props.heat} options={props.heatOptions} onMate={(id) => { setPresetDam(id); setAdding(true); }} /> : null}
             {tab === 'calendar' ? <PregnancyCalendar matings={matings} /> : null}
             {tab === 'kidcare' ? <KidCare kids={props.kidCare} options={props.kidCareOptions} does={props.does.map((d) => ({ id: String(d.id), farm_number: d.farm_number ?? '' }))} /> : null}
-            {tab === 'cycle' ? (
-                <div>
-                    <div className="min-w-0 space-y-3">
-                        {matings.length ? matings.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} {...props} />)
-                            : <Panel><Empty title="No matings yet">Tap Record a mating to add one.</Empty></Panel>}
-                    </div>
+            {tab === 'cycle' || tab === 'matings' ? (
+                <div className="space-y-4">
+                    <MatingSheet rows={matingRecords} />
+                    <Panel title="Pregnancies to follow" description="Open matings and pregnancies: the pregnancy check, the ultrasound and the expected kidding. Done ones move to the sheet above." flush={!active.length}>
+                        {active.length ? <div className="min-w-0 space-y-3">{active.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} {...props} />)}</div>
+                            : <Empty title="Nothing to follow">Every mating has its outcome.</Empty>}
+                    </Panel>
                 </div>
             ) : null}
 
@@ -140,30 +134,6 @@ export default function Breeding(props: Props) {
                     ) : <Empty title="No kiddings yet">Record a kidding from a mating in the Breeding cycle tab.</Empty>}
                 </Panel>
             ) : null}
-            {tab === 'matings' ? (
-                <Panel flush title="Mating Records" description="Every mating recorded on the farm, newest first: the doe and the buck, how and when, the pregnancy check and the expected kidding, and who entered it.">
-                    <div className="flex flex-wrap gap-2 border-b border-rule px-3 py-3 text-sm">
-                        <span className="rounded-md bg-cobalt-100 px-2.5 py-1 text-cobalt-800">All: {matingRecords.length}</span>
-                        {[...new Set(matingRecords.map((m) => m.status))].map((st) => <span key={st} className="rounded-md bg-glaze px-2.5 py-1 ring-1 ring-rule">{st}: {matingRecords.filter((m) => m.status === st).length}</span>)}
-                    </div>
-                    {matingRecords.length ? <DataGrid id="mating-records" name="Mating records" rows={matingRecords} rowKey={(m) => String(m.id)} cols={[
-                        { key: 'matedIso', label: 'Mated on', type: 'date', render: (m) => m.mated },
-                        { key: 'dam', label: 'Doe', type: 'text', total: 'count', render: (m) => <Link href={`/goats/${m.damId}`} className="font-mono text-cobalt-800 hover:underline">{m.dam}</Link> },
-                        { key: 'damBreed', label: 'Doe breed', type: 'enum' },
-                        { key: 'sire', label: 'Buck', type: 'text', render: (m) => (m.sireId ? <Link href={`/goats/${m.sireId}`} className="font-mono text-cobalt-800 hover:underline">{m.sire}</Link> : 'Not recorded') },
-                        { key: 'sireBreed', label: 'Buck breed', type: 'enum' },
-                        { key: 'method', label: 'Method', type: 'enum' },
-                        { key: 'heat', label: 'Heat observed', type: 'enum' },
-                        { key: 'status', label: 'Status', type: 'enum' },
-                        { key: 'checkDueIso', label: 'Pregnancy check due', type: 'date', render: (m) => m.checkDue ?? '—' },
-                        { key: 'expectedIso', label: 'Expected kidding', type: 'date', render: (m) => m.expected ?? '—' },
-                        { key: 'handler', label: 'Handler / vet', type: 'text' },
-                        { key: 'by', label: 'Entered by', type: 'enum' },
-                        { key: 'entered', label: 'Entered on', type: 'text' },
-                    ]} /> : <Empty title="No matings yet">Record a mating to add one.</Empty>}
-                </Panel>
-            ) : null}
-
             {tab === 'kidding' && farmBorn.length ? (
                 <Panel flush title="Farm-Born Kids" description="Every kid born on the farm, created from the kidding record: born on, mother and father, and when it was entered and by whom." className="mt-4">
                     <div className="flex flex-wrap gap-2 border-b border-rule px-3 py-3 text-sm">
@@ -213,6 +183,7 @@ export default function Breeding(props: Props) {
                 </Panel>
             ) : null}
 
+            {tab === 'performance' && kpis.events ? <div className="mb-4"><ReproKpiTiles k={kpis} /></div> : null}
             {tab === 'performance' ? (
                 <Panel title="Does by live kids" flush>
                     {performance.length ? <DataGrid id="doe-performance" name="Doe performance" rows={performance} rowKey={(p) => p.id} cols={[
@@ -363,6 +334,33 @@ function BreedingSettings({ settings }: { settings: Props['settings'] }) {
                 <Field label="Weaning target age (days)" error={e.weaning}><input type="number" className="field" value={form.data.weaning} onChange={(x) => form.setData('weaning', Number(x.target.value))} /></Field>
                 <div className="col-span-2"><Button type="submit" disabled={form.processing}>Save</Button></div>
             </form>
+        </Panel>
+    );
+}
+
+/** D-294/D-296: every mating recorded on the farm, as a sheet (the top of Mating Records). */
+function MatingSheet({ rows: matingRecords }: { rows: NonNullable<Props['matingRecords']> }) {
+    return (
+                <Panel flush title="All matings" description="Every mating recorded on the farm, newest first: the doe and the buck, how and when, the pregnancy check and the expected kidding, and who entered it.">
+            <div className="flex flex-wrap gap-2 border-b border-rule px-3 py-3 text-sm">
+                <span className="rounded-md bg-cobalt-100 px-2.5 py-1 text-cobalt-800">All: {matingRecords.length}</span>
+                {[...new Set(matingRecords.map((m) => m.status))].map((st) => <span key={st} className="rounded-md bg-glaze px-2.5 py-1 ring-1 ring-rule">{st}: {matingRecords.filter((m) => m.status === st).length}</span>)}
+            </div>
+            {matingRecords.length ? <DataGrid id="mating-records" name="Mating records" rows={matingRecords} rowKey={(m) => String(m.id)} cols={[
+                { key: 'matedIso', label: 'Mated on', type: 'date', render: (m) => m.mated },
+                { key: 'dam', label: 'Doe', type: 'text', total: 'count', render: (m) => <Link href={`/goats/${m.damId}`} className="font-mono text-cobalt-800 hover:underline">{m.dam}</Link> },
+                { key: 'damBreed', label: 'Doe breed', type: 'enum' },
+                { key: 'sire', label: 'Buck', type: 'text', render: (m) => (m.sireId ? <Link href={`/goats/${m.sireId}`} className="font-mono text-cobalt-800 hover:underline">{m.sire}</Link> : 'Not recorded') },
+                { key: 'sireBreed', label: 'Buck breed', type: 'enum' },
+                { key: 'method', label: 'Method', type: 'enum' },
+                { key: 'heat', label: 'Heat observed', type: 'enum' },
+                { key: 'status', label: 'Status', type: 'enum' },
+                { key: 'checkDueIso', label: 'Pregnancy check due', type: 'date', render: (m) => m.checkDue ?? '—' },
+                { key: 'expectedIso', label: 'Expected kidding', type: 'date', render: (m) => m.expected ?? '—' },
+                { key: 'handler', label: 'Handler / vet', type: 'text' },
+                { key: 'by', label: 'Entered by', type: 'enum' },
+                { key: 'entered', label: 'Entered on', type: 'text' },
+            ]} /> : <Empty title="No matings yet">Record a mating to add one.</Empty>}
         </Panel>
     );
 }

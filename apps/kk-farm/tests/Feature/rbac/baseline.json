@@ -944,15 +944,6 @@
         "cleaning": 403,
         "finance": 403
     },
-    "PAGE breeding.mating_records  /breeding?tab=matings": {
-        "ceo": 200,
-        "manager": 200,
-        "vet": 200,
-        "caretaker": 200,
-        "feeding": 403,
-        "cleaning": 403,
-        "finance": 403
-    },
     "PAGE breeding.pregnancy_calendar  /breeding?tab=calendar": {
         "ceo": 200,
         "manager": 200,
