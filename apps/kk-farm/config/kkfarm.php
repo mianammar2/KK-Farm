@@ -78,6 +78,9 @@ return [
         'report_death' => ['vet'],
         'approve_death' => ['ceo'],
         'cull_breeding' => ['ceo', 'vet'],
+        // D-262: the vet's teeth check and height measurement (Tasks jobs and goat page); the administrator has both
+        'check_teeth' => ['ceo', 'vet'],
+        'record_height' => ['ceo', 'vet'],
         'manage_medicine_store' => ['ceo', 'vet'],
         'approve_feeding_plan' => ['ceo', 'manager'],
         'plan_rations' => ['ceo', 'manager', 'feeding'],

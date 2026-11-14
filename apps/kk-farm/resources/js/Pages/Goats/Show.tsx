@@ -74,14 +74,6 @@ export default function GoatShow(props: Props) {
     const onFarm = goat.status === 'active';
 
     // D-102: dates to scale (7 days apart look 7 days apart), each point labelled with its day and weight.
-    const chart = useMemo(() => ({
-        tooltip: { trigger: 'axis', formatter: (x: Array<{ data: [number, number] }>) => `${new Date(x[0].data[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}: ${x[0].data[1]} KG` },
-        grid: { left: 8, right: 16, top: 24, bottom: 6, containLabel: true },
-        xAxis: { type: 'time', axisLabel: { color: '#5e6a5f', formatter: (v: number) => new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }, splitLine: { show: false }, minInterval: 86400000 },
-        yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
-        series: [{ type: 'line', data: weights.map((w) => [new Date(`${w.on}T12:00:00`).getTime(), w.kg]), symbolSize: 8, lineStyle: { width: 2.5 }, areaStyle: { opacity: 0.08 },
-            label: { show: weights.length <= 12, position: 'top', formatter: (p: { data: [number, number] }) => `${p.data[1]}`, color: '#013624', fontWeight: 600 } }],
-    }), [weights]);
     const gain = weights.length > 1 ? (() => {
         const a = weights[0];
         const b = weights[weights.length - 1];
@@ -162,6 +154,7 @@ export default function GoatShow(props: Props) {
                                 {onFarm && healthEntry?.canCheck ? <ActionTile icon={<LibIcon name="app-veterinary" size={26} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
                                 {onFarm && healthEntry?.canEntry ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
                                 {onFarm && auth?.gates.includes('record_weights') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
+                                {onFarm && auth?.gates.includes('record_height') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Height" active={panel === 'height'} onClick={() => setPanel(panel === 'height' ? null : 'height')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
                                 {onFarm && auth?.gates.includes('health_checkup') ? <ActionTile icon={<Thermometer size={20} aria-hidden />} label="Temp check" active={panel === 'temp'} onClick={() => setPanel(panel === 'temp' ? null : 'temp')} /> : null}
                                 {onFarm && auth?.gates.includes('move_goats') ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
@@ -187,6 +180,7 @@ export default function GoatShow(props: Props) {
                                 {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="app-veterinary" size={18} /> Health checkup</Button> : null}
                                 {healthEntry?.canEntry ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
                                 {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
+                                {auth?.gates.includes('record_height') ? <Button variant="secondary" onClick={() => setPanel(panel === 'height' ? null : 'height')}><LibIcon name="app-growth" size={18} /> Add height</Button> : null}
                                 <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                 {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Temp check</Button> : null}
                                 {auth?.gates.includes('move_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button> : null}
@@ -236,7 +230,7 @@ export default function GoatShow(props: Props) {
                     <Panel title="Overview" description={gain && goat.lifetimeAdg !== null ? `${gain.kg > 0 ? '▲ +' : gain.kg < 0 ? '▼ ' : ''}${gain.kg} KG in ${gain.days} days · ${goat.lifetimeAdg} g a day on average` : undefined}>
                         {death?.review ? <DeathReview d={death} /> : null}
                         {recovery ? <RecoveryNote r={recovery} /> : null}
-                        {weights.length ? <Chart option={chart} label={`Weight history of ${goat.number}`} height={240} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
+                        {weights.length || records.some((r) => r.height !== null) ? <GrowthView rows={records} number={goat.number} /> : <Empty title="No weighings yet">Use Add weight to record the first one.</Empty>}
                         <RecordsTable rows={records} />
                     </Panel>
                     <div className="space-y-4">
@@ -249,7 +243,7 @@ export default function GoatShow(props: Props) {
                                 {goat.ageCode ? fact('Classification code', <span className="font-mono font-semibold text-cobalt-900">{goat.ageCode}</span>) : null}
                                 {eligibility && eligibility.status !== 'breeder' ? fact('Breeding eligibility', <span><Link href="/breeding/eligibility" className="font-semibold text-cobalt-800 hover:underline">{eligibility.label}</Link>{eligibility.review ? <span className="block text-xs font-semibold text-watch-700">Maturity review: look at this goat (not an approval)</span> : null}{eligibility.recommendation ? <span className="block text-xs text-watch-700">{eligibility.recommendation}</span> : null}{eligibility.failed.length ? <span className="block text-xs text-ink-soft">Not yet: {eligibility.failed.join('; ')}</span> : null}</span>) : null}
                                 {castration ? fact('Castration', <Castration goatId={goat.id} c={castration} onFarm={onFarm} />) : null}
-                                {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit || !!auth?.gates.includes('health_checkup')} options={dentalOptions} />) : null}
+                                {goat.dental ? fact('Teeth', <DentalFact dental={goat.dental} teeth={goat.teeth} goatId={goat.id} canEdit={can.edit || !!auth?.gates.includes('health_checkup') || !!auth?.gates.includes('check_teeth')} options={dentalOptions} />) : null}
                                 {goat.height !== null ? fact('Height', `${goat.height} in`) : null}
                                 {fact('Origin', goat.origin === 'purchased' ? 'Purchased' : goat.origin === 'transferred_in' ? 'Transferred in' : 'Born on the farm')}
                                 {fact('Sire', parentLink(goat.sire))}
@@ -427,6 +421,7 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
             </form>
         );
     }
+    if (kind === 'height') return <HeightForm goatId={goat.id} onDone={close} />;
     if (kind === 'cull') return <CullForm goatId={goat.id} onDone={close} />;
     if (kind === 'death') return <DeathForm goatId={goat.id} conditions={conditions} onDone={close} />;
     if (kind === 'temp') {
@@ -627,7 +622,7 @@ export type GoatRecord = {
     on: string; weight: number | null; change: number | null; adg: number | null; bcs: number | null; height: number | null;
     pct: number | null; days: number | null; // D-254: change in % and the days since the weighing before
     temp: number | null; tempFlag: boolean; heart: number | null; breaths: number | null; teeth: string | null; ultrasound: string | null;
-    care: string[]; treatments: string[]; result: string | null; by: string[];
+    care: string[]; treatments: string[]; actions: string[]; result: string | null; by: string[]; // D-262: care = what was found, actions = what was done
 };
 const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean; cell: (r: GoatRecord) => ReactNode; num?: boolean }> = [
     { key: 'weight', label: 'Weight', num: true, has: (r) => r.weight !== null, cell: (r) => (r.weight !== null ? `${r.weight} KG` : '') },
@@ -640,8 +635,8 @@ const COLS: Array<{ key: string; label: string; has: (r: GoatRecord) => boolean;
     { key: 'breaths', label: 'Breaths /min', num: true, has: (r) => r.breaths !== null, cell: (r) => (r.breaths === null ? '' : <span className={r.breaths < 12 || r.breaths > 40 ? 'rounded bg-watch-100 px-1 text-watch-700' : ''} title={r.breaths < 12 || r.breaths > 40 ? 'Outside the usual 12–40' : undefined}>{r.breaths}</span>) },
     { key: 'teeth', label: 'Teeth', has: (r) => !!r.teeth, cell: (r) => r.teeth ?? '' },
     { key: 'ultrasound', label: 'Ultrasound', has: (r) => !!r.ultrasound, cell: (r) => r.ultrasound ?? '' },
-    { key: 'care', label: 'Care given', has: (r) => r.care.length > 0, cell: (r) => r.care.join('; ') },
-    { key: 'treatments', label: 'Treatment', has: (r) => r.treatments.length > 0, cell: (r) => r.treatments.join('; ') },
+    { key: 'care', label: 'Found', has: (r) => r.care.length > 0, cell: (r) => r.care.join('; ') },
+    { key: 'actions', label: 'Action taken', has: (r) => (r.actions ?? []).length > 0, cell: (r) => <ul className="space-y-0.5">{(r.actions ?? []).map((a, i) => <li key={i} className="flex gap-1.5"><span aria-hidden className="text-ok-700">✓</span><span>{a}</span></li>)}</ul> },
     { key: 'result', label: 'Checkup', has: (r) => !!r.result, cell: (r) => (r.result ? <span className={r.result === 'Sick' ? 'font-semibold text-crit-700' : r.result === 'Watch' ? 'text-watch-700' : 'text-ok-700'}>{r.result}</span> : '') },
     { key: 'by', label: 'By', has: (r) => r.by.length > 0, cell: (r) => <span className="text-ink-soft">{r.by.join(', ')}</span> },
 ];
@@ -685,14 +680,14 @@ function RecoveryNote({ r }: { r: NonNullable<Props['recovery']> }) {
 }
 
 /** D-254: a weight change shown like a share price: ▲ green up, ▼ red down, KG and %, over how many days. */
-function Ticker({ kg, pct, days, perDay, small }: { kg: number; pct?: number | null; days?: number | null; perDay?: number; small?: boolean }) {
+function Ticker({ kg, pct, days, perDay, small, unit = 'KG' }: { kg: number; pct?: number | null; days?: number | null; perDay?: number; small?: boolean; unit?: string }) {
     const up = kg > 0, down = kg < 0;
     const tone = up ? 'text-ok-700' : down ? 'text-crit-700' : 'text-ink-soft';
     return (
         <span className={`inline-flex flex-col ${small ? 'items-end' : ''}`}>
             <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${tone}`}>
                 <span aria-hidden className={small ? 'text-[10px]' : 'text-xs'}>{up ? '▲' : down ? '▼' : '■'}</span>
-                {up ? '+' : ''}{kg} KG{pct !== null && pct !== undefined ? <span className={`rounded px-1 ${small ? 'text-[11px]' : 'text-xs'} ${up ? 'bg-ok-100' : down ? 'bg-crit-100' : 'bg-glaze'}`}>{pct > 0 ? '+' : ''}{pct}%</span> : null}
+                {up ? '+' : ''}{kg} {unit}{pct !== null && pct !== undefined ? <span className={`rounded px-1 ${small ? 'text-[11px]' : 'text-xs'} ${up ? 'bg-ok-100' : down ? 'bg-crit-100' : 'bg-glaze'}`}>{pct > 0 ? '+' : ''}{pct}%</span> : null}
             </span>
             {days ? <span className={`font-normal text-ink-soft ${small ? 'text-[11px]' : 'text-xs'}`}>in {days} {days === 1 ? 'day' : 'days'}{perDay !== undefined ? ` · ${perDay > 0 ? '+' : ''}${perDay} g/day` : ''}</span> : null}
             <span className="sr-only">{up ? 'gained' : down ? 'lost' : 'no change'}</span>
@@ -785,5 +780,84 @@ function CullForm({ goatId, onDone }: { goatId: string; onDone: () => void }) {
             <Button type="submit" variant="danger" disabled={f.processing}>Cull from breeding</Button>
             <p className="w-full text-sm text-ink-soft">It becomes a Cull goat (for sale) and leaves the breeding lists. It stays on the farm and on record until it is sold.</p>
         </form>
+    );
+}
+
+/** D-262: a height with its date (the vet's or the administrator's). */
+function HeightForm({ goatId, onDone }: { goatId: string; onDone: () => void }) {
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const f = useForm({ height_in: '', measured_on: today });
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); f.post(`/goats/${goatId}/height`, { preserveScroll: true, onSuccess: onDone }); }} className="flex flex-wrap items-end gap-2">
+            <div className="w-44"><Field label="Height (inches)" error={f.errors.height_in} hint="At the withers"><input inputMode="decimal" autoFocus className="field" value={f.data.height_in} onChange={(e) => f.setData('height_in', e.target.value.replace(/[^0-9.]/g, ''))} required /></Field></div>
+            <div className="w-44"><Field label="Measured on" error={f.errors.measured_on}><input type="date" className="field" max={today} value={f.data.measured_on} onChange={(e) => f.setData('measured_on', e.target.value)} required /></Field></div>
+            <Button type="submit" disabled={f.processing}>Save height</Button>
+        </form>
+    );
+}
+
+/**
+ * D-262: weight and height like a share price: one bar per measurement, green when it went up since the one before,
+ * red when it went down, blue for the first and for no change. Switch between Weight and Height, and Chart and Table.
+ */
+const UP = '#2f8f4e', DOWN = '#c8453b', FLAT = '#3b6fb6';
+function GrowthView({ rows, number }: { rows: GoatRecord[]; number: string }) {
+    const hasHeight = rows.some((r) => r.height !== null);
+    const hasWeight = rows.some((r) => r.weight !== null);
+    const [metric, setMetric] = useState<'weight' | 'height'>(hasWeight ? 'weight' : 'height');
+    const [view, setView] = useState<'chart' | 'table'>('chart');
+    const unit = metric === 'weight' ? 'KG' : 'in';
+    const pts = useMemo(() => {
+        const list = [...rows].filter((r) => r[metric] !== null).sort((a, b) => a.on.localeCompare(b.on));
+        return list.map((r, i) => {
+            const v = r[metric] as number;
+            const prev = i ? (list[i - 1][metric] as number) : null;
+            const ch = prev === null ? null : Math.round((v - prev) * 10) / 10;
+            const days = i ? Math.max(1, Math.round((new Date(`${r.on}T12:00:00`).getTime() - new Date(`${list[i - 1].on}T12:00:00`).getTime()) / 86400000)) : null;
+            return { on: r.on, v, ch, pct: prev ? Math.round(((v - prev) / prev) * 1000) / 10 : null, days, color: ch === null || ch === 0 ? FLAT : ch > 0 ? UP : DOWN };
+        });
+    }, [rows, metric]);
+    const label = (on: string, year = false) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) });
+    const option = useMemo(() => ({
+        tooltip: { trigger: 'item', formatter: (x: { dataIndex: number }) => { const p = pts[x.dataIndex]; return `<b>${label(p.on, true)}</b><br/>${p.v} ${unit}${p.ch !== null ? `<br/><span style="color:${p.color}">${p.ch > 0 ? '▲ +' : p.ch < 0 ? '▼ ' : '■ '}${p.ch} ${unit} (${p.pct! > 0 ? '+' : ''}${p.pct}%) in ${p.days} ${p.days === 1 ? 'day' : 'days'}</span>` : ''}`; } },
+        grid: { left: 8, right: 12, top: 28, bottom: 6, containLabel: true },
+        xAxis: { type: 'category', data: pts.map((p) => label(p.on)), axisLabel: { color: '#5e6a5f' }, axisTick: { show: false }, axisLine: { lineStyle: { color: '#d9ddd5' } } },
+        yAxis: { ...axis.value((v) => `${v} ${unit}`), min: 0 },
+        series: [{ type: 'bar', barMaxWidth: 34, data: pts.map((p) => ({ value: p.v, itemStyle: { color: p.color, borderRadius: [4, 4, 0, 0] } })),
+            label: { show: pts.length <= 16, position: 'top', color: '#1f2a22', fontWeight: 600, formatter: (x: { dataIndex: number }) => { const p = pts[x.dataIndex]; return p.ch === null ? `${p.v}` : `${p.v} ${p.ch > 0 ? '▲' : p.ch < 0 ? '▼' : '■'}`; } } }],
+    }), [pts, unit]);
+    const seg = (on: boolean) => cx('min-h-9 px-3 text-sm font-semibold', on ? 'bg-cobalt-800 text-white' : 'bg-tile text-cobalt-800 hover:bg-glaze');
+    const last = pts[pts.length - 1];
+    const first = pts[0];
+    return (
+        <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+                <div className="inline-flex overflow-hidden rounded-tile border border-rule" role="group" aria-label="Measurement">
+                    {hasWeight ? <button type="button" aria-pressed={metric === 'weight'} className={seg(metric === 'weight')} onClick={() => setMetric('weight')}>Weight</button> : null}
+                    {hasHeight ? <button type="button" aria-pressed={metric === 'height'} className={seg(metric === 'height')} onClick={() => setMetric('height')}>Height</button> : null}
+                </div>
+                {last && first && pts.length > 1 ? <span className="text-sm"><Ticker kg={Math.round((last.v - first.v) * 10) / 10} pct={first.v ? Math.round(((last.v - first.v) / first.v) * 1000) / 10 : null} unit={unit} small /> <span className="text-ink-soft">since {label(first.on)}</span></span> : null}
+                <span className="ms-auto flex items-center gap-3 text-xs text-ink-soft">
+                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: UP }} />Up</span>
+                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: DOWN }} />Down</span>
+                    <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: FLAT }} />First / same</span>
+                </span>
+                <div className="inline-flex overflow-hidden rounded-tile border border-rule" role="group" aria-label="View">
+                    <button type="button" aria-pressed={view === 'chart'} className={seg(view === 'chart')} onClick={() => setView('chart')}>Chart</button>
+                    <button type="button" aria-pressed={view === 'table'} className={seg(view === 'table')} onClick={() => setView('table')}>Table</button>
+                </div>
+            </div>
+            {!pts.length ? <Empty title={`No ${metric} recorded yet`} /> : view === 'chart' ? <Chart option={option} label={`${metric === 'weight' ? 'Weight' : 'Height'} of ${number}`} height={250} /> : (
+                <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                    <table className="data-table text-sm">
+                        <thead><tr><th className="text-start">Date</th><th className="text-end">{metric === 'weight' ? 'Weight' : 'Height'}</th><th className="text-end">Change</th></tr></thead>
+                        <tbody>{[...pts].reverse().map((p) => (
+                            <tr key={p.on}><td className="font-medium whitespace-nowrap">{label(p.on, true)}</td><td className="text-end tabular-nums">{p.v} {unit}</td>
+                                <td className="text-end">{p.ch === null ? <span className="text-ink-soft">First</span> : metric === 'weight' ? <Ticker kg={p.ch} pct={p.pct} days={p.days} small /> : <span className={cx('font-semibold tabular-nums', p.ch > 0 ? 'text-ok-700' : p.ch < 0 ? 'text-crit-700' : 'text-ink-soft')}>{p.ch > 0 ? '▲ +' : p.ch < 0 ? '▼ ' : '■ '}{p.ch} in <span className="font-normal text-ink-soft">in {p.days} {p.days === 1 ? 'day' : 'days'}</span></span>}</td></tr>
+                        ))}</tbody>
+                    </table>
+                </div>
+            )}
+        </div>
     );
 }

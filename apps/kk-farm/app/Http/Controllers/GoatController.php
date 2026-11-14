@@ -174,7 +174,7 @@ class GoatController extends Controller
 
     public function teeth(Request $request, Animal $animal): RedirectResponse
     {
-        abort_unless($request->user()->passes('edit_goats') || $request->user()->passes('health_checkup'), 403); // D-252: a teeth check is an examination
+        abort_unless($request->user()->passes('edit_goats') || $request->user()->passes('health_checkup') || $request->user()->passes('check_teeth'), 403); // D-252/D-262: a teeth check is an examination
         $data = $request->validate(['teeth' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::options()))], // D-229: an examination: dental code + condition
             'dental_condition' => ['nullable', Rule::in(array_keys(\App\Support\Teeth::CONDITIONS))], 'examined_on' => ['nullable', 'date', 'before_or_equal:today']]);
         $animal->forceFill(['dental_condition' => $data['dental_condition'] ?? $animal->dental_condition, 'teeth_checked_on' => $data['examined_on'] ?? now()->toDateString()]);
@@ -258,7 +258,7 @@ class GoatController extends Controller
         $days = [];
         $day = function &(string $on) use (&$days) {
             $days[$on] ??= ['on' => $on, 'weight' => null, 'change' => null, 'pct' => null, 'days' => null, 'adg' => null, 'bcs' => null, 'height' => null, 'temp' => null, 'tempFlag' => false,
-                'heart' => null, 'breaths' => null, 'teeth' => null, 'ultrasound' => null, 'care' => [], 'treatments' => [], 'result' => null, 'by' => []];
+                'heart' => null, 'breaths' => null, 'teeth' => null, 'ultrasound' => null, 'care' => [], 'treatments' => [], 'actions' => [], 'result' => null, 'by' => []];
 
             return $days[$on];
         };
@@ -280,6 +280,18 @@ class GoatController extends Controller
             unset($r);
             $prev = $w;
         }
+        foreach (\App\Models\HeightRecord::where('animal_id', $animal->id)->orderBy('measured_on')->orderBy('id')->get() as $h) { // D-262: a height on its own
+            $r = &$day($h->measured_on->format('Y-m-d'));
+            $r['height'] = round((float) $h->height_cm / 2.54, 1);
+            $r['by'][] = $h->measured_by;
+            unset($r);
+        }
+        // D-262: what was done for the goat: moves with their reason, and being taken off Watch
+        foreach (\App\Models\AnimalMovement::with('toPen')->where('animal_id', $animal->id)->where('type', 'transfer')->get() as $m) {
+            $r = &$day($m->moved_on->format('Y-m-d'));
+            $r['actions'][] = 'Moved'.($m->toPen ? " to {$m->toPen->name}" : '').($m->reason ? ": {$m->reason}" : '');
+            unset($r);
+        }
         foreach ($animal->dentalExams()->get() as $e) {
             $r = &$day($e->examined_on->format('Y-m-d'));
             $r['teeth'] = trim(($e->dental_code ?? '').($e->condition && $e->condition !== 'normal' ? " ({$e->condition})" : '')) ?: null;
@@ -299,16 +311,28 @@ class GoatController extends Controller
             }
             foreach ($animal->healthRecords()->get() as $h) {
                 $r = &$day($h->occurred_on->format('Y-m-d'));
-                $r['care'][] = ucfirst(str_replace('_', ' ', $h->kind)).': '.$h->title;
+                if ($h->kind === 'observation') { // D-262: a finding; everything else (vaccine, deworming …) is care given
+                    $r['care'][] = preg_replace('/^Checkup: /', '', $h->title);
+                } else {
+                    $r['actions'][] = ucfirst(str_replace('_', ' ', $h->kind)).': '.$h->title;
+                }
                 $r['by'][] = $h->recorded_by;
                 unset($r);
             }
             foreach (\App\Models\Treatment::where('animal_id', $animal->id)->get() as $t) {
                 $r = &$day($t->given_on->format('Y-m-d'));
-                $r['treatments'][] = trim("{$t->product} {$t->dose}");
+                $r['actions'][] = trim("Treated: {$t->product} {$t->dose}".($t->route ? " ({$t->route})" : ''));
                 $r['by'][] = $t->recorded_by;
                 unset($r);
             }
+        }
+        // D-262: taken off Watch: shown on the day of the measurement that cleared it (the latest day on record up to then)
+        foreach (\App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->get() as $ev) {
+            $on = $ev->occurred_at->format('Y-m-d');
+            $at = collect(array_keys($days))->filter(fn ($d) => $d <= $on)->sort()->last() ?? $on;
+            $r = &$day($at);
+            $r['actions'][] = 'Taken off Watch ('.trim(substr($ev->summary, 13)).')';
+            unset($r);
         }
         krsort($days);
 
@@ -495,6 +519,21 @@ class GoatController extends Controller
         Farm::log($request->user(), "Corrected the birth date of {$animal->farm_number}", "/goats/{$animal->id}");
 
         return back()->with('success', "Birth date of {$animal->farm_number} is now {$new->format('j M Y')}.");
+    }
+
+    /** D-262: a height on its own, with its date (the vet's or the administrator's); the goat's current height follows the latest. */
+    public function height(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('record_height'), 403);
+        abort_unless($animal->status === 'active', 422);
+        $data = $request->validate(['height_in' => ['required', 'numeric', 'between:4,60'], 'measured_on' => ['required', 'date', 'before_or_equal:today']], [], ['height_in' => 'height']);
+        $cm = round((float) $data['height_in'] * 2.54, 1);
+        \App\Models\HeightRecord::create(['animal_id' => $animal->id, 'measured_on' => $data['measured_on'], 'height_cm' => $cm, 'measured_by' => $request->user()->name]);
+        $latest = \App\Models\HeightRecord::where('animal_id', $animal->id)->orderByDesc('measured_on')->orderByDesc('id')->first();
+        $animal->update(['height_cm' => $latest->height_cm]);
+        Farm::event($animal, 'weight', "Height {$data['height_in']} in measured", $request->user()->name, \Illuminate\Support\Carbon::parse($data['measured_on']));
+
+        return back()->with('success', "Height {$data['height_in']} in saved for {$animal->farm_number}.");
     }
 
     /** The goat page's "Record exit": one movement through the movement service (D-076). */

@@ -19,7 +19,7 @@ export const APPS: ErpApp[] = [
     // D-179: the worker app for the RFID gun: one job at a time, scan goat after goat
     { key: 'worker', no: '00', label: 'Tasks', art: 'app-fieldwork', modules: ['scan', 'feeding'], linked: ['livestock', 'veterinary', 'growth', 'feeding', 'operations'], sections: [
         S('Overview', '/worker', 'Choose a Job'),
-        S('Operations', '/worker', 'Weigh · Temp · Heat · Mating · Milk · Vaccinate · Move'),
+        S('Operations', '/worker', 'Weigh · Temp · Heat · Mating · Milk · Vaccinate · Teeth · Height · Move'),
         S('Operations', '/scan', 'RFID Scan'),
         S('Operations', '/feeding?tab=now', 'Feed Pens'),
         S('Operations', '/tasks?tab=mine', 'My Tasks'),

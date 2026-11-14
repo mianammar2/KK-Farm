@@ -35,6 +35,8 @@ class WorkerController extends Controller
         'mating' => ['Record Mating', 'breeding', 'record_mating'],
         'milk' => ['Milk Recording', 'milking', 'record_milk'],
         'care' => ['Vaccinate / Deworm', 'health', 'give_care'],
+        'teeth' => ['Teeth Check', 'health', 'check_teeth'], // D-262
+        'height' => ['Measure Height', 'health', 'record_height'], // D-262
         'move' => ['Move to a Pen', 'sheds', 'move_goats'],
         'lookup' => ['Look Up Goats', 'goats', null],
     ];
@@ -74,6 +76,7 @@ class WorkerController extends Controller
                 'methods' => \App\Models\Mating::METHODS, 'sessions' => \App\Models\MilkRecord::SESSIONS, 'careKinds' => HealthController::CARE_TYPES,
                 'medicines' => \App\Models\Medicine::where('active', true)->orderBy('name')->get(['id', 'name', 'unit'])->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'unit' => $m->unit]),
                 'intensity' => \App\Models\HeatRecord::INTENSITY, 'signs' => \App\Models\HeatRecord::SIGNS,
+                'teeth' => \App\Support\Teeth::options(), 'teethConditions' => \App\Support\Teeth::CONDITIONS, // D-262
             ],
             'goat' => $goat ? $goat->card() + [
                 'lastWeight' => $goat->latestWeight?->weight_kg, 'lastWeighed' => $goat->latestWeight?->measured_on?->format('j M Y'), 'penId' => $goat->pen_id,

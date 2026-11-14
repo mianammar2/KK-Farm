@@ -1,13 +1,13 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeftRight, ClipboardCheck, Flame, HeartPulse, Milk, Radio, ScanSearch, Scale, Square, Syringe, Thermometer, Venus, Wheat } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCheck, Ruler, Smile, Flame, HeartPulse, Milk, Radio, ScanSearch, Scale, Square, Syringe, Thermometer, Venus, Wheat } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { EarTag, GoatFigure } from '../components/FarmScene';
 import { AgeBadge, BreedBadge } from '../components/GoatBadges';
 import { Button, Field } from '../components/ui';
 
-type Job = 'weigh' | 'temp' | 'health' | 'heat' | 'mating' | 'milk' | 'care' | 'move' | 'lookup';
+type Job = 'weigh' | 'temp' | 'health' | 'heat' | 'mating' | 'milk' | 'care' | 'teeth' | 'height' | 'move' | 'lookup';
 type Opts = { on?: string; reason?: string; sire_id?: string; sire?: string | null; method?: string; session?: string; care_kind?: string; care_title?: string; medicine_id?: string; medicine?: string | null; qty_per_goat?: string };
-type Options = { bucks: Array<{ id: string; name: string }>; methods: Record<string, string>; sessions: Record<string, string>; careKinds: Record<string, string>; medicines: Array<{ id: number; name: string; unit: string }>; intensity: Record<string, string>; signs: string[] };
+type Options = { teeth?: Record<string, string>; teethConditions?: Record<string, string>; bucks: Array<{ id: string; name: string }>; methods: Record<string, string>; sessions: Record<string, string>; careKinds: Record<string, string>; medicines: Array<{ id: number; name: string; unit: string }>; intensity: Record<string, string>; signs: string[] };
 type Goat = { ageCode?: string | null; roles?: string[];
     id: string; number: string; name: string | null; sex: string; breed?: string; stage?: string | null; pen?: string | null; age?: string | null; health: string;
     lastWeight: number | null; lastWeighed: string | null; penId: number | null; withdrawal: { meat: string | null; milk: string | null } | null;
@@ -17,14 +17,15 @@ type Props = {
     pens: Array<{ id: number; name: string }>; can: { feed: boolean; tasks: boolean }; myTasks: number; options: Options;
 };
 
-const ICON: Record<Job, ReactNode> = { weigh: <Scale size={30} />, temp: <Thermometer size={30} />, health: <HeartPulse size={30} />, heat: <Flame size={30} />, mating: <Venus size={30} />, milk: <Milk size={30} />, care: <Syringe size={30} />, move: <ArrowLeftRight size={30} />, lookup: <ScanSearch size={30} /> };
+const ICON: Record<Job, ReactNode> = { weigh: <Scale size={30} />, temp: <Thermometer size={30} />, health: <HeartPulse size={30} />, heat: <Flame size={30} />, mating: <Venus size={30} />, milk: <Milk size={30} />, care: <Syringe size={30} />, teeth: <Smile size={30} />, height: <Ruler size={30} />, move: <ArrowLeftRight size={30} />, lookup: <ScanSearch size={30} /> };
 const HINT: Record<Job, string> = {
     weigh: 'Scan, enter the weight, next goat', temp: 'Scan, enter the temperature, next goat', health: 'Scan, mark fine or report a concern', heat: 'Scan a doe in heat, mark the signs',
     mating: 'Choose the buck, then scan each doe', milk: 'Choose the session, then scan each doe', care: 'Choose the vaccine or dewormer, then scan each goat',
+    teeth: 'Scan, pick the teeth stage and condition, next goat', height: 'Scan, enter the height in inches, next goat',
     move: 'Choose a pen, then scan each goat', lookup: 'Scan to see a goat',
 };
 /** D-255: jobs that need something chosen once for the whole round */
-const SETUP: Job[] = ['weigh', 'temp', 'health', 'heat', 'mating', 'milk', 'care', 'move']; // every job but Look Up asks its date first (D-255)
+const SETUP: Job[] = ['weigh', 'temp', 'health', 'heat', 'mating', 'milk', 'care', 'teeth', 'height', 'move']; // every job but Look Up asks its date first (D-255)
 const CONCERNS = ['Not eating', 'Limping', 'Coughing', 'Diarrhoea', 'Fever / hot', 'Weak / dull', 'Wound', 'Nasal discharge', 'Swollen udder', 'Other'];
 
 /**
@@ -190,7 +191,7 @@ function GoatJob({ job, goat, options }: { job: NonNullable<Props['job']>; goat:
                 </div>
             ) : null}
 
-            {['temp', 'heat', 'mating', 'milk', 'care'].includes(job.job) ? <QuickJob job={job} goat={goat} options={options} /> : null}
+            {['temp', 'heat', 'mating', 'milk', 'care', 'teeth', 'height'].includes(job.job) ? <QuickJob job={job} goat={goat} options={options} /> : null}
 
             {job.job === 'lookup' ? (
                 <div className="space-y-2 text-sm">
@@ -211,7 +212,7 @@ function QuickJob({ job, goat, options }: { job: NonNullable<Props['job']>; goat
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     const o = job.opts ?? {};
     const day = o.on ?? today; // D-255: the round's date
-    const f = useForm({ temperature_f: '', outcome: 'healthy', intensity: 'moderate', signs: [] as string[], litres: '' });
+    const f = useForm({ temperature_f: '', outcome: 'healthy', intensity: 'moderate', signs: [] as string[], litres: '', teeth: '', dental_condition: 'normal', height_in: '' });
     const e = f.errors as Record<string, string>;
     const female = goat.sex === 'female';
     const next = { preserveScroll: true, onSuccess: () => router.post('/worker/done') };
@@ -220,6 +221,8 @@ function QuickJob({ job, goat, options }: { job: NonNullable<Props['job']>; goat
         if (job.job === 'heat') { f.transform((d) => ({ dam_id: goat.id, observed_on: day, intensity: d.intensity, signs: d.signs })); f.post('/breeding/heat', next); }
         if (job.job === 'mating') { f.transform(() => ({ dam_id: goat.id, sire_id: o.sire_id || null, mated_on: day, method: o.method ?? 'natural' })); f.post('/breeding/matings', next); }
         if (job.job === 'milk') { f.transform((d) => ({ milked_on: day, session: o.session, rows: [{ id: crypto.randomUUID(), animal_id: goat.id, litres: d.litres }] })); f.post('/milking/records', next); }
+        if (job.job === 'teeth') { f.transform((d) => ({ teeth: d.teeth, dental_condition: d.dental_condition, examined_on: day })); f.post(`/goats/${goat.id}/teeth`, next); } // D-262
+        if (job.job === 'height') { f.transform((d) => ({ height_in: d.height_in, measured_on: day })); f.post(`/goats/${goat.id}/height`, next); } // D-262
         if (job.job === 'care') { f.transform(() => ({ animal_ids: [goat.id], kind: o.care_kind, title: o.care_title || null, medicine_id: o.medicine_id || null, qty_per_goat: o.qty_per_goat || null, given_on: day, care_status: 'administered' })); f.post('/health/preventive', next); }
     };
     if (['heat', 'mating', 'milk'].includes(job.job) && !female) return <p className="rounded-tile bg-watch-100 px-3 py-2 font-semibold text-watch-700">This job is for does. Skip this goat.</p>;
@@ -239,9 +242,14 @@ function QuickJob({ job, goat, options }: { job: NonNullable<Props['job']>; goat
             {job.job === 'mating' ? <p className="text-base font-semibold">Mated today: <b>{options.methods[o.method ?? ''] ?? ''}</b>{o.sire ? <> with <b>{o.sire}</b></> : ' (buck not known)'}</p> : null}
             {job.job === 'milk' ? <Field label={`Litres (${options.sessions[o.session ?? ''] ?? ''})`}><input className="field min-h-14 text-2xl font-bold" inputMode="decimal" autoFocus required value={f.data.litres} onChange={(x) => f.setData('litres', x.target.value.replace(/[^0-9.]/g, ''))} /></Field> : null}
             {job.job === 'care' ? <p className="text-base font-semibold">Give: <b>{options.careKinds[o.care_kind ?? '']}</b> · {o.medicine ?? o.care_title}{o.qty_per_goat ? ` · ${o.qty_per_goat} per goat` : ''}</p> : null}
+            {job.job === 'teeth' ? <>
+                <Field label="Teeth"><select className="field min-h-14 text-lg font-bold" autoFocus required value={f.data.teeth} onChange={(x) => f.setData('teeth', x.target.value)}><option value="">Choose</option>{Object.entries(options.teeth ?? {}).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                <div className="grid grid-cols-3 gap-2" role="group" aria-label="Condition">{Object.entries(options.teethConditions ?? {}).map(([k, v]) => <button key={k} type="button" onClick={() => f.setData('dental_condition', k)} className={`min-h-12 rounded-tile border font-bold ${f.data.dental_condition === k ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule bg-tile text-cobalt-900'}`}>{v}</button>)}</div>
+            </> : null}
+            {job.job === 'height' ? <Field label="Height in inches (at the withers)"><input className="field min-h-14 text-2xl font-bold" inputMode="decimal" autoFocus required value={f.data.height_in} onChange={(x) => f.setData('height_in', x.target.value.replace(/[^0-9.]/g, ''))} /></Field> : null}
             {errs.length ? <p className="rounded-tile bg-crit-100 px-3 py-2 text-sm font-semibold text-crit-700" role="alert">{errs.join(' ')}</p> : null}
-            <Button type="submit" className="min-h-14 w-full text-lg" disabled={f.processing || (job.job === 'temp' && !f.data.temperature_f) || (job.job === 'milk' && !f.data.litres)}>
-                {job.job === 'temp' ? 'Save Temperature' : job.job === 'heat' ? 'Save Heat' : job.job === 'mating' ? 'Save Mating' : job.job === 'milk' ? 'Save Milk' : 'Mark as Given'}
+            <Button type="submit" className="min-h-14 w-full text-lg" disabled={f.processing || (job.job === 'temp' && !f.data.temperature_f) || (job.job === 'milk' && !f.data.litres) || (job.job === 'teeth' && !f.data.teeth) || (job.job === 'height' && !f.data.height_in)}>
+                {job.job === 'teeth' ? 'Save Teeth' : job.job === 'height' ? 'Save Height' : job.job === 'temp' ? 'Save Temperature' : job.job === 'heat' ? 'Save Heat' : job.job === 'mating' ? 'Save Mating' : job.job === 'milk' ? 'Save Milk' : 'Mark as Given'}
             </Button>
         </form>
     );
