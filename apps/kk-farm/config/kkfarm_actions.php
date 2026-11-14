@@ -234,7 +234,7 @@ return [
     'POST /sales/orders/{order}/checklist' => ['inline' => 'the action checks manage_sales', 'module' => 'sales'],
     'POST /sales/orders/{order}/collect' => ['inline' => 'the action checks manage_sales', 'module' => 'sales'],
     'POST /sales/orders/{order}/dispatch' => ['inline' => 'the action checks manage_sales', 'module' => 'sales'],
-    'POST /sales/orders/{order}/scan' => ['inline' => 'the action checks manage_sales, scan', 'module' => 'sales'],
+    'POST /sales/orders/{order}/scan' => ['inline' => 'the action checks manage_sales', 'module' => 'sales'],
     'POST /sales/products' => ['inline' => 'the action checks manage_sales', 'module' => 'sales'],
     'POST /sales/readiness/weights' => ['inline' => 'the action checks manage_sales', 'module' => 'sales'],
     'POST /sales/readiness/{animal}' => ['inline' => 'the action checks manage_sales', 'module' => 'sales'],

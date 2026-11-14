@@ -10,7 +10,7 @@ Cell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bol
 | Fieldwork | Move to a Pen | **NONE** | F | F | - | F | - | - | - |
 | Fieldwork | Look Up Goats | **NONE** | F | F | F | F | v | - | - |
 | Fieldwork | RFID Scan | `scan.rfid_scan` | F/open | F/open | F/open | F/open | v/open | -/shut | -/shut |
-| Fieldwork | Feed Pens (record given / leftover) | `feeding.feed_pens` | F/open | F/open | **-/open** | v/open | F/open | -/shut | -/shut |
+| Fieldwork | Feed Pens (record given / leftover) | `feeding.feed_pens` | F/open | F/open | -/shut | v/open | F/open | -/shut | -/shut |
 | Fieldwork | My Tasks | `tasks.my_tasks` | F/open | F/open | F/open | F/open | F/open | F/open | F/open |
 | Fieldwork | Activity Log | `dashboard.activity_log` | F/open | s/open | -/shut | -/shut | -/shut | -/shut | -/shut |
 | Fieldwork | Gun & App Settings | `scan.gun_app_settings` | F/open | F/open | F/open | F/open | F/open | -/shut | -/shut |
@@ -27,7 +27,7 @@ Cell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bol
 | Livestock | Intake & Quarantine | `goats.intake_quarantine` | F/open | F/open | F/open | v/open | -/shut | -/shut | -/shut |
 | Livestock | Newborns to Complete | `goats.newborns_to_complete` | F/open | F/open | F/open | F/open | -/shut | -/shut | -/shut |
 | Livestock | RFID Scan | `scan.rfid_scan` | F/open | F/open | F/open | F/open | v/open | -/shut | -/shut |
-| Livestock | Animal Exit | `sheds.animal_exit` | F/open | F/open | **-/open** | **-/open** | -/shut | -/shut | **s/shut** |
+| Livestock | Animal Exit | `sheds.animal_exit` | F/? | F/? | -/? | -/? | -/? | -/? | s/? |
 | Livestock | Pregnant Does | `goats.pregnant_does` | F/open | F/open | F/open | v/open | -/shut | -/shut | -/shut |
 | Livestock | Need Attention | `goats.need_attention` | v/open | v/open | F/open | v/open | -/shut | -/shut | -/shut |
 | Livestock | Missing Data | `goats.missing_data` | F/open | F/open | v/open | v/open | -/shut | -/shut | -/shut |
@@ -78,7 +78,7 @@ Cell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bol
 | Veterinary | Medicines & Vaccines (medicine store) | `health.medicines_vaccines` | F/open | v/open | F/open | -/shut | -/shut | -/shut | -/shut |
 | Feeding | Daily Feeding | **NONE** | F | F | v | v | F | - | - |
 | Feeding | Today's Requirement | **NONE** | F | F | v | v | F | - | - |
-| Feeding | TMR Mixing Batches | `feeding.tmr_mixing_batches` | F/open | F/open | **-/open** | -/shut | F/open | -/shut | -/shut |
+| Feeding | TMR Mixing Batches | `feeding.tmr_mixing_batches` | F/open | F/open | -/shut | -/shut | F/open | -/shut | -/shut |
 | Feeding | Feed Safety: Lots, Tests & Holds | `feeding.feed_safety_lots_tests_holds` | F/open | F/open | v/open | -/shut | F/open | -/shut | -/shut |
 | Feeding | Stock Count & Shrinkage (stock tab of) | `feed_cost.stock_count_shrinkage` | F/open | F/open | -/shut | -/shut | F/open | -/shut | v/open |
 | Feeding | Feeding History | `feeding.feeding_history` | F/open | F/open | v/open | v/open | F/open | -/shut | -/shut |
@@ -91,7 +91,7 @@ Cell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bol
 | Feeding | Feed Master | `feeding.feed_master` | F/open | F/open | -/shut | -/shut | F/open | -/shut | -/shut |
 | Feeding | Feeding Times | `feeding.feeding_times` | F/open | F/open | -/shut | -/shut | v/open | -/shut | -/shut |
 | Housing | Farms, Units & Pens | **NONE** | F | F | v | v | v | - | - |
-| Housing | Animal Movements | `sheds.animal_exit` | F/open | F/open | v/open | F/open | -/shut | -/shut | -/shut |
+| Housing | Animal Movements | `sheds.movements_opening_page` | F/? | F/? | v/? | F/? | -/? | -/? | -/? |
 | Housing | Pen Status, Capacity & Cleaning | `sheds.pen_status_capacity_cleaning` | F/open | F/open | v/open | F/open | v/open | s/open | -/shut |
 | Housing | Goats Without a Pen | `goats.goats_without_a_pen` | F/open | F/open | -/shut | F/open | -/shut | -/shut | -/shut |
 | Housing | Pen Occupancy | **NONE** | F | F | v | F | v | s | - |
@@ -140,7 +140,7 @@ Cell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bol
 | Sales | Sale Orders & Dispatch | `sales.sale_orders_dispatch` | F/open | F/open | -/shut | -/shut | -/shut | -/shut | F/open |
 | Sales | Transport & Delivery | `sales.transport_delivery` | F/open | F/open | -/shut | -/shut | -/shut | -/shut | v/open |
 | Sales | New Price Quote | `sales.new_price_quote` | F/open | F/open | -/shut | -/shut | -/shut | -/shut | F/open |
-| Sales | Other Exits | `sheds.animal_exit` | F/open | F/open | **-/open** | **-/open** | -/shut | -/shut | -/shut |
+| Sales | Other Exits | `sheds.movements_opening_page` | F/? | F/? | -/? | -/? | -/? | -/? | -/? |
 | Sales | Sell Products | **NONE** | F | F | - | - | - | - | F |
 | Sales | Invoices & Collections | `sales.invoices_collections` | F/open | v/open | -/shut | -/shut | -/shut | -/shut | F/open |
 | Sales | Customers | `sales.customers` | F/open | F/open | -/shut | -/shut | -/shut | -/shut | F/open |
@@ -170,7 +170,7 @@ Cell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bol
 | Employees | Users & Permissions | **NONE** | F | - | - | - | - | - | - |
 | Maintenance | Open Jobs & Breakdowns | `maintenance.open_jobs_breakdowns` | F/open | F/open | -/shut | s/open | s/open | s/open | -/shut |
 | Maintenance | Preventive Services Due | `maintenance.preventive_services_due` | F/open | F/open | -/shut | -/shut | -/shut | -/shut | -/shut |
-| Maintenance | Sensor Alerts | `sensors.sensor_alerts` | F/open | v/open | -/shut | -/shut | -/shut | -/shut | -/shut |
+| Maintenance | Sensor Alerts | `sensors.sensor_alerts` | F/open | v/open | -/shut | -/shut | -/shut | **-/open** | -/shut |
 | Maintenance | Asset Register | `maintenance.asset_register` | F/open | F/open | -/shut | -/shut | -/shut | -/shut | -/shut |
 | Maintenance | Sensors & Devices | `sensors.sensors_devices` | F/open | v/open | -/shut | -/shut | -/shut | -/shut | -/shut |
 | Maintenance | Repair History & Cost | `maintenance.repair_history_cost` | F/open | v/open | -/shut | -/shut | -/shut | -/shut | -/shut |
@@ -211,7 +211,7 @@ Cell = spec mark / crawl result. F = full, v = view, s = scoped, - = none. **Bol
 | Environment | Shed Rounds | `environment.shed_rounds` | F/open | F/open | v/open | F/open | -/shut | F/open | -/shut |
 | Environment | Water, Heat & Waste Issues | `environment.water_heat_waste_issues` | F/open | F/open | v/open | F/open | -/shut | F/open | -/shut |
 | Environment | Water Lab Tests | `environment.water_lab_tests` | F/open | F/open | v/open | -/shut | -/shut | v/open | -/shut |
-| Environment | Sensor Alarms | `sensors.sensor_alerts` | F/open | v/open | -/shut | -/shut | -/shut | **s/shut** | -/shut |
+| Environment | Sensor Alarms | `sensors.sensor_alerts` | F/open | v/open | -/shut | -/shut | -/shut | s/open | -/shut |
 | Environment | Waste & Safe Disposal | `environment.waste_safe_disposal` | F/open | F/open | v/open | -/shut | -/shut | F/open | -/shut |
 | Environment | Round Records | `environment.round_records` | F/open | F/open | v/open | F/open | -/shut | s/open | -/shut |
 | Environment | Sensor Readings | `sensors.sensor_readings` | F/open | v/open | -/shut | -/shut | -/shut | -/shut | -/shut |

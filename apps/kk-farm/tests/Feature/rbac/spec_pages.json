@@ -1188,15 +1188,24 @@
   "vet": false
  },
  "sheds.animal_exit": {
-  "caretaker": true,
+  "caretaker": false,
   "ceo": true,
   "cleaning": false,
   "feeding": false,
   "finance": true,
   "manager": true,
-  "vet": true
+  "vet": false
  },
  "sheds.maternity_unit": {
+  "caretaker": true,
+  "ceo": true,
+  "cleaning": false,
+  "feeding": false,
+  "finance": false,
+  "manager": true,
+  "vet": true
+ },
+ "sheds.movements_opening_page": {
   "caretaker": true,
   "ceo": true,
   "cleaning": false,

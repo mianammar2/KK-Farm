@@ -2222,11 +2222,11 @@
         "cleaning": 403,
         "finance": 403
     },
-    "PAGE sheds.animal_exit  /movements": {
+    "PAGE sheds.animal_exit  /movements?kind=exit": {
         "ceo": 200,
         "manager": 200,
-        "vet": 200,
-        "caretaker": 200,
+        "vet": 403,
+        "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
@@ -2237,6 +2237,24 @@
         "vet": 200,
         "caretaker": 200,
         "feeding": 200,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE sheds.movements_opening_page  /movements": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE sheds.pen_movements  /movements?kind=transfer": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 403,
         "cleaning": 403,
         "finance": 403
     },

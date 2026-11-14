@@ -1,15 +1,6 @@
 {
  "diffs": [
   {
-   "module": "Fieldwork",
-   "spec": "Feed Pens (record given / leftover)",
-   "key": "feeding.feed_pens",
-   "role": "vet",
-   "spec_mark": "-",
-   "actual": 200,
-   "kind": "OVER"
-  },
-  {
    "module": "Dashboard",
    "spec": "Executive Dashboard",
    "key": "dashboard.executive_dashboard",
@@ -55,46 +46,10 @@
    "kind": "OVER"
   },
   {
-   "module": "Livestock",
-   "spec": "Animal Exit",
-   "key": "sheds.animal_exit",
-   "role": "vet",
-   "spec_mark": "-",
-   "actual": 200,
-   "kind": "OVER"
-  },
-  {
-   "module": "Livestock",
-   "spec": "Animal Exit",
-   "key": "sheds.animal_exit",
-   "role": "caretaker",
-   "spec_mark": "-",
-   "actual": 200,
-   "kind": "OVER"
-  },
-  {
-   "module": "Livestock",
-   "spec": "Animal Exit",
-   "key": "sheds.animal_exit",
-   "role": "finance",
-   "spec_mark": "s",
-   "actual": 403,
-   "kind": "UNDER"
-  },
-  {
    "module": "Maternity",
    "spec": "Maternity Unit",
    "key": "sheds.maternity_unit",
    "role": "feeding",
-   "spec_mark": "-",
-   "actual": 200,
-   "kind": "OVER"
-  },
-  {
-   "module": "Feeding",
-   "spec": "TMR Mixing Batches",
-   "key": "feeding.tmr_mixing_batches",
-   "role": "vet",
    "spec_mark": "-",
    "actual": 200,
    "kind": "OVER"
@@ -136,19 +91,10 @@
    "kind": "OVER"
   },
   {
-   "module": "Sales",
-   "spec": "Other Exits",
-   "key": "sheds.animal_exit",
-   "role": "vet",
-   "spec_mark": "-",
-   "actual": 200,
-   "kind": "OVER"
-  },
-  {
-   "module": "Sales",
-   "spec": "Other Exits",
-   "key": "sheds.animal_exit",
-   "role": "caretaker",
+   "module": "Maintenance",
+   "spec": "Sensor Alerts",
+   "key": "sensors.sensor_alerts",
+   "role": "cleaning",
    "spec_mark": "-",
    "actual": 200,
    "kind": "OVER"
@@ -215,15 +161,6 @@
    "spec_mark": "-",
    "actual": 200,
    "kind": "OVER"
-  },
-  {
-   "module": "Environment",
-   "spec": "Sensor Alarms",
-   "key": "sensors.sensor_alerts",
-   "role": "cleaning",
-   "spec_mark": "s",
-   "actual": 403,
-   "kind": "UNDER"
   },
   {
    "module": "Quality",
@@ -1232,6 +1169,21 @@
    "lock": "admin"
   },
   {
+   "key": "sheds.pen_movements",
+   "label": "Pen Movements",
+   "path": "/movements",
+   "query": {
+    "kind": "transfer"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker"
+   ],
+   "lock": null
+  },
+  {
    "key": "reports.age_wise_report",
    "label": "Age-Wise Report",
    "path": "/reports",
@@ -1271,6 +1223,81 @@
     "manager",
     "vet",
     "finance"
+   ],
+   "lock": null
+  },
+  {
+   "key": "reports.records_opening_page",
+   "label": "Field Records (opening page)",
+   "path": "/reports/records",
+   "query": null,
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding"
+   ],
+   "lock": "opening"
+  },
+  {
+   "key": "reports.weighings",
+   "label": "Weighings Report",
+   "path": "/reports/records",
+   "query": {
+    "kind": "weight"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding"
+   ],
+   "lock": null
+  },
+  {
+   "key": "reports.temperatures",
+   "label": "Temperature Report",
+   "path": "/reports/records",
+   "query": {
+    "kind": "temp"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": null
+  },
+  {
+   "key": "reports.heights",
+   "label": "Height Report",
+   "path": "/reports/records",
+   "query": {
+    "kind": "height"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker"
+   ],
+   "lock": null
+  },
+  {
+   "key": "reports.movements",
+   "label": "Movements Report",
+   "path": "/reports/records",
+   "query": {
+    "kind": "move"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker",
+    "feeding"
    ],
    "lock": null
   },
@@ -1530,7 +1557,7 @@
  ],
  "counts": {
   "spec_rows": 233,
-  "registry": 180,
-  "diffs": 40
+  "registry": 187,
+  "diffs": 33
  }
 }

@@ -41,3 +41,6 @@ About 90 places decided by naming roles (`in_array($user->role, ['ceo', 'manager
 - **A dead clause removed:** `SaleOrderController` asked for a right called `scan` that never existed (since D-194), so it never allowed anyone. Removed; who may load goats onto a sale is unchanged (Administrator, Manager, Finance). Whether floor staff should load goats is an open question for you.
 - **Guard:** `ActionRegistryTest::test_every_right_the_code_asks_for_exists` fails if code asks for a right that does not exist.
 - **Left on purpose:** display choices that only change a layout (the Finance home), animal roles (Lifecycle, Eligibility, Genetics) and the Fodder on/off flag.
+
+## After D-285 (the other session split Movements into two pages)
+Pen Movements had been opened to the feeding staff and Animal Exit kept the vet and the caretaker, against the spec (Animal Movements: Feeding —; Animal Exit: Vet and Caretaker —). Pen Movements is now Administrator, Manager, Vet, Caretaker and Animal Exit is Administrator, Manager, Finance (Finance still reaches the sale side through Sales, as it holds no Housing app). Recording an exit stays the action `exit_animal`.
