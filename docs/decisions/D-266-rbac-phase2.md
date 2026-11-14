@@ -11,7 +11,7 @@ F-02 books (`manage_books`: Administrator, Finance) · F-03 staff, attendance, l
 - **F-10 (Q10).** `move_goats` = Administrator, Manager, Caretaker.
 - **F-12.** Settled by S-1: `/movements` is one page; recording an exit is the right `exit_animal`. Finance's sale side is Sales. Test added.
 - **F-13.** The feeding staff's Reports hub lists Feed offered, refused and wasted and Feeding history (no costs). Not checked in a browser.
-- **F-14, F-15.** `see_goat_pedigree` (Administrator, Manager, Vet, Caretaker) and `see_health_history` (Administrator, Manager, Vet) replace hard-coded role lists on the goat page. The feeding staff get no parentage, offspring or day records.
+- **F-14, F-15.** (The other session's later code, the goat day details and the field-records report, had copied the old hard-coded role list; both now use the rights too.) `see_goat_pedigree` (Administrator, Manager, Vet, Caretaker) and `see_health_history` (Administrator, Manager, Vet) replace hard-coded role lists on the goat page. The feeding staff get no parentage, offspring or day records.
 - **F-17.** The Quality CAPA owner must belong to the farm business. **Row-Level Security on `users` is not done:** sign-in looks a person up before any farm business is bound, so a policy there needs its own design.
 - **F-18.** Cleaning opens `/sensors?tab=alerts` only, sees air, temperature and water alarms, and receives no devices, readings or goats-out data.
 - **F-19.** The vet no longer has Feed Pens or TMR Mixing Batches.

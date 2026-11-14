@@ -23,7 +23,7 @@ class RecordsReportController extends Controller
 
     private static function seesHealth($u): bool
     {
-        return in_array($u->role, ['ceo', 'manager', 'vet'], true) || ($u->module_access['health'] ?? false) === true;
+        return $u->passes('see_health_history'); // D-266 F-15: a right the Access Rights screen controls
     }
 
     private static function kind(Request $request): string

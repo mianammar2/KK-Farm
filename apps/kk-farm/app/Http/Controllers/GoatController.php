@@ -532,7 +532,8 @@ class GoatController extends Controller
     {
         abort_unless(preg_match('/^\d{4}-\d{2}-\d{2}$/', $on), 404);
         $u = $request->user();
-        $seeHealth = in_array($u->role, ['ceo', 'manager', 'vet'], true) || ($u->module_access['health'] ?? false) === true;
+        abort_unless($u->passes('see_goat_pedigree'), 403); // D-266 F-14: the day-by-day records are not for the feeding staff
+        $seeHealth = $u->passes('see_health_history'); // D-266 F-15: a right the Access Rights screen controls (the day details were added with the old role list)
         $time = fn ($m) => $m->created_at?->setTimezone('Asia/Karachi')->format('g:i A');
         $out = [
             'weights' => \App\Models\WeightRecord::where('animal_id', $animal->id)->whereDate('measured_on', $on)->get()->map(fn ($w) => ['kg' => (float) $w->weight_kg, 'bcs' => $w->body_score,

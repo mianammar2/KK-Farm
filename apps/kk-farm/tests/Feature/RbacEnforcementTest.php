@@ -118,6 +118,9 @@ class RbacEnforcementTest extends TestCase
             ->assertInertia(fn (AssertableInertia $p) => $p->where('goat.dam', null)->where('goat.sire', null));
         $this->actingAs($this->u['manager'])->get("/goats/{$this->goat->id}")->assertOk()
             ->assertInertia(fn (AssertableInertia $p) => $p->has('offspring', 1));
+        $day = now()->toDateString();
+        $this->actingAs($this->u['feeding'])->get("/goats/{$this->goat->id}/day/$day")->assertForbidden();
+        $this->actingAs($this->u['manager'])->get("/goats/{$this->goat->id}/day/$day")->assertOk();
     }
 
     /** F-17: a CAPA owner must belong to this farm business. */

@@ -341,6 +341,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "GET /goats/{animal}/day/{on}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "GET /goats/{animal}/edit": {
         "ceo": 200,
         "manager": 403,
@@ -538,6 +547,24 @@
         "feeding": 200,
         "cleaning": 403,
         "finance": 200
+    },
+    "GET /reports/records": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 200,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "GET /reports/records/day": {
+        "ceo": 302,
+        "manager": 302,
+        "vet": 302,
+        "caretaker": 302,
+        "feeding": 302,
+        "cleaning": 403,
+        "finance": 403
     },
     "GET /repro-loss": {
         "ceo": 200,
@@ -1970,12 +1997,57 @@
         "cleaning": 403,
         "finance": 200
     },
+    "PAGE reports.heights  /reports/records?kind=height": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "PAGE reports.herd_census  /reports?section=herd": {
         "ceo": 200,
         "manager": 200,
         "vet": 200,
         "caretaker": 403,
         "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE reports.movements  /reports/records?kind=move": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 200,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE reports.records_opening_page  /reports/records": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 200,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE reports.temperatures  /reports/records?kind=temp": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE reports.weighings  /reports/records?kind=weight": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 200,
         "cleaning": 403,
         "finance": 403
     },
@@ -3285,7 +3357,7 @@
         "finance": 403
     },
     "POST /goats/{animal}/cull": {
-        "ceo": 422,
+        "ceo": 403,
         "manager": 403,
         "vet": 422,
         "caretaker": 403,
