@@ -58,6 +58,13 @@ class BreedingController extends Controller
 
         return Inertia::render('Breeding', [
             'farmBorn' => $farmBorn,
+            // D-298: Breeding → Ultrasound: matings without a clear result yet, by the day the scan is due
+            'ultrasound' => \App\Support\Pages::allowsKey($request->user(), 'breeding.ultrasound') ? Mating::with(['dam', 'checks'])->whereIn('status', ['open', 'inconclusive'])->orderBy('check_due_on')->orderBy('mated_on')->get()->map(fn (Mating $m) => [
+                'id' => $m->id, 'dam' => $m->dam?->farm_number, 'damId' => $m->dam_id, 'matedIso' => $m->mated_on->toDateString(), 'mated' => $m->mated_on->format('d/m/Y'),
+                'day' => (int) $m->mated_on->diffInDays(now()), 'dueIso' => ($due = $m->checks->last()?->next_check_on ?? $m->check_due_on)?->toDateString(), 'due' => $due?->format('d/m/Y'),
+                'isDue' => $due ? $due->lte(now()->endOfDay()) : true, 'last' => ($c = $m->checks->last()) ? (PregnancyCheck::STATUSES[$c->ultrasound_status] ?? $c->ultrasound_status).' on '.$c->checked_on->format('d/m/Y') : null,
+                'source' => $m->source,
+            ])->values() : [],
             // D-294: every mating recorded on the farm, as a sheet (Breeding → Mating Records), newest first; D-295: not the pregnancies found at a checkup or on arrival
             'matingRecords' => \App\Support\Pages::allowsKey($request->user(), 'breeding.mating_pregnancy_ultrasound') ? Mating::with(['dam.breed', 'sire.breed'])->where('source', 'mating')->orderByDesc('mated_on')->orderByDesc('id')->get()->map(fn (Mating $m) => [
                 'id' => $m->id, 'matedIso' => $m->mated_on->toDateString(), 'mated' => $m->mated_on->format('d/m/Y'),
@@ -182,10 +189,11 @@ class BreedingController extends Controller
         $cycle = Mating::where('dam_id', $dam->id)->when($lastKidding, fn ($q) => $q->where('mated_on', '>', $lastKidding))->count() + 1;
 
         DB::transaction(function () use ($data, $dam, $mated, $org, $cycle, $request) {
-            Mating::create($data + [
+            $m = Mating::create($data + [
                 'expected_kidding_on' => $mated->copy()->addDays($org->gestation_days), 'check_due_on' => $mated->copy()->addDays($org->pregnancy_check_days),
                 'service_cycle' => $cycle, 'status' => 'open', 'handler' => $data['handler'] ?? $request->user()->name, 'recorded_by' => $request->user()->name,
             ]);
+            \App\Support\UltrasoundDue::task($m); // D-298: the vet's ultrasound on the pregnancy-check day
             if (! in_array($dam->repro_status, ['pregnant', 'expected_kidding'], true)) {
                 $dam->update(['repro_status' => 'mated']);
             }
@@ -206,6 +214,26 @@ class BreedingController extends Controller
      * confirmed loss → recorded as a pregnancy loss (isolation, monitoring, biosecurity); hydrometra or an abnormal
      * finding → vet investigation task. The vet's findings are recorded as given; the system only schedules the work.
      */
+    /** D-298: a doe with no mating on record (bought in, or the date unknown) is added to Breeding → Ultrasound. */
+    public function ultrasoundDoe(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian adds a doe for ultrasound.');
+        $data = $request->validate(['dam_id' => ['required', 'uuid', 'exists:animals,id'], 'days' => ['nullable', 'integer', 'between:20,150']], [], ['dam_id' => 'doe']);
+        $dam = Animal::findOrFail($data['dam_id']);
+        abort_unless($dam->sex === 'female' && $dam->status === 'active', 422, 'Choose a doe on the farm.');
+        if (Mating::where('dam_id', $dam->id)->whereIn('status', ['open', 'pregnant', 'inconclusive'])->exists()) {
+            throw ValidationException::withMessages(['dam_id' => "{$dam->farm_number} already has an open mating or pregnancy: scan her from the list."]);
+        }
+        $org = $this->org();
+        $mated = now()->subDays((int) ($data['days'] ?? $org->pregnancy_check_days))->startOfDay();
+        Mating::create(['dam_id' => $dam->id, 'sire_id' => null, 'mated_on' => $mated, 'method' => 'natural', 'status' => 'open', 'source' => 'checkup',
+            'expected_kidding_on' => $mated->copy()->addDays($org->gestation_days), 'check_due_on' => now()->startOfDay(), 'recorded_by' => $request->user()->name,
+            'notes' => 'Added for ultrasound; mating date not known, estimated '.($data['days'] ?? $org->pregnancy_check_days).' days ago.']);
+        Farm::log($request->user(), "Added {$dam->farm_number} for ultrasound", '/breeding?tab=ultrasound');
+
+        return back()->with('success', "{$dam->farm_number} added: record her ultrasound below.");
+    }
+
     public function check(Request $request, Mating $mating): RedirectResponse
     {
         abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian records a pregnancy check.');
@@ -256,6 +284,7 @@ class BreedingController extends Controller
                 $gestation = (int) (Tenant::org()?->gestation_days ?? 150);
                 $mating->update(['expected_kidding_on' => $on->copy()->subDays((int) $data['estimated_day'])->addDays($gestation)->toDateString()]);
             }
+            \App\Support\UltrasoundDue::close($mating, $by->name); // D-298
             \App\Support\UltrasoundTasks::raise($mating->fresh(), $dam, $status, $fetuses, $next);
         });
         Farm::log($by, "Ultrasound for {$mating->dam->farm_number}: ".PregnancyCheck::STATUSES[$status], "/goats/{$mating->dam_id}");

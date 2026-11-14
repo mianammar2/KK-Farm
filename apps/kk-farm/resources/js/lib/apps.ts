@@ -52,7 +52,8 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings/fields', 'Register Fields'),
     ] },
     { key: 'breeding', no: '03', label: 'Breeding', art: 'app-breeding', modules: ['breeding'], linked: ['maternity', 'livestock', 'veterinary', 'feeding'], sections: [
-        S('Operations', '/breeding?tab=cycle', 'Mating Records'), // D-294/D-296: the farm's matings and the pregnancies to check, one page
+        S('Operations', '/breeding?tab=cycle', 'Mating Records'), // D-294/D-296
+        S('Operations', '/breeding?tab=ultrasound', 'Ultrasound'), // D-298: the vet's scans after mating
         S('Operations', '/genetics?tab=review', 'Replacement Review (Genetic Merit)'),
         S('Reporting', '/genetics?tab=progeny', 'Sire & Dam Progeny Performance'),
         S('Operations', '/breeding/eligibility', 'Breeding Eligibility & Approval'), // D-231
@@ -62,6 +63,7 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'maternity', no: '04', label: 'Maternity', art: 'app-maternity', modules: ['breeding'], linked: ['breeding', 'veterinary', 'livestock', 'housing', 'feeding'], sections: [
         S('Overview', '/breeding?tab=calendar', 'Upcoming Deliveries'),
+        S('Operations', '/breeding?tab=pregnancies', 'Pregnancies to Follow'), // D-298: moved from Breeding
         S('Operations', '/breeding?tab=kidding', 'Kidding & Pregnancy Outcomes'),
         S('Operations', '/repro-loss', 'Pregnancy Loss Investigation'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),

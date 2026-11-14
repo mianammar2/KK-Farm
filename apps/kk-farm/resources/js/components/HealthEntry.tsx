@@ -37,7 +37,8 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
     });
     const e = form.errors as Record<string, string>;
     const goat = data.goats.find((g) => g.id === form.data.animal_id);
-    const kinds = KINDS.filter((k) => (k.who === 'check' ? data.canCheck : data.canOpenCase) && (!('female' in k) || goat?.sex === 'female'));
+    // D-298: the ultrasound is recorded on Breeding → Ultrasound, not here
+    const kinds = KINDS.filter((k) => k.key !== 'pregnancy' && (k.who === 'check' ? data.canCheck : data.canOpenCase) && (!('female' in k) || goat?.sex === 'female'));
     const isCase = ['disease', 'injury', 'other'].includes(form.data.kind);
     const counted = goat?.matedOn ? daysBetween(goat.matedOn, form.data.date) : null; // day of pregnancy on the chosen date
     const set = (key: keyof typeof form.data, value: string | boolean) => form.setData(key, value as never);

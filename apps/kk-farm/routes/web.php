@@ -296,6 +296,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/breeding/heat', [BreedingController::class, 'heat']); // D-175
         Route::post('/breeding/kid-care', [BreedingController::class, 'kidCare']); // D-176
         Route::post('/breeding/matings/{mating}/check', [BreedingController::class, 'check']);
+        Route::post('/breeding/ultrasound', [BreedingController::class, 'ultrasoundDoe']); // D-298
         Route::post('/breeding/matings/{mating}/kidding', [BreedingController::class, 'kidding']);
         Route::post('/breeding/matings/{mating}/close', [BreedingController::class, 'close']);
         Route::post('/breeding/weanings', [BreedingController::class, 'wean']);

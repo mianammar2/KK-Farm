@@ -169,9 +169,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
                 {num('temperature_f', 'Temperature', '°F')}
                 <Field label="Body condition (1–5, optional)"><select className="field" value={form.data.body_score} onChange={(x) => form.setData('body_score', x.target.value)}><option value="">Not set</option>{['1 · Very thin', '2 · Thin', '3 · Good', '4 · Fat', '5 · Very fat'].map((l, i) => <option key={l} value={i + 1}>{l}</option>)}</select></Field>
                 {num('weight_kg', 'Weight', 'KG')}
-                {goat.sex === 'female' ? (
-                    <UltrasoundPick data={data} code={form.data.ultrasound_status} viability={form.data.viability} onCode={setUltrasound} onViability={(v) => form.setData('viability', v)} emptyLabel="Not done" />
-                ) : null}
+                {/* D-298: the ultrasound is recorded on Breeding → Ultrasound */}
             </div>
             {form.data.ultrasound === 'pregnant' ? (
                 <div className="grid gap-3 rounded-tile bg-manganese-100/60 p-3 sm:grid-cols-3">

@@ -1593,6 +1593,35 @@
    "lock": "opening"
   },
   {
+   "key": "breeding.ultrasound",
+   "label": "Ultrasound",
+   "path": "/breeding",
+   "query": {
+    "tab": "ultrasound"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet"
+   ],
+   "lock": null
+  },
+  {
+   "key": "breeding.pregnancies_to_follow",
+   "label": "Pregnancies to Follow",
+   "path": "/breeding",
+   "query": {
+    "tab": "pregnancies"
+   },
+   "roles": [
+    "ceo",
+    "manager",
+    "vet",
+    "caretaker"
+   ],
+   "lock": null
+  },
+  {
    "key": "breeding.sire_dam_progeny_performance",
    "label": "Sire & Dam Progeny Performance",
    "path": "/genetics",
@@ -1609,7 +1638,7 @@
  ],
  "counts": {
   "spec_rows": 233,
-  "registry": 189,
+  "registry": 191,
   "diffs": 36
  }
 }

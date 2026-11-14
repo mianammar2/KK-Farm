@@ -944,6 +944,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "PAGE breeding.pregnancies_to_follow  /breeding?tab=pregnancies": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "PAGE breeding.pregnancy_calendar  /breeding?tab=calendar": {
         "ceo": 200,
         "manager": 200,
@@ -972,6 +981,15 @@
         "finance": 403
     },
     "PAGE breeding.sire_dam_progeny_performance  /genetics?tab=progeny": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE breeding.ultrasound  /breeding?tab=ultrasound": {
         "ceo": 200,
         "manager": 200,
         "vet": 200,
@@ -2631,6 +2649,15 @@
         "ceo": 302,
         "manager": 403,
         "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /breeding/ultrasound": {
+        "ceo": 403,
+        "manager": 403,
+        "vet": 302,
         "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,

@@ -39,6 +39,7 @@ type Props = {
     matings: MatingRow[]; kiddings: KiddingRow[]; weaning: Due[]; kpis: Kpis; heat: HeatRow[]; heatOptions: HeatOptions; // D-175
     kidCare: KidRow[]; kidCareOptions: KidCareOptions; // D-176
     weaned: Array<{ id: number; kidId: string; kid: string; on: string; age: number | null; weight: number | null; method: string | null; by: string }>;
+    ultrasound?: Array<{ id: number; dam: string | null; damId: string; matedIso: string; mated: string; day: number; dueIso: string | null; due: string | null; isDue: boolean; last: string | null; source: string }>; // D-298
     matingRecords?: Array<{ id: number; matedIso: string; mated: string; dam: string | null; damId: string; damBreed: string | null; sire: string | null; sireId: string | null; sireBreed: string | null; method: string; heat: string | null; status: string; checkDueIso: string | null; checkDue: string | null; expectedIso: string | null; expected: string | null; handler: string | null; by: string; entered: string | null }>; // D-294
     farmBorn?: Array<{ id: string; number: string; born: string | null; bornIso: string | null; dam: string | null; damId: string | null; sire: string | null; sireId: string | null; breed: string | null; sex: string | null; birthKg: number | null; code: string | null; role: string | null; pen: string | null; status: string; entered: string | null; by: string | null }>;
     performance: Array<{ id: string; number: string; name: string | null; kiddings: number; alive: number; stillborn: number; litter: number }>;
@@ -67,7 +68,7 @@ const OUTCOME_CLASS: Record<string, string> = { open: 'bg-cobalt-100 text-cobalt
 
 /** D-075: workbook "Breeding", "Pregnancy Checks", "Kidding" and "Weaning". */
 export default function Breeding(props: Props) {
-    const { farmBorn = [], matingRecords = [], matings, kiddings, weaning, weaned, performance, focus, goats, settings, kpis, options } = props;
+    const { farmBorn = [], matingRecords = [], ultrasound = [], matings, kiddings, weaning, weaned, performance, focus, goats, settings, kpis, options } = props;
     const { auth } = usePage<SharedProps>().props;
     const [tab, setTab] = useTabParam('cycle'); // D-170
     const [adding, setAdding] = useState(false); // D-127
@@ -84,7 +85,9 @@ export default function Breeding(props: Props) {
             {adding ? <Sheet onClose={() => { setAdding(false); setPresetDam(null); }}><MatingForm {...props} presetDam={presetDam} onDone={() => { setAdding(false); setPresetDam(null); }} /></Sheet> : null}
             {/* D-296: no number row on every tab: the app's numbers show once, on its main page (the app strip), like the other apps */}
             <Tabs value={tab} onChange={setTab} tabs={[
-                { id: 'cycle', label: 'Mating Records', count: active.length },
+                { id: 'cycle', label: 'Mating Records' },
+                { id: 'ultrasound', label: 'Ultrasound', count: ultrasound.filter((u) => u.isDue).length || undefined },
+                { id: 'pregnancies', label: 'Pregnancies to Follow', count: active.length },
                 { id: 'calendar', label: 'Pregnancy Calendar' },
                 { id: 'kidding', label: 'Kidding', count: kiddings.length },
                 { id: 'kidcare', label: 'Kid Care', count: props.kidCare.filter((k) => k.colostrumDue || k.weak).length || undefined },
@@ -96,14 +99,15 @@ export default function Breeding(props: Props) {
 
             {tab === 'calendar' ? <PregnancyCalendar matings={matings} /> : null}
             {tab === 'kidcare' ? <KidCare kids={props.kidCare} options={props.kidCareOptions} does={props.does.map((d) => ({ id: String(d.id), farm_number: d.farm_number ?? '' }))} /> : null}
-            {tab === 'cycle' || tab === 'matings' || tab === 'heat' ? ( /* D-297: Heat Detection is gone; old links land here */
-                <div className="space-y-4">
-                    <MatingSheet rows={matingRecords} />
-                    <Panel title="Pregnancies to follow" description="Open matings and pregnancies: the pregnancy check, the ultrasound and the expected kidding. Done ones move to the sheet above." flush={!active.length}>
-                        {active.length ? <div className="min-w-0 space-y-3">{active.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} {...props} />)}</div>
-                            : <Empty title="Nothing to follow">Every mating has its outcome.</Empty>}
-                    </Panel>
-                </div>
+            {tab === 'cycle' || tab === 'matings' || tab === 'heat' ? <MatingSheet rows={matingRecords} /> : null /* D-297/D-298: the farm's matings; old Heat Detection links land here */}
+
+            {tab === 'ultrasound' ? <UltrasoundList rows={ultrasound} isVet={isVet} options={options} does={props.does} /> : null}
+
+            {tab === 'pregnancies' ? (
+                <Panel title="Pregnancies to Follow" description="Open matings and pregnancies: the expected kidding and the outcome. The ultrasound is recorded on Breeding → Ultrasound." flush={!active.length}>
+                    {active.length ? <div className="min-w-0 space-y-3 p-3">{active.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} {...props} />)}</div>
+                        : <Empty title="Nothing to follow">Every mating has its outcome.</Empty>}
+                </Panel>
             ) : null}
 
             {tab === 'kidding' ? (
@@ -239,7 +243,6 @@ function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; i
                     </div>
                     {m.active ? (
                         <div className="flex flex-wrap gap-2">
-                            {isVet ? <Button variant="secondary" onClick={() => setMode(mode === 'check' ? 'none' : 'check')}><LibIcon name="ic-pregnant" size={18} /> Ultrasound</Button> : null}
                             <Button onClick={() => setMode(mode === 'kidding' ? 'none' : 'kidding')}><LibIcon name="ic-kidding" size={18} /> Pregnancy Outcome</Button>
                             {canClose ? <Button variant="quiet" onClick={async () => { if (await ask({ title: 'Close this mating?', message: 'It will be closed without a kidding.', confirm: 'Yes, close mating', danger: false })) router.post(`/breeding/matings/${m.id}/close`, {}, { preserveScroll: true }); }}>Close mating</Button> : null}
                         </div>
@@ -360,5 +363,44 @@ function MatingSheet({ rows: matingRecords }: { rows: NonNullable<Props['matingR
                 { key: 'entered', label: 'Entered on', type: 'text' },
             ]} /> : <Empty title="No matings yet">Record a mating to add one.</Empty>}
         </Panel>
+    );
+}
+
+/** D-298: Breeding → Ultrasound: every mating still waiting for a clear ultrasound, by the day it is due (the vet's task opens here). */
+function UltrasoundList({ rows, isVet, options, does }: { rows: NonNullable<Props['ultrasound']>; isVet: boolean; options: UltrasoundOptions; does: Props['does'] }) {
+    const [open, setOpen] = useState<number | null>(null);
+    const add = useForm({ dam_id: '', days: '' });
+    const due = rows.filter((r) => r.isDue);
+    const later = rows.filter((r) => !r.isDue);
+    const row = (r: NonNullable<Props['ultrasound']>[number]) => (
+        <li key={r.id} className="px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+                <Link href={`/goats/${r.damId}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{r.dam}</Link>
+                <span className="text-sm text-ink-soft">{r.source === 'mating' ? `Mated ${r.mated}` : `Added for ultrasound (estimated ${r.mated})`} · day {r.day}</span>
+                <span className={cx('text-sm font-semibold', r.isDue ? 'text-crit-700' : 'text-ink-soft')}>{r.due ? `${r.isDue ? 'Due' : 'Due on'} ${r.due}` : 'Due now'}</span>
+                {r.last ? <span className="text-xs text-ink-soft">Last: {r.last}</span> : null}
+                {isVet ? <Button variant="secondary" className="ml-auto" onClick={() => setOpen(open === r.id ? null : r.id)}>{open === r.id ? 'Close' : 'Record ultrasound'}</Button> : null}
+            </div>
+            {open === r.id ? <div className="mt-3"><UltrasoundForm matingId={r.id} damNumber={r.dam ?? ''} matedOn={r.matedIso} options={options} onDone={() => setOpen(null)} /></div> : null}
+        </li>
+    );
+    return (
+        <div className="space-y-4">
+            <Panel title={`Ultrasounds due · ${due.length}`} description="Matings that have reached the pregnancy-check day, and repeat scans that are due. The vet's task for each one opens here; recording the ultrasound closes it." flush>
+                {due.length ? <ul className="divide-y divide-rule">{due.map(row)}</ul> : <Empty title="No ultrasound due today" />}
+            </Panel>
+            <Panel title={`Coming up · ${later.length}`} description="Mated, not yet at the pregnancy-check day." flush>
+                {later.length ? <ul className="divide-y divide-rule">{later.map(row)}</ul> : <p className="p-4 text-sm text-ink-soft">Nothing coming up.</p>}
+            </Panel>
+            {isVet ? (
+                <Panel title="Scan a doe with no mating on record" description="A doe bought in, or one whose mating date is not known: add her here, then record her ultrasound in the list above.">
+                    <form className="grid gap-3 sm:grid-cols-[2fr_1fr_auto] sm:items-end" onSubmit={(e) => { e.preventDefault(); add.post('/breeding/ultrasound', { preserveScroll: true, onSuccess: () => add.reset() }); }}>
+                        <Field label="Doe" error={add.errors.dam_id}><GoatSelect className="field" value={add.data.dam_id} onChange={(x) => add.setData('dam_id', x.target.value)}><option value="">Choose a doe…</option>{does.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</GoatSelect></Field>
+                        <Field label="Days since mating (about)" error={add.errors.days}><input className="field" inputMode="numeric" value={add.data.days} placeholder="if known" onChange={(x) => add.setData('days', x.target.value.replace(/[^0-9]/g, ''))} /></Field>
+                        <Button type="submit" disabled={add.processing || !add.data.dam_id}>Add for ultrasound</Button>
+                    </form>
+                </Panel>
+            ) : null}
+        </div>
     );
 }
