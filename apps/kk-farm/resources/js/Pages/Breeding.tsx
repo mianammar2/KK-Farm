@@ -103,12 +103,7 @@ export default function Breeding(props: Props) {
 
             {tab === 'ultrasound' ? <UltrasoundList rows={ultrasound} isVet={isVet} options={options} does={props.does} /> : null}
 
-            {tab === 'pregnancies' ? (
-                <Panel description="Open matings and pregnancies: the expected kidding and the outcome. The ultrasound is recorded on Breeding → Ultrasound." flush={!active.length}>
-                    {active.length ? <div className="min-w-0 space-y-3 p-3">{active.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} {...props} />)}</div>
-                        : <Empty title="Nothing to follow">Every mating has its outcome.</Empty>}
-                </Panel>
-            ) : null}
+            {tab === 'pregnancies' ? <PregnanciesToFollow active={active} isVet={isVet} canClose={['ceo', 'manager', 'vet'].includes(auth?.role ?? '')} props={props} /> : null}
 
             {tab === 'kidding' ? (
                 <Panel title="Kidding & Pregnancy Outcomes" description="One outcome per pregnancy: delivery, stillbirth or loss. Each live kid is registered and linked to it." flush>
@@ -205,9 +200,9 @@ export default function Breeding(props: Props) {
     );
 }
 
-function MatingCard({ m, isVet, canClose, settings, options }: { m: MatingRow; isVet: boolean; canClose: boolean } & Props) {
-    const [open, setOpen] = useState(m.active && m.alert !== null);
-    const [mode, setMode] = useState<'none' | 'check' | 'kidding'>('none');
+function MatingCard({ m, isVet, canClose, settings, options, outcome = false }: { m: MatingRow; isVet: boolean; canClose: boolean; outcome?: boolean } & Props) {
+    const [open, setOpen] = useState(outcome || (m.active && m.alert !== null));
+    const [mode, setMode] = useState<'none' | 'check' | 'kidding'>(outcome ? 'kidding' : 'none'); // D-299: opened from a scan or a Tag ID
     const [ask, confirmBox] = useConfirm(); // D-132
     return (
         <section className={cx('rounded-tile border border-rule bg-tile shadow-tile', !m.active && 'opacity-75')}>
@@ -401,6 +396,31 @@ function UltrasoundList({ rows, isVet, options, does }: { rows: NonNullable<Prop
                     </form>
                 </Panel>
             ) : null}
+        </div>
+    );
+}
+
+/** D-298/D-299: Maternity → Pregnancies to Follow. Scan a doe's RFID or type her Tag ID: her pregnancy opens with the Pregnancy Outcome form. */
+function PregnanciesToFollow({ active, isVet, canClose, props }: { active: MatingRow[]; isVet: boolean; canClose: boolean; props: Props }) {
+    const [focus, setFocus] = useState<string>('');
+    const picked = active.find((m) => String(m.id) === focus);
+    const rest = active.filter((m) => String(m.id) !== focus);
+    return (
+        <div className="space-y-4">
+            <Panel title="Pregnancy Outcome" description="Scan the doe's RFID tag or type her Tag ID: her pregnancy opens below with the outcome form (kidding, stillbirth or loss).">
+                <div className="max-w-md">
+                    <GoatSelect className="field" value={focus} aria-label="Doe" onChange={(x) => { setFocus(x.target.value); if (x.target.value) window.setTimeout(() => document.getElementById('outcome-focus')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}>
+                        <option value="">Choose the doe…</option>
+                        {active.map((m) => <option key={m.id} value={m.id}>{m.dam.number}{m.dam.name ? ` · ${m.dam.name}` : ''}</option>)}
+                    </GoatSelect>
+                </div>
+                {focus && !picked ? <p className="mt-2 text-sm text-crit-700">This doe has no open pregnancy.</p> : null}
+            </Panel>
+            {picked ? <div id="outcome-focus"><MatingCard key={`focus-${picked.id}`} m={picked} isVet={isVet} canClose={canClose} outcome {...props} /></div> : null}
+            <Panel description="Open matings and pregnancies: the expected kidding and the outcome. The ultrasound is recorded on Breeding → Ultrasound." flush={!rest.length}>
+                {rest.length ? <div className="min-w-0 space-y-3 p-3">{rest.map((m) => <MatingCard key={m.id} m={m} isVet={isVet} canClose={canClose} {...props} />)}</div>
+                    : <Empty title="Nothing else to follow">{picked ? 'The chosen doe is above.' : 'Every mating has its outcome.'}</Empty>}
+            </Panel>
         </div>
     );
 }
