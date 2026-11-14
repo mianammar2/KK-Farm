@@ -45,6 +45,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/movements?kind=transfer', 'PEN Movements'), // D-285: moves and exits are separate
         S('Operations', '/movements?kind=exit', 'Animal Exit'),
         S('Reporting', '/reports/sheet', 'Herd Sheet'), // D-288: one sheet for all reporting
+        S('Reporting', '/reports/operations', 'Operations Log'), // D-307: every operation from every app
         // D-287: no Records section for now; the registry's filter cards show pregnant, attention and missing data
         S('Configuration', '/settings/breeds', 'Breed Master'),
         S('Configuration', '/settings/ages', 'Age Groups'),
@@ -221,6 +222,7 @@ export const APPS: ErpApp[] = [
         S('Overview', '/reports', 'Reports & Analytics'),
         S('Operations', '/', 'CEO Dashboard'),
         S('Reporting', '/reports?section=herd', 'Livestock Reports'),
+        S('Reporting', '/reports/operations', 'Operations Log'), // D-307
         S('Reporting', '/breeding?tab=performance', 'Breeding Reports'),
         S('Reporting', '/finance/books?tab=pl', 'Financial Reports'),
         S('Configuration', '/settings/access', 'Report Access'),

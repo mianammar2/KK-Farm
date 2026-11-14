@@ -188,4 +188,16 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('vet'))->getJson('/lookup/goat?code=H-1')->assertOk()->assertJsonPath('canOpenRecord', true);
         $this->actingAs($this->user('vet'))->getJson('/lookup/goat?code=NOPE-99')->assertNotFound();
     }
+
+    /** D-307: the Operations Log lists operations from every app; health ones only with the health-history right. */
+    public function test_the_operations_log_lists_every_operation(): void
+    {
+        $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/height", ['measured_on' => now()->toDateString(), 'height_in' => 24])->assertSessionHasNoErrors();
+        \App\Models\HealthCase::create(['case_no' => 9, 'animal_id' => $this->goat->id, 'onset_on' => now(), 'condition' => 'Cough', 'severity' => 'mild', 'status' => 'open', 'recorded_by' => 'Test vet']);
+        $this->actingAs($this->user('ceo'))->get('/reports/operations')->assertOk()->assertInertia(fn ($p) => $p->component('Reports/Operations')
+            ->where('rows', fn ($rows) => collect($rows)->contains('op', 'height') && collect($rows)->contains('op', 'case')));
+        $finance = $this->user('manager');
+        $finance->update(['gate_access' => ['see_health_history' => false]]);
+        $this->actingAs($finance->fresh())->get('/reports/operations')->assertOk()->assertInertia(fn ($p) => $p->where('rows', fn ($rows) => ! collect($rows)->contains('op', 'case')));
+    }
 }

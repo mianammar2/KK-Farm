@@ -50,6 +50,7 @@ return [
     ['key' => 'reports.exits_mortality', 'label' => 'Exits & Mortality', 'module' => 'reports', 'group' => 'Reporting', 'path' => '/reports', 'query' => ['section' => 'exits'], 'roles' => [$A, $M, $V, $N], 'lock' => null, 'menus' => ['Livestock', 'Sales']],
     // D-288: one sheet with every goat and everything known about it; filter and group by anything
     ['key' => 'reports.herd_sheet', 'label' => 'Herd Sheet', 'module' => 'goats', 'group' => 'Reporting', 'path' => '/reports/sheet', 'query' => null, 'roles' => [$A, $M, $V], 'lock' => null, 'menus' => ['Livestock']],
+    ['key' => 'reports.operations_log', 'label' => 'Operations Log', 'module' => 'goats', 'group' => 'Reporting', 'path' => '/reports/operations', 'query' => null, 'roles' => [$A, $M, $V, $N], 'lock' => null, 'menus' => ['Livestock', 'Reports']], // D-307
     // D-270: field-work reports by date (weighings, temperatures, heights, movements)
     ['key' => 'reports.records_opening_page', 'label' => 'Field Records (opening page)', 'module' => 'goats', 'group' => 'Reporting', 'path' => '/reports/records', 'query' => null, 'roles' => [$A, $M, $V, $C, $F], 'lock' => 'opening', 'menus' => []],
     ['key' => 'reports.weighings', 'label' => 'Weighings Report', 'module' => 'goats', 'group' => 'Reporting', 'path' => '/reports/records', 'query' => ['kind' => 'weight'], 'roles' => [$A, $M, $V, $C, $F], 'lock' => null, 'menus' => ['Livestock']],
