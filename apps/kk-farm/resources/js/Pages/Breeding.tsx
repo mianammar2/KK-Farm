@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { AlertTriangle, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
@@ -178,9 +179,9 @@ export default function Breeding(props: Props) {
 
             {tab === 'pedigree' ? (
                 <Panel title="Family tree" actions={
-                    <select aria-label="Choose goat" className="field w-64" value={focus?.id ?? ''} onChange={(e) => router.get('/breeding', { goat: e.target.value }, { preserveState: true, preserveScroll: true, only: ['focus'] })}>
+                    <GoatSelect aria-label="Choose goat" className="field w-64" value={focus?.id ?? ''} onChange={(e) => router.get('/breeding', { goat: e.target.value }, { preserveState: true, preserveScroll: true, only: ['focus'] })}>
                         {goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}
-                    </select>
+                    </GoatSelect>
                 }>
                     {focus ? <PedigreeTree tree={focus.tree} /> : <Empty title="Choose a goat" />}
                 </Panel>
@@ -305,8 +306,8 @@ function MatingForm({ does, bucks, pairCheck, options, settings, onDone, presetD
         <Panel title="Record a mating">
             <form onSubmit={(ev) => { ev.preventDefault(); mating.post('/breeding/matings', { preserveScroll: true, onSuccess: () => { mating.reset('notes'); onDone?.(); } }); }} className="space-y-3">
                 {!does.length ? <Note>No female goats are registered yet. Register a doe first, then record her mating here.</Note> : null}
-                <Field label="Doe" error={e.dam_id}><select className="field" value={mating.data.dam_id} onChange={(x) => mating.setData('dam_id', x.target.value)} disabled={!does.length}>{does.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>
-                <Field label="Buck" error={e.sire_id} hint="Not recorded: unknown or not on this farm"><select className="field" value={mating.data.sire_id} onChange={(x) => mating.setData('sire_id', x.target.value)}><option value="">Not recorded</option>{bucks.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select></Field>
+                <Field label="Doe" error={e.dam_id}><GoatSelect className="field" value={mating.data.dam_id} onChange={(x) => mating.setData('dam_id', x.target.value)} disabled={!does.length}>{does.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</GoatSelect></Field>
+                <Field label="Buck" error={e.sire_id} hint="Not recorded: unknown or not on this farm"><GoatSelect className="field" value={mating.data.sire_id} onChange={(x) => mating.setData('sire_id', x.target.value)}><option value="">Not recorded</option>{bucks.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</GoatSelect></Field>
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Service date" error={e.mated_on}><input type="date" max={today()} className="field" value={mating.data.mated_on} onChange={(x) => mating.setData('mated_on', x.target.value)} /></Field>
                     <Field label="Heat observed" error={e.heat_observed}><select className="field" value={mating.data.heat_observed} onChange={(x) => mating.setData('heat_observed', x.target.value)}><option value="yes">Yes</option><option value="no">No</option><option value="unknown">Unknown</option></select></Field>

@@ -6,7 +6,7 @@
         "build": "vite build",
         "dev": "vite",
         "typecheck": "tsc --noEmit",
-        "test:sim": "node --test tests/js/shedSim.test.ts tests/js/sky.test.ts",
+        "test:sim": "node --test tests/js/shedSim.test.ts tests/js/sky.test.ts tests/js/goatMatch.test.ts",
         "test:e2e": "node tests/e2e/smoke.mjs"
     },
     "devDependencies": {

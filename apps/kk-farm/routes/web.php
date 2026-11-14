@@ -242,6 +242,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/goats/export', [GoatController::class, 'export']);
         Route::get('/goats/register', [GoatController::class, 'register']);
         Route::post('/goats', [GoatController::class, 'store']);
+        Route::get('/goats/find', [GoatController::class, 'find']); // D-293: typed Tag ID or scanned RFID → the goat
         Route::get('/goats/{animal}', [GoatController::class, 'show']);
         Route::get('/goats/{animal}/peek', [GoatController::class, 'peek']); // D-248: the card when a goat is tapped in the 3D shed
         Route::post('/goats/{animal}/rfid/arm', [\App\Http\Controllers\RfidAttachController::class, 'arm']); // D-144

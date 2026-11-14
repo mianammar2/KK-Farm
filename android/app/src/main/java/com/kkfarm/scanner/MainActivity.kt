@@ -28,6 +28,7 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
 import java.net.URLEncoder
+import org.json.JSONObject
 
 /**
  * KK Farm on the Chainway C72 (D-039).
@@ -299,7 +300,12 @@ class MainActivity : Activity() {
         vibrate(40)
         val url = "$server/scan?tag=" + URLEncoder.encode(code, "UTF-8")
         if (isVisible) {
-            runOnUiThread { openScan(url, code) }
+            // D-293: a form with a goat field on screen takes the scan itself (window.kkScan); otherwise the Scan page opens
+            runOnUiThread {
+                web.evaluateJavascript("(function(){try{return window.kkScan&&window.kkScan(" + JSONObject.quote(code) + ")?'1':'0'}catch(e){return '0'}})()") { r ->
+                    if (r != "\"1\"") openScan(url, code)
+                }
+            }
         } else {
             // Android 10+ refuses to let a background app bring itself to the front, so remember the scan and
             // open it as soon as KK Farm is opened again. (Set KK Farm as the Home app to avoid this entirely.)
@@ -416,6 +422,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.6.4"
-    const val CODE = 16 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.6.5"
+    const val CODE = 17 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

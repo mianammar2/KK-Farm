@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { ClipboardPlus, FileText, MoveRight, Radio, Scale, ScanLine, Stethoscope, TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
@@ -178,9 +179,9 @@ function Unassigned({ result, goats }: { result: Result; goats: Option[] }) {
             ) : null}
             <form onSubmit={(e) => { e.preventDefault(); form.post('/scan/assign', { preserveScroll: true }); }} className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                 <Field label="Assign to goat" error={form.errors.tag ?? form.errors.animal_id} hint="A goat with a tag has that tag closed as replaced">
-                    <select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>
+                    <GoatSelect className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>
                         {goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}{g.name ? ` · ${g.name}` : ''}</option>)}
-                    </select>
+                    </GoatSelect>
                 </Field>
                 <Button type="submit" disabled={form.processing}>Assign tag</Button>
             </form>

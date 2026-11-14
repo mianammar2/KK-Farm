@@ -1,4 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import Chart from '../components/LazyChart';
@@ -52,7 +53,7 @@ export default function Weights({ goats, log, byBreed }: Props) {
             {adding ? <Sheet onClose={() => setAdding(false)}>
                     <Panel title="Record a weight">
                         <form onSubmit={(e) => { e.preventDefault(); form.post('/weights', { preserveScroll: true, onSuccess: () => { form.reset('weight_kg', 'body_score', 'height_in'); setAdding(false); } }); }} className="space-y-3">
-                            <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</select></Field>
+                            <Field label="Goat" error={form.errors.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}{g.name ? ` · ${g.name}` : ''}</option>)}</GoatSelect></Field>
                             <Field label="Weight (KG)" error={form.errors.weight_kg}><input inputMode="decimal" className="field" value={form.data.weight_kg} onChange={(e) => form.setData('weight_kg', e.target.value)} /></Field>
                             <div className="grid grid-cols-2 gap-2">
                                 <Field label="Body score 1–5" error={form.errors.body_score} hint="1 thin · 3 good · 5 fat"><select className="field" value={form.data.body_score} onChange={(e) => form.setData('body_score', e.target.value)}><option value="">Not scored</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>

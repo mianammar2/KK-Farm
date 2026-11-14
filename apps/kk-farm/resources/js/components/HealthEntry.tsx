@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import GoatSelect from './GoatSelect';
 import { useEffect, useState } from 'react';
 import { readingWarnings } from '../lib/readings';
 import { CalendarClock } from 'lucide-react';
@@ -92,10 +93,10 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
                 </div>
                 <div className={cx('space-y-2', start && 'hidden')}>
                     {step(2, 'Goat', Boolean(goat))}
-                    <select className="field font-mono" value={form.data.animal_id} onChange={(x) => chooseGoat(x.target.value)} aria-label="Goat">
+                    <GoatSelect className="field font-mono" value={form.data.animal_id} onChange={(x) => chooseGoat(x.target.value)} aria-label="Goat">
                         <option value="">Choose the goat…</option>
                         {data.goats.map((g) => <option key={g.id} value={g.id}>{g.number} {g.sex === 'female' ? '♀' : '♂'}{g.matedOn ? ` · pregnant, day ${daysBetween(g.matedOn, form.data.date)}` : ''}</option>)}
-                    </select>
+                    </GoatSelect>
                     {e.animal_id ? <p className="text-sm text-crit-700">{e.animal_id}</p> : null}
                 </div>
                 {goat ? (
@@ -125,7 +126,7 @@ export default function HealthEntry({ data, severities, onDone, goatId, kind }: 
                                 })() : null}
                                 <div className="grid grid-cols-2 gap-2">
                                     <Field label="Fetuses seen"><input className="field" inputMode="numeric" value={form.data.fetuses} onChange={(x) => set('fetuses', x.target.value.replace(/[^0-9]/g, ''))} /></Field>
-                                    <Field label="Sire (if known)"><select className="field" value={form.data.sire_id} onChange={(x) => set('sire_id', x.target.value)}><option value="">Unknown</option>{data.sires.map((s) => <option key={s.id} value={s.id}>{s.number}</option>)}</select></Field>
+                                    <Field label="Sire (if known)"><GoatSelect className="field" value={form.data.sire_id} onChange={(x) => set('sire_id', x.target.value)}><option value="">Unknown</option>{data.sires.map((s) => <option key={s.id} value={s.id}>{s.number}</option>)}</GoatSelect></Field>
                                 </div>
                             </>
                         ) : null}

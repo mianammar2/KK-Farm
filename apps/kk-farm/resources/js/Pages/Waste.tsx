@@ -1,4 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
@@ -52,7 +53,7 @@ function Dispose({ streams, carcasses, options, onDone }: Props & { onDone: () =
                 <Field label="Date" error={e.disposed_on}><input type="date" max={today()} className="field" value={form.data.disposed_on} onChange={(x) => form.setData('disposed_on', x.target.value)} /></Field>
                 <Field label="Method" error={e.method}><select className="field" value={form.data.method} onChange={(x) => form.setData('method', x.target.value)}>{Object.entries(options.methods).map(([k, v]) => <option key={k} value={k}>{v}{s?.method === k ? ' (adviser)' : ''}</option>)}</select></Field>
                 {form.data.method !== s?.method ? <Field label="Why a different method" error={e.deviation_reason}><input className="field" value={form.data.deviation_reason} onChange={(x) => form.setData('deviation_reason', x.target.value)} /></Field> : null}
-                {s?.kind === 'carcass' ? <Field label="Dead goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">Choose…</option>{carcasses.map((c) => <option key={c.id} value={c.id}>{c.number} · died {c.died}</option>)}</select></Field> : null}
+                {s?.kind === 'carcass' ? <Field label="Dead goat" error={e.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">Choose…</option>{carcasses.map((c) => <option key={c.id} value={c.id}>{c.number} · died {c.died}</option>)}</GoatSelect></Field> : null}
                 <Field label="Quantity"><input type="number" className="field" value={form.data.qty} onChange={(x) => form.setData('qty', x.target.value)} /></Field>
                 <Field label="Unit"><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{['kg', 'litre', 'count', 'trolley', 'bag'].map((u) => <option key={u} value={u}>{u}</option>)}</select></Field>
                 <Field label="Manifest / receipt no." error={e.evidence_ref}><input className="field" value={form.data.evidence_ref} onChange={(x) => form.setData('evidence_ref', x.target.value)} /></Field>

@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
 import { useFive } from '../lib/useFive';
@@ -42,7 +43,7 @@ function NewReview({ goats, cases, reasons, done }: Props & { done: () => void }
     return (
         <Panel title="Ask for an End-of-Life Review" description="Describe the goat's condition, what has been tried, and why it is suffering. The vet is sent a task.">
             <div className="grid gap-2 sm:grid-cols-3">
-                <Field label="Goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">Choose…</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}</option>)}</select></Field>
+                <Field label="Goat" error={e.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">Choose…</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.number}</option>)}</GoatSelect></Field>
                 <Field label="Reason" error={e.reason}><select className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)}>{Object.entries(reasons).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <Field label="Welfare case" error={e.welfare_case_id}><select className="field" value={form.data.welfare_case_id} onChange={(x) => form.setData('welfare_case_id', x.target.value)}><option value="">None</option>{linked.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select></Field>
             </div>

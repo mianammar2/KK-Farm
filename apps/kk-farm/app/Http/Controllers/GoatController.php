@@ -412,6 +412,19 @@ class GoatController extends Controller
         ]);
     }
 
+    /** D-293: the goat for a typed Tag ID or a scanned RFID chip, for the goat fields of every form. */
+    public function find(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $code = GoatRegistration::normaliseCode((string) $request->query('code', ''));
+        abort_if($code === '', 404);
+        $tag = \App\Models\RfidTag::where('tag_code', $code)->first();
+        $goat = ($tag ? \App\Models\RfidAssignment::with('animal')->where('rfid_tag_id', $tag->id)->whereNull('valid_to')->first()?->animal : null)
+            ?? Animal::whereRaw('upper(farm_number) = ?', [$code])->first();
+        abort_unless($goat, 404);
+
+        return response()->json(['id' => $goat->id, 'number' => $goat->farm_number]);
+    }
+
     public function show(Request $request, Animal $animal): Response
     {
         $animal->load(['breed', 'pen.shed', 'feedingGroup', 'latestWeight', 'photos', 'sire.breed', 'dam.breed', 'sire.sire', 'sire.dam', 'dam.sire', 'dam.dam']);

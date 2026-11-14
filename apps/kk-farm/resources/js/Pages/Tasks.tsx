@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel, Tabs } from '../components/ui';
@@ -129,7 +130,7 @@ function AssignForm({ departments, users, pens, goats, types, priorities, onDone
                     </select>
                 </Field>
                 <div className="grid grid-cols-2 gap-2">
-                    <Field label="Goat (optional)"><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">None</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
+                    <Field label="Goat (optional)"><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">None</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</GoatSelect></Field>
                     <Field label="PEN (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">None</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
                 </div>
                 <Field label="Notes"><textarea rows={2} className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>

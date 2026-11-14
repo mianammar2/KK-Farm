@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import DataGrid from '../components/DataGrid';
@@ -93,7 +94,7 @@ function CandidateRow({ c, pens, options, isLead, limit }: { c: Candidate } & Pr
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, planned_sire_id: d.decision === 'replacement' && d.planned_sire_id ? d.planned_sire_id : null, pen_id: d.pen_id || null, reason: d.reason || null })); form.post(`/genetics/decide/${c.id}`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <Field label="Decision"><select className="field" value={form.data.decision} onChange={(x) => form.setData('decision', x.target.value)}>{Object.entries(options.decisions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     {c.sex === 'female' && form.data.decision === 'replacement' ? (
-                        <Field label="Planned buck" error={e.planned_sire_id} hint={picked ? `Kid inbreeding ${picked.coi}%` : undefined}><select className="field" value={form.data.planned_sire_id} onChange={(x) => form.setData('planned_sire_id', x.target.value)}><option value="">Decide later</option>{c.bucks.map((b) => <option key={b.id} value={b.id}>{b.number} · merit {b.merit ?? '—'} · COI {b.coi}%{b.coi > limit ? ' (over limit)' : ''}</option>)}</select></Field>
+                        <Field label="Planned buck" error={e.planned_sire_id} hint={picked ? `Kid inbreeding ${picked.coi}%` : undefined}><GoatSelect className="field" value={form.data.planned_sire_id} onChange={(x) => form.setData('planned_sire_id', x.target.value)}><option value="">Decide later</option>{c.bucks.map((b) => <option key={b.id} value={b.id}>{b.number} · merit {b.merit ?? '—'} · COI {b.coi}%{b.coi > limit ? ' (over limit)' : ''}</option>)}</GoatSelect></Field>
                     ) : null}
                     <Field label="Move to PEN (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
                     <Field label="Reason" error={e.reason}><input className="field" placeholder="Needed if a check fails" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} /></Field>
@@ -111,8 +112,8 @@ function MatingCheck({ bucks, does, pairing, limit, isLead }: Props) {
         <div className="space-y-3">
             <Panel title="Inbreeding Check" description="Coefficient of inbreeding of the kid, from the farm's pedigree. Unknown parents count as unrelated, so a thin pedigree can hide relatedness.">
                 <div className="flex flex-wrap items-end gap-3 p-4">
-                    <Field label="Doe"><select className="field" value={pair.dam} onChange={(x) => setPair({ ...pair, dam: x.target.value })}>{does.map((d) => <option key={d.id} value={d.id}>{d.number}</option>)}</select></Field>
-                    <Field label="Buck"><select className="field" value={pair.sire} onChange={(x) => setPair({ ...pair, sire: x.target.value })}>{bucks.map((d) => <option key={d.id} value={d.id}>{d.number}</option>)}</select></Field>
+                    <Field label="Doe"><GoatSelect className="field" value={pair.dam} onChange={(x) => setPair({ ...pair, dam: x.target.value })}>{does.map((d) => <option key={d.id} value={d.id}>{d.number}</option>)}</GoatSelect></Field>
+                    <Field label="Buck"><GoatSelect className="field" value={pair.sire} onChange={(x) => setPair({ ...pair, sire: x.target.value })}>{bucks.map((d) => <option key={d.id} value={d.id}>{d.number}</option>)}</GoatSelect></Field>
                     <Button onClick={() => router.get('/genetics', { tab: 'mating', ...pair }, { preserveState: true, preserveScroll: true, only: ['pairing'] })}>Check</Button>
                     {pairing ? <p className={`text-lg font-bold ${pairing.coi > limit ? 'text-crit-700' : 'text-ok-700'}`}>{pairing.coi}% {pairing.coi > limit ? `(above ${limit}%)` : '(within limit)'}</p> : null}
                 </div>

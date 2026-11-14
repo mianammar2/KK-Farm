@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { useConfirm } from '../components/Confirm';
 import { useMemo, useState } from 'react';
 import Chart from '../components/LazyChart';
@@ -78,7 +79,7 @@ export default function Finance({ summary, monthly, categories, entries, categor
                         ) : null}
                         {form.data.direction === 'out' && form.data.payment_status === 'partial' ? <Field label="Paid now (PKR)" error={(form.errors as Record<string, string>).paid_now}><input inputMode="decimal" className="field" value={form.data.paid_now} onChange={(e) => form.setData('paid_now', e.target.value)} /></Field> : null}
                         {form.data.direction === 'in' || form.data.payment_status !== 'pending' ? <Field label={form.data.direction === 'in' ? 'Received into' : 'Paid from'}><select className="field" value={form.data.money_account_id} onChange={(e) => form.setData('money_account_id', e.target.value)}>{moneyAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field> : null}
-                        <Field label="For a goat (optional)"><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}><option value="">Whole farm</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
+                        <Field label="For a goat (optional)"><GoatSelect className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}><option value="">Whole farm</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</GoatSelect></Field>
                         <Field label="Invoice / reference"><input className="field" value={form.data.reference} onChange={(e) => form.setData('reference', e.target.value)} /></Field>
                         <Field label="Date" error={form.errors.occurred_on}><input type="date" className="field" value={form.data.occurred_on} onChange={(e) => form.setData('occurred_on', e.target.value)} /></Field>
                         <Button type="submit" className="w-full" disabled={form.processing}>Save entry</Button>

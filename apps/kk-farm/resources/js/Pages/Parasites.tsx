@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
@@ -67,7 +68,7 @@ function SampleForm({ goats, pens, options, samples, onDone }: Props & { onDone:
                 {form.data.reason === 'retest' ? (
                     <Field label="Retest of" error={e.retest_of_id}><select className="field" value={form.data.retest_of_id} onChange={(x) => { const s = treated.find((t) => String(t.id) === x.target.value); form.setData((d) => ({ ...d, retest_of_id: x.target.value, animal_id: s?.goat?.id ?? '', pen_id: s?.penId ? String(s.penId) : '' })); }}><option value="">Choose…</option>{treated.map((s) => <option key={s.id} value={s.id}>{s.no} · {s.goat?.number ?? s.pen} · {s.epg} EPG</option>)}</select></Field>
                 ) : null}
-                <Field label="Goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">—</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
+                <Field label="Goat" error={e.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">—</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</GoatSelect></Field>
                 <Field label="Or pooled PEN" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">—</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
                 <Field label="Sampled on" error={e.sampled_on}><input type="date" max={today()} className="field" value={form.data.sampled_on} onChange={(x) => form.setData('sampled_on', x.target.value)} /></Field>
                 <Field label="Egg count (EPG)" error={e.epg}><input type="number" min={0} className="field" value={form.data.epg} onChange={(x) => form.setData('epg', x.target.value)} /></Field>

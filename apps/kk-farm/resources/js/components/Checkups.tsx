@@ -1,4 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
+import GoatSelect from './GoatSelect';
 import { CalendarClock, Pencil, Plus, Stethoscope, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { readingWarnings, type Weighing } from '../lib/readings';
@@ -184,7 +185,7 @@ function CheckupForm({ goat, date, data, onDone, existing }: { goat: Goat; date:
                         })() : null}
                     </div>
                     {num('fetuses', 'Fetuses seen', 'count')}
-                    <Field label="Sire (if known)"><select className="field" value={form.data.sire_id} onChange={(x) => form.setData('sire_id', x.target.value)}><option value="">Unknown</option>{data.sires.map((s) => <option key={s.id} value={s.id}>{s.number}</option>)}</select></Field>
+                    <Field label="Sire (if known)"><GoatSelect className="field" value={form.data.sire_id} onChange={(x) => form.setData('sire_id', x.target.value)}><option value="">Unknown</option>{data.sires.map((s) => <option key={s.id} value={s.id}>{s.number}</option>)}</GoatSelect></Field>
                     <p className="text-xs text-manganese-600 sm:col-span-3">She becomes Pregnant in Breeding with an expected kidding date, and the dashboard counts her.</p>
                 </div>
             ) : null}

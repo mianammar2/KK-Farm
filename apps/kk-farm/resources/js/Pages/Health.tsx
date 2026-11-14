@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import DeleteButton from '../components/DeleteButton';
 import { AlertTriangle, ChevronDown, ClipboardPlus, Pill, Plus, Stethoscope, Syringe, X } from 'lucide-react';
 import { useState } from 'react';
@@ -299,7 +300,7 @@ function CaseForm({ goats, severities, report, onDone }: { goats: Option[]; seve
     return (
         <Panel title={report ? `Open a case for ${report.number}` : 'Open a health case'} description={report ? `From the concern "${report.title}" (${report.by})` : 'Vet or administrator'}>
             <form onSubmit={(ev) => { ev.preventDefault(); form.post('/health/cases', { preserveScroll: true, onSuccess: () => { form.reset(); onDone(); } }); }} className="space-y-3">
-                {!report ? <Field label="Goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</select></Field> : null}
+                {!report ? <Field label="Goat" error={e.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</GoatSelect></Field> : null}
                 <Field label="Disease / condition" error={e.condition}><input className="field" value={form.data.condition} onChange={(x) => form.setData('condition', x.target.value)} /></Field>
                 <Field label="Symptoms" error={e.symptoms}><textarea rows={2} className="field" value={form.data.symptoms} onChange={(x) => form.setData('symptoms', x.target.value)} /></Field>
                 <div className="grid grid-cols-2 gap-2">
@@ -319,7 +320,7 @@ function ObservationForm({ goats, onDone }: { goats: Option[]; onDone?: () => vo
     return (
         <Panel title="Report a concern" description="Anyone can report. A veterinarian decides what it is.">
             <form onSubmit={(e) => { e.preventDefault(); form.post('/health/observations', { preserveScroll: true, onSuccess: () => { form.reset('title', 'notes'); onDone?.(); } }); }} className="space-y-3">
-                <Field label="Goat" error={form.errors.animal_id}><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</select></Field>
+                <Field label="Goat" error={form.errors.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</GoatSelect></Field>
                 <Field label="What did you notice?" error={form.errors.title}><input className="field" value={form.data.title} onChange={(e) => form.setData('title', e.target.value)} /></Field>
                 <Field label="How serious?"><select className="field" value={form.data.severity} onChange={(e) => form.setData('severity', e.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></Field>
                 <Button type="submit" className="w-full" disabled={form.processing}>Send to vet</Button>
@@ -334,7 +335,7 @@ function PreventiveForm({ goats, onDone }: { goats: Option[]; onDone?: () => voi
     return (
         <Panel title="Preventive care" description="Vaccines, deworming, routine checks">
             <form onSubmit={(e) => { e.preventDefault(); form.post('/health/clinical', { preserveScroll: true, onSuccess: () => { form.reset('title', 'notes', 'next_due_on'); onDone?.(); } }); }} className="space-y-3">
-                <Field label="Goat"><select className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</select></Field>
+                <Field label="Goat"><GoatSelect className="field" value={form.data.animal_id} onChange={(e) => form.setData('animal_id', e.target.value)}>{goats.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}</GoatSelect></Field>
                 <Field label="Type"><select className="field" value={form.data.kind} onChange={(e) => form.setData('kind', e.target.value)}><option value="vaccination">Vaccination</option><option value="deworming">Deworming</option><option value="examination">Routine examination</option></select></Field>
                 <Field label="Product / finding" error={form.errors.title}><input className="field" value={form.data.title} onChange={(e) => form.setData('title', e.target.value)} /></Field>
                 <Field label="Next due" error={form.errors.next_due_on}><input type="date" className="field" value={form.data.next_due_on} onChange={(e) => form.setData('next_due_on', e.target.value)} /></Field>

@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
 import { BreedBadge } from '../components/GoatBadges';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
@@ -244,7 +245,7 @@ function Selections({ selections, proposable, reasons, canManage }: Props) {
         <div className="space-y-3">
             <Panel title="Propose for Meat" description="A pregnant doe cannot be proposed. Approval makes the goat a finishing candidate.">
                 <form className="grid gap-3 p-4 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.post('/fattening/selections', { preserveScroll: true, onSuccess: () => form.reset() }); }}>
-                    <Field label="Goat" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)} required><option value="">Choose…</option>{proposable.map((a) => <option key={a.id} value={a.id}>{a.number} · {a.sex}{a.purpose ? ` · ${a.purpose}` : ''}</option>)}</select></Field>
+                    <Field label="Goat" error={e.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)} required><option value="">Choose…</option>{proposable.map((a) => <option key={a.id} value={a.id}>{a.number} · {a.sex}{a.purpose ? ` · ${a.purpose}` : ''}</option>)}</GoatSelect></Field>
                     <Field label="Reason" error={e.reason}><select className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)}>{Object.entries(reasons).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Notes" error={e.notes}><input className="field" placeholder="e.g. 3 failed matings" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                     <div className="flex items-end"><Button type="submit" disabled={form.processing}>Propose</Button></div>

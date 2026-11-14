@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import DataGrid from '../components/DataGrid';
@@ -113,7 +114,7 @@ function NewCase({ pick, options, prefill, isLead, done }: Props & { done: () =>
                 <Field label="What was found" error={e.title}><input className="field" value={form.data.title} onChange={(x) => form.setData('title', x.target.value)} placeholder="e.g. Residue positive on lot test" /></Field>
                 <Field label="Severity" error={e.severity} hint="High and critical alert management"><select className="field" value={form.data.severity} onChange={(x) => form.setData('severity', x.target.value)}>{opts(options.severity)}</select></Field>
                 <Field label="Affected" error={e.subject}><select className="field" value={s} onChange={(x) => { form.setData((d) => ({ ...d, subject: x.target.value, containment: '' })); }}>{opts(options.subjects)}</select></Field>
-                {s === 'animal' ? <Field label="Goat" error={e.animal_id}><select className="field font-mono" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">Choose…</option>{pick.goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field> : null}
+                {s === 'animal' ? <Field label="Goat" error={e.animal_id}><GoatSelect className="field font-mono" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">Choose…</option>{pick.goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</GoatSelect></Field> : null}
                 {s === 'milk_lot' ? <Field label="Milk lot" error={e.milk_lot_id}><select className="field font-mono" value={form.data.milk_lot_id} onChange={(x) => form.setData('milk_lot_id', x.target.value)}><option value="">Choose…</option>{pick.lots.map((l) => <option key={l.id} value={l.id}>{l.code} · {l.status}</option>)}</select></Field> : null}
                 {s === 'feed_item' ? <Field label="Feed" error={e.feed_item_id}><select className="field" value={form.data.feed_item_id} onChange={(x) => form.setData('feed_item_id', x.target.value)}><option value="">Choose…</option>{pick.feeds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></Field> : null}
                 {s === 'medicine' ? <>

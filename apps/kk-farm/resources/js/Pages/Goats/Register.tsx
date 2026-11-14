@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import GoatSelect from '../../components/GoatSelect';
 import { Copy, ScanLine, Sparkles, Tag } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
@@ -316,7 +317,13 @@ export default function Register({ registered = [], epc, fields, lookups, classS
                 if (f.key === 'pen_id') {
                     return penInput(f);
                 }
-                return <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{f.required && v === '' ? <option value="">Choose…</option> : optional}{(lookups[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+                {
+                    const opts = <>{f.required && v === '' ? <option value="">Choose…</option> : optional}{(lookups[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</>;
+                    // D-293: the mother and father take a typed Tag ID or an RFID scan too
+                    return f.key === 'sire_id' || f.key === 'dam_id'
+                        ? <GoatSelect className="field" value={v} onChange={(e) => set(f, e.target.value)}>{opts}</GoatSelect>
+                        : <select className="field" value={v} onChange={(e) => set(f, e.target.value)}>{opts}</select>;
+                }
             default:
                 if (f.key === 'tag_id') {
                     // D-041: the Tag ID follows from the breed. Show what it will be; typing overrides it.
@@ -412,10 +419,10 @@ export default function Register({ registered = [], epc, fields, lookups, classS
                 <Panel title="Or put this tag on a goat that is already registered" description="For goats entered before they had an RFID tag" className="mt-6">
                     <form onSubmit={(e) => { e.preventDefault(); assign.post('/scan/assign'); }} className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                         <Field label="Goat without a tag" error={assign.errors.tag ?? assign.errors.animal_id}>
-                            <select className="field" value={assign.data.animal_id} onChange={(e) => assign.setData('animal_id', e.target.value)}>
+                            <GoatSelect className="field" value={assign.data.animal_id} onChange={(e) => assign.setData('animal_id', e.target.value)}>
                                 <option value="">Choose a goat…</option>
                                 {untagged.map((g) => <option key={g.id} value={g.id}>{g.farm_number}{g.name ? ` · ${g.name}` : ''}</option>)}
-                            </select>
+                            </GoatSelect>
                         </Field>
                         <Button type="submit" variant="secondary" disabled={assign.processing || !assign.data.animal_id}>Assign tag</Button>
                     </form>

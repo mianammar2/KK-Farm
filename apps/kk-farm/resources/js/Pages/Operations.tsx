@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import DeleteButton from '../components/DeleteButton';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
@@ -93,7 +94,7 @@ function Incidents({ incidents, pens, goats, options, canResolve, incidentKpi, s
                         <Field label="When" error={e.occurred_at}><input type="datetime-local" max={nowLocal()} className="field" value={form.data.occurred_at} onChange={(x) => form.setData('occurred_at', x.target.value)} /></Field>
                         <Field label="Severity" error={e.severity} hint="High and critical raise a task for the manager"><select className="field" value={form.data.severity} onChange={(x) => form.setData('severity', x.target.value)}>{Object.entries(options.severity).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                         <Field label="PEN (optional)" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">—</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
-                        <Field label="Goat (optional)" error={e.animal_id}><select className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">—</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</select></Field>
+                        <Field label="Goat (optional)" error={e.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">—</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</GoatSelect></Field>
                         <Field label="Description" error={e.description}><input className="field" value={form.data.description} onChange={(x) => form.setData('description', x.target.value)} /></Field>
                         <Field label="Procedure involved (optional)" hint="The SOP version in force is recorded"><select className="field" value={form.data.sop_id} onChange={(x) => form.setData('sop_id', x.target.value)}><option value="">—</option>{sops.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.title}</option>)}</select></Field>
                         {canResolve ? <Field label="Contain now (optional)" error={e.containment} hint="Hold, isolate or recall; overrides normal work"><select className="field" value={form.data.containment} onChange={(x) => form.setData('containment', x.target.value)}><option value="">No</option><option value="hold">Hold</option><option value="isolate">Isolate</option><option value="recall">Recall</option></select></Field> : null}

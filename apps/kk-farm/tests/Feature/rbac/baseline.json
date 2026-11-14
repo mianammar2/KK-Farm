@@ -323,6 +323,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "GET /goats/find": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 403,
+        "finance": 403
+    },
     "GET /goats/register": {
         "ceo": 200,
         "manager": 200,
@@ -1678,6 +1687,15 @@
         "manager": 200,
         "vet": 200,
         "caretaker": 200,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE health.symptom_master  /health?tab=symptoms": {
+        "ceo": 200,
+        "manager": 403,
+        "vet": 200,
+        "caretaker": 403,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403
@@ -3730,6 +3748,24 @@
         "manager": 403,
         "vet": 302,
         "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /health/symptoms": {
+        "ceo": 302,
+        "manager": 403,
+        "vet": 302,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /health/symptoms/{symptom}": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
         "feeding": 403,
         "cleaning": 403,
         "finance": 403

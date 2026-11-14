@@ -1,4 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
+import GoatSelect from './GoatSelect';
 import { useState } from 'react';
 import { BreedBadge } from './GoatBadges';
 import { Button, Chip, Empty, Field, LibIcon, Panel } from './ui';
@@ -65,7 +66,7 @@ function CareForm({ kid, kind, options, does, onDone }: { kid: KidRow; kind: str
                 {feed ? <Field label="Amount (ml)" error={e.amount_ml}><input type="number" min={5} className="field" value={form.data.amount_ml} onChange={(x) => form.setData('amount_ml', x.target.value)} /></Field> : null}
                 {feed ? <Field label="Source" error={e.source}><select className="field" value={form.data.source} onChange={(x) => form.setData('source', x.target.value)}>{Object.entries(options.sources).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field> : null}
                 {kind === 'nursing_check' ? <Field label="Suckling" error={e.suckling}><select className="field" value={form.data.suckling} onChange={(x) => form.setData('suckling', x.target.value)}>{Object.entries(options.suckling).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field> : null}
-                {kind === 'fostered' ? <Field label="Foster doe" error={e.foster_dam_id}><select className="field" value={form.data.foster_dam_id} onChange={(x) => form.setData('foster_dam_id', x.target.value)}><option value="">Choose…</option>{does.filter((d) => d.id !== kid.damId).map((d) => <option key={d.id} value={d.id}>{d.farm_number}</option>)}</select></Field> : null}
+                {kind === 'fostered' ? <Field label="Foster doe" error={e.foster_dam_id}><GoatSelect className="field" value={form.data.foster_dam_id} onChange={(x) => form.setData('foster_dam_id', x.target.value)}><option value="">Choose…</option>{does.filter((d) => d.id !== kid.damId).map((d) => <option key={d.id} value={d.id}>{d.farm_number}</option>)}</GoatSelect></Field> : null}
                 <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                 <div className="flex gap-2 sm:col-span-3"><Button type="submit" disabled={form.processing}>Save</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
             </form>

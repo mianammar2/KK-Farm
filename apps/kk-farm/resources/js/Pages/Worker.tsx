@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import GoatSelect from '../components/GoatSelect';
 import { ArrowLeftRight, ClipboardCheck, Ruler, Smile, Flame, HeartPulse, Milk, Radio, ScanSearch, Scale, Square, Syringe, Thermometer, Venus, Wheat } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { EarTag, GoatFigure } from '../components/FarmScene';
@@ -124,7 +125,7 @@ function Setup({ job, pens, options, onBack }: { job: Job; pens: Props['pens']; 
                 <Field label="Reason" error={e.reason}><input className={big} list="w-reasons" required value={f.data.reason} onChange={(x) => f.setData('reason', x.target.value)} placeholder="Why are they moved?" /><datalist id="w-reasons">{['Weaning', 'Breeding group', 'Pregnant does group', 'Kidding / maternity', 'Sick: isolation', 'Back from isolation', 'Feeding group change', 'Fattening batch', 'Sale preparation', 'PEN cleaning or repair', 'Overcrowding'].map((r) => <option key={r} value={r} />)}</datalist></Field>
             </> : null}
             {job === 'mating' ? <>
-                <Field label="Buck" error={e.sire_id} hint="Leave empty if the buck is not known (pasture)"><select className={big} value={f.data.sire_id} onChange={(x) => f.setData('sire_id', x.target.value)}><option value="">Not known</option>{options.bucks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
+                <Field label="Buck" error={e.sire_id} hint="Leave empty if the buck is not known (pasture)"><GoatSelect className={big} value={f.data.sire_id} onChange={(x) => f.setData('sire_id', x.target.value)}><option value="">Not known</option>{options.bucks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</GoatSelect></Field>
                 <Field label="Method" error={e.method}><select className={big} value={f.data.method} onChange={(x) => f.setData('method', x.target.value)}>{Object.entries(options.methods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             </> : null}
             {job === 'milk' ? (
