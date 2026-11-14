@@ -139,7 +139,7 @@ Route::middleware('auth')->group(function (): void {
         $bb = \App\Http\Controllers\BirthToBreederController::class;
         Route::get('/growth', [$bb, 'index']);
         Route::get('/weights/review', [\App\Http\Controllers\WeightReviewController::class, 'index']); // D-208
-        Route::post('/weights/review/{record}', [\App\Http\Controllers\WeightReviewController::class, 'decide'])->where('record', '[0-9]+'); // D-264 F-26: a malformed number is a 404, not a 500
+        Route::post('/weights/review/{record}', [\App\Http\Controllers\WeightReviewController::class, 'decide'])->where('record', '[0-9]+'); // D-266 F-26: a malformed number is a 404, not a 500
         Route::post('/growth/{animal}/intervene', [$bb, 'intervene']);
         Route::post('/growth/interventions/{intervention}/follow-up', [$bb, 'followUp']);
         Route::post('/growth/{animal}/select', [$bb, 'select']);

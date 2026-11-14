@@ -43,7 +43,7 @@ class EndOfLifeController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->passes('request_end_of_life'), 403, 'Only the vet or the farm manager asks for a humane end-of-life review.'); // D-264 F-04
+        abort_unless($request->user()->passes('request_end_of_life'), 403, 'Only the vet or the farm manager asks for a humane end-of-life review.'); // D-266 F-04
         $data = $request->validate(['animal_id' => ['required', 'uuid', 'exists:animals,id'], 'welfare_case_id' => ['nullable', 'exists:welfare_cases,id'],
             'reason' => ['required', Rule::in(array_keys(EndOfLifeReview::REASONS))], 'details' => ['required', 'string', 'min:10', 'max:1000']], [], ['animal_id' => 'goat']);
         $a = Animal::findOrFail($data['animal_id']);
@@ -61,7 +61,7 @@ class EndOfLifeController extends Controller
 
     public function assess(Request $request, EndOfLifeReview $review): RedirectResponse
     {
-        abort_unless($request->user()->passes('clinical'), 403, 'Only the vet assesses.'); // D-264 F-16: the vet-locked action, so a person the administrator grants it can act
+        abort_unless($request->user()->passes('clinical'), 403, 'Only the vet assesses.'); // D-266 F-16: the vet-locked action, so a person the administrator grants it can act
         abort_unless($review->status === 'requested', 422, 'Already assessed.');
         $data = $request->validate(['recommends' => ['required', 'boolean'], 'assessment' => ['required', 'string', 'min:10', 'max:1000']]);
         $review->update(['vet_recommends' => $data['recommends'], 'vet_assessment' => $data['assessment'], 'vet_by' => $request->user()->name, 'vet_at' => now(), 'status' => $data['recommends'] ? 'assessed' : 'declined']);
@@ -87,7 +87,7 @@ class EndOfLifeController extends Controller
     public function perform(Request $request, EndOfLifeReview $review): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->passes('clinical'), 403, 'Only the vet performs humane euthanasia.'); // D-264 F-16
+        abort_unless($user->passes('clinical'), 403, 'Only the vet performs humane euthanasia.'); // D-266 F-16
         abort_unless($review->status === 'approved', 422, 'It must be authorised first.');
         $data = $request->validate(['method' => ['required', 'string', 'max:200'], 'disposition' => ['required', 'string', 'max:120']]);
         DB::transaction(function () use ($review, $data, $user) {

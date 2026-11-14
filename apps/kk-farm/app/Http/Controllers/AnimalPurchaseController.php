@@ -93,7 +93,7 @@ class AnimalPurchaseController extends Controller
     /** Goat purchase request (market lot or breeder), waiting for approval. */
     public function request(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->passes('request_goat_purchase'), 403, 'Only the Administrator and the farm manager raise a goat purchase.'); // D-264 F-06
+        abort_unless($request->user()->passes('request_goat_purchase'), 403, 'Only the Administrator and the farm manager raise a goat purchase.'); // D-266 F-06
         $data = $request->validate([
             'supplier_id' => ['nullable', 'exists:suppliers,id'], 'source' => ['required', 'string', 'max:120'], 'purpose' => ['nullable', 'string', 'max:160'],
             'expected_head' => ['required', 'integer', 'between:1,2000'], 'budget' => ['required', 'numeric', 'min:1', 'max:1000000000'],

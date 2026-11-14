@@ -56,7 +56,7 @@ class ReproLossTest extends TestCase
         $this->actingAs($manager)->post('/breeding/matings', ['dam_id' => $does['L-1']->id, 'sire_id' => $buck->id, 'mated_on' => now()->toDateString(), 'method' => 'natural'])->assertSessionHasErrors('dam_id');
 
         // Containment: isolate. Material: only the vet or trained staff, with protection.
-        $this->actingAs($vet)->post("/repro-loss/{$case->id}/contain", ['pen_id' => $iso->id])->assertSessionHasNoErrors(); // D-264 F-05: containment is for the vet or trained staff
+        $this->actingAs($vet)->post("/repro-loss/{$case->id}/contain", ['pen_id' => $iso->id])->assertSessionHasNoErrors(); // D-266 F-05: containment is for the vet or trained staff
         $this->assertSame($iso->id, $does['L-1']->fresh()->pen_id);
         $this->actingAs($care)->post("/repro-loss/{$case->id}/material", ['ppe_used' => true, 'note' => 'x'])->assertForbidden();
         $this->actingAs($care)->post("/repro-loss/{$case->id}/sample", ['samples' => 'x', 'lab' => 'x', 'sampled_on' => now()->toDateString()])->assertForbidden();

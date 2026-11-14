@@ -74,7 +74,7 @@ class Access
     public static function module(User $u, string $module): bool
     {
         if ($module === 'settings') {
-            return $u->role === 'ceo'; // D-264 F-08: Settings is the Administrator's alone, even when ticked for a person or role
+            return $u->role === 'ceo'; // D-266 F-08: Settings is the Administrator's alone, even when ticked for a person or role
         }
         $own = $u->module_access[$module] ?? null;
         if ($own !== null) {

@@ -58,7 +58,7 @@ class PurchaseToQuarantineTest extends TestCase
     {
         $this->as('manager')->post('/purchase/animals', ['source' => 'Shahpur market', 'expected_head' => $head, 'budget' => 300000])->assertSessionHasNoErrors();
         $lot = AnimalPurchaseLot::latest('id')->first();
-        $this->as('ceo')->post("/purchase/animals/{$lot->id}/decide", ['approve' => true])->assertSessionHasNoErrors(); // D-264: the manager raises it, the Administrator approves
+        $this->as('ceo')->post("/purchase/animals/{$lot->id}/decide", ['approve' => true])->assertSessionHasNoErrors(); // D-266: the manager raises it, the Administrator approves
 
         return $lot->fresh();
     }

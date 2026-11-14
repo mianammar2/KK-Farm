@@ -18,7 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * D-264 hotfix: regression tests for the Phase 1 findings F-02, F-03, F-04, F-05, F-06, F-08, F-16, F-26, F-27.
+ * D-266 hotfix: regression tests for the Phase 1 findings F-02, F-03, F-04, F-05, F-06, F-08, F-16, F-26, F-27.
  * Each test asserts the spec (KK_FARMS_RBAC.md §8.3, §5) for the role that must be refused, and that the role
  * that must be allowed is not refused. Written before the fixes: they fail on the D-261 code.
  */

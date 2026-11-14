@@ -53,7 +53,7 @@ class HrController extends Controller
 
     public function mark(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->passes('manage_staff'), 403, 'Only the Administrator and the Farm Manager record attendance.'); // D-264 F-03
+        abort_unless($request->user()->passes('manage_staff'), 403, 'Only the Administrator and the Farm Manager record attendance.'); // D-266 F-03
         $data = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'], 'work_on' => ['required', 'date', 'before_or_equal:today'],
             'status' => ['required', Rule::in(array_keys(Attendance::STATUS))], 'check_in' => ['nullable', 'date_format:H:i'], 'check_out' => ['nullable', 'date_format:H:i', 'after:check_in'],
@@ -67,7 +67,7 @@ class HrController extends Controller
     /** Everyone not marked yet on that day is marked present (one tap at the start of the shift). */
     public function allPresent(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->passes('manage_staff'), 403, 'Only the Administrator and the Farm Manager record attendance.'); // D-264 F-03
+        abort_unless($request->user()->passes('manage_staff'), 403, 'Only the Administrator and the Farm Manager record attendance.'); // D-266 F-03
         $data = $request->validate(['work_on' => ['required', 'date', 'before_or_equal:today']]);
         $onLeave = LeaveRequest::where('status', 'approved')->where('from_on', '<=', $data['work_on'])->where('to_on', '>=', $data['work_on'])->pluck('employee_id')->flip();
         DB::transaction(function () use ($data, $onLeave, $request) {
@@ -84,7 +84,7 @@ class HrController extends Controller
 
     public function requestLeave(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->passes('manage_staff'), 403, 'Only the Administrator and the Farm Manager record leave.'); // D-264 F-03
+        abort_unless($request->user()->passes('manage_staff'), 403, 'Only the Administrator and the Farm Manager record leave.'); // D-266 F-03
         $data = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'], 'from_on' => ['required', 'date'], 'to_on' => ['required', 'date', 'after_or_equal:from_on'],
             'kind' => ['required', Rule::in(array_keys(LeaveRequest::KINDS))], 'reason' => ['nullable', 'string', 'max:500'],
