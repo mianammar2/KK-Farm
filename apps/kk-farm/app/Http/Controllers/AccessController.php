@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\Access;
+use App\Support\AccessChanges;
 use App\Support\Farm;
 use App\Support\Pages;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +56,7 @@ class AccessController extends Controller
     }
 
     /** D-243: save the page ticks per role. Only differences from the default are stored; every change is logged. */
-    private function savePages(Request $request, array $pages): int
+    private function savePages(Request $request, array $pages, string $batch): int
     {
         $org = $request->user()->org_id;
         $roles = array_keys(config('kkfarm.roles'));
@@ -77,6 +78,7 @@ class AccessController extends Controller
                     ? DB::table('role_page_access')->where('role', $role)->where('page_key', $key)->delete()
                     : DB::table('role_page_access')->updateOrInsert(['org_id' => $org, 'role' => $role, 'page_key' => $key], ['allowed' => $new, 'updated_at' => now(), 'created_at' => now()]);
                 Farm::log($request->user(), 'Page access: '.config("kkfarm.roles.$role")." · {$r['label']}: ".($old ? 'open' : 'closed').' → '.($new ? 'open' : 'closed'), '/settings/access', 'security');
+                AccessChanges::record($batch, $request->user(), 'role_page', $role, config("kkfarm.roles.$role"), $key, $r['label'], $old, $new); // D-266
                 $changed++;
             }
         }
@@ -98,12 +100,23 @@ class AccessController extends Controller
 
             return $out;
         };
+        $batch = AccessChanges::batch(); // D-266: one save, one batch in the history
+        $beforeModules = Access::roleModules($request->user()->org_id);
+        $beforeGates = Access::roleGates($request->user()->org_id);
         $modules = $clean($data['modules'], array_keys(config('kkfarm.modules')));
         $modules['settings'] = array_values(array_unique([...$modules['settings'], 'ceo']));
         $gates = array_diff_key($clean($data['gates'], array_keys(config('kkfarm.gates'))), array_flip(Access::PROTECTED_GATES));
+        foreach ($roles as $role) {
+            foreach ($modules as $m => $list) {
+                AccessChanges::record($batch, $request->user(), 'role_module', $role, config("kkfarm.roles.$role"), $m, Access::MODULE_LABELS[$m] ?? $m, in_array($role, $beforeModules[$m] ?? [], true), in_array($role, $list, true));
+            }
+            foreach ($gates as $g => $list) {
+                AccessChanges::record($batch, $request->user(), 'role_gate', $role, config("kkfarm.roles.$role"), $g, Access::labels()[$g] ?? $g, in_array($role, $beforeGates[$g] ?? [], true), in_array($role, $list, true));
+            }
+        }
         Organization::whereKey($request->user()->org_id)->update(['role_modules' => json_encode($modules), 'role_gates' => json_encode($gates)]);
         Tenant::flush();
-        $this->savePages($request, $data['pages'] ?? []);
+        $this->savePages($request, $data['pages'] ?? [], $batch);
         Farm::log($request->user(), 'Changed access rights by role', '/settings/access');
 
         return back()->with('success', 'Access rights saved. Users without their own ticks follow these at once.');
@@ -146,6 +159,13 @@ class AccessController extends Controller
             unset($modules['settings']);
         }
         $gates = $keep($data['gates'] ?? [], array_keys(config('kkfarm.gates'))); // D-241: vet-locked actions too, per person, by the administrator only
+        $batch = AccessChanges::batch(); // D-266
+        foreach (array_unique([...array_keys($u->module_access ?? []), ...array_keys($modules)]) as $k) {
+            AccessChanges::record($batch, $request->user(), 'user_module', (string) $u->id, $u->name, $k, Access::MODULE_LABELS[$k] ?? $k, ($u->module_access ?? [])[$k] ?? null, $modules[$k] ?? null);
+        }
+        foreach (array_unique([...array_keys($u->gate_access ?? []), ...array_keys($gates)]) as $k) {
+            AccessChanges::record($batch, $request->user(), 'user_gate', (string) $u->id, $u->name, $k, Access::labels()[$k] ?? $k, ($u->gate_access ?? [])[$k] ?? null, $gates[$k] ?? null);
+        }
         $u->forceFill(['module_access' => $modules ?: null, 'gate_access' => $gates ?: null])->save();
         // D-243: the person's own page ticks (null = follow the role); locked Administrator pages never change
         foreach ($data['pages'] ?? [] as $key => $value) {
@@ -162,6 +182,7 @@ class AccessController extends Controller
                 ? DB::table('user_page_access')->where('user_id', $u->id)->where('page_key', $key)->delete()
                 : DB::table('user_page_access')->updateOrInsert(['org_id' => $u->org_id, 'user_id' => $u->id, 'page_key' => $key], ['allowed' => $new, 'updated_at' => now(), 'created_at' => now()]);
             Farm::log($request->user(), "Page access: {$u->name} · {$r['label']}: ".($old === null ? 'from role' : ($old ? 'given' : 'refused')).' → '.($new === null ? 'from role' : ($new ? 'given' : 'refused')), "/settings/users/{$u->id}", 'security');
+            AccessChanges::record($batch, $request->user(), 'user_page', (string) $u->id, $u->name, $key, $r['label'], $old, $new); // D-266
         }
         Tenant::flush();
         Farm::log($request->user(), "Changed access rights of {$u->name}", "/settings/users/{$u->id}");

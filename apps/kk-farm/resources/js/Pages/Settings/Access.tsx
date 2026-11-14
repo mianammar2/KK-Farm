@@ -91,7 +91,7 @@ export default function Access(p: Props) {
         <>
             <Head title="Access Rights by Role" />
             <PageHeader title="Access Rights by Role" description="The master setting: tick what each role can open and do. Expand an app to tick its pages one by one. A person follows their role unless you tick or untick something for them on their own page (Users → the person)."
-                actions={<><Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link><Link href="/settings/users"><Button variant="secondary">Users</Button></Link></>} />
+                actions={<><Link href="/settings"><Button variant="secondary"><ArrowLeft size={16} aria-hidden /> Settings</Button></Link><Link href="/settings/users"><Button variant="secondary">Users</Button></Link><Link href="/settings/access/tools"><Button variant="secondary">History, Why? and health</Button></Link></>} />
             {p.overrides.length ? <p className="mb-3 text-sm text-ink-soft">Own ticks on top of their role: {p.overrides.map((o, i) => <span key={o.id}>{i ? ', ' : ''}<Link href={`/settings/users/${o.id}`} className="font-semibold text-cobalt-800 hover:underline">{o.name}</Link> ({o.count})</span>)}</p> : null}
             <div className="space-y-4">
                 <Panel flush title="Apps and areas" description="Opening an app, and inside it each page (expand the row). A page needs its app: without the app its boxes are off and grey. Ticking an app gives the role its default pages. The owner always keeps Settings."

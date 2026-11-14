@@ -638,6 +638,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "GET /settings/access/tools": {
+        "ceo": 200,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "GET /settings/automation": {
         "ceo": 200,
         "manager": 403,
@@ -4492,6 +4501,15 @@
     },
     "POST /settings/access": {
         "ceo": 302,
+        "manager": 403,
+        "vet": 403,
+        "caretaker": 403,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /settings/access/history/{batch}/rollback": {
+        "ceo": 404,
         "manager": 403,
         "vet": 403,
         "caretaker": 403,

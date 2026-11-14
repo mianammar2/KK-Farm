@@ -1,6 +1,6 @@
 # D-266: RBAC Phase 2 (fixes from the D-261 audit)
 
-Status: slices 1 and 2 built; slice 1 is live, slice 2 is **not deployed** (awaiting review). Step 5 (levels and scopes, field and notification registries, the Access Rights panel) has not started.
+Status: slices 1 and 2 built; slice 1 is live, slice 2 is **not deployed** (awaiting review). Slice 3 (Access Tools) is built, not deployed. The rest of step 5 (levels and scopes, field and notification registries, scope data, the other panel features) has not started.
 
 ## Slice 1 (live since 2026-11-14)
 F-02 books (`manage_books`: Administrator, Finance) · F-03 staff, attendance, leave (`manage_staff`: Administrator, Manager) · F-04 end-of-life request (`request_end_of_life`: Administrator, Manager, Vet; Q8) · F-05 contain a pregnancy loss (vet or trained staff) · F-06 goat purchase request (`request_goat_purchase`: Administrator, Manager) · F-08 Settings is the Administrator's alone · F-16 vet steps follow `clinical` · F-26 malformed weight-review id is 404 · F-27 module check runs before record lookup · F-28 deploy excludes `storage/inertia-devtools/`.
@@ -28,3 +28,9 @@ Caretaker no longer requests an end-of-life review, contains a loss untrained, r
 
 ## Still hard-coded (the panel cannot change these yet)
 About 40 actions still check a list of role names inside the controller (for example `in_array($request->user()->role, ['ceo', 'vet'])` on antimicrobials, feed lot limits, intake settings, heat-stress limit). The registry rows say `inline` for them. Replacing each with an action is part of step 5.
+
+## Slice 3: Access Tools (`/settings/access/tools`, Administrator only; linked from Access Rights)
+- **History and undo.** Table `access_changes` (migration `2026_11_15_000100`, row-level security like every farm table). Every save on Access Rights by Role and on a person's Access rights writes one row per changed app, action or page: who, when, which role or person, old, new. A save is one batch. **Undo** puts a batch back and writes its own rows (the history only grows). Vet-locked actions and Settings are never touched by an undo. Class `App\Support\AccessChanges`.
+- **Why?** Pick a person and an app, action or page: the steps are listed in the order they are applied (own tick, role setting, built-in default, locks, the app being off) and the one that decides is marked. The final answer is read from the real resolver, and a test checks that for 18 combinations. Class `App\Support\AccessTrace`.
+- **Health checks.** Active Administrators (warns on one), people with no valid role, accounts that never signed in, vet-locked rights held by one person, page ticks older than 90 days (ticks for apps and actions carry no date, so those are not covered), people who differ from their role, apps no role can open, roles that open nothing, write routes with no rule, and the count of actions still decided by role names in the code.
+- **Tests:** `AccessToolsTest` (5). **Not checked in a browser.** Not covered by a test: the History screen's Undo button and confirm box.
