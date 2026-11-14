@@ -358,8 +358,8 @@ function Drawer({ user, isNew, p, onClose, lock, onStatus }: { user: U | null; i
     const tabs = isNew ? [['profile', T.profile]] : [['profile', T.profile], ['access', T.access], ['security', T.security], ['activity', T.activity]];
 
     return (
-        <div className="fixed inset-0 z-50 flex justify-end bg-cobalt-950/40" onClick={close}>
-            <aside role="dialog" aria-modal="true" aria-labelledby="drawer-title" className="kk-rise flex h-full w-full flex-col bg-glaze shadow-float sm:w-[34rem]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-cobalt-950/45 p-3 sm:p-6" onClick={close}>{/* D-306: a centred pop card */}
+            <aside role="dialog" aria-modal="true" aria-labelledby="drawer-title" className="kk-rise flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-glaze shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <header className="flex items-center gap-3 border-b border-rule bg-tile px-4 py-3">
                     {user ? <Avatar name={user.name} role={user.role} size={44} /> : <span className="grid size-11 place-items-center rounded-full bg-cobalt-100 text-cobalt-800"><Plus size={20} aria-hidden /></span>}
                     <div className="min-w-0 flex-1">
