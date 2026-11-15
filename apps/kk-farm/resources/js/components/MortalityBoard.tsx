@@ -31,7 +31,7 @@ export default function MortalityBoard({ m }: { m: MortalitySummary }) {
     const most = Math.max(1, ...m.byReason.map((b) => b.count));
     return (
         <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-2.5">
                 {tiles.map((t) => (
                     <button key={t.label} type="button" onClick={() => setPick(t.pick)} className="kk-sign kk-rise kk-lift text-start">
                         <span className="kk-icon-tile" aria-hidden><LibIcon name={t.art} size={36} className="bg-transparent" /></span>
@@ -49,11 +49,11 @@ export default function MortalityBoard({ m }: { m: MortalitySummary }) {
                         <li key={`${b.kind}|${b.reason}`}>
                             <button type="button" onClick={() => setPick({ title: `${b.kind}: ${b.reason}`, keep: (r) => r.status === 'Recorded' && r.kind === b.kind && r.reason === b.reason })}
                                 className="flex w-full items-center gap-3 rounded-md px-1.5 py-1 text-start text-sm hover:bg-tile">
-                                <span className={`w-20 shrink-0 text-xs font-semibold ${b.kind === 'Death' ? 'text-crit-700' : 'text-[#8a5a12]'}`}>{b.kind}</span>
-                                <span className="w-40 shrink-0 truncate font-semibold text-ink sm:w-56" title={b.reason}>{b.reason}</span>
-                                <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-rule/60"><span className={`block h-full rounded-full ${b.kind === 'Death' ? 'bg-crit-500' : 'bg-[#d9a441]'}`} style={{ width: `${(b.count / most) * 100}%` }} /></span>
-                                <span className="w-8 text-end font-bold tabular-nums">{b.count}</span>
-                                <span className="w-14 text-end text-xs font-semibold tabular-nums text-ink-soft">{pct(b.count, m.ever)}</span>
+                                <span className={`w-16 shrink-0 text-xs font-semibold ${b.kind === 'Death' ? 'text-crit-700' : 'text-[#8a5a12]'}`}>{b.kind}</span>
+                                <span className="min-w-0 flex-1 truncate font-semibold text-ink" title={b.reason}>{b.reason}</span>
+                                <span className="hidden h-2.5 w-1/3 shrink-0 overflow-hidden rounded-full bg-rule/60 sm:block"><span className={`block h-full rounded-full ${b.kind === 'Death' ? 'bg-crit-500' : 'bg-[#d9a441]'}`} style={{ width: `${(b.count / most) * 100}%` }} /></span>
+                                <span className="w-8 shrink-0 text-end font-bold tabular-nums">{b.count}</span>
+                                <span className="w-12 shrink-0 text-end text-xs font-semibold tabular-nums text-ink-soft">{pct(b.count, m.ever)}</span>
                             </button>
                         </li>
                     ))}
