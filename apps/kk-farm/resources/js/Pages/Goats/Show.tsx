@@ -52,7 +52,7 @@ type Props = {
     milking: Milking | null;
     healthEntry: (CheckupData & { conditions: string[]; severities: Record<string, string> }) | null;
 };
-type Pregnancy = {
+type Pregnancy = { ended?: { on: string; how: string } | null;
     matingId: number; matedOnIso: string; matedOn: string; expected: string | null; sire: string | null; day: number; gestation: number; daysLeft: number | null; alertDays: number;
     checks: Array<{ on: string; day: number; weight: number | null; temp: number | null; ultrasound: string | null; fetuses: number | null; by: string }>;
     weights: Array<{ day: number; kg: number; on: string }>;
@@ -510,10 +510,11 @@ function PregnancyPanel({ p }: { p: Pregnancy }) {
         xAxis: { type: 'value', name: 'Day', min: 0, max: p.gestation, splitLine: { show: false }, axisLabel: { color: '#5e6a5f' } },
         yAxis: { ...axis.value((v) => `${v} KG`), min: 0 }, // D-105: weight graphs start at 0 KG
         series: [{ type: 'line', data: p.weights.map((w) => [w.day, w.kg]), symbolSize: 8, lineStyle: { width: 2.5, color: '#7a3e8f' }, itemStyle: { color: '#7a3e8f' },
-            markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#e0a526' }, data: [{ xAxis: p.day }], label: { formatter: 'today' } } }],
+            markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#e0a526' }, data: [{ xAxis: p.day }], label: { formatter: p.ended ? 'left' : 'today' } } }],
     } : null), [p]);
     return (
-        <Panel title={`Pregnant · day ${p.day} of ${p.gestation}`} description={`Mated ${p.matedOn}${p.sire ? ` with ${p.sire}` : ''} · kidding about ${p.expected ?? '—'}${p.daysLeft !== null ? ` (${p.daysLeft} days)` : ''}`}>
+        <Panel title={p.ended ? `Pregnancy ended at day ${p.day} of ${p.gestation}` : `Pregnant · day ${p.day} of ${p.gestation}`}
+            description={p.ended ? `${p.ended.how} on ${p.ended.on} · mated ${p.matedOn}${p.sire ? ` with ${p.sire}` : ''}` : `Mated ${p.matedOn}${p.sire ? ` with ${p.sire}` : ''} · kidding about ${p.expected ?? '—'}${p.daysLeft !== null ? ` (${p.daysLeft} days)` : ''}`}>{/* D-327 */}
             {/* D-103: from 10 days before the expected kidding */}
             {p.daysLeft !== null && p.daysLeft <= p.alertDays ? (
                 <div role="alert" className={cx('mb-3 flex items-start gap-2 rounded-tile border px-3 py-2 text-sm font-semibold', p.daysLeft <= 3 ? 'border-crit-500 bg-crit-100 text-crit-700' : 'border-watch-400 bg-watch-100 text-watch-700')}>
@@ -522,7 +523,7 @@ function PregnancyPanel({ p }: { p: Pregnancy }) {
                 </div>
             ) : null}
             <div className="h-2.5 overflow-hidden rounded-full bg-manganese-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Pregnancy progress">
-                <div className="h-full rounded-full bg-manganese-600" style={{ width: `${pct}%` }} />
+                <div className={cx('h-full rounded-full', p.ended ? 'bg-ink-faint' : 'bg-manganese-600')} style={{ width: `${pct}%` }} />
             </div>
             {chart ? <div className="mt-3"><Chart option={chart} label="Weight by day of pregnancy" height={160} /></div> : null}
             {p.checks.length ? (

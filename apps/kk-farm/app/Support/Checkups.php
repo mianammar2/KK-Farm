@@ -130,14 +130,17 @@ final class Checkups
             return null;
         }
         $gestation = (int) (Tenant::org()?->gestation_days ?? 150);
+        // D-327: a doe that left the farm: the pregnancy ended on the exit day (no days left, no kidding alert)
+        $endedOn = $doe->status !== 'active' ? ($doe->exit_date ?? now())->copy()->startOfDay() : null;
+        $ended = $endedOn ? ['on' => $endedOn->format('d/m/Y'), 'how' => \App\Models\AnimalMovement::TYPES[array_search($doe->exit_reason, \App\Support\Movements::TYPE_TO_REASON, true) ?: 'other'][0] ?? 'Left the farm'] : null;
         $checks = HealthCheckup::where('animal_id', $doe->id)->where('checked_on', '>=', $m->mated_on)->orderBy('checked_on')->orderBy('id')->get();
         $weights = WeightRecord::where('animal_id', $doe->id)->where('measured_on', '>=', $m->mated_on)->orderBy('measured_on')->get();
 
         return [
             'matingId' => $m->id, 'matedOnIso' => $m->mated_on->toDateString(), // D-161: record the outcome from the goat page
             'matedOn' => $m->mated_on->format('d/m/Y'), 'expected' => $m->expected_kidding_on?->format('d/m/Y'), 'sire' => $m->sire?->farm_number,
-            'day' => (int) $m->mated_on->diffInDays(now()->startOfDay()), 'gestation' => $gestation,
-            'daysLeft' => $m->expected_kidding_on ? (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false) : null,
+            'day' => (int) $m->mated_on->diffInDays($endedOn ?? now()->startOfDay()), 'gestation' => $gestation, 'ended' => $ended,
+            'daysLeft' => $m->expected_kidding_on && ! $endedOn ? (int) now()->startOfDay()->diffInDays($m->expected_kidding_on, false) : null,
             'alertDays' => (int) (Tenant::org()?->kidding_alert_days ?: 10), // D-103
             'checks' => $checks->map(fn (HealthCheckup $c) => [
                 'on' => $c->checked_on->format('d/m/Y'), 'day' => (int) $m->mated_on->diffInDays($c->checked_on), 'weight' => $c->weight_kg, 'temp' => $c->temperature_f,

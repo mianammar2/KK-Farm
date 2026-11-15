@@ -352,4 +352,14 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('ceo'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('records', fn ($recs) => collect($recs)->contains(fn ($x) => $x['result'] === 'Slaughtered'
             && in_array('Exit: Slaughter', $x['actions'], true) && str_contains(implode(' ', $x['care']), 'Injury or accident'))));
     }
+
+    /** D-327: a pregnant doe that left the farm: the goat page's pregnancy ends on the exit day, with no days left. */
+    public function test_a_pregnancy_ends_when_the_doe_leaves(): void
+    {
+        $this->goat->update(['sex' => 'female']);
+        \App\Models\Mating::create(['dam_id' => $this->goat->id, 'mated_on' => now()->subDays(80)->toDateString(), 'expected_kidding_on' => now()->addDays(70)->toDateString(), 'method' => 'natural', 'status' => 'pregnant', 'recorded_by' => 'x']);
+        $this->goat->update(['status' => 'left_farm', 'exit_reason' => 'slaughtered', 'exit_date' => now()->subDays(10)->toDateString()]);
+        $t = \App\Support\Checkups::pregnancyThread($this->goat->fresh());
+        $this->assertSame([70, null, 'Slaughter'], [$t['day'], $t['daysLeft'], $t['ended']['how']]);
+    }
 }
