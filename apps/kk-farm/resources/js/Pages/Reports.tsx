@@ -1,6 +1,7 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Download } from 'lucide-react';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import ReportPop, { type Drill } from '../components/ReportPop';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
 import { Button, PageHeader, Panel, pkr, Stat, StatRow } from '../components/ui';
@@ -19,9 +20,14 @@ type Props = {
 };
 
 /** D-273: every report table is a spreadsheet (sort, filter, totals, export). */
-// D-321: every figure opens the goats (or records) behind it
-const goats = (q: Record<string, string>) => `/goats?${new URLSearchParams(q).toString()}`;
-const to = (href: string, text: ReactNode) => <Link href={href} className="text-cobalt-800 hover:underline">{text}</Link>;
+// D-321/D-322: every figure opens what is behind it, in a pop card on this page (no jump to another app)
+let opener: (d: Drill) => void = () => undefined;
+type Q = Record<string, string>;
+const goats = (q: Q): Q => ({ what: 'goats', ...q });
+const to = (q: Q, text: ReactNode, title?: string) => <button type="button" onClick={() => opener({ q, title: title ?? titleOf(q) })} className="text-cobalt-800 hover:underline">{text}</button>;
+const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+const titleOf = (q: Q) => q.what === 'kiddings' ? 'Kiddings' : q.what === 'spending' ? `Spending: ${q.category}` : q.what === 'offspring' ? 'Kids sired'
+    : [q.breed, q.sex ? `${cap(q.sex)}s` : null, q.stage ? (q.stage === 'none' ? 'No age' : `Age ${q.stage}`) : null, q.teeth ? `Teeth ${q.teeth}` : null, q.exit ? `Left: ${cap(q.exit)}` : null, q.health ? 'Unwell' : null].filter(Boolean).join(' · ') || 'Goats';
 const BREED_COLS: Col<Props['breeds'][number]>[] = [
     { key: 'name', label: 'Breed', type: 'enum', render: (b) => to(goats({ breed: b.name }), b.name) },
     { key: 'total', label: 'Goats', type: 'number', total: 'sum', render: (b) => to(goats({ breed: b.name }), b.total) },
@@ -30,16 +36,16 @@ const BREED_COLS: Col<Props['breeds'][number]>[] = [
     { key: 'unwell', label: 'Unwell', type: 'number', total: 'sum', render: (b) => (b.unwell ? to(goats({ breed: b.name, health: 'unwell' }), b.unwell) : 0) },
 ];
 const SIRE_COLS: Col<Props['sires'][number]>[] = [
-    { key: 'number', label: 'Buck', type: 'text', render: (s) => <Link href={`/goats/${s.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{s.number}</Link> },
-    { key: 'name', label: 'Name', type: 'text' }, { key: 'offspring', label: 'Kids sired', type: 'number', total: 'sum', render: (s) => to(`/goats/${s.id}?tab=pedigree`, s.offspring) },
+    { key: 'number', label: 'Buck', type: 'text', render: (s) => to({ what: 'offspring', sire: s.id }, <span className="font-mono">{s.number}</span>, `Kids sired by ${s.number}`) },
+    { key: 'name', label: 'Name', type: 'text' }, { key: 'offspring', label: 'Kids sired', type: 'number', total: 'sum', render: (s) => to({ what: 'offspring', sire: s.id }, s.offspring, `Kids sired by ${s.number}`) },
 ];
 const EXIT_COLS: Col<Props['exits'][number]>[] = [
     { key: 'name', label: 'Reason', type: 'enum', value: (e) => e.name.charAt(0).toUpperCase() + e.name.slice(1), render: (e) => to(goats({ exit: e.name }), e.name.charAt(0).toUpperCase() + e.name.slice(1)) },
     { key: 'value', label: 'Goats', type: 'number', total: 'sum', render: (e) => to(goats({ exit: e.name }), e.value) },
 ];
 const COST_COLS: Col<{ name: string; value: number }>[] = [
-    { key: 'name', label: 'Category', type: 'enum', render: (c) => to(`/finance?category=${encodeURIComponent(c.name)}`, c.name) },
-    { key: 'value', label: 'Spent (PKR)', type: 'number', total: 'sum', render: (c) => to(`/finance?category=${encodeURIComponent(c.name)}`, pkr(c.value)) },
+    { key: 'name', label: 'Category', type: 'enum', render: (c) => to({ what: 'spending', category: c.name }, c.name) },
+    { key: 'value', label: 'Spent (PKR)', type: 'number', total: 'sum', render: (c) => to({ what: 'spending', category: c.name }, pkr(c.value)) },
 ];
 const stageQ = (band: string) => goats({ stage: band === 'No age' ? 'none' : band });
 const BAND_COLS: Col<{ band: string; value: number }>[] = [
@@ -52,6 +58,9 @@ const TITLES: Record<string, string> = { herd: 'Herd by Breed and Sex', age: 'He
 export default function Reports({ breeds, ages, teeth, exits, breeding, sires, costs, allowed, links = [] }: Props) {
     // D-215: a menu link opens one report on its own (?section=); /reports without it is the master page with all of them.
     const section = new URLSearchParams(usePage().url.split('?')[1] ?? '').get('section');
+    const [drill, setDrill] = useState<Drill | null>(null);
+    opener = setDrill;
+    const pop = (q: Q, title?: string) => setDrill({ q, title: title ?? titleOf(q) });
     const solo = section && TITLES[section] ? section : null;
     const show = (id: string) => allowed.includes(id) && (!solo || solo === id);
     const ageChart = useMemo(() => ({
@@ -84,24 +93,25 @@ export default function Reports({ breeds, ages, teeth, exits, breeding, sires, c
             <Head title="Reports" />
             <PageHeader title={solo ? TITLES[solo] : 'Reports'} description={solo ? undefined : 'The master page: every report. Each one also opens on its own from the menu.'} actions={<>{solo ? <Link href="/reports"><Button variant="secondary">All reports</Button></Link> : null}<a href="/goats/export"><Button variant="secondary"><Download size={16} aria-hidden /> Goat register CSV</Button></a></>} />
             {solo || !breeding ? null : <StatRow>
-                <Stat label="Kiddings recorded" value={breeding.kiddings} href="/breeding?tab=kidding" />
-                <Stat label="Kids born alive" value={breeding.alive} href="/breeding?tab=kidding" />
-                <Stat label="Kids per kidding" value={breeding.perKidding} href="/breeding?tab=performance" />
-                <Stat label="Stillborn" value={breeding.stillborn} href="/breeding?tab=kidding" />
+                <Stat label="Kiddings recorded" value={breeding.kiddings} onClick={() => pop({ what: 'kiddings' })} />
+                <Stat label="Kids born alive" value={breeding.alive} onClick={() => pop({ what: 'kiddings' })} />
+                <Stat label="Kids per kidding" value={breeding.perKidding} onClick={() => pop({ what: 'kiddings' })} />
+                <Stat label="Stillborn" value={breeding.stillborn} onClick={() => pop({ what: 'kiddings' })} />
             </StatRow>}
             {links.length && !solo ? <Panel title="Feeding reports" description="Feed offered, refused and wasted, and the feeding history. Costs are not shown." flush>
                 <ul className="divide-y divide-rule text-sm">{links.map((l) => <li key={l.href}><Link href={l.href} className="flex justify-between px-4 py-2 font-semibold text-forest"><span>{l.label}</span><span aria-hidden>→</span></Link></li>)}</ul>
             </Panel> : null}
             <div className={solo ? 'max-w-3xl' : 'grid gap-4 lg:grid-cols-2'}>
-                {show('herd') ? <Panel id="herd" title="Herd by breed and sex"><Chart option={breedChart} label="Goats by breed and sex" height={250} onSelect={(b, series) => router.visit(goats({ breed: b, ...(series ? { sex: series.toLowerCase() } : {}) }))} /></Panel> : null}
-                {show('age') ? <Panel id="age" title="Herd by age"><Chart option={ageChart} label="Goats by age band" height={250} onSelect={(band) => router.visit(stageQ(band))} /></Panel> : null}
-                {show('age') && teeth.length ? <Panel id="teeth" title="Herd by teeth" description="Dental code from each goat's latest mouth check. UNK = not examined."><Chart option={teethChart} label="Goats by dental code" height={250} onSelect={(t) => router.visit(goats({ teeth: t }))} /></Panel> : null}
+                {show('herd') ? <Panel id="herd" title="Herd by breed and sex"><Chart option={breedChart} label="Goats by breed and sex" height={250} onSelect={(b, series) => pop(goats({ breed: b, ...(series ? { sex: series.toLowerCase() } : {}) }))} /></Panel> : null}
+                {show('age') ? <Panel id="age" title="Herd by age"><Chart option={ageChart} label="Goats by age band" height={250} onSelect={(band) => pop(stageQ(band))} /></Panel> : null}
+                {show('age') && teeth.length ? <Panel id="teeth" title="Herd by teeth" description="Dental code from each goat's latest mouth check. UNK = not examined."><Chart option={teethChart} label="Goats by dental code" height={250} onSelect={(t) => pop(goats({ teeth: t }))} /></Panel> : null}
                 {show('breeds') ? <Panel id="breeds" title="Breed summary" flush className={solo ? '' : 'lg:col-span-2'}><DataGrid id="report-breeds" name="Breed summary" cols={BREED_COLS} rows={breeds} /></Panel> : null}
                 {show('sires') ? <Panel id="sires" title="Most used sires" flush><DataGrid id="report-sires" name="Most used sires" cols={SIRE_COLS} rows={sires} /></Panel> : null}
                 {show('exits') ? <Panel id="exits" title="Exits from the herd" flush><DataGrid id="report-exits" name="Exits from the herd" cols={EXIT_COLS} rows={exits} /></Panel> : null}
                 {costs && show('spending') ? <Panel id="spending" title="Spending, last 12 months" flush><DataGrid id="report-spending" name="Spending last 12 months" cols={COST_COLS} rows={costs} /></Panel> : null}
                 {show('age') ? <Panel id="age-table" title="Herd by age: table" flush><DataGrid id="report-ages" name="Herd by age" cols={BAND_COLS} rows={ages} /></Panel> : null}
             </div>
+            {drill ? <ReportPop drill={drill} onClose={() => setDrill(null)} /> : null}
         </>
     );
 }

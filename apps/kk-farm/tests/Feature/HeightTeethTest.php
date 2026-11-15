@@ -326,4 +326,17 @@ class HeightTeethTest extends TestCase
         $this->assertSame(['left_farm', 'slaughtered'], [$this->goat->fresh()->status, $this->goat->fresh()->exit_reason]);
         $this->assertFalse(\App\Models\HealthRecord::where('animal_id', $this->goat->id)->where('kind', 'postmortem')->exists(), 'not counted as a death');
     }
+
+    /** D-322: a figure on Farm Reports opens its list in a pop card (goats, kiddings, a buck's kids, a spending category). */
+    public function test_report_figures_open_their_lists(): void
+    {
+        $ceo = $this->user('ceo');
+        $breed = $this->goat->breed?->name;
+        $this->actingAs($ceo)->getJson('/reports/drill?what=goats&breed='.urlencode((string) $breed))->assertOk()->assertJsonPath('rows.0.number', $this->goat->farm_number);
+        $this->actingAs($ceo)->getJson('/reports/drill?what=goats&exit=sold')->assertOk()->assertJsonCount(0, 'rows');
+        $this->actingAs($ceo)->getJson('/reports/drill?what=kiddings')->assertOk();
+        \App\Models\LedgerEntry::create(['direction' => 'out', 'category' => 'Feed', 'amount' => 1500, 'occurred_on' => now()->toDateString(), 'description' => 'Bran', 'recorded_by' => 'x']);
+        $this->actingAs($ceo)->getJson('/reports/drill?what=spending&category=Feed')->assertOk()->assertJsonPath('rows.0.amount', 1500);
+        $this->actingAs($this->user('caretaker'))->getJson('/reports/drill?what=kiddings')->assertForbidden();
+    }
 }

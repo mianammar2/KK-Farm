@@ -492,6 +492,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/presence', [\App\Http\Controllers\SensorsController::class, 'presence'])->middleware('module:sheds');
 
     Route::get('/reports', ReportController::class)->middleware('module:reports');
+    Route::get('/reports/drill', \App\Http\Controllers\ReportDrillController::class)->middleware('module:reports'); // D-322: a figure's list, for a pop card
 
     Route::middleware('module:settings')->group(function (): void {
         Route::get('/settings', [SettingsController::class, 'index']);
