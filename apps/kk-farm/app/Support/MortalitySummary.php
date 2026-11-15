@@ -54,7 +54,11 @@ final class MortalitySummary
         $recorded = $rows->concat($bare);
         $all = $waiting->concat($recorded)->sortByDesc('sort')->values();
 
+        // D-329: the base for the percentages: every goat the farm has ever had (on the farm now and every one that left), not records removed as mistakes
+        $ever = \App\Models\Animal::where('status', '!=', 'voided')->count();
+
         return [
+            'ever' => $ever,
             'deaths' => $recorded->where('kind', 'Death')->count(),
             'slaughtered' => $recorded->where('kind', 'Slaughter')->count(),
             'waiting' => $waiting->count(),

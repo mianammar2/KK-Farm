@@ -88,7 +88,7 @@ class DeathFlowTest extends TestCase
         $this->actingAs($this->user('ceo'))->post('/death-reports/'.DeathReport::where('kind', 'slaughter')->value('id'), ['decision' => 'approved'])->assertSessionHasNoErrors();
 
         $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($p) => $p
-            ->where('mortality.deaths', 1)->where('mortality.slaughtered', 1)->where('mortality.waiting', 0)->has('mortality.byReason', 2)
+            ->where('mortality.deaths', 1)->where('mortality.slaughtered', 1)->where('mortality.waiting', 0)->where('mortality.ever', 2)->has('mortality.byReason', 2)
             ->where('mortality.rows', fn ($rows) => collect($rows)->contains(fn ($r) => $r['number'] === 'D-1' && $r['kind'] === 'Death' && $r['reason'] === 'Pneumonia' && $r['reportedBy'] === 'Test vet' && $r['approvedBy'] === 'Test ceo' && $r['seen'] === 'Found lying down at 6 am, breathing hard')
                 && collect($rows)->contains(fn ($r) => $r['number'] === 'D-2' && $r['kind'] === 'Slaughter' && $r['reason'] === 'Injury or accident' && $r['reportedBy'] === 'Test vet')));
     }

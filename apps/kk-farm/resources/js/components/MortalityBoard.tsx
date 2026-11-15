@@ -9,9 +9,12 @@ export type MortalityRow = {
     id: string; goatId: string; number: string | null; breed: string | null; sex: string | null; age: string | null; pen: string | null; kind: 'Death' | 'Slaughter'; on: string;
     reason: string; seen: string | null; postmortem: string | null; reportedBy: string | null; approvedBy: string | null; status: string;
 };
-export type MortalitySummary = { deaths: number; slaughtered: number; waiting: number; thisYear: number; byReason: Array<{ kind: string; reason: string; count: number }>; rows: MortalityRow[] };
+export type MortalitySummary = { ever: number; deaths: number; slaughtered: number; waiting: number; thisYear: number; byReason: Array<{ kind: string; reason: string; count: number }>; rows: MortalityRow[] };
 
 type Pick = { title: string; keep: (r: MortalityRow) => boolean };
+
+/** D-329: share of every goat the farm has ever had (now + left), one decimal. */
+const pct = (n: number, ever: number) => (ever ? `${((n / ever) * 100).toLocaleString('en-PK', { maximumFractionDigits: 1 })}%` : '');
 
 /**
  * D-326: the dashboard's Mortality section: goats that died or were slaughtered, by reason. A tile or a reason opens the
@@ -34,11 +37,12 @@ export default function MortalityBoard({ m }: { m: MortalitySummary }) {
                         <span className="kk-icon-tile" aria-hidden><LibIcon name={t.art} size={36} className="bg-transparent" /></span>
                         <span className="kk-sign-paper min-w-0">
                             <span className="block truncate text-xs font-semibold text-[#4d6356]">{t.label}</span>
-                            <span className="block text-xl font-extrabold tabular-nums text-crit-700 sm:text-2xl"><CountUp to={t.value} /></span>
+                            <span className="flex items-baseline gap-2"><span className="text-xl font-extrabold tabular-nums text-crit-700 sm:text-2xl"><CountUp to={t.value} /></span><span className="text-sm font-semibold tabular-nums text-[#4d6356]">{pct(t.value, m.ever)}</span></span>
                         </span>
                     </button>
                 ))}
             </div>
+            {m.ever ? <p className="text-xs text-ink-soft">% of all {m.ever.toLocaleString('en-PK')} goats the farm has ever had (on the farm now and those that left){m.deaths + m.slaughtered ? ` · together ${pct(m.deaths + m.slaughtered, m.ever)}` : ''}</p> : null}
             {m.byReason.length ? (
                 <ul className="space-y-1">
                     {m.byReason.map((b) => (
@@ -49,6 +53,7 @@ export default function MortalityBoard({ m }: { m: MortalitySummary }) {
                                 <span className="w-40 shrink-0 truncate font-semibold text-ink sm:w-56" title={b.reason}>{b.reason}</span>
                                 <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-rule/60"><span className={`block h-full rounded-full ${b.kind === 'Death' ? 'bg-crit-500' : 'bg-[#d9a441]'}`} style={{ width: `${(b.count / most) * 100}%` }} /></span>
                                 <span className="w-8 text-end font-bold tabular-nums">{b.count}</span>
+                                <span className="w-14 text-end text-xs font-semibold tabular-nums text-ink-soft">{pct(b.count, m.ever)}</span>
                             </button>
                         </li>
                     ))}
