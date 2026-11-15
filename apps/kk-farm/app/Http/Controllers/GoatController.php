@@ -314,7 +314,7 @@ class GoatController extends Controller
             $r = &$day($m->moved_on->format('Y-m-d'));
             if ($m->type === 'transfer') {
                 $r['actions'][] = 'Moved'.($m->toPen ? " to {$m->toPen->name}" : '').($m->reason ? ": {$m->reason}" : '');
-            } else { // D-324: an exit: what it was, why, the notes and (for a death or slaughter) what the vet saw
+            } else { // D-325: an exit: what it was, why, the notes and (for a death or slaughter) what the vet saw
                 $label = \App\Models\AnimalMovement::TYPES[$m->type][0] ?? ucfirst($m->type);
                 $rep = in_array($m->type, ['death', 'slaughter'], true) ? \App\Models\DeathReport::where('animal_id', $animal->id)->where('status', 'approved')->latest('id')->first() : null;
                 $r['actions'][] = "Exit: {$label}";
@@ -456,7 +456,7 @@ class GoatController extends Controller
         return response()->json($animal->card() + [
             'weighedOn' => $w?->measured_on?->format('d/m/Y'),
             'bodyScore' => $w?->body_score,
-            'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, $left && $exitOn ? $exitOn : now()->toDateString()), 'atExit' => $left,
+            'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, now()->toDateString()),
             'withdrawal' => $seeHealth ? \App\Support\Withdrawal::summary($animal) : null,
             'openCases' => $seeHealth ? \App\Models\HealthCase::where('animal_id', $animal->id)->whereNotIn('status', ['recovered', 'closed', 'deceased'])->pluck('condition')->values() : [],
             'seeHealth' => $seeHealth,
@@ -469,7 +469,7 @@ class GoatController extends Controller
      * breeding, family and what is missing. One JSON, read-only.
      */
     /**
-     * D-324: how a goat left the farm: the exit (type, date, reason, notes, who) and, for a death or slaughter, the vet's
+     * D-325: how a goat left the farm: the exit (type, date, reason, notes, who) and, for a death or slaughter, the vet's
      * report (what was seen and the postmortem only for the health right). Null while it is on the farm.
      */
     public static function exitInfo(Animal $animal, bool $seeHealth): ?array
@@ -519,7 +519,7 @@ class GoatController extends Controller
             ];
         }
 
-        $left = $animal->status !== 'active'; // D-324: off the farm: how it left; no PEN, no running pregnancy
+        $left = $animal->status !== 'active'; // D-325: off the farm: how it left; no PEN, no running pregnancy
         $exitOn = $animal->exit_date?->toDateString();
 
         return response()->json($animal->card() + [
@@ -532,7 +532,7 @@ class GoatController extends Controller
                 'totalGain' => $first && $last && $weights->count() > 1 ? round($last->weight_kg - $first->weight_kg, 1) : null,
                 'adg' => $first && $last && $weights->count() > 1 ? (int) round(($last->weight_kg - $first->weight_kg) * 1000 / max(1, $first->measured_on->diffInDays($last->measured_on))) : null,
                 'bcs' => $weights->whereNotNull('body_score')->last()?->body_score, 'heightIn' => $height ? round($height->height_cm / 2.54, 1) : ($animal->height_cm ? round($animal->height_cm / 2.54, 1) : null)],
-            'breeding' => ['repro' => $animal->repro_status ? ucfirst(str_replace('_', ' ', $animal->repro_status)) : null, 'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, now()->toDateString()),
+            'breeding' => ['repro' => $animal->repro_status ? ucfirst(str_replace('_', ' ', $animal->repro_status)) : null, 'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, $left && $exitOn ? $exitOn : now()->toDateString()), 'atExit' => $left,
                 'lastMating' => $mating ? ['on' => $d($mating->mated_on), 'buck' => $mating->sire?->farm_number, 'status' => \App\Models\Mating::OUTCOMES[$mating->status] ?? $mating->status,
                     'expected' => ! $left && in_array($mating->status, ['pregnant', 'open', 'inconclusive'], true) ? $d($mating->expected_kidding_on) : null] : null,
                 'kids' => Animal::where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->whereNull('voided_at')->count(),

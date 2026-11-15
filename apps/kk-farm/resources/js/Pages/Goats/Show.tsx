@@ -650,7 +650,7 @@ function performed(r: GoatRecord): Done[] {
     if (r.ultrasound) out.push({ label: 'Ultrasound', tone: DONE_TONE.vet, detail: r.ultrasound });
     for (const a of r.actions ?? []) {
         const [label, tone] = a.startsWith('Treated') ? ['Treatment', DONE_TONE.care] : /^Vaccination/i.test(a) ? ['Vaccinated', DONE_TONE.care] : /^Deworming/i.test(a) ? ['Dewormed', DONE_TONE.care]
-            : a.startsWith('Exit: ') ? [a.slice(6), 'bg-crit-100 text-crit-700'] // D-324: Death, Slaughter, Sale …
+            : a.startsWith('Exit: ') ? [a.slice(6), 'bg-crit-100 text-crit-700'] // D-325: Death, Slaughter, Sale …
             : a.startsWith('Moved') ? ['Moved', DONE_TONE.move] : a.startsWith('Taken off Watch') ? ['Off Watch', DONE_TONE.off] : [a.split(':')[0], DONE_TONE.care];
         out.push({ label, tone, detail: a });
     }

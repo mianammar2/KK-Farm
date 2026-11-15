@@ -340,7 +340,7 @@ class HeightTeethTest extends TestCase
         $this->actingAs($this->user('caretaker'))->getJson('/reports/drill?what=kiddings')->assertForbidden();
     }
 
-    /** D-324: a goat that left shows how: the profile card's exit (no PEN missing, no running pregnancy) and the exit day in Measurements and Care. */
+    /** D-325: a goat that left shows how: the profile card's exit (no PEN missing, no running pregnancy) and the exit day in Measurements and Care. */
     public function test_a_goat_that_left_shows_how_it_left(): void
     {
         $on = now()->subDay()->toDateString();

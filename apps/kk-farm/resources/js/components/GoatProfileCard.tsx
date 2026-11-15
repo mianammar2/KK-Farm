@@ -20,7 +20,7 @@ export type Profile = {
     family: { dam: { id: string; number: string } | null; sire: { id: string; number: string } | null };
     missing: string[]; seeHealth: boolean; healthDetail: Health | null;
     exit?: { type: string; label: string; on: string | null; reason: string | null; destination: string | null; notes: string | null; disease: string | null; by: string | null;
-        report: { kind: string; cause: string; reportedBy: string; decidedBy: string | null; seen: string | null; postmortem: string | null } | null } | null; // D-324
+        report: { kind: string; cause: string; reportedBy: string; decidedBy: string | null; seen: string | null; postmortem: string | null } | null } | null; // D-325
 };
 type Health = {
     cases: Array<{ label: string; condition: string; disease: string | null; code: string | null; severity: string; since: string | null; isolated: boolean; symptoms: string[] }>;
@@ -72,7 +72,7 @@ export default function GoatProfileCard({ id, actions, data }: { id: string; act
                     <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">{p.name ? <span>{p.name} ·</span> : null}<BreedBadge breed={p.breed} withName /><span>·</span><AgeBadge stage={p.stage} code={p.ageCode} /> <span>{p.sex === 'female' ? 'Female' : p.sex === 'male' ? 'Male' : ''}</span></p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {p.status === 'active' ? <HealthChip health={p.health} /> : <span className="rounded bg-glaze px-2 py-0.5 text-xs text-ink-soft">Left the farm</span>}
-                        {p.exit ? null : <ReproChip repro={p.repro} until={p.monitorUntil} />}{/* D-324: not pregnant any more once it has left */}
+                        {p.exit ? null : <ReproChip repro={p.repro} until={p.monitorUntil} />}{/* D-325: not pregnant any more once it has left */}
                         {Object.entries(p.roleLabels).map(([c, l]) => <span key={c} className="rounded-full bg-turq-100 px-2 py-0.5 text-xs text-turq-800">{l}</span>)}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 @3xl:grid-cols-4">
@@ -83,7 +83,7 @@ export default function GoatProfileCard({ id, actions, data }: { id: string; act
                     </div>
                 </div>
             </header>
-            {p.exit ? ( // D-324: how it left the farm
+            {p.exit ? ( // D-325: how it left the farm
                 <div className="space-y-1 border-b border-rule bg-crit-100/40 px-4 py-3 text-sm">
                     <p className="text-crit-700">{p.exit.label}{p.exit.on ? ` on ${p.exit.on}` : ''}: left the farm</p>
                     {p.exit.reason ? <p className="text-ink">{p.exit.reason}</p> : null}
