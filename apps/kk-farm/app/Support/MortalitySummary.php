@@ -40,8 +40,19 @@ final class MortalitySummary
             'reason' => preg_replace('/^Slaughter: /', '', $r->cause), 'seen' => $r->circumstances, 'postmortem' => $r->postmortem,
             'reportedBy' => $r->reported_by, 'approvedBy' => null, 'status' => 'Waiting for approval',
         ]);
-        $all = $waiting->concat($rows)->sortByDesc('sort')->values();
-        $recorded = $rows;
+        // goats marked died or slaughtered with no exit row (older or imported records): counted from the goat itself
+        $bare = \App\Models\Animal::with(['breed', 'pen.shed'])->whereIn('exit_reason', ['died', 'slaughtered'])->where('status', '!=', 'active')
+            ->whereNotIn('id', $exits->pluck('animal_id'))->get()->map(function (\App\Models\Animal $a) use ($age) {
+                $on = $a->exit_date ?? $a->updated_at;
+
+                return [
+                    'id' => 'a'.$a->id, 'goatId' => $a->id, 'number' => $a->farm_number, 'breed' => $a->breed?->name, 'sex' => $a->sex ? ucfirst($a->sex) : null,
+                    'age' => $age($a, $on), 'pen' => $a->pen?->fullName(), 'kind' => $a->exit_reason === 'died' ? 'Death' : 'Slaughter', 'on' => $on?->format('d/m/Y'), 'sort' => $on?->format('Y-m-d') ?? '',
+                    'reason' => 'Reason not recorded', 'seen' => null, 'postmortem' => null, 'reportedBy' => null, 'approvedBy' => null, 'status' => 'Recorded',
+                ];
+            });
+        $recorded = $rows->concat($bare);
+        $all = $waiting->concat($recorded)->sortByDesc('sort')->values();
 
         return [
             'deaths' => $recorded->where('kind', 'Death')->count(),
