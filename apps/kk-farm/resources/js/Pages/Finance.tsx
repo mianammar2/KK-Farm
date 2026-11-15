@@ -15,7 +15,7 @@ type Props = { summary: Record<string, number>; monthly: Array<{ month: string; 
 export default function Finance({ summary, monthly, categories, entries, categoryOptions, sales, goats, pending, accounts }: Props) {
     const [ask, confirmBox] = useConfirm(); // D-133
     const [direction, setDirection] = useState('');
-    const [category, setCategory] = useState('');
+    const [category, setCategory] = useState(() => new URLSearchParams(window.location.search).get('category') ?? ''); // D-321: opened from Farm Reports
     const [adding, setAdding] = useState<'' | 'entry' | 'sale'>(''); // D-127
     const moneyAccounts = accounts.filter((a) => a.money);
     const pickable = (d: string) => accounts.filter((a) => (d === 'in' ? a.type === 'income' : a.type === 'expense'));

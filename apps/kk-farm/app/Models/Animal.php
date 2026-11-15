@@ -205,6 +205,7 @@ class Animal extends Model
             'pen' => $this->pen?->fullName(),
             'penId' => $this->pen_id,
             'status' => $this->status,
+            'exitReason' => $this->exit_reason, // D-321: for the reports' Exits links
             'health' => $this->health_status,
             'repro' => $this->reproNow(), // D-162: 'monitoring' for 3 days after a delivery or loss
             'monitorUntil' => $this->isMonitored() ? $this->monitor_until->format('d/m') : null,

@@ -15,7 +15,7 @@ const BASE = {
 };
 
 /** ECharts with the SVG renderer: crisp on phones and light on memory. */
-export default function Chart({ option, height = 240, label, onSelect }: { option: Record<string, unknown>; height?: number; label: string; onSelect?: (name: string) => void }) {
+export default function Chart({ option, height = 240, label, onSelect }: { option: Record<string, unknown>; height?: number; label: string; onSelect?: (name: string, series?: string) => void }) {
     const select = useRef(onSelect);
     select.current = onSelect;
     const element = useRef<HTMLDivElement>(null);
@@ -28,7 +28,7 @@ export default function Chart({ option, height = 240, label, onSelect }: { optio
         const instance = echarts.init(element.current, undefined, { renderer: 'svg' });
         chart.current = instance;
         // D-071: a click on a bar or point opens the matching list (when the page passes onSelect).
-        instance.on('click', (params: { name?: string }) => { if (select.current && params.name) select.current(params.name); });
+        instance.on('click', (params: { name?: string; seriesName?: string }) => { if (select.current && params.name) select.current(params.name, params.seriesName); }); // D-321: and which series
         const observer = new ResizeObserver(() => instance.resize());
         observer.observe(element.current);
         return () => {

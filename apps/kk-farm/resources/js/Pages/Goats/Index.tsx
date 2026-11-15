@@ -49,11 +49,14 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
     // D-071: opened from a dashboard number or tile, e.g. /goats?show=pregnant or /goats?breed=Teddy
     const [show, setShow] = useState(() => params.get('show') ?? '');
     const [breed, setBreed] = useState(() => params.get('breed') ?? '');
-    const [sex, setSex] = useState('');
+    const [sex, setSex] = useState(() => params.get('sex') ?? ''); // D-321: links from the reports (?sex=female&breed=…, ?stage=GRW, ?teeth=T02, ?exit=sold)
+    const [stage] = useState(() => params.get('stage') ?? '');
+    const [teeth] = useState(() => params.get('teeth') ?? '');
+    const [exitReason] = useState(() => params.get('exit') ?? '');
     const [pen, setPen] = useState(() => params.get('pen') ?? ''); // D-120: opened from a pen on the dashboard
     const [filtersOpen, setFiltersOpen] = useState(false);
-    const [health, setHealth] = useState('');
-    const [status, setStatus] = useState('active');
+    const [health, setHealth] = useState(() => params.get('health') ?? '');
+    const [status, setStatus] = useState(() => params.get('status') ?? (params.get('exit') ? 'left' : 'active'));
     const activeFilters = [breed, sex, pen, health].filter(Boolean).length + (status !== 'active' ? 1 : 0);
     // Phones and the gun open on cards (a wide table needs sideways scrolling there); the choice is remembered.
     const [view, setViewState] = useState<'table' | 'cards'>(() => {
@@ -69,7 +72,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
         const q = query.trim().toLowerCase();
         const list = goats.filter((g) =>
             (!q || [g.number, g.name, g.tag, g.breed, g.animalId].some((v) => v?.toLowerCase().includes(q))) &&
-            (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || g.health === health) &&
+            (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || (health === 'unwell' ? g.health !== 'healthy' : g.health === health)) &&
+            (!stage || (stage === 'none' ? !g.stageCode : g.stageCode === stage)) && (!teeth || (g.teethCode ?? 'UNK') === teeth) && (!exitReason || (g.exitReason ?? '') === exitReason) &&
             (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone),
         );
         const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : (g[sort.key] ?? '') as string);

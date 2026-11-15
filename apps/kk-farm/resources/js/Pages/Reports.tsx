@@ -1,6 +1,6 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Download } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import Chart from '../components/LazyChart';
 import { axis } from '../lib/chartTheme';
 import { Button, PageHeader, Panel, pkr, Stat, StatRow } from '../components/ui';
@@ -19,18 +19,33 @@ type Props = {
 };
 
 /** D-273: every report table is a spreadsheet (sort, filter, totals, export). */
+// D-321: every figure opens the goats (or records) behind it
+const goats = (q: Record<string, string>) => `/goats?${new URLSearchParams(q).toString()}`;
+const to = (href: string, text: ReactNode) => <Link href={href} className="text-cobalt-800 hover:underline">{text}</Link>;
 const BREED_COLS: Col<Props['breeds'][number]>[] = [
-    { key: 'name', label: 'Breed', type: 'enum', render: (b) => <b>{b.name}</b> },
-    { key: 'total', label: 'Goats', type: 'number', total: 'sum' }, { key: 'female', label: 'Female', type: 'number', total: 'sum' },
-    { key: 'male', label: 'Male', type: 'number', total: 'sum' }, { key: 'unwell', label: 'Unwell', type: 'number', total: 'sum' },
+    { key: 'name', label: 'Breed', type: 'enum', render: (b) => to(goats({ breed: b.name }), b.name) },
+    { key: 'total', label: 'Goats', type: 'number', total: 'sum', render: (b) => to(goats({ breed: b.name }), b.total) },
+    { key: 'female', label: 'Female', type: 'number', total: 'sum', render: (b) => to(goats({ breed: b.name, sex: 'female' }), b.female) },
+    { key: 'male', label: 'Male', type: 'number', total: 'sum', render: (b) => to(goats({ breed: b.name, sex: 'male' }), b.male) },
+    { key: 'unwell', label: 'Unwell', type: 'number', total: 'sum', render: (b) => (b.unwell ? to(goats({ breed: b.name, health: 'unwell' }), b.unwell) : 0) },
 ];
 const SIRE_COLS: Col<Props['sires'][number]>[] = [
     { key: 'number', label: 'Buck', type: 'text', render: (s) => <Link href={`/goats/${s.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{s.number}</Link> },
-    { key: 'name', label: 'Name', type: 'text' }, { key: 'offspring', label: 'Kids sired', type: 'number', total: 'sum' },
+    { key: 'name', label: 'Name', type: 'text' }, { key: 'offspring', label: 'Kids sired', type: 'number', total: 'sum', render: (s) => to(`/goats/${s.id}?tab=pedigree`, s.offspring) },
 ];
-const EXIT_COLS: Col<Props['exits'][number]>[] = [{ key: 'name', label: 'Reason', type: 'enum', value: (e) => e.name.charAt(0).toUpperCase() + e.name.slice(1) }, { key: 'value', label: 'Goats', type: 'number', total: 'sum' }];
-const COST_COLS: Col<{ name: string; value: number }>[] = [{ key: 'name', label: 'Category', type: 'enum' }, { key: 'value', label: 'Spent (PKR)', type: 'number', total: 'sum', render: (c) => pkr(c.value) }];
-const BAND_COLS: Col<{ band: string; value: number }>[] = [{ key: 'band', label: 'Age band', type: 'enum' }, { key: 'value', label: 'Goats', type: 'number', total: 'sum' }];
+const EXIT_COLS: Col<Props['exits'][number]>[] = [
+    { key: 'name', label: 'Reason', type: 'enum', value: (e) => e.name.charAt(0).toUpperCase() + e.name.slice(1), render: (e) => to(goats({ exit: e.name }), e.name.charAt(0).toUpperCase() + e.name.slice(1)) },
+    { key: 'value', label: 'Goats', type: 'number', total: 'sum', render: (e) => to(goats({ exit: e.name }), e.value) },
+];
+const COST_COLS: Col<{ name: string; value: number }>[] = [
+    { key: 'name', label: 'Category', type: 'enum', render: (c) => to(`/finance?category=${encodeURIComponent(c.name)}`, c.name) },
+    { key: 'value', label: 'Spent (PKR)', type: 'number', total: 'sum', render: (c) => to(`/finance?category=${encodeURIComponent(c.name)}`, pkr(c.value)) },
+];
+const stageQ = (band: string) => goats({ stage: band === 'No age' ? 'none' : band });
+const BAND_COLS: Col<{ band: string; value: number }>[] = [
+    { key: 'band', label: 'Age band', type: 'enum', render: (a) => to(stageQ(a.band), a.band) },
+    { key: 'value', label: 'Goats', type: 'number', total: 'sum', render: (a) => to(stageQ(a.band), a.value) },
+];
 
 const TITLES: Record<string, string> = { herd: 'Herd by Breed and Sex', age: 'Herd by Age', breeds: 'Breed Summary', sires: 'Most Used Sires', exits: 'Exits from the Herd', spending: 'Spending, Last 12 Months' };
 
@@ -69,18 +84,18 @@ export default function Reports({ breeds, ages, teeth, exits, breeding, sires, c
             <Head title="Reports" />
             <PageHeader title={solo ? TITLES[solo] : 'Reports'} description={solo ? undefined : 'The master page: every report. Each one also opens on its own from the menu.'} actions={<>{solo ? <Link href="/reports"><Button variant="secondary">All reports</Button></Link> : null}<a href="/goats/export"><Button variant="secondary"><Download size={16} aria-hidden /> Goat register CSV</Button></a></>} />
             {solo || !breeding ? null : <StatRow>
-                <Stat label="Kiddings recorded" value={breeding.kiddings} />
-                <Stat label="Kids born alive" value={breeding.alive} />
-                <Stat label="Kids per kidding" value={breeding.perKidding} />
-                <Stat label="Stillborn" value={breeding.stillborn} />
+                <Stat label="Kiddings recorded" value={breeding.kiddings} href="/breeding?tab=kidding" />
+                <Stat label="Kids born alive" value={breeding.alive} href="/breeding?tab=kidding" />
+                <Stat label="Kids per kidding" value={breeding.perKidding} href="/breeding?tab=performance" />
+                <Stat label="Stillborn" value={breeding.stillborn} href="/breeding?tab=kidding" />
             </StatRow>}
             {links.length && !solo ? <Panel title="Feeding reports" description="Feed offered, refused and wasted, and the feeding history. Costs are not shown." flush>
                 <ul className="divide-y divide-rule text-sm">{links.map((l) => <li key={l.href}><Link href={l.href} className="flex justify-between px-4 py-2 font-semibold text-forest"><span>{l.label}</span><span aria-hidden>→</span></Link></li>)}</ul>
             </Panel> : null}
             <div className={solo ? 'max-w-3xl' : 'grid gap-4 lg:grid-cols-2'}>
-                {show('herd') ? <Panel id="herd" title="Herd by breed and sex"><Chart option={breedChart} label="Goats by breed and sex" height={250} /></Panel> : null}
-                {show('age') ? <Panel id="age" title="Herd by age"><Chart option={ageChart} label="Goats by age band" height={250} /></Panel> : null}
-                {show('age') && teeth.length ? <Panel id="teeth" title="Herd by teeth" description="Dental code from each goat's latest mouth check. UNK = not examined."><Chart option={teethChart} label="Goats by dental code" height={250} /></Panel> : null}
+                {show('herd') ? <Panel id="herd" title="Herd by breed and sex"><Chart option={breedChart} label="Goats by breed and sex" height={250} onSelect={(b, series) => router.visit(goats({ breed: b, ...(series ? { sex: series.toLowerCase() } : {}) }))} /></Panel> : null}
+                {show('age') ? <Panel id="age" title="Herd by age"><Chart option={ageChart} label="Goats by age band" height={250} onSelect={(band) => router.visit(stageQ(band))} /></Panel> : null}
+                {show('age') && teeth.length ? <Panel id="teeth" title="Herd by teeth" description="Dental code from each goat's latest mouth check. UNK = not examined."><Chart option={teethChart} label="Goats by dental code" height={250} onSelect={(t) => router.visit(goats({ teeth: t }))} /></Panel> : null}
                 {show('breeds') ? <Panel id="breeds" title="Breed summary" flush className={solo ? '' : 'lg:col-span-2'}><DataGrid id="report-breeds" name="Breed summary" cols={BREED_COLS} rows={breeds} /></Panel> : null}
                 {show('sires') ? <Panel id="sires" title="Most used sires" flush><DataGrid id="report-sires" name="Most used sires" cols={SIRE_COLS} rows={sires} /></Panel> : null}
                 {show('exits') ? <Panel id="exits" title="Exits from the herd" flush><DataGrid id="report-exits" name="Exits from the herd" cols={EXIT_COLS} rows={exits} /></Panel> : null}

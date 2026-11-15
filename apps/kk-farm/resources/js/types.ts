@@ -1,6 +1,7 @@
 export type Health = 'healthy' | 'watch' | 'treatment' | 'critical';
 
 export type GoatCard = {
+    stageCode?: string | null; teethCode?: string | null; exitReason?: string | null; // D-321: report links
     id: string;
     animalId?: string | null; // D-208: permanent Animal ID
     ageExact?: boolean; // D-252: the birth date is known, not estimated
