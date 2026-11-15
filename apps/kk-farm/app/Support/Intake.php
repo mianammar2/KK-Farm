@@ -25,28 +25,40 @@ final class Intake
         return (int) (Tenant::org()?->quarantine_days ?: 14);
     }
 
-    public static function open(Animal $animal, User $by): HealthCase
+    /**
+     * D-317: quarantine counts from the day the goat ARRIVED (acquired_on), not the day it is entered. A goat entered
+     * after its quarantine days were already over (historical data) does not go into quarantine: null, and its
+     * history says why.
+     */
+    public static function open(Animal $animal, User $by): ?HealthCase
     {
-        return DB::transaction(fn () => self::openNow($animal, $by));
+        $arrived = ($animal->acquired_on ?? now())->copy()->startOfDay();
+        if ($arrived->copy()->addDays(self::days())->lte(now()->startOfDay())) {
+            Farm::event($animal, 'health', 'No intake quarantine: arrived '.$arrived->format('d/m/Y').', its '.self::days().' quarantine days were already over when it was entered', $by->name);
+
+            return null;
+        }
+
+        return DB::transaction(fn () => self::openNow($animal, $by, $arrived));
     }
 
-    private static function openNow(Animal $animal, User $by): HealthCase
+    private static function openNow(Animal $animal, User $by, \Illuminate\Support\Carbon $arrived): HealthCase
     {
         DB::statement('LOCK TABLE health_cases IN SHARE ROW EXCLUSIVE MODE');
         $days = self::days();
         $case = HealthCase::create([
-            'case_no' => (int) HealthCase::max('case_no') + 1, 'animal_id' => $animal->id, 'onset_on' => now()->toDateString(), 'condition' => self::CONDITION,
+            'case_no' => (int) HealthCase::max('case_no') + 1, 'animal_id' => $animal->id, 'onset_on' => $arrived->toDateString(), 'condition' => self::CONDITION,
             'symptoms' => "New arrival ({$animal->origin}). Kept apart for {$days} days until the vet clears her for the herd.",
             'severity' => 'low', 'status' => 'monitoring', 'isolated' => true, 'vet' => $by->name, 'recorded_by' => $by->name,
         ]);
         Checkups::syncHealth($animal);
         Task::create([
             'title' => "Intake clearance: {$animal->farm_number}", 'type' => 'biosecurity', 'priority' => 'high', 'status' => 'open',
-            'due_on' => now()->addDays($days)->toDateString(), 'animal_id' => $animal->id, 'pen_id' => $animal->pen_id,
+            'due_on' => $arrived->copy()->addDays($days)->toDateString(), 'animal_id' => $animal->id, 'pen_id' => $animal->pen_id,
             'department_id' => Department::where('name', 'Veterinary')->value('id'),
             'notes' => "Quarantine of {$days} days after arrival. Check health, deworm and vaccinate as the vet decides, confirm the RFID tag, then clear her on Intake & Quarantine.",
         ]);
-        Farm::event($animal, 'health', "Intake quarantine started ({$days} days) until veterinary clearance", $by->name);
+        Farm::event($animal, 'health', "Intake quarantine started ({$days} days from arrival on {$arrived->format('d/m/Y')}) until veterinary clearance", $by->name);
 
         return $case;
     }

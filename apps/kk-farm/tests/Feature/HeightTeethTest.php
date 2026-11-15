@@ -286,4 +286,17 @@ class HeightTeethTest extends TestCase
         $this->assertSame($on, \App\Models\Sale::where('animal_id', $this->goat->id)->value('sold_on')?->toDateString() ?? \App\Models\AnimalMovement::where('animal_id', $this->goat->id)->latest('id')->first()->moved_on->toDateString());
         $this->assertSame($on, $this->goat->fresh()->exit_date->toDateString());
     }
+
+    /** D-317: intake quarantine counts from the arrival date; a goat entered after its quarantine was over is not quarantined. */
+    public function test_intake_quarantine_counts_from_the_arrival_date(): void
+    {
+        $vet = $this->user('vet');
+        $this->goat->update(['origin' => 'purchased', 'acquired_on' => now()->subDays(36)->toDateString()]);
+        $this->assertNull(\App\Support\Intake::open($this->goat->fresh(), $vet), 'bought 36 days ago: the 14 days are over');
+        $this->assertFalse(\App\Models\HealthCase::where('animal_id', $this->goat->id)->exists());
+        $this->goat->update(['acquired_on' => now()->subDays(5)->toDateString()]);
+        $case = \App\Support\Intake::open($this->goat->fresh(), $vet);
+        $this->assertSame(now()->subDays(5)->toDateString(), $case->onset_on->toDateString(), 'counted from arrival');
+        $this->assertSame(now()->addDays(9)->toDateString(), \App\Models\Task::where('animal_id', $this->goat->id)->value('due_on')?->toDateString() ?? null);
+    }
 }
