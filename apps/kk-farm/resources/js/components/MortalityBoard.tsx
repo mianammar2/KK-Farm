@@ -51,7 +51,7 @@ export default function MortalityBoard({ m }: { m: MortalitySummary }) {
                                 className="flex w-full items-center gap-3 rounded-md px-1.5 py-1 text-start text-sm hover:bg-tile">
                                 <span className={`w-16 shrink-0 text-xs font-semibold ${b.kind === 'Death' ? 'text-crit-700' : 'text-[#8a5a12]'}`}>{b.kind}</span>
                                 <span className="min-w-0 flex-1 truncate font-semibold text-ink" title={b.reason}>{b.reason}</span>
-                                <span className="hidden h-2.5 w-1/3 shrink-0 overflow-hidden rounded-full bg-rule/60 sm:block"><span className={`block h-full rounded-full ${b.kind === 'Death' ? 'bg-crit-500' : 'bg-[#d9a441]'}`} style={{ width: `${(b.count / most) * 100}%` }} /></span>
+                                <span className="hidden h-2.5 w-1/3 shrink-0 overflow-hidden rounded-full bg-rule/60 xl:block"><span className={`block h-full rounded-full ${b.kind === 'Death' ? 'bg-crit-500' : 'bg-[#d9a441]'}`} style={{ width: `${(b.count / most) * 100}%` }} /></span>
                                 <span className="w-8 shrink-0 text-end font-bold tabular-nums">{b.count}</span>
                                 <span className="w-12 shrink-0 text-end text-xs font-semibold tabular-nums text-ink-soft">{pct(b.count, m.ever)}</span>
                             </button>
