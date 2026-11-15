@@ -92,6 +92,7 @@ class DashboardController extends Controller
             'attention' => $attention,
             'kiddings' => $kiddings,
             'repro' => $request->user()->canModule('breeding') ? \App\Models\Kidding::kpis() : null, // D-161
+            'mortality' => $user->canModule('goats') || $user->canModule('health') ? \App\Support\MortalitySummary::build() : null, // D-326
             // D-122: recent activity is on the Activity Log page.
             'breeds' => DB::table('animals')->join('breeds', 'breeds.id', '=', 'animals.breed_id')->where('status', 'active')
                 ->select('breeds.name', DB::raw('count(*) as value'))->groupBy('breeds.name')->orderByDesc('value')->get(),

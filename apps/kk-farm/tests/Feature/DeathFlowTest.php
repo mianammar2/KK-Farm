@@ -75,6 +75,24 @@ class DeathFlowTest extends TestCase
             ->where('death.report.cause', 'Pneumonia')->where('death.report.decidedBy', 'Test ceo')->where('death.review.treatments.0.product', 'Oxytetracycline'));
     }
 
+    /** D-326: the dashboard's Mortality section counts deaths and slaughter by reason, with who entered and who approved each. */
+    public function test_the_dashboard_mortality_section_lists_deaths_and_slaughter_with_who_entered_them(): void
+    {
+        $this->report()->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($p) => $p->where('mortality.waiting', 1)->where('mortality.deaths', 0)
+            ->where('mortality.rows.0.status', 'Waiting for approval')->where('mortality.rows.0.reportedBy', 'Test vet'));
+        $this->actingAs($this->user('ceo'))->post('/death-reports/'.DeathReport::first()->id, ['decision' => 'approved'])->assertSessionHasNoErrors();
+
+        $other = Animal::create(['farm_number' => 'D-2', 'sex' => 'male', 'breed_id' => $this->goat->breed_id, 'origin' => 'purchased', 'pen_id' => $this->goat->pen_id, 'birth_date' => now()->subYears(2)]);
+        $this->actingAs($this->user('vet'))->post("/goats/{$other->id}/slaughter", ['died_at' => now()->toDateString(), 'reason' => 'injury', 'circumstances' => 'Broken leg, not healing'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->post('/death-reports/'.DeathReport::where('kind', 'slaughter')->value('id'), ['decision' => 'approved'])->assertSessionHasNoErrors();
+
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($p) => $p
+            ->where('mortality.deaths', 1)->where('mortality.slaughtered', 1)->where('mortality.waiting', 0)->has('mortality.byReason', 2)
+            ->where('mortality.rows', fn ($rows) => collect($rows)->contains(fn ($r) => $r['number'] === 'D-1' && $r['kind'] === 'Death' && $r['reason'] === 'Pneumonia' && $r['reportedBy'] === 'Test vet' && $r['approvedBy'] === 'Test ceo' && $r['seen'] === 'Found lying down at 6 am, breathing hard')
+                && collect($rows)->contains(fn ($r) => $r['number'] === 'D-2' && $r['kind'] === 'Slaughter' && $r['reason'] === 'Injury or accident' && $r['reportedBy'] === 'Test vet')));
+    }
+
     public function test_the_administrator_can_send_a_report_back_with_a_note(): void
     {
         $this->report();
