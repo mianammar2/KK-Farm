@@ -19,6 +19,8 @@ export type Profile = {
     breeding: { repro: string | null; pregnancyDay: number | null; lastMating: { on: string | null; buck: string | null; status: string; expected: string | null } | null; kids: number; kiddings: number | null };
     family: { dam: { id: string; number: string } | null; sire: { id: string; number: string } | null };
     missing: string[]; seeHealth: boolean; healthDetail: Health | null;
+    exit?: { type: string; label: string; on: string | null; reason: string | null; destination: string | null; notes: string | null; disease: string | null; by: string | null;
+        report: { kind: string; cause: string; reportedBy: string; decidedBy: string | null; seen: string | null; postmortem: string | null } | null } | null; // D-324
 };
 type Health = {
     cases: Array<{ label: string; condition: string; disease: string | null; code: string | null; severity: string; since: string | null; isolated: boolean; symptoms: string[] }>;
@@ -70,18 +72,29 @@ export default function GoatProfileCard({ id, actions, data }: { id: string; act
                     <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">{p.name ? <span>{p.name} ·</span> : null}<BreedBadge breed={p.breed} withName /><span>·</span><AgeBadge stage={p.stage} code={p.ageCode} /> <span>{p.sex === 'female' ? 'Female' : p.sex === 'male' ? 'Male' : ''}</span></p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {p.status === 'active' ? <HealthChip health={p.health} /> : <span className="rounded bg-glaze px-2 py-0.5 text-xs text-ink-soft">Left the farm</span>}
-                        <ReproChip repro={p.repro} until={p.monitorUntil} />
+                        {p.exit ? null : <ReproChip repro={p.repro} until={p.monitorUntil} />}{/* D-324: not pregnant any more once it has left */}
                         {Object.entries(p.roleLabels).map(([c, l]) => <span key={c} className="rounded-full bg-turq-100 px-2 py-0.5 text-xs text-turq-800">{l}</span>)}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 @3xl:grid-cols-4">
                         <Big label="Age">{p.ageExact && p.ageMonths !== null ? `${p.ageMonths} months` : p.ageCode ?? p.age ?? '—'}</Big>
                         <Big label="Weight">{g.latestKg !== null ? `${g.latestKg} KG` : '—'}{g.gain ? <span className={cx('block text-xs', g.gain.kg > 0 ? 'text-ok-700' : g.gain.kg < 0 ? 'text-crit-700' : 'text-ink-soft')}>{g.gain.kg > 0 ? '▲ +' : g.gain.kg < 0 ? '▼ ' : ''}{g.gain.kg} KG in {g.gain.days} days</span> : null}</Big>
                         <Big label="Temperature">{h?.lastCheck?.temp != null ? <span className={h.lastCheck.fever ? 'text-crit-700' : ''}>{h.lastCheck.temp} °F</span> : '—'}{h?.lastCheck ? <span className="block text-xs text-ink-soft">{h.lastCheck.on}</span> : null}</Big>
-                        <Big label="PEN">{p.pen ?? 'No PEN'}{p.shed ? <span className="block text-xs text-ink-soft">{p.shed}</span> : null}</Big>
+                        <Big label="PEN">{p.exit ? `Left ${p.exit.on ?? ''}`.trim() : p.pen ?? 'No PEN'}{p.shed ? <span className="block text-xs text-ink-soft">{p.shed}</span> : null}</Big>
                     </div>
                 </div>
             </header>
-            {problems.length ? (
+            {p.exit ? ( // D-324: how it left the farm
+                <div className="space-y-1 border-b border-rule bg-crit-100/40 px-4 py-3 text-sm">
+                    <p className="text-crit-700">{p.exit.label}{p.exit.on ? ` on ${p.exit.on}` : ''}: left the farm</p>
+                    {p.exit.reason ? <p className="text-ink">{p.exit.reason}</p> : null}
+                    {p.exit.disease ? <p className="text-ink">Disease: {p.exit.disease}</p> : null}
+                    {p.exit.destination ? <p className="text-ink">To: {p.exit.destination}</p> : null}
+                    {p.exit.report?.seen ? <p className="text-ink">Seen: {p.exit.report.seen}</p> : null}
+                    {p.exit.report?.postmortem ? <p className="text-ink">Postmortem: {p.exit.report.postmortem}</p> : null}
+                    {p.exit.notes && p.exit.notes !== p.exit.report?.seen ? <p className="text-ink">Notes: {p.exit.notes}</p> : null}
+                    <p className="text-ink-soft">{p.exit.report ? `Reported by ${p.exit.report.reportedBy}${p.exit.report.decidedBy ? ` · approved by ${p.exit.report.decidedBy}` : ''}` : p.exit.by ? `Recorded by ${p.exit.by}` : ''}</p>
+                </div>
+            ) : problems.length ? (
                 <div className="space-y-1.5 border-b border-rule bg-crit-100/40 px-4 py-3">
                     <p className="flex items-center gap-1.5 text-sm text-crit-700"><AlertTriangle size={15} aria-hidden /> Problems</p>
                     {problems.map((x, i) => <p key={i} className={cx('rounded-md px-2.5 py-1.5 text-sm', x.tone === 'crit' ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700')}>{x.text}</p>)}
@@ -112,7 +125,7 @@ export default function GoatProfileCard({ id, actions, data }: { id: string; act
                     </Section>
                 ) : null}
                 <Section title="Breeding & family">
-                    {b.repro ? <Item label="Breeding status">{b.repro}{b.pregnancyDay ? ` · day ${b.pregnancyDay}` : ''}</Item> : null}
+                    {b.repro ? <Item label={p.exit ? 'Breeding status when it left' : 'Breeding status'}>{b.repro}{b.pregnancyDay ? ` · day ${b.pregnancyDay}` : ''}</Item> : null}
                     {b.lastMating ? <Item label="Last mating">{b.lastMating.on}{b.lastMating.buck ? ` · ${b.lastMating.buck}` : ''} · {b.lastMating.status}</Item> : null}
                     {b.lastMating?.expected ? <Item label="Expected kidding">{b.lastMating.expected}</Item> : null}
                     <Item label="Kids">{b.kids}{b.kiddings !== null ? ` · ${b.kiddings} kiddings` : ''}</Item>

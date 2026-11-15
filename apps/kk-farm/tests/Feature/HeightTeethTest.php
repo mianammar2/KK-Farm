@@ -339,4 +339,17 @@ class HeightTeethTest extends TestCase
         $this->actingAs($ceo)->getJson('/reports/drill?what=spending&category=Feed')->assertOk()->assertJsonPath('rows.0.amount', 1500);
         $this->actingAs($this->user('caretaker'))->getJson('/reports/drill?what=kiddings')->assertForbidden();
     }
+
+    /** D-324: a goat that left shows how: the profile card's exit (no PEN missing, no running pregnancy) and the exit day in Measurements and Care. */
+    public function test_a_goat_that_left_shows_how_it_left(): void
+    {
+        $on = now()->subDay()->toDateString();
+        $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/slaughter", ['died_at' => $on, 'reason' => 'injury', 'circumstances' => 'Broken leg, could not stand'])->assertSessionHasNoErrors();
+        $r = \App\Models\DeathReport::sole();
+        $this->actingAs($this->user('ceo'))->post("/death-reports/{$r->id}", ['decision' => 'approved'])->assertSessionHasNoErrors();
+        $this->actingAs($this->user('ceo'))->getJson("/goats/{$this->goat->id}/profile")->assertOk()
+            ->assertJsonPath('exit.label', 'Slaughter')->assertJsonPath('exit.report.seen', 'Broken leg, could not stand')->assertJsonPath('missing', []);
+        $this->actingAs($this->user('ceo'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('records', fn ($recs) => collect($recs)->contains(fn ($x) => $x['result'] === 'Slaughtered'
+            && in_array('Exit: Slaughter', $x['actions'], true) && str_contains(implode(' ', $x['care']), 'Injury or accident'))));
+    }
 }

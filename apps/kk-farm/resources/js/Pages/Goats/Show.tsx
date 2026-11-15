@@ -650,6 +650,7 @@ function performed(r: GoatRecord): Done[] {
     if (r.ultrasound) out.push({ label: 'Ultrasound', tone: DONE_TONE.vet, detail: r.ultrasound });
     for (const a of r.actions ?? []) {
         const [label, tone] = a.startsWith('Treated') ? ['Treatment', DONE_TONE.care] : /^Vaccination/i.test(a) ? ['Vaccinated', DONE_TONE.care] : /^Deworming/i.test(a) ? ['Dewormed', DONE_TONE.care]
+            : a.startsWith('Exit: ') ? [a.slice(6), 'bg-crit-100 text-crit-700'] // D-324: Death, Slaughter, Sale …
             : a.startsWith('Moved') ? ['Moved', DONE_TONE.move] : a.startsWith('Taken off Watch') ? ['Off Watch', DONE_TONE.off] : [a.split(':')[0], DONE_TONE.care];
         out.push({ label, tone, detail: a });
     }
@@ -663,7 +664,7 @@ function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) 
     const [day, setDay] = useState<string | null>(null); // D-270: a day opened in full
     if (!rows.length) return null;
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const resultTone = (x: string) => (x === 'Quarantine' ? 'bg-watch-100 text-watch-700' : x === 'Sick' || x === 'Under treatment' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
+    const resultTone = (x: string) => (x === 'Quarantine' ? 'bg-watch-100 text-watch-700' : x === 'Left the farm' || x === 'Sold' ? 'bg-glaze text-ink ring-1 ring-rule' : x === 'Sick' || x === 'Under treatment' || x === 'Died' || x === 'Slaughtered' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
     const th = 'px-2.5 py-2.5 text-xs font-medium whitespace-nowrap text-ink-soft';
     const td = 'px-2.5 py-3 align-middle';
     return (

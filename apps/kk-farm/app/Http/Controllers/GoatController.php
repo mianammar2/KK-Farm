@@ -312,8 +312,16 @@ class GoatController extends Controller
         // D-262: what was done for the goat: moves with their reason, and being taken off Watch
         foreach (\App\Models\AnimalMovement::with('toPen')->where('animal_id', $animal->id)->get() as $m) {
             $r = &$day($m->moved_on->format('Y-m-d'));
-            $r['actions'][] = $m->type === 'transfer' ? 'Moved'.($m->toPen ? " to {$m->toPen->name}" : '').($m->reason ? ": {$m->reason}" : '')
-                : 'Left the farm: '.(\App\Models\AnimalMovement::TYPES[$m->type][0] ?? $m->type).($m->reason ? " ({$m->reason})" : ''); // D-316: exits too
+            if ($m->type === 'transfer') {
+                $r['actions'][] = 'Moved'.($m->toPen ? " to {$m->toPen->name}" : '').($m->reason ? ": {$m->reason}" : '');
+            } else { // D-324: an exit: what it was, why, the notes and (for a death or slaughter) what the vet saw
+                $label = \App\Models\AnimalMovement::TYPES[$m->type][0] ?? ucfirst($m->type);
+                $rep = in_array($m->type, ['death', 'slaughter'], true) ? \App\Models\DeathReport::where('animal_id', $animal->id)->where('status', 'approved')->latest('id')->first() : null;
+                $r['actions'][] = "Exit: {$label}";
+                $r['care'][] = implode(' · ', array_filter([$m->reason, $m->destination ? "to {$m->destination}" : null, $m->notes,
+                    $rep && $seeHealth && $rep->postmortem ? "Postmortem: {$rep->postmortem}" : null, $rep?->decided_by ? "approved by {$rep->decided_by}" : ($m->authorized_by ? "by {$m->authorized_by}" : null)]));
+                $r['result'] = ['death' => 'Died', 'slaughter' => 'Slaughtered', 'sale' => 'Sold'][$m->type] ?? 'Left the farm';
+            }
             unset($r);
         }
         foreach ($animal->dentalExams()->get() as $e) {
@@ -448,7 +456,7 @@ class GoatController extends Controller
         return response()->json($animal->card() + [
             'weighedOn' => $w?->measured_on?->format('d/m/Y'),
             'bodyScore' => $w?->body_score,
-            'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, now()->toDateString()),
+            'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, $left && $exitOn ? $exitOn : now()->toDateString()), 'atExit' => $left,
             'withdrawal' => $seeHealth ? \App\Support\Withdrawal::summary($animal) : null,
             'openCases' => $seeHealth ? \App\Models\HealthCase::where('animal_id', $animal->id)->whereNotIn('status', ['recovered', 'closed', 'deceased'])->pluck('condition')->values() : [],
             'seeHealth' => $seeHealth,
@@ -460,6 +468,25 @@ class GoatController extends Controller
      * PEN, weight and growth, health (problems, temperature, withdrawal, care due; for those with the health right),
      * breeding, family and what is missing. One JSON, read-only.
      */
+    /**
+     * D-324: how a goat left the farm: the exit (type, date, reason, notes, who) and, for a death or slaughter, the vet's
+     * report (what was seen and the postmortem only for the health right). Null while it is on the farm.
+     */
+    public static function exitInfo(Animal $animal, bool $seeHealth): ?array
+    {
+        if ($animal->status === 'active') {
+            return null;
+        }
+        $m = \App\Models\AnimalMovement::with('disease')->where('animal_id', $animal->id)->where('type', '!=', 'transfer')->latest('moved_on')->latest('id')->first();
+        $r = \App\Models\DeathReport::where('animal_id', $animal->id)->where('status', 'approved')->latest('id')->first();
+        $type = $m?->type ?? array_search($animal->exit_reason, \App\Support\Movements::TYPE_TO_REASON, true) ?: 'other';
+
+        return ['type' => $type, 'label' => \App\Models\AnimalMovement::TYPES[$type][0] ?? ucfirst((string) $animal->exit_reason), 'on' => ($m?->moved_on ?? $animal->exit_date)?->format('d/m/Y'),
+            'reason' => $m?->reason, 'destination' => $m?->destination, 'notes' => $m?->notes, 'disease' => $m?->disease?->name, 'by' => $m?->authorized_by ?? $m?->recorded_by,
+            'report' => $r ? ['kind' => $r->kind ?? 'death', 'cause' => $r->cause, 'reportedBy' => $r->reported_by, 'decidedBy' => $r->decided_by,
+                'seen' => $seeHealth ? $r->circumstances : null, 'postmortem' => $seeHealth ? $r->postmortem : null] : null];
+    }
+
     public function profile(Request $request, Animal $animal): \Illuminate\Http\JsonResponse
     {
         $animal->load(['breed', 'pen.shed', 'photos', 'dam', 'sire', 'latestWeight']);
@@ -492,7 +519,11 @@ class GoatController extends Controller
             ];
         }
 
+        $left = $animal->status !== 'active'; // D-324: off the farm: how it left; no PEN, no running pregnancy
+        $exitOn = $animal->exit_date?->toDateString();
+
         return response()->json($animal->card() + [
+            'exit' => self::exitInfo($animal, $seeHealth),
             'rfid' => $tag, 'shed' => $animal->pen?->shed?->name, 'origin' => $origin[$animal->origin] ?? $animal->origin,
             'arrived' => $d($animal->origin === 'born_on_farm' ? $animal->birth_date : $animal->acquired_on), 'born' => $d($animal->birth_date), 'bornEstimated' => (bool) $animal->birth_date_is_estimate,
             'from' => $animal->source_farm, 'purpose' => $animal->animal_purpose ? ucfirst($animal->animal_purpose) : null,
@@ -503,11 +534,11 @@ class GoatController extends Controller
                 'bcs' => $weights->whereNotNull('body_score')->last()?->body_score, 'heightIn' => $height ? round($height->height_cm / 2.54, 1) : ($animal->height_cm ? round($animal->height_cm / 2.54, 1) : null)],
             'breeding' => ['repro' => $animal->repro_status ? ucfirst(str_replace('_', ' ', $animal->repro_status)) : null, 'pregnancyDay' => \App\Support\Checkups::dayOfPregnancy($animal, now()->toDateString()),
                 'lastMating' => $mating ? ['on' => $d($mating->mated_on), 'buck' => $mating->sire?->farm_number, 'status' => \App\Models\Mating::OUTCOMES[$mating->status] ?? $mating->status,
-                    'expected' => in_array($mating->status, ['pregnant', 'open', 'inconclusive'], true) ? $d($mating->expected_kidding_on) : null] : null,
+                    'expected' => ! $left && in_array($mating->status, ['pregnant', 'open', 'inconclusive'], true) ? $d($mating->expected_kidding_on) : null] : null,
                 'kids' => Animal::where($animal->sex === 'male' ? 'sire_id' : 'dam_id', $animal->id)->whereNull('voided_at')->count(),
                 'kiddings' => $animal->sex === 'female' ? \App\Models\Kidding::where('dam_id', $animal->id)->count() : null],
             'family' => ['dam' => $animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : null, 'sire' => $animal->sire ? ['id' => $animal->sire->id, 'number' => $animal->sire->farm_number] : null],
-            'missing' => collect(\App\Support\HerdStats::tags($animal, $weights->isNotEmpty()))->intersect(['no_pen', 'no_weight', 'age_conflict', 'no_stage'])
+            'missing' => $left ? [] : collect(\App\Support\HerdStats::tags($animal, $weights->isNotEmpty()))->intersect(['no_pen', 'no_weight', 'age_conflict', 'no_stage'])
                 ->map(fn ($t) => \App\Support\HerdStats::LABELS[$t] ?? $t)->values(),
             'seeHealth' => $seeHealth, 'healthDetail' => $health,
         ]);
