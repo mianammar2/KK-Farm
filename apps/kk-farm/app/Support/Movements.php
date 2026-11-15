@@ -48,7 +48,8 @@ final class Movements
     {
         // D-316: every open case, newest first; the first that names a disease (the vet's choice, else its diagnosis or
         // condition found in the Disease Master) fills the disease; with none, the newest case's problem is the note
-        $cases = \App\Models\HealthCase::where('animal_id', $animal->id)->whereIn('status', \App\Models\HealthCase::ACTIVE)->orderByDesc('onset_on')->orderByDesc('id')->get();
+        $cases = \App\Models\HealthCase::where('animal_id', $animal->id)->whereIn('status', \App\Models\HealthCase::ACTIVE)
+            ->where('condition', '!=', \App\Support\Intake::CONDITION)->orderByDesc('onset_on')->orderByDesc('id')->get(); // D-318: quarantine is not sickness
         if ($cases->isEmpty()) {
             return null;
         }

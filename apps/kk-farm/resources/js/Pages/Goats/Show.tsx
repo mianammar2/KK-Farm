@@ -660,7 +660,7 @@ function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) 
     const [day, setDay] = useState<string | null>(null); // D-270: a day opened in full
     if (!rows.length) return null;
     const date = (on: string) => new Date(`${on}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const resultTone = (x: string) => (x === 'Sick' || x === 'Under treatment' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
+    const resultTone = (x: string) => (x === 'Quarantine' ? 'bg-watch-100 text-watch-700' : x === 'Sick' || x === 'Under treatment' ? 'bg-crit-100 text-crit-700' : x === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700');
     const th = 'px-2.5 py-2.5 text-xs font-medium whitespace-nowrap text-ink-soft';
     const td = 'px-2.5 py-3 align-middle';
     return (

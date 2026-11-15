@@ -283,7 +283,7 @@ class GoatController extends Controller
             return $days[$on];
         };
         // D-316: a day's result is its most serious one (Under treatment > Sick > Watch > Healthy)
-        $rank = ['Healthy' => 1, 'Watch' => 2, 'Sick' => 3, 'Under treatment' => 4];
+        $rank = ['Healthy' => 1, 'Watch' => 2, 'Quarantine' => 2, 'Sick' => 3, 'Under treatment' => 4];
         $worse = fn (?string $a, ?string $b) => ($rank[$b] ?? 0) > ($rank[$a] ?? 0) ? $b : $a;
         $prev = null;
         foreach ($weights as $w) {
@@ -346,6 +346,23 @@ class GoatController extends Controller
             }
             // D-316: the goat's health cases: opened (what was found), and closed
             foreach (\App\Models\HealthCase::where('animal_id', $animal->id)->get() as $c) {
+                if ($c->condition === \App\Support\Intake::CONDITION) { // D-318: quarantine is isolation on arrival, not an illness
+                    $qDays = \App\Support\Intake::days();
+                    $r = &$day($c->onset_on->format('Y-m-d'));
+                    $r['actions'][] = 'Quarantine started';
+                    $r['care'][] = "Intake quarantine: {$qDays} days, until ".$c->onset_on->copy()->addDays($qDays)->format('d/m/Y');
+                    if (in_array($c->status, \App\Models\HealthCase::ACTIVE, true)) {
+                        $r['result'] = $worse($r['result'], 'Quarantine');
+                    }
+                    unset($r);
+                    if ($c->resolved_on) {
+                        $r = &$day($c->resolved_on->format('Y-m-d'));
+                        $r['actions'][] = str_starts_with((string) $c->diagnosis, 'Cleared') ? 'Cleared by vet' : 'Quarantine over';
+                        unset($r);
+                    }
+
+                    continue;
+                }
                 $r = &$day($c->onset_on->format('Y-m-d'));
                 $r['actions'][] = "Case opened: {$c->label()}";
                 $r['care'][] = "Case {$c->label()}: ".trim($c->condition.($c->diagnosis && $c->diagnosis !== $c->condition ? " ({$c->diagnosis})" : '')).' · '.ucfirst((string) $c->severity).($c->isolated ? ' · isolated' : '');
