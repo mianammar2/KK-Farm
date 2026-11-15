@@ -94,13 +94,22 @@ export function Panel({ title, description, actions, children, className, flush,
     );
 }
 
-export function Stat({ label, value, note, tone }: { label: string; value: ReactNode; note?: string; tone?: 'alert' | 'good' }) {
+/** A figure tile; with onClick or href it is a button / link (D-319), and `active` marks the one picked. */
+export function Stat({ label, value, note, tone, onClick, href, active }: { label: string; value: ReactNode; note?: string; tone?: 'alert' | 'good'; onClick?: () => void; href?: string; active?: boolean }) {
+    const box = cx('min-w-0 px-3 py-2.5 text-start sm:px-4 sm:py-3', (onClick || href) && 'cursor-pointer transition-colors hover:bg-glaze focus-visible:outline-2 focus-visible:outline-cobalt-600', active && 'bg-cobalt-100 ring-2 ring-inset ring-cobalt-800');
+    const body = <StatBody label={label} value={value} note={note} tone={tone} />;
+    if (href) return <Link href={href} className={cx(box, 'block')}>{body}</Link>;
+    if (onClick) return <button type="button" onClick={onClick} aria-pressed={!!active} className={cx(box, 'w-full')}>{body}</button>;
+    return <div className={box}>{body}</div>;
+}
+
+function StatBody({ label, value, note, tone }: { label: string; value: ReactNode; note?: string; tone?: 'alert' | 'good' }) {
     return (
-        <div className="min-w-0 px-3 py-2.5 sm:px-4 sm:py-3">
+        <>
             <div className="truncate text-xs font-medium text-ink-soft sm:text-sm sm:font-normal">{titleCase(label)}</div>
             <div className={cx('mt-0.5 text-xl font-bold tracking-tight tabular-nums sm:text-2xl', tone === 'alert' ? 'text-crit-700' : tone === 'good' ? 'text-ok-700' : 'text-cobalt-900')}>{typeof value === 'number' ? <CountUp to={value} /> : value}</div>
             {note ? <div className="line-clamp-2 text-xs leading-snug text-ink-faint sm:truncate sm:text-sm">{note}</div> : null}
-        </div>
+        </>
     );
 }
 

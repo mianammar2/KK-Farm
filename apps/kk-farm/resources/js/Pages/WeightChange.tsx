@@ -17,6 +17,8 @@ const tone = (n: number | null) => (n === null ? 'text-ink-faint' : n > 0 ? 'tex
 /** D-216: Dashboard → Weight Gain & Loss, per goat. */
 export default function WeightChange({ rows, since, kpi }: Props) {
     const [mode, setMode] = useState<Mode>('prev');
+    const [trend, setTrend] = useState<'gain' | 'loss' | null>(null); // D-319: a figure tile clicked
+    const pick = (t: 'gain' | 'loss' | null) => { setMode('prev'); setTrend(trend === t ? null : t); };
     const diff = (r: Row) => (mode === 'prev' ? r.sincePrev : mode === 'period' ? r.period : r.total);
     const from = (r: Row) => (mode === 'prev' ? r.prev : mode === 'period' ? r.base : r.first);
     // D-273: a spreadsheet: sort, filter by anything (gaining, losing, breed, pen, batch …), totals, export
@@ -42,24 +44,24 @@ export default function WeightChange({ rows, since, kpi }: Props) {
             <Head title="Weight Gain & Loss" />
             <PageHeader title="Weight Gain & Loss" description="Every goat's latest weight against its previous weighing, a date you choose, or its first weighing. Held readings waiting for review are not counted." />
             <StatRow>
-                <Stat label="Goats weighed" value={`${kpi.weighed} of ${kpi.goats}`} />
-                <Stat label="Gaining" value={kpi.gaining} note="Since previous weighing" tone={kpi.gaining ? 'good' : undefined} />
-                <Stat label="Losing" value={kpi.losing} note="Since previous weighing" tone={kpi.losing ? 'alert' : undefined} />
-                <Stat label="Average daily gain" value={kpi.avgAdg === null ? '—' : `${kpi.avgAdg} g`} note="Since previous weighing" />
-                <Stat label="Held for review" value={kpi.held} tone={kpi.held ? 'alert' : undefined} note="Growth → Held Weights" />
+                <Stat label="Goats weighed" value={`${kpi.weighed} of ${kpi.goats}`} onClick={() => pick(null)} active={trend === null && mode === 'prev'} note="Show all" />
+                <Stat label="Gaining" value={kpi.gaining} note="Since previous weighing" tone={kpi.gaining ? 'good' : undefined} onClick={() => pick('gain')} active={trend === 'gain'} />
+                <Stat label="Losing" value={kpi.losing} note="Since previous weighing" tone={kpi.losing ? 'alert' : undefined} onClick={() => pick('loss')} active={trend === 'loss'} />
+                <Stat label="Average daily gain" value={kpi.avgAdg === null ? '—' : `${kpi.avgAdg} g`} note="Since previous weighing" onClick={() => pick(null)} />
+                <Stat label="Held for review" value={kpi.held} tone={kpi.held ? 'alert' : undefined} note="Growth → Held Weights" href="/weights/review" />
             </StatRow>
 
             <Panel className="mb-4">
                 <div className="flex flex-wrap items-end gap-2">
                     <div role="radiogroup" aria-label="Compare" className="flex flex-wrap gap-1">{(Object.keys(MODES) as Mode[]).map((m) => (
-                        <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={mode === m ? 'rounded-full bg-cobalt-800 px-3 py-1.5 text-xs font-semibold text-white' : 'rounded-full bg-glaze px-3 py-1.5 text-xs font-semibold ring-1 ring-rule'}>{MODES[m]}</button>
+                        <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => { setMode(m); setTrend(null); }} className={mode === m ? 'rounded-full bg-cobalt-800 px-3 py-1.5 text-xs font-semibold text-white' : 'rounded-full bg-glaze px-3 py-1.5 text-xs font-semibold ring-1 ring-rule'}>{MODES[m]}</button>
                     ))}</div>
                     {mode === 'period' ? <label className="text-xs font-semibold text-ink-soft">From <input type="date" className="field ml-1 inline-block w-auto py-1" value={since} max={new Date().toISOString().slice(0, 10)} onChange={(e) => e.target.value && router.get('/dashboard/weight-change', { since: e.target.value }, { preserveState: true, preserveScroll: true, replace: true })} /></label> : null}
                 </div>
             </Panel>
 
             <Panel flush title={MODES[mode]}>
-                <DataGrid<Row> id={`weight-change-${mode}`} name={`Weight gain and loss ${MODES[mode].toLowerCase()}`} cols={cols} rows={rows} rowKey={(r) => r.id} pageSize={50} empty="No goats" />
+                <DataGrid<Row> id={`weight-change-${mode}`} name={`Weight gain and loss ${MODES[mode].toLowerCase()}`} cols={cols} rows={trend ? rows.filter((r) => { const d = r.sincePrev.kg; return d !== null && (trend === 'gain' ? d > 0 : d < 0); }) : rows} rowKey={(r) => r.id} pageSize={50} empty="No goats" />
             </Panel>
         </>
     );
