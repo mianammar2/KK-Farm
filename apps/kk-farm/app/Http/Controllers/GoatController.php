@@ -412,7 +412,8 @@ class GoatController extends Controller
         if (! $r && $animal->exit_reason !== 'died') {
             return null;
         }
-        $out = $r ? ['id' => $r->id, 'status' => $r->status, 'diedAt' => $r->died_at->format('d/m/Y H:i'), 'cause' => $r->cause, 'circumstances' => $seeHealth ? $r->circumstances : null,
+        $out = $r ? ['id' => $r->id, 'kind' => $r->kind ?? 'death', 'status' => $r->status, // D-320: death or slaughter
+            'diedAt' => $r->died_at->format('d/m/Y H:i'), 'cause' => $r->cause, 'circumstances' => $seeHealth ? $r->circumstances : null,
             'postmortem' => $seeHealth ? $r->postmortem : null, 'reportedBy' => $r->reported_by, 'decidedBy' => $r->decided_by, 'decidedAt' => $r->decided_at?->format('d/m/Y'), 'note' => $r->decision_note] : null;
         if ($animal->exit_reason !== 'died' || ! $seeHealth) {
             return $out ? ['report' => $out, 'review' => null] : null;
@@ -582,6 +583,7 @@ class GoatController extends Controller
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),
             'records' => ! $pedigree ? [] : $this->records($animal, $weights, $seeHealth), // D-249: the goat's measurements and care, one row per day
             'saleReasons' => \App\Support\Movements::SALE_REASONS, 'diseases' => \App\Support\Movements::diseaseOptions(), // D-290
+            'slaughterReasons' => \App\Http\Controllers\DeathController::SLAUGHTER_REASONS, // D-320
             'death' => $this->death($animal, $seeHealth), // D-260: the vet's death report, and the review once it is approved
             // D-251: how it is doing since a watch began, or when it last came off Watch
             'recovery' => $seeHealth || $request->user()->passes('see_recovery_progress') ? ((($p = \App\Support\Recovery::progress($animal)) ? ($seeHealth ? $p : ['title' => 'Health watch', 'temp' => null] + $p) : null) ?? (($e = \App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(30))->latest('occurred_at')->first())

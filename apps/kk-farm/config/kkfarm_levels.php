@@ -18,6 +18,7 @@ return [
     'see_health_history' => ['area' => 'health', 'level' => 'view'],
     'see_goat_pedigree' => ['area' => 'goats', 'level' => 'view'],
     'report_death' => ['area' => 'health', 'level' => 'contribute'],
+    'report_slaughter' => ['area' => 'health', 'level' => 'contribute'], // D-320
     'cull_breeding' => ['area' => 'breeding', 'level' => 'manage'],
     'check_teeth' => ['area' => 'health', 'level' => 'contribute'],
     'record_height' => ['area' => 'health', 'level' => 'contribute'],

@@ -16,6 +16,7 @@ class AnimalMovement extends Model
         'transfer' => ['PEN transfer', false, null],
         'sale' => ['Sale', true, 'left_farm'],
         'death' => ['Death', true, 'deceased'],
+        'slaughter' => ['Slaughter', true, 'left_farm'], // D-320: reported by the vet, approved by the administrator
         'culling' => ['Culling', true, 'left_farm'],
         'sacrificed' => ['Qurbani / sacrifice', true, 'left_farm'],
         'gifted' => ['Gift', true, 'left_farm'],
@@ -24,7 +25,7 @@ class AnimalMovement extends Model
     ];
 
     /** Exits where the goat may be eaten: blocked while it is under meat withdrawal (D-073). */
-    public const MEAT_EXITS = ['sale', 'culling', 'sacrificed', 'gifted'];
+    public const MEAT_EXITS = ['sale', 'culling', 'sacrificed', 'gifted', 'slaughter']; // D-320: slaughter for a disease condemns the meat (no withdrawal check)
 
     public function animal()
     {

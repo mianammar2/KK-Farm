@@ -254,7 +254,8 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/photos', [GoatController::class, 'addPhoto']);
         Route::post('/goats/{animal}/photos/{photo}/profile', [GoatController::class, 'setProfilePhoto']);
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);
-        Route::post('/goats/{animal}/death', [\App\Http\Controllers\DeathController::class, 'store']); // D-260: the vet reports
+        Route::post('/goats/{animal}/death', [\App\Http\Controllers\DeathController::class, 'store']);
+        Route::post('/goats/{animal}/slaughter', [\App\Http\Controllers\DeathController::class, 'slaughter']); // D-320 // D-260: the vet reports
         Route::post('/goats/{animal}/height', [GoatController::class, 'height']); // D-262
         Route::post('/heights/{record}', [GoatController::class, 'correctHeight']); // D-311: correct a height
         Route::get('/goats/{animal}/day/{on}', [GoatController::class, 'day']);

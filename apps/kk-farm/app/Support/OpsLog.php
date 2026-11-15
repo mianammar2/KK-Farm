@@ -25,10 +25,10 @@ class OpsLog
     ];
 
     /** D-314: the transaction ID of each operation: this code and the record's number (WT-1523). */
-    public const CODES = ['register' => 'RG', 'weight' => 'WT', 'height' => 'HT', 'move' => 'MV', 'exit' => 'EX', 'photo' => 'PH', 'edit' => 'ED', 'rfid' => 'RF', 'checkup' => 'CK', 'case' => 'HC', 'treatment' => 'TR', 'dose' => 'DS', 'care' => 'VC', 'teeth' => 'TT', 'death' => 'DR', 'parasite' => 'PS', 'outbreak' => 'OB', 'heat' => 'HE', 'mating' => 'MT', 'ultrasound' => 'US', 'breeding_ok' => 'BA', 'selection' => 'RS', 'kidding' => 'KD', 'kid_care' => 'KC', 'weaning' => 'WN', 'repro_loss' => 'PL', 'feed_given' => 'FG', 'feeding_round' => 'FR', 'feed_stock' => 'FS', 'feed_count' => 'FC', 'tmr' => 'TM', 'feed_lot' => 'FL', 'ration' => 'RP', 'pen_clean' => 'PC', 'growth_case' => 'GF', 'task_done' => 'TK', 'checklist' => 'CL', 'incident' => 'IN', 'handover' => 'SH', 'medicine_stock' => 'MS', 'store_move' => 'SM', 'purchase_order' => 'PO', 'goat_lot' => 'GL', 'sale' => 'SL', 'sale_order' => 'SO', 'clearance' => 'SC', 'trip' => 'TP', 'journal' => 'JE', 'money' => 'MN', 'attendance' => 'AT', 'leave' => 'LV', 'training' => 'TN', 'skill' => 'SK', 'repair' => 'MJ', 'sensor_alert' => 'SA', 'milking' => 'MK', 'milk_session' => 'MSS', 'milk_dispatch' => 'MD', 'processing' => 'MP', 'lactation' => 'LC', 'fattening_batch' => 'FB', 'fattening_goat' => 'FA', 'welfare_check' => 'WC', 'welfare_case' => 'WCS', 'welfare_action' => 'WA', 'end_of_life' => 'EL', 'env_round' => 'ER', 'env_issue' => 'EI', 'waste' => 'WD', 'water_test' => 'WTT', 'quality_case' => 'QC', 'capa' => 'CA', 'hold' => 'QH', 'fodder_crop' => 'CR', 'fodder_input' => 'CI', 'fodder_lot' => 'HV', 'access' => 'AC'];
+    public const CODES = ['register' => 'RG', 'weight' => 'WT', 'height' => 'HT', 'move' => 'MV', 'exit' => 'EX', 'photo' => 'PH', 'edit' => 'ED', 'rfid' => 'RF', 'checkup' => 'CK', 'case' => 'HC', 'treatment' => 'TR', 'dose' => 'DS', 'care' => 'VC', 'teeth' => 'TT', 'death' => 'DR', 'slaughter' => 'SG', 'parasite' => 'PS', 'outbreak' => 'OB', 'heat' => 'HE', 'mating' => 'MT', 'ultrasound' => 'US', 'breeding_ok' => 'BA', 'selection' => 'RS', 'kidding' => 'KD', 'kid_care' => 'KC', 'weaning' => 'WN', 'repro_loss' => 'PL', 'feed_given' => 'FG', 'feeding_round' => 'FR', 'feed_stock' => 'FS', 'feed_count' => 'FC', 'tmr' => 'TM', 'feed_lot' => 'FL', 'ration' => 'RP', 'pen_clean' => 'PC', 'growth_case' => 'GF', 'task_done' => 'TK', 'checklist' => 'CL', 'incident' => 'IN', 'handover' => 'SH', 'medicine_stock' => 'MS', 'store_move' => 'SM', 'purchase_order' => 'PO', 'goat_lot' => 'GL', 'sale' => 'SL', 'sale_order' => 'SO', 'clearance' => 'SC', 'trip' => 'TP', 'journal' => 'JE', 'money' => 'MN', 'attendance' => 'AT', 'leave' => 'LV', 'training' => 'TN', 'skill' => 'SK', 'repair' => 'MJ', 'sensor_alert' => 'SA', 'milking' => 'MK', 'milk_session' => 'MSS', 'milk_dispatch' => 'MD', 'processing' => 'MP', 'lactation' => 'LC', 'fattening_batch' => 'FB', 'fattening_goat' => 'FA', 'welfare_check' => 'WC', 'welfare_case' => 'WCS', 'welfare_action' => 'WA', 'end_of_life' => 'EL', 'env_round' => 'ER', 'env_issue' => 'EI', 'waste' => 'WD', 'water_test' => 'WTT', 'quality_case' => 'QC', 'capa' => 'CA', 'hold' => 'QH', 'fodder_crop' => 'CR', 'fodder_input' => 'CI', 'fodder_lot' => 'HV', 'access' => 'AC'];
 
     /** Health operations: only for the right to see health history (F-15). */
-    public const HEALTH = ['checkup', 'case', 'treatment', 'dose', 'care', 'teeth', 'death', 'parasite', 'outbreak', 'repro_loss'];
+    public const HEALTH = ['checkup', 'case', 'treatment', 'dose', 'care', 'teeth', 'death', 'slaughter', 'parasite', 'outbreak', 'repro_loss'];
 
     /**
      * op => [label, apps (first = where it belongs), table, date column, by column, goat column, details]
@@ -59,6 +59,7 @@ class OpsLog
             'care' => ['Vaccination / deworming', ['veterinary'], 'health_records', 'occurred_on', 'recorded_by', 'animal_id', fn ($r) => $t($w($r->kind), $r->title)],
             'teeth' => ['Teeth check', ['veterinary'], 'dental_exams', 'examined_on', 'recorded_by', 'animal_id', fn ($r) => $t($r->dental_code, $w($r->condition))],
             'death' => ['Death report', ['veterinary'], 'death_reports', 'died_at', 'reported_by', 'animal_id', fn ($r) => $t($r->cause, $w($r->status))],
+            'slaughter' => ['Slaughter report', ['veterinary'], 'death_reports', 'died_at', 'reported_by', 'animal_id', fn ($r) => $t(preg_replace('/^Slaughter: /', '', (string) $r->cause), $w($r->status))], // D-320
             'parasite' => ['Parasite test', ['veterinary'], 'parasite_samples', 'sampled_on', 'recorded_by', 'animal_id', fn ($r) => $t($r->sample_no, $r->epg !== null ? "EPG {$r->epg}" : null, $r->famacha ? "FAMACHA {$r->famacha}" : null, $w($r->decision))],
             'outbreak' => ['Outbreak', ['veterinary'], 'outbreaks', 'opened_on', 'opened_by', null, fn ($r) => $t($r->code, $r->condition, $w($r->status))],
             // Breeding and Maternity
@@ -157,6 +158,7 @@ class OpsLog
         'care' => ['occurred_on' => 'Date', 'title' => 'What was given', 'batch_lot' => 'Batch', 'notes' => 'Notes'],
         'teeth' => ['examined_on' => 'Date', 'dental_code' => 'Teeth code', 'notes' => 'Notes'],
         'death' => ['died_at' => 'Date of death', 'cause' => 'Cause', 'circumstances' => 'Circumstances'],
+        'slaughter' => ['died_at' => 'Date of slaughter', 'circumstances' => 'What was seen'],
         'parasite' => ['sampled_on' => 'Date', 'epg' => 'EPG', 'famacha' => 'FAMACHA', 'notes' => 'Notes'],
         'outbreak' => ['opened_on' => 'Opened on', 'condition' => 'Condition'],
         'heat' => ['observed_on' => 'Date', 'signs' => 'Signs', 'notes' => 'Notes'],
@@ -263,6 +265,8 @@ class OpsLog
                 'edit' => $q->where('type', 'edit'),
                 'dose' => $q->where('status', '<>', 'due')->where('number', '>', 1),
                 'care' => $q->whereIn('kind', ['vaccination', 'deworming']),
+                'death' => $q->where('kind', 'death'),
+                'slaughter' => $q->where('kind', 'slaughter'),
                 'task_done' => $q->where('status', 'done')->whereNotNull('completed_at'),
                 default => null,
             };

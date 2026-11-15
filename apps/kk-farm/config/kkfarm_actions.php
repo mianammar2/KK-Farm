@@ -122,6 +122,7 @@ return [
     'POST /goats/{animal}/castration' => ['inline' => 'the action checks clinical', 'module' => 'goats'],
     'POST /goats/{animal}/cull' => ['inline' => 'the action checks cull_breeding', 'module' => 'goats'],
     'POST /goats/{animal}/death' => ['inline' => 'the action checks report_death', 'module' => 'goats'],
+    'POST /goats/{animal}/slaughter' => ['inline' => 'the action checks report_slaughter', 'module' => 'goats'], // D-320
     'POST /goats/{animal}/edit' => ['inline' => 'the action checks edit_goats', 'module' => 'goats'],
     'POST /goats/{animal}/exit' => ['inline' => 'the action checks exit_animal', 'module' => 'goats'],
     'POST /reports/operations/correct' => ['inline' => 'the action checks the app, who recorded it and correct_health_records', 'open' => 'every app\'s log: the action checks the operation\'s app itself'], // D-313

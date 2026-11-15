@@ -308,4 +308,22 @@ class HeightTeethTest extends TestCase
         $this->assertNull(\App\Support\Movements::saleHint($this->goat->fresh()));
         $this->actingAs($this->user('ceo'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('records', fn ($recs) => collect($recs)->contains(fn ($r) => $r['result'] === 'Quarantine' && in_array('Quarantine started', $r['actions'], true))));
     }
+
+    /** D-320: the vet reports a slaughter (date, reason, disease); the administrator approves; the goat leaves as Slaughter. */
+    public function test_a_vet_reports_a_slaughter_and_the_administrator_approves_it(): void
+    {
+        $ppr = \App\Models\Disease::create(['name' => 'PPR', 'category' => 'viral', 'active' => true]);
+        $on = now()->subDay()->toDateString();
+        $this->actingAs($this->user('caretaker'))->post("/goats/{$this->goat->id}/slaughter", ['died_at' => $on, 'reason' => 'meat', 'circumstances' => 'For the kitchen'])->assertForbidden();
+        $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/slaughter", ['died_at' => $on, 'reason' => 'disease', 'circumstances' => 'Not recovering, spreading risk'])->assertSessionHasErrors('disease_id');
+        $this->actingAs($this->user('vet'))->post("/goats/{$this->goat->id}/slaughter", ['died_at' => $on, 'reason' => 'disease', 'disease_id' => $ppr->id, 'circumstances' => 'Not recovering, spreading risk'])->assertSessionHasNoErrors();
+        $this->assertSame('active', $this->goat->fresh()->status, 'stays until the administrator approves');
+        $r = \App\Models\DeathReport::sole();
+        $this->assertSame(['slaughter', 'Slaughter: PPR'], [$r->kind, $r->cause]);
+        $this->actingAs($this->user('ceo'))->post("/death-reports/{$r->id}", ['decision' => 'approved'])->assertSessionHasNoErrors();
+        $m = \App\Models\AnimalMovement::where('animal_id', $this->goat->id)->sole();
+        $this->assertSame(['slaughter', $on, $ppr->id], [$m->type, $m->moved_on->toDateString(), $m->disease_id]);
+        $this->assertSame(['left_farm', 'slaughtered'], [$this->goat->fresh()->status, $this->goat->fresh()->exit_reason]);
+        $this->assertFalse(\App\Models\HealthRecord::where('animal_id', $this->goat->id)->where('kind', 'postmortem')->exists(), 'not counted as a death');
+    }
 }

@@ -80,6 +80,7 @@ return [
         'see_goat_pedigree' => ['ceo', 'manager', 'vet', 'caretaker'], // D-266 F-14: sire, dam, offspring and the day-by-day records; the feeding staff see tag, pen and group only
         // D-260: a death is the vet's finding, approved by the administrator; culling takes a goat out of breeding
         'report_death' => ['vet'],
+        'report_slaughter' => ['vet'], // D-320: like a death: the administrator approves, then the goat leaves
         'approve_death' => ['ceo'],
         'cull_breeding' => ['vet'], // D-269: a medical decision, the vet's (tickable for others)
         // D-262: the vet's teeth check and height measurement (Tasks jobs and goat page); the administrator has both

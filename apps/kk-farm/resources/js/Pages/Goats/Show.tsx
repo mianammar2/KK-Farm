@@ -70,7 +70,7 @@ export default function GoatShow(props: Props) {
     const [tab, setTab] = useState('overview');
     // D-102: opened from a scan with ?do=checkup|pregnancy|entry|weight|move|concern, the right form is already open.
     const todo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('do') : null;
-    const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern', 'temp', 'height', 'cull', 'death', 'exit', 'birth', 'photo'].includes(todo ?? '') ? todo : null); // D-301: every form an app's scan can open
+    const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern', 'temp', 'height', 'cull', 'death', 'slaughter', 'exit', 'birth', 'photo'].includes(todo ?? '') ? todo : null); // D-301: every form an app's scan can open
     const [entry, setEntry] = useState<string | null>(['checkup', 'pregnancy', 'entry'].includes(todo ?? '') && healthEntry ? (todo === 'entry' ? '' : todo) : null);
     const profile = photos.find((p) => p.isProfile);
     const onFarm = goat.status === 'active';
@@ -165,6 +165,7 @@ export default function GoatShow(props: Props) {
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm sm:hidden">
                             {onFarm && auth?.gates.includes('edit_goats') ? <button type="button" className="font-semibold text-cobalt-800" onClick={() => setPanel(panel === 'birth' ? null : 'birth')}>Correct Birth Date</button> : null}
                             {onFarm && auth?.gates.includes('report_death') && death?.report?.status !== 'pending' ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'death' ? null : 'death')}>Report Death</button> : null}
+                            {onFarm && auth?.gates.includes('report_slaughter') && death?.report?.status !== 'pending' ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'slaughter' ? null : 'slaughter')}>Slaughter</button> : null}
                             {onFarm && auth?.gates.includes('exit_animal') ? <button type="button" className="font-semibold text-crit-700" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}>Record Exit</button> : null}
                             {!removed && can.edit && !goat.removal ? <button type="button" className="font-semibold text-ink-soft" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}>Remove (Wrong Entry)</button> : null}
                         </div>
@@ -188,6 +189,7 @@ export default function GoatShow(props: Props) {
                                 {!removed && can.edit ? <Button variant="secondary" onClick={() => router.visit(`/goats/${goat.id}/edit`)}><LibIcon name="app-settings" size={18} /> Edit details</Button> : null}
                                 {onFarm ? <>
                                     {auth?.gates.includes('report_death') && death?.report?.status !== 'pending' ? <Button variant="danger" onClick={() => setPanel(panel === 'death' ? null : 'death')}><LibIcon name="ic-died" size={18} /> Report death</Button> : null}
+                                    {auth?.gates.includes('report_slaughter') && death?.report?.status !== 'pending' ? <Button variant="danger" onClick={() => setPanel(panel === 'slaughter' ? null : 'slaughter')}><LibIcon name="ic-died" size={18} /> Slaughter</Button> : null}
                                     {auth?.gates.includes('exit_animal') ? <Button variant="danger" onClick={() => setPanel(panel === 'exit' ? null : 'exit')}><LibIcon name="ic-sold" size={18} /> Record exit</Button> : null}
                                 </> : null}
                                 {!removed && can.edit && !goat.removal ? <Button variant="quiet" onClick={() => setPanel(panel === 'remove' ? null : 'remove')}><Trash2 size={16} aria-hidden /> Remove (wrong entry)</Button> : null}
@@ -389,7 +391,7 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
     // D-253: a quick temperature reading with its date, saved as a checkup (the vet can change the result)
     const temp = useForm({ animal_id: goat.id, temperature_f: '', checked_on: today, outcome: 'healthy' });
     const move = useForm({ animal_id: goat.id, pen_id: String(pens[0]?.id ?? ''), capacity_override: '', reason: '' });
-    const { saleReasons = {}, diseases = [] } = usePage<{ saleReasons?: Record<string, string>; diseases?: DiseaseOption[] }>().props; // D-290
+    const { saleReasons = {}, diseases = [], slaughterReasons = {} } = usePage<{ saleReasons?: Record<string, string>; diseases?: DiseaseOption[]; slaughterReasons?: Record<string, string> }>().props; // D-290, D-320
     const exit = useForm({ reason: 'sold', amount: '', destination: '', notes: '', moved_on: new Date().toISOString().slice(0, 10), ...saleReasonDefaults(goat.saleHint) });
     const [ask, confirmBox] = useConfirm(); // D-133
     const photo = useForm<{ photo: File | null; notes: string }>({ photo: null, notes: '' });
@@ -432,6 +434,7 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
     if (kind === 'height') return <HeightForm goatId={goat.id} onDone={close} />;
     if (kind === 'cull') return <CullForm goatId={goat.id} onDone={close} />;
     if (kind === 'death') return <DeathForm goatId={goat.id} conditions={conditions} onDone={close} />;
+    if (kind === 'slaughter') return <SlaughterForm goatId={goat.id} reasons={slaughterReasons} diseases={diseases} onDone={close} />;
     if (kind === 'temp') {
         const t = Number(temp.data.temperature_f);
         const normal = temp.data.temperature_f !== '' && t >= 101.3 && t <= 103.5;
@@ -726,7 +729,7 @@ function Ticker({ kg, pct, days, perDay, small, unit = 'KG' }: { kg: number; pct
 
 /** D-260: the death report and, once approved, the review of the goat's last 60 days. */
 type DeathData = {
-    report: { id: number; status: 'pending' | 'approved' | 'rejected'; diedAt: string; cause: string; circumstances: string | null; postmortem: string | null; reportedBy: string; decidedBy: string | null; decidedAt: string | null; note: string | null } | null;
+    report: { id: number; kind?: 'death' | 'slaughter'; status: 'pending' | 'approved' | 'rejected'; diedAt: string; cause: string; circumstances: string | null; postmortem: string | null; reportedBy: string; decidedBy: string | null; decidedAt: string | null; note: string | null } | null;
     review: {
         from: string;
         cases: Array<{ label: string; condition: string; onset: string; status: string; severity: string; vet: string | null; diagnosis: string | null }>;
@@ -751,18 +754,38 @@ function DeathForm({ goatId, conditions, onDone }: { goatId: string; conditions:
     );
 }
 
+/** D-320: the vet reports a slaughter: date, reason (Disease asks which one), what was seen; the administrator approves. */
+function SlaughterForm({ goatId, reasons, diseases, onDone }: { goatId: string; reasons: Record<string, string>; diseases: { id: number; label: string }[]; onDone: () => void }) {
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const f = useForm({ died_at: today, reason: '', disease_id: '', other: '', circumstances: '' });
+    const e = f.errors as Record<string, string>;
+    return (
+        <form onSubmit={(ev) => { ev.preventDefault(); f.post(`/goats/${goatId}/slaughter`, { preserveScroll: true, onSuccess: onDone }); }} className="grid gap-3 sm:grid-cols-2">
+            <Field label="Date of slaughter" error={e.died_at}><input type="date" className="field" max={today} value={f.data.died_at} onChange={(x) => f.setData('died_at', x.target.value)} required /></Field>
+            <Field label="Reason" error={e.reason}><select className="field" value={f.data.reason} onChange={(x) => f.setData('reason', x.target.value)} required>
+                <option value="">Choose…</option>{Object.entries(reasons).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
+            {f.data.reason === 'disease' ? <div className="sm:col-span-2"><Field label="Disease" error={e.disease_id}><select className="field" value={f.data.disease_id} onChange={(x) => f.setData('disease_id', x.target.value)} required>
+                <option value="">Choose the disease…</option>{diseases.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}</select></Field></div> : null}
+            {f.data.reason === 'other' ? <div className="sm:col-span-2"><Field label="Reason in words" error={e.other}><input className="field" value={f.data.other} onChange={(x) => f.setData('other', x.target.value)} required /></Field></div> : null}
+            <div className="sm:col-span-2"><Field label="What was seen" error={e.circumstances} hint="Signs, why it is slaughtered, what was done"><textarea className="field min-h-20" value={f.data.circumstances} onChange={(x) => f.setData('circumstances', x.target.value)} required /></Field></div>
+            {f.data.reason === 'disease' || f.data.reason === 'poor_condition' ? <p className="text-sm text-crit-700 sm:col-span-2">The meat of a goat slaughtered for disease or poor condition is recorded as not fit to eat.</p> : null}
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2"><Button type="submit" variant="danger" disabled={f.processing}>Send to the administrator</Button><span className="text-sm text-ink-soft">The goat stays on the farm until the administrator approves.</span></div>
+        </form>
+    );
+}
+
 function DeathBanner({ r, canDecide }: { r: NonNullable<DeathData['report']>; canDecide: boolean }) {
     const f = useForm({ decision: 'approved', note: '' });
     const [returning, setReturning] = useState(false);
     const send = (decision: string) => { f.transform((d) => ({ ...d, decision })); f.post(`/death-reports/${r.id}`, { preserveScroll: true }); };
     return (
         <div className={`border-t px-4 py-3 text-sm ${r.status === 'pending' ? 'border-crit-500/30 bg-crit-100' : 'border-watch-400/40 bg-watch-100'}`} role="status">
-            <p className="font-semibold text-crit-700">{r.status === 'pending' ? `Death reported by ${r.reportedBy}, waiting for approval` : `Death report returned by ${r.decidedBy}`}</p>
-            <p className="mt-0.5 text-ink">Died {r.diedAt} · <b>{r.cause}</b>{r.circumstances ? ` · ${r.circumstances}` : ''}</p>
+            <p className="font-semibold text-crit-700">{r.status === 'pending' ? `${r.kind === 'slaughter' ? 'Slaughter' : 'Death'} reported by ${r.reportedBy}, waiting for approval` : `${r.kind === 'slaughter' ? 'Slaughter' : 'Death'} report returned by ${r.decidedBy}`}</p>
+            <p className="mt-0.5 text-ink">{r.kind === 'slaughter' ? `Slaughter on ${r.diedAt.slice(0, 10)}` : `Died ${r.diedAt}`} · <b>{r.cause}</b>{r.circumstances ? ` · ${r.circumstances}` : ''}</p>
             {r.status === 'rejected' && r.note ? <p className="mt-0.5 text-watch-700">Note: {r.note}. Report it again with the correction.</p> : null}
             {r.status === 'pending' && canDecide ? (
                 <div className="mt-2 flex flex-wrap items-end gap-2">
-                    <Button variant="danger" disabled={f.processing} onClick={() => send('approved')}>Approve: record the death</Button>
+                    <Button variant="danger" disabled={f.processing} onClick={() => send('approved')}>{r.kind === 'slaughter' ? 'Approve: record the slaughter' : 'Approve: record the death'}</Button>
                     {returning ? <>
                         <div className="w-72"><Field label="Why it goes back to the vet" error={f.errors.note}><input className="field" autoFocus value={f.data.note} onChange={(e) => f.setData('note', e.target.value)} /></Field></div>
                         <Button variant="secondary" disabled={f.processing || !f.data.note} onClick={() => send('rejected')}>Send back</Button>

@@ -88,7 +88,7 @@ final class Movements
 
     public const REASON_TO_TYPE = ['sold' => 'sale', 'died' => 'death', 'culled' => 'culling', 'sacrificed' => 'sacrificed', 'gifted' => 'gifted', 'transferred' => 'transferred_out', 'other' => 'other'];
 
-    public const TYPE_TO_REASON = ['sale' => 'sold', 'death' => 'died', 'culling' => 'culled', 'sacrificed' => 'sacrificed', 'gifted' => 'gifted', 'transferred_out' => 'transferred', 'other' => 'other'];
+    public const TYPE_TO_REASON = ['slaughter' => 'slaughtered', 'sale' => 'sold', 'death' => 'died', 'culling' => 'culled', 'sacrificed' => 'sacrificed', 'gifted' => 'gifted', 'transferred_out' => 'transferred', 'other' => 'other'];
 
     public static function transfer(Animal $animal, Pen $to, User $by, array $extra = []): ?AnimalMovement
     {
@@ -147,7 +147,7 @@ final class Movements
         if ($animal->status !== 'active') {
             throw ValidationException::withMessages(['animal_id' => "{$animal->farm_number} is no longer on the farm."]);
         }
-        if (in_array($type, AnimalMovement::MEAT_EXITS, true)) {
+        if (in_array($type, AnimalMovement::MEAT_EXITS, true) && empty($data['meat_condemned'])) { // D-320: condemned meat is not eaten
             Quality::assertAnimalNotHeld($animal, 'type'); // D-189: held animals cannot sell
             Biosecurity::assertExitAllowed($animal); // D-193
             $meat = Withdrawal::forAnimal($animal->id)['meat'];
@@ -168,7 +168,7 @@ final class Movements
                 'animal_id' => $animal->id, 'moved_on' => $on, 'type' => $type, 'from_pen_id' => $animal->pen_id, 'destination' => $data['destination'] ?? null,
                 'reason' => $data['reason'] ?? null, 'authorized_by' => $data['authorized_by'] ?? $by->name, 'amount_minor' => $amount,
                 'evidence_ref' => $data['evidence_ref'] ?? null, 'notes' => $data['notes'] ?? null, 'recorded_by' => $by->name,
-                'sale_reason' => $type === 'sale' ? ($data['sale_reason'] ?? null) : null, 'disease_id' => $type === 'sale' ? ($data['disease_id'] ?? null) : null,
+                'sale_reason' => $type === 'sale' ? ($data['sale_reason'] ?? null) : null, 'disease_id' => in_array($type, ['sale', 'slaughter'], true) ? ($data['disease_id'] ?? null) : null,
                 'sale_reason_note' => $type === 'sale' ? ($data['sale_reason_note'] ?? null) : null, // D-290
             ]);
             Farm::closeOpenTag($animal, self::TYPE_TO_REASON[$type], $by);
