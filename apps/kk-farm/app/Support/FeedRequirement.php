@@ -41,7 +41,9 @@ class FeedRequirement
 
                 return [
                     'id' => $inPen->first()->pen_id, 'name' => $inPen->first()->pen?->fullName() ?? 'Not in a PEN', 'kgDay' => round($rows->sum('kgDay'), 1), 'cpDay' => round($rows->sum('cpKg'), 2), 'kgMonth' => round($rows->sum('kgDay') * $md, 1), 'givenToday' => $given, 'balance' => $bal['state'], 'diff' => $bal['diff'],
-                    'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
+                    'cost' => round($rows->sum(fn ($r) => $cost($r['lines']))), 'count' => $rows->count(),
+                    // D-324: the PEN's live weight now: the sum of each goat's latest weighing, and how many have none yet.
+                    'liveKg' => round($rows->sum(fn ($r) => (float) ($r['weight'] ?? 0)), 1), 'noWeight' => $rows->whereNull('weight')->count(), 'unplanned' => $rows->where('state', '!=', 'planned')->count(),
                     'goats' => $rows->map(fn ($r) => [
                         'id' => $r['id'], 'number' => $r['number'], 'group' => $r['group'], 'weight' => $r['weight'], 'state' => $r['state'], 'rule' => $r['rule'],
                         'kgDay' => $r['kgDay'], 'kgMonth' => round($r['kgDay'] * $md, 1), 'cp' => $r['cp'], 'cpKg' => $r['cpKg'], 'cpStandard' => $r['standard'] ?? null, 'min' => $r['min'], 'max' => $r['max'], 'feeds' => $feedText($r['lines']),
@@ -53,7 +55,7 @@ class FeedRequirement
 
             return [
                 'id' => $shedId ?: null, 'name' => $shed?->name ?? 'Not in a PEN', 'typeName' => $shed?->typeName(), 'kgDay' => round($all->sum('kgDay'), 1), 'cpDay' => round($all->sum('cpKg'), 2), 'kgMonth' => round($all->sum('kgDay') * $md, 1),
-                'cost' => round($all->sum(fn ($r) => $cost($r['lines']))), 'count' => $all->count(), 'feeds' => $sum($all),
+                'cost' => round($all->sum(fn ($r) => $cost($r['lines']))), 'count' => $all->count(), 'liveKg' => round($all->sum(fn ($r) => (float) ($r['weight'] ?? 0)), 1), 'noWeight' => $all->whereNull('weight')->count(), 'feeds' => $sum($all),
                 'pens' => $pens->map(fn ($p) => collect($p)->except('_rows')->all())->all(),
             ];
         })->sortBy(fn ($s) => [$s['id'] === null ? 1 : 0, $s['name']])->values();
@@ -104,8 +106,8 @@ class FeedRequirement
         return [
             'supply' => $r['supply'], 'tracking' => $r['tracking'], 'kgDay' => $r['kgDay'], 'cost' => $r['cost'], 'kgMonth' => $r['kgMonth'], 'costMonth' => $r['costMonth'],
             'planned' => $r['planned'], 'milk' => $r['milk'], 'missing' => $r['missing'],
-            'sheds' => collect($r['sheds'])->map(fn ($s) => ['id' => $s['id'], 'name' => $s['name'], 'typeName' => $s['typeName'], 'kgDay' => $s['kgDay'], 'cpDay' => $s['cpDay'], 'count' => $s['count'],
-                'pens' => collect($s['pens'])->map(fn ($p) => ['id' => $p['id'], 'name' => $p['name'], 'count' => $p['count'], 'kgDay' => $p['kgDay'], 'cpDay' => $p['cpDay'], 'unplanned' => $p['unplanned'], 'balance' => $p['balance'], 'diff' => $p['diff']])->all()])->all(),
+            'sheds' => collect($r['sheds'])->map(fn ($s) => ['id' => $s['id'], 'name' => $s['name'], 'typeName' => $s['typeName'], 'kgDay' => $s['kgDay'], 'cpDay' => $s['cpDay'], 'count' => $s['count'], 'liveKg' => $s['liveKg'], 'noWeight' => $s['noWeight'],
+                'pens' => collect($s['pens'])->map(fn ($p) => ['id' => $p['id'], 'name' => $p['name'], 'count' => $p['count'], 'kgDay' => $p['kgDay'], 'cpDay' => $p['cpDay'], 'liveKg' => $p['liveKg'], 'noWeight' => $p['noWeight'], 'unplanned' => $p['unplanned'], 'balance' => $p['balance'], 'diff' => $p['diff']])->all()])->all(),
         ];
     }
 }

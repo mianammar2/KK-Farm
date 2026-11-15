@@ -376,8 +376,8 @@ function PensAtAGlance({ data }: { data: PensSummary }) {
 
 
 type FeedSummary = Omit<Requirement, 'sheds' | 'feeds'> & {
-    sheds: Array<{ id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; count: number;
-        pens: Array<{ id: number | null; name: string; count: number; kgDay: number; cpDay: number; unplanned: number; balance: Balance; diff: number }> }>;
+    sheds: Array<{ id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; count: number; liveKg: number; noWeight: number;
+        pens: Array<{ id: number | null; name: string; count: number; liveKg: number; noWeight: number; kgDay: number; cpDay: number; unplanned: number; balance: Balance; diff: number }> }>;
 };
 
 /** D-121: feed needed today like Sheds and Pens: totals, then sheds and pen cards; a pen opens its goats on Feeding → Requirement. */

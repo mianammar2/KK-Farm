@@ -325,6 +325,20 @@ class FeedTest extends TestCase
             ->where('requirement.sheds.0.pens.0.goats.0.number', 'D-1')->where('requirement.sheds.0.pens.0.goats.0.feeds', 'Feed WS 1'));
     }
 
+    /** D-324: each PEN shows its live weight, the sum of each goat's latest weighing, and it follows a new weighing. */
+    public function test_a_pen_shows_the_total_live_weight_of_its_goats(): void
+    {
+        $d1 = Animal::where('farm_number', 'D-1')->first();
+        \App\Models\WeightRecord::create(['animal_id' => $d1->id, 'measured_on' => now()->subMonth(), 'weight_kg' => 30, 'measured_by' => 'x']);
+        \App\Models\WeightRecord::create(['animal_id' => $d1->id, 'measured_on' => now(), 'weight_kg' => 40, 'measured_by' => 'x']);
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($page) => $page
+            ->where('requirement.sheds.0.pens.0.name', 'Shed 1-Pen A')->where('requirement.sheds.0.pens.0.liveKg', 40)->where('requirement.sheds.0.pens.0.noWeight', 1));
+        \App\Models\WeightRecord::create(['animal_id' => Animal::where('farm_number', 'D-2')->value('id'), 'measured_on' => now(), 'weight_kg' => 35.5, 'measured_by' => 'x']);
+        Tenant::flush();
+        $this->actingAs($this->user('ceo'))->get('/feeding')->assertInertia(fn ($page) => $page
+            ->where('requirement.sheds.0.pens.0.liveKg', 75.5)->where('requirement.sheds.0.pens.0.noWeight', 0)->where('requirement.sheds.0.liveKg', 75.5));
+    }
+
     public function test_without_a_ration_the_plan_is_automatic_from_weight_and_feed_given_cannot_exceed_stock(): void
     {
         $tmr = $this->item('TMR', 60, 2);

@@ -10,8 +10,8 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 export type Balance = 'over' | 'short' | 'ok' | null;
 export type ReqGoat = { cp: number | null; cpKg: number; cpStandard: string | null; id: string; number: string; group: string | null; weight: number | null; state: 'planned' | 'milk' | 'no_ration' | 'no_weight'; rule: string; kgDay: number; kgMonth: number; min: number; max: number; feeds: string };
-export type ReqPen = { id: number | null; name: string; kgDay: number; cpDay: number; kgMonth: number; givenToday: number; balance: Balance; diff: number; cost: number; count: number; unplanned: number; goats: ReqGoat[] };
-export type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; kgMonth: number; cost: number; count: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
+export type ReqPen = { id: number | null; name: string; kgDay: number; cpDay: number; kgMonth: number; givenToday: number; balance: Balance; diff: number; cost: number; count: number; liveKg: number; noWeight: number; unplanned: number; goats: ReqGoat[] };
+export type ReqShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; kgMonth: number; cost: number; count: number; liveKg: number; noWeight: number; feeds: Array<{ name: string; kg: number }>; pens: ReqPen[] };
 export type Supply = { cpDay: number | null; cpMonth: number | null; cpMissing: number; needDay: number; needWeek: number; inStore: number; month: string; monthDays: number; daysLeft: number; needMonth: number; needLeft: number; shortMonth: number;
     days: number | null; unsplit: number; feeds: Array<{ name: string; needDay: number; stock: number; days: number | null; shortWeek: number; needMonth: number; shortMonth: number }> };
 export type Requirement = { supply: Supply; tracking: boolean; kgDay: number; cost: number; kgMonth: number; costMonth: number; feeds: Array<{ name: string; kg: number }>; planned: number; milk: number; missing: number; sheds: ReqShed[] };
@@ -75,7 +75,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
         <div id={pen.id ? `req-pen-${pen.id}` : undefined} className="scroll-mt-20 rounded-tile border border-rule bg-tile">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-rule px-3 py-2">
                 <span className="font-mono text-sm font-semibold text-cobalt-900">{pen.name}</span>
-                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong>{pen.cpDay ? ` · CP ${pen.cpDay} KG` : ''} · given today {pen.givenToday} KG <BalanceTag balance={pen.balance} diff={pen.diff} /> · {pen.kgMonth} KG this month{pen.cost ? ` · PKR ${pen.cost.toLocaleString('en-PK')}` : ''}</span>
+                <span className="text-sm text-ink-soft">{plural(pen.count, 'goat', 'goats')} · weight {pen.liveKg.toLocaleString('en-PK')} KG{pen.noWeight ? ` (${pen.noWeight} not weighed)` : ''}{pen.unplanned ? ` · ${pen.unplanned} not planned` : ''} · <strong className="text-cobalt-900">{pen.kgDay} KG/day</strong>{pen.cpDay ? ` · CP ${pen.cpDay} KG` : ''} · given today {pen.givenToday} KG <BalanceTag balance={pen.balance} diff={pen.diff} /> · {pen.kgMonth} KG this month{pen.cost ? ` · PKR ${pen.cost.toLocaleString('en-PK')}` : ''}</span>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[46rem] text-sm">

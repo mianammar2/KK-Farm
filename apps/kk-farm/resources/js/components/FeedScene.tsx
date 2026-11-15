@@ -4,11 +4,13 @@ import { BarnRoof } from './FarmScene';
 import { BalanceTag, type Balance } from './FeedRequirement';
 import { CountUp } from './ui';
 
-type FeedPen = { id: number | null; name: string; count: number; kgDay: number; cpDay: number; unplanned: number; balance: Balance; diff: number };
-type FeedShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; count: number; pens: FeedPen[] };
+type FeedPen = { id: number | null; name: string; count: number; liveKg: number; noWeight: number; kgDay: number; cpDay: number; unplanned: number; balance: Balance; diff: number };
+type FeedShed = { id: number | null; name: string; typeName: string | null; kgDay: number; cpDay: number; count: number; liveKg: number; noWeight: number; pens: FeedPen[] };
 export type Sack = { label: string; value: string; note?: string; tone?: 'grain' | 'green' };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+// D-324: a PEN's live weight (sum of each goat's latest weighing) in place of its CP grams.
+const kg = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 1 });
 
 /**
  * D-134: the dashboard's feed requirement drawn like the farm's feed store: the totals are feed sacks, each shed is the
@@ -51,7 +53,7 @@ function FeedBarn({ shed, tracking, index }: { shed: FeedShed; tracking: boolean
             <BarnRoof id={`feed-${shed.id ?? 'none'}`} name={shed.name} typeName={shed.typeName} />
             <div className="kk-barn-body">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 px-1 text-sm text-[#3d5446]">
-                    <span className="font-semibold">{plural(shed.count, 'goat', 'goats')}</span>
+                    <span className="font-semibold">{plural(shed.count, 'goat', 'goats')}<span className="font-normal opacity-75"> · weight {kg(shed.liveKg)} KG</span></span>
                     <span className="font-semibold"><CountUp to={shed.kgDay} /> KG/day{shed.cpDay ? <span className="font-normal opacity-75"> · CP {shed.cpDay} KG</span> : null}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -82,7 +84,7 @@ function Trough({ pen, share, tracking }: { pen: FeedPen; share: number; trackin
                 <div className="kk-grow h-full rounded-full bg-gradient-to-r from-[#12663f] to-[#6fe39a]" style={{ width: `${fill}%` }} />
             </div>
             <span className="mt-1 block text-xs text-[#3d5446]">
-                {[pen.cpDay ? `CP ${Math.round(pen.cpDay * 1000).toLocaleString('en-PK')} g` : null, pen.unplanned ? `${pen.unplanned} not planned` : null].filter(Boolean).join(' · ')}
+                {[`Total weight ${kg(pen.liveKg)} KG`, pen.noWeight ? `${pen.noWeight} not weighed` : null, pen.unplanned ? `${pen.unplanned} not planned` : null].filter(Boolean).join(' · ')}
             </span>
             {tracking ? <BalanceTag balance={pen.balance} diff={pen.diff} className="mt-1" /> : null}
         </Link>
