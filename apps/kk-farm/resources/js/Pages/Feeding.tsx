@@ -77,7 +77,7 @@ export default function Feeding(props: Props) {
         { id: 'waste', label: 'Offered / Refused / Wasted' },
         { id: 'nutrition', label: 'Nutrition Standards' },
         { id: 'history', label: 'History' },
-        ...(can.settings ? [{ id: 'times', label: 'Settings' }] : []),
+        ...(can.settings ? [{ id: 'times', label: 'Feeding Times' }, { id: 'rules', label: 'Feed Rules' }] : []), // D-323
     ];
 
     return (
@@ -100,6 +100,7 @@ export default function Feeding(props: Props) {
             {tab === 'nutrition' ? <Nutrition {...props} /> : null}
             {tab === 'history' ? <HistoryTab {...props} /> : null}
             {tab === 'times' ? <MealTimes {...props} /> : null}
+            {tab === 'rules' ? <MealTimes {...props} view="rules" /> : null}
         </>
     );
 }
@@ -454,7 +455,8 @@ function HistoryTab({ history, meals }: Props) {
 
 // ---------- Meal times ----------
 
-function MealTimes({ mealTimes, settings, meals }: Props) {
+/** D-323: Feeding Times (meals, late, missed, tolerance) and Feed Rules (intake % and fallback CP) are two pages of one settings form. */
+function MealTimes({ mealTimes, settings, meals, view = 'times' }: Props & { view?: 'times' | 'rules' }) {
     const form = useForm({ morning: mealTimes.morning, midday: mealTimes.midday, evening: mealTimes.evening, late: settings.late, window: settings.window, tolerance: settings.tolerance,
         kid_min: settings.intake.kid ? String(settings.intake.kid[0]) : '', kid_max: settings.intake.kid ? String(settings.intake.kid[1]) : '',
         grower_min: String(settings.intake.grower[0]), grower_max: String(settings.intake.grower[1]), adult_min: String(settings.intake.adult[0]), adult_max: String(settings.intake.adult[1]),
@@ -474,8 +476,9 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
     const errors = form.errors as Record<string, string>;
 
     return (
-        <Panel title="Feeding settings" description={`Meal times mark feeding late or missed (${settings.timezone}). Intake % is used by body-weight rations.`} className="max-w-xl">
+        <Panel title={view === 'rules' ? 'Feed Rules' : 'Feeding Times'} description={view === 'rules' ? 'How much each goat is planned to eat a day, as a % of its body weight by age, and the crude protein used when no Nutrition Standard fits. Today\'s Requirement and every ration follow these.' : `Meal times mark feeding late or missed (${settings.timezone}).`} className="max-w-xl">
             <form onSubmit={(e) => { e.preventDefault(); form.post('/feeding/settings', { preserveScroll: true }); }} className="space-y-3">
+                {view === 'times' ? <>
                 {/* D-107 */}
                 <label className="flex items-start gap-3 rounded-tile border border-rule bg-glaze px-3 py-3">
                     <input type="checkbox" className="mt-0.5 size-5" checked={form.data.tracking} onChange={(e) => form.setData('tracking', e.target.checked)} />
@@ -486,6 +489,11 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
                 <Field label="Late after (minutes)" error={errors.late} hint="Feed given this long after the meal time counts as late."><input className="field" type="number" min={5} max={240} value={form.data.late} onChange={(e) => form.setData('late', Number(e.target.value))} /></Field>
                 <Field label="Missed after (minutes)" error={errors.window} hint="With nothing recorded this long after the meal time, the meal is missed."><input className="field" type="number" min={30} max={720} value={form.data.window} onChange={(e) => form.setData('window', Number(e.target.value))} /></Field>
                 <Field label="Flag when given differs from plan by more than (%)" error={errors.tolerance}><input className="field" type="number" min={1} max={50} value={form.data.tolerance} onChange={(e) => form.setData('tolerance', Number(e.target.value))} /></Field>
+                </> : <>
+                <div className="rounded-tile border border-rule bg-glaze px-3 py-2.5 text-sm text-ink-soft">
+                    <p><b className="font-medium text-cobalt-900">Which goats:</b> kids {settings.groupCodes?.kid ? `(${settings.groupCodes.kid}) ` : ''}drink milk unless a kid range is set; growers {settings.groupCodes?.grower ? `(${settings.groupCodes.grower})` : ''}; adults {settings.groupCodes?.adult ? `(${settings.groupCodes.adult})` : ''} and goats of unknown age. A breeding or cull goat always counts as an adult, a growing or replacement goat as a grower.</p>
+                    <p className="mt-1"><b className="font-medium text-cobalt-900">Example:</b> an adult of 40 KG at {form.data.adult_min}–{form.data.adult_max}% is planned {Math.round(40 * Number(form.data.adult_min || 0)) / 100}–{Math.round(40 * Number(form.data.adult_max || 0)) / 100} KG a day (the middle, {Math.round(40 * (Number(form.data.adult_min || 0) + Number(form.data.adult_max || 0)) / 2) / 100} KG, is the plan).</p>
+                </div>
                 <p className="pt-2 text-sm font-semibold text-cobalt-900">Feed intake, % of body weight a day</p>
                 {range('grower', 'Growers')}
                 {range('adult', 'Adults')}
@@ -494,6 +502,7 @@ function MealTimes({ mealTimes, settings, meals }: Props) {
                 <p className="pt-2 text-sm font-semibold text-cobalt-900">Fallback Crude Protein (CP) %</p>
                 <p className="-mt-2 text-xs text-ink-soft">Used only for goats no Nutrition Standard fits. Each goat's CP target normally comes from Feeding → Nutrition Standards.</p>
                 <div className="grid grid-cols-3 gap-2">{cpField('grower_cp', 'Growers CP %')}{cpField('adult_cp', 'Adults CP %')}{cpField('kid_cp', 'Kids CP %', 'Kids on milk need none')}</div>
+                </>}
                 <Button type="submit" disabled={form.processing}>Save</Button>
             </form>
         </Panel>

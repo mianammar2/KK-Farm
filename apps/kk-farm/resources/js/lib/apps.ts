@@ -110,6 +110,7 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/feeding?tab=nutrition', 'Nutrition Standards'),
         S('Configuration', '/feeding?tab=tmr', 'TMR Formulas'),
         S('Configuration', '/feeding?tab=store', 'Feed Master'),
+        S('Configuration', '/feeding?tab=rules', 'Feed Rules'), // D-323: intake % of body weight by age, fallback CP
         S('Configuration', '/feeding?tab=times', 'Feeding Times'),
     ] },
     { key: 'housing', no: '07', label: 'Housing', art: 'app-housing', modules: ['sheds'], linked: ['livestock', 'feeding', 'maternity', 'maintenance'], sections: [

@@ -86,7 +86,7 @@ function ReqPenCard({ pen }: { pen: ReqPen }) {
                                 <td className="px-3 py-1.5"><Link href={`/goats/${g.id}`} className="font-mono font-semibold text-cobalt-800 hover:underline">{g.number}</Link></td>
                                 <td className="px-3 text-ink-soft">{g.group ?? '—'}</td>
                                 <td className="px-3">{g.weight ? `${g.weight} KG` : '—'}</td>
-                                <td className="px-3">{g.state === 'planned' ? <span className="text-ink-soft">{g.rule}</span> : <span className={`rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${REQ_STATE[g.state]}`}>{g.rule}</span>}</td>
+                                <td className="px-3">{g.state === 'planned' ? <Link href="/feeding?tab=rules&solo=1" className="text-ink-soft hover:text-cobalt-800 hover:underline">{g.rule}</Link> : <span className={`rounded-[4px] px-1.5 py-0.5 text-xs font-semibold ${REQ_STATE[g.state]}`}>{g.rule}</span>}</td>
                                 <td className="px-3 font-semibold text-cobalt-900">{g.state === 'planned' ? <>{g.kgDay} KG{g.max > g.min ? <span className="block text-xs font-normal text-ink-faint">{g.min}–{g.max}</span> : null}</> : '—'}</td>
                                 <td className="px-3 text-cobalt-900">{g.state === 'planned' && g.cp !== null ? <>{Math.round(g.cpKg * 1000)} g<span className="block text-xs text-ink-faint" title={g.cpStandard ?? undefined}>{g.cp}% CP{g.cpStandard ? ` · ${g.cpStandard}` : ''}</span></> : '—'}</td>
                                 <td className="px-3 text-cobalt-900">{g.state === 'planned' ? `${g.kgMonth} KG` : '—'}</td>
