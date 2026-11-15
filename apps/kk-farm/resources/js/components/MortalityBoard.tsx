@@ -65,8 +65,8 @@ function MortalityPop({ pick, rows, onClose }: { pick: Pick; rows: MortalityRow[
         { key: 'on', label: 'Date', type: 'text' },
         { key: 'number', label: 'Goat', type: 'text', total: 'count', render: (r) => <button type="button" onClick={() => setGoatId(r.goatId)} className="font-mono text-cobalt-800 hover:underline">{r.number}</button> },
         { key: 'kind', label: 'Type', type: 'enum' }, { key: 'reason', label: 'Reason', type: 'enum' },
-        { key: 'seen', label: 'What was seen', type: 'text', wrap: true }, { key: 'postmortem', label: 'Postmortem', type: 'text', wrap: true },
-        { key: 'reportedBy', label: 'Entered by', type: 'enum' }, { key: 'approvedBy', label: 'Approved by', type: 'enum' }, { key: 'status', label: 'Status', type: 'enum' },
+        { key: 'reportedBy', label: 'Entered by', type: 'enum' }, { key: 'approvedBy', label: 'Approved by', type: 'enum' },
+        { key: 'seen', label: 'What was seen', type: 'text', wrap: true }, { key: 'postmortem', label: 'Postmortem', type: 'text', wrap: true }, { key: 'status', label: 'Status', type: 'enum' },
         { key: 'breed', label: 'Breed', type: 'enum' }, { key: 'sex', label: 'Sex', type: 'enum' }, { key: 'age', label: 'Age', type: 'text' }, { key: 'pen', label: 'PEN', type: 'enum' },
     ];
     return (
