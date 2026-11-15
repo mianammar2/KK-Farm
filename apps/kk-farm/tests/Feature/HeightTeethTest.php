@@ -362,4 +362,12 @@ class HeightTeethTest extends TestCase
         $t = \App\Support\Checkups::pregnancyThread($this->goat->fresh());
         $this->assertSame([70, null, 'Slaughter'], [$t['day'], $t['daysLeft'], $t['ended']['how']]);
     }
+
+    /** D-328: Measurements and Care has no PEN moves; old texts with a month name show with digits. */
+    public function test_care_has_no_moves_and_old_dates_show_as_digits(): void
+    {
+        \App\Models\AnimalMovement::create(['animal_id' => $this->goat->id, 'moved_on' => now()->toDateString(), 'type' => 'transfer', 'from_pen_id' => $this->goat->pen_id, 'to_pen_id' => $this->goat->pen_id, 'recorded_by' => 'x']);
+        $this->actingAs($this->user('ceo'))->get("/goats/{$this->goat->id}")->assertInertia(fn ($p) => $p->where('records', fn ($recs) => ! collect($recs)->contains(fn ($r) => collect($r['actions'])->contains(fn ($a) => str_starts_with($a, 'Moved')))));
+        $this->assertSame('since 24/10 and 04/11', \App\Support\DigitDates::text('since 24 Oct and 4 Nov'));
+    }
 }

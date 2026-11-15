@@ -48,7 +48,7 @@ class DashboardController extends Controller
 
             return $card($byId[$id]) + [
                 'missing' => array_values(array_map(fn ($k) => HerdStats::LABELS[$k], array_intersect(['no_pen', 'no_weight', 'age_conflict'], $tags[$id]))),
-                'source' => $o ? $o->summary.' · '.$o->recorded_by.' · '.\Illuminate\Support\Carbon::parse($o->occurred_at)->format('d/m') : 'Added '.$byId[$id]->created_at->format('d/m'),
+                'source' => $o ? \App\Support\DigitDates::text($o->summary).' · '.$o->recorded_by.' · '.\Illuminate\Support\Carbon::parse($o->occurred_at)->format('d/m') : 'Added '.$byId[$id]->created_at->format('d/m'),
             ];
         })->values();
 

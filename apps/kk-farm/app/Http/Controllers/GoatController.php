@@ -310,7 +310,8 @@ class GoatController extends Controller
             unset($r);
         }
         // D-262: what was done for the goat: moves with their reason, and being taken off Watch
-        foreach (\App\Models\AnimalMovement::with('toPen')->where('animal_id', $animal->id)->get() as $m) {
+        // D-328: exits only; PEN moves belong to PEN Movements, not to Measurements and Care
+        foreach (\App\Models\AnimalMovement::with('toPen')->where('animal_id', $animal->id)->where('type', '!=', 'transfer')->get() as $m) {
             $r = &$day($m->moved_on->format('Y-m-d'));
             if ($m->type === 'transfer') {
                 $r['actions'][] = 'Moved'.($m->toPen ? " to {$m->toPen->name}" : '').($m->reason ? ": {$m->reason}" : '');
@@ -401,7 +402,7 @@ class GoatController extends Controller
             $on = $ev->occurred_at->format('Y-m-d');
             $at = collect(array_keys($days))->filter(fn ($d) => $d <= $on)->sort()->last() ?? $on;
             $r = &$day($at);
-            $r['actions'][] = 'Taken off Watch ('.trim(substr($ev->summary, 13)).')';
+            $r['actions'][] = 'Taken off Watch ('.\App\Support\DigitDates::text(trim(substr($ev->summary, 13))).')';
             unset($r);
         }
         krsort($days);
@@ -619,7 +620,7 @@ class GoatController extends Controller
             // D-251: how it is doing since a watch began, or when it last came off Watch
             'recovery' => $seeHealth || $request->user()->passes('see_recovery_progress') ? ((($p = \App\Support\Recovery::progress($animal)) ? ($seeHealth ? $p : ['title' => 'Health watch', 'temp' => null] + $p) : null) ?? (($e = \App\Models\AnimalEvent::where('animal_id', $animal->id)->where('summary', 'like', 'Out of Watch:%')->where('occurred_at', '>=', now()->subDays(30))->latest('occurred_at')->first())
                 ? ['state' => 'recovered', 'on' => $e->occurred_at->format('d/m'), 'why' => trim(substr($e->summary, strlen('Out of Watch:')))] : null)) : null,
-            'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => $e->summary, 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('d/m/Y')]),
+            'timeline' => $animal->events()->limit(60)->get()->map(fn ($e) => ['id' => $e->id, 'type' => $e->type, 'summary' => \App\Support\DigitDates::text($e->summary), 'by' => $e->recorded_by, 'on' => $e->occurred_at->format('d/m/Y')]),
             // D-073: health cases with their treatment doses
             'cases' => ! $seeHealth ? [] : \App\Models\HealthCase::with('treatments')->where('animal_id', $animal->id)->orderByDesc('onset_on')->get()->map(fn ($c) => [
                 'id' => $c->id, 'label' => $c->label(), 'condition' => $c->condition, 'status' => \App\Models\HealthCase::STATUSES[$c->status], 'active' => in_array($c->status, \App\Models\HealthCase::ACTIVE, true),

@@ -49,7 +49,7 @@ class OpsLog
             'move' => ['PEN move', ['livestock', 'housing'], 'animal_movements', 'moved_on', 'recorded_by', 'animal_id', fn ($r, $l) => $t(($l->pen($r->from_pen_id) ?? '?').' → '.($l->pen($r->to_pen_id) ?? '?'), $r->reason)],
             'exit' => ['Exit', ['livestock', 'sales'], 'animal_movements', 'moved_on', 'recorded_by', 'animal_id', fn ($r) => $t($w($r->type), $r->reason, $r->destination)],
             'photo' => ['Photo', ['livestock'], 'animal_photos', 'created_at', 'added_by', 'animal_id', fn ($r) => $r->is_profile ? 'Profile photo' : ($r->notes ?: 'Photo')],
-            'edit' => ['Details edited', ['livestock'], 'animal_events', 'occurred_at', 'recorded_by', 'animal_id', fn ($r) => $r->summary],
+            'edit' => ['Details edited', ['livestock'], 'animal_events', 'occurred_at', 'recorded_by', 'animal_id', fn ($r) => DigitDates::text($r->summary)],
             'rfid' => ['RFID linked', ['livestock'], 'rfid_assignments', 'valid_from', 'assigned_by', 'animal_id', fn ($r) => $w($r->reason_assigned) ?: 'Tag linked'],
             // Veterinary
             'checkup' => ['Checkup', ['veterinary'], 'health_checkups', 'checked_on', 'examiner', 'animal_id', fn ($r) => $t($r->temperature_f ? "{$r->temperature_f} °F" : null, $kg($r->weight_kg), $w($r->outcome), $r->findings)],
