@@ -148,4 +148,15 @@ class InventoryImsTest extends TestCase
         $this->assertSame('Fenzole', \App\Models\HealthRecord::where('animal_id', $goat->id)->value('title'));
         $this->actingAs($vet)->get('/health')->assertInertia(fn (AssertableInertia $p) => $p->where('suggest.byCare.vaccination', ['vaccine']));
     }
+
+    public function test_a_vet_confirms_a_held_product_with_one_click_and_it_can_then_be_given(): void
+    {
+        $m = Medicine::create(['code' => 'T', 'name' => 'Trioxyl LA', 'category' => 'antibiotic', 'unit' => 'ml', 'check_status' => 'hold', 'check_note' => 'Product identity to confirm']);
+        $this->actingAs($this->user('feeding'))->post("/inventory/medicines/{$m->id}/confirm")->assertForbidden();
+        $this->actingAs($this->user('vet'))->post("/inventory/medicines/{$m->id}/confirm")->assertSessionHasNoErrors();
+        $m->refresh();
+        $this->assertSame('confirmed', $m->check_status);
+        $this->assertStringContainsString('Confirmed by Test vet on '.now()->format('d/m/Y').' (was On hold: Product identity to confirm)', $m->check_note);
+        $this->assertSame(1.0, MedicineStock::issue($m, 1, ['moved_on' => now()->toDateString(), 'recorded_by' => 'vet'])); // given now (1 ml short: none in stock)
+    }
 }

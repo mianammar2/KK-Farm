@@ -186,6 +186,7 @@ return [
     'POST /inventory/medicine-stock' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'inventory'],
     'POST /inventory/medicines' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'inventory'],
     'POST /inventory/medicines/{medicine}' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'inventory'],
+    'POST /inventory/medicines/{medicine}/confirm' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'inventory'], // D-334
     'POST /logout' => ['open' => 'the signed-in person\'s own session and password (switch-role works only with the local demo login)'],
     'POST /maintenance/assets' => ['inline' => 'the action checks the person\'s role or a right', 'module' => 'maintenance'],
     'POST /maintenance/assets/{asset}' => ['inline' => 'the action checks the person\'s role or a right', 'module' => 'maintenance'],

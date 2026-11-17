@@ -4328,6 +4328,15 @@
         "cleaning": 404,
         "finance": 404
     },
+    "POST /inventory/medicines/{medicine}/confirm": {
+        "ceo": 404,
+        "manager": 404,
+        "vet": 404,
+        "caretaker": 404,
+        "feeding": 404,
+        "cleaning": 404,
+        "finance": 404
+    },
     "POST /inventory/moves": {
         "ceo": 302,
         "manager": 302,

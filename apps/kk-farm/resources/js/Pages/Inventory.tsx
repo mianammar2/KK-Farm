@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AddButton from '../components/AddButton';
 import DataGrid, { type Col } from '../components/DataGrid';
@@ -78,13 +79,20 @@ export default function Inventory({ items, expiry, moves, range, stores, masters
         { key: 'cost', label: 'Cost per unit', type: 'number', render: (r) => `${pkr(r.cost)} / ${r.unit}` },
         { key: 'value', label: 'Value (PKR)', type: 'number', total: 'sum', render: (r) => pkr(r.value) },
         { key: 'status', label: 'Status', type: 'enum', value: (r) => STATUS[r.status].label, render: (r) => <Chip className={STATUS[r.status].chip}>{STATUS[r.status].label}</Chip> },
+        ...(Object.values(can).some(Boolean) ? [{ key: 'actions', label: 'Actions', type: 'text' as const, value: () => '', render: (r: Row) => (can[r.kind] ? <button type="button" onClick={() => setPop({ what: 'edit', row: r })} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-rule bg-tile px-2.5 text-sm text-cobalt-900 hover:bg-glaze" aria-label={`Edit ${r.name}`}><Pencil size={14} aria-hidden /> Edit</button> : null) }] : []),
     ];
+    // D-334: Edit on every row; a vet confirms a product "to confirm" or "on hold" with one click
+    const actions: Col<Row> = { key: 'actions', label: 'Actions', type: 'text', value: () => '', render: (r) => (
+        <span className="flex flex-wrap items-center gap-2">
+            {can[r.kind] ? <button type="button" onClick={() => setPop({ what: 'edit', row: r })} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-rule bg-tile px-2.5 text-sm text-cobalt-900 hover:bg-glaze" aria-label={`Edit ${r.name}`}><Pencil size={14} aria-hidden /> Edit</button> : null}
+        </span>
+    ) };
     const itemCols: Col<Row>[] = [
-        stockCols[0], stockCols[1], stockCols[2],
+        stockCols[0], actions, stockCols[1], stockCols[2],
         { key: 'unit', label: 'Unit', type: 'enum' },
         { key: 'spec', label: 'Specification', type: 'text', wrap: true, value: (r) => r.spec ?? '' },
         { key: 'pack', label: 'Bought as', type: 'enum', value: (r) => (r.packUnit && r.packSize ? `${r.packUnit[0].toUpperCase()}${r.packUnit.slice(1)} of ${num(r.packSize)} ${r.unit}` : '') },
-        { key: 'check', label: 'Vet check', type: 'enum', value: (r) => (r.check ? CHECK[r.check] ?? r.check : ''), render: (r) => (r.check && r.check !== 'confirmed' ? <Chip className={r.check === 'hold' ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'}>{CHECK[r.check]}</Chip> : r.check ? CHECK[r.check] : '') },
+        { key: 'check', label: 'Vet check', type: 'enum', value: (r) => (r.check ? CHECK[r.check] ?? r.check : ''), render: (r) => (r.check && r.check !== 'confirmed' ? <span className="flex flex-wrap items-center gap-2"><Chip className={r.check === 'hold' ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'}>{CHECK[r.check]}</Chip>{can.medicine ? <ConfirmButton row={r} /> : null}</span> : r.check ? CHECK[r.check] : '') },
         { key: 'supplier', label: 'Supplier', type: 'enum', value: (r) => r.supplier ?? '' },
         { key: 'used', label: 'Used in', type: 'enum', value: (r) => KIND[r.kind].app },
         { key: 'state', label: 'In use', type: 'enum', value: (r) => (r.active ? 'Yes' : 'No') },
@@ -154,6 +162,15 @@ export default function Inventory({ items, expiry, moves, range, stores, masters
     );
 }
 
+/** D-334: the vet confirms the product; who and when is kept on it. */
+function ConfirmButton({ row, onDone }: { row: Row; onDone?: () => void }) {
+    const [busy, setBusy] = useState(false);
+    return (
+        <button type="button" disabled={busy} onClick={() => { if (window.confirm(`Confirm ${row.name}?${row.checkNote ? `\n\nTo confirm: ${row.checkNote}` : ''}\n\nIt can then be given to goats.`)) { setBusy(true); router.post(`/inventory/medicines/${row.id}/confirm`, {}, { preserveScroll: true, onSuccess: () => onDone?.(), onFinish: () => setBusy(false) }); } }}
+            className="inline-flex min-h-9 items-center rounded-md bg-ok-700 px-2.5 text-sm text-white hover:opacity-90 disabled:opacity-60">Confirm</button>
+    );
+}
+
 function PickStore({ title, stores, onPick }: { title: string; stores: Kind[]; onPick: (k: Kind) => void }) {
     return (
         <Panel title={title} description="Which store is it for?">
@@ -186,12 +203,13 @@ function MoveStock({ kind, items, master, itemId, onDone }: { kind: Kind; items:
 function ItemCard({ row, diseases, can, purchase, onEdit, onMove }: { row: Row; diseases: Array<{ id: number; name: string }>; can: boolean; purchase: boolean; onEdit: () => void; onMove: () => void }) {
     const [data, setData] = useState<{ item: Row; batches: Batch[]; moves: Move[] } | null>(null);
     const [failed, setFailed] = useState(false);
+    const [reload, setReload] = useState(0);
     useEffect(() => {
         const c = new AbortController();
         fetch(`/inventory/card?kind=${row.kind}&id=${row.id}`, { headers: { Accept: 'application/json' }, signal: c.signal })
             .then((r) => (r.ok ? r.json() : Promise.reject(r.status))).then(setData).catch((e) => { if (e?.name !== 'AbortError') setFailed(true); });
         return () => c.abort();
-    }, [row.kind, row.id]);
+    }, [row.kind, row.id, reload]);
     const r = data?.item ?? row;
     const facts = [
         ['Store', KIND[r.kind].label], ['Category', r.category], ['Unit', r.unit], ['Used in', KIND[r.kind].app],
@@ -208,7 +226,7 @@ function ItemCard({ row, diseases, can, purchase, onEdit, onMove }: { row: Row; 
     ];
     return (
         <Panel title={r.code ? `${r.name} · ${r.code}` : r.name} description={r.active ? undefined : 'No longer in use'}
-            actions={<div className="flex flex-wrap gap-2">{can && r.active ? <Button type="button" onClick={onMove}>Stock In / Out</Button> : null}{can ? <Button type="button" variant="secondary" onClick={onEdit}>Edit</Button> : null}{can ? <DeleteButton type={DELETE[r.kind]} id={r.id} name={r.name} /> : null}</div>}>
+            actions={<div className="flex flex-wrap gap-2">{can && r.kind === 'medicine' && r.check && r.check !== 'confirmed' ? <ConfirmButton row={r} onDone={() => setReload((n) => n + 1)} /> : null}{can && r.active ? <Button type="button" onClick={onMove}>Stock In / Out</Button> : null}{can ? <Button type="button" variant="secondary" onClick={onEdit}>Edit</Button> : null}{can ? <DeleteButton type={DELETE[r.kind]} id={r.id} name={r.name} /> : null}</div>}>
             <StatRow>
                 <Stat label="On hand" value={`${num(r.qty)} ${r.unit}`} tone={r.qty <= 0 ? 'alert' : undefined} />
                 <Stat label="Reorder at" value={r.reorder ? `${num(r.reorder)} ${r.unit}` : '—'} />

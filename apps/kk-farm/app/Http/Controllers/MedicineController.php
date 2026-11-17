@@ -84,6 +84,21 @@ class MedicineController extends Controller
         return back()->with('success', "{$medicine->name} saved.");
     }
 
+    /** D-334: the veterinarian confirms a product that was "to confirm" or "on hold"; who and when is kept on it. */
+    public function confirm(Request $request, Medicine $medicine): RedirectResponse
+    {
+        abort_unless($request->user()->passes('manage_medicine_store'), 403);
+        if ($medicine->check_status === 'confirmed') {
+            return back()->with('success', "{$medicine->name} is already confirmed.");
+        }
+        $was = Medicine::CHECKS[$medicine->check_status] ?? $medicine->check_status;
+        $note = "Confirmed by {$request->user()->name} on ".now()->format('d/m/Y')." (was {$was}".($medicine->check_note ? ": {$medicine->check_note}" : '').')';
+        $medicine->update(['check_status' => 'confirmed', 'check_note' => mb_substr($note, 0, 200)]);
+        Farm::log($request->user(), "Confirmed medicine {$medicine->name} (was {$was})", '/inventory?tab=items');
+
+        return back()->with('success', "{$medicine->name} confirmed. It can now be given.");
+    }
+
     /** D-332: the label details, pack and vet check from a validated form. */
     private static function details(array $d): array
     {

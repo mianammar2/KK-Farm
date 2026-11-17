@@ -403,6 +403,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/inventory/medicines', [\App\Http\Controllers\MedicineController::class, 'store']);
         Route::post('/inventory/medicines/{medicine}', [\App\Http\Controllers\MedicineController::class, 'update'])->whereNumber('medicine');
         Route::post('/inventory/medicine-stock', [\App\Http\Controllers\MedicineController::class, 'movement']);
+        Route::post('/inventory/medicines/{medicine}/confirm', [\App\Http\Controllers\MedicineController::class, 'confirm'])->whereNumber('medicine'); // D-334
     });
     Route::middleware('module:purchase')->group(function (): void {
         Route::get('/purchase', [\App\Http\Controllers\PurchaseController::class, 'index']);
