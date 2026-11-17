@@ -61,6 +61,10 @@ final class MedicineStock
     {
         $left = $qty;
         $today = now()->startOfDay();
+        // D-332: a product the vet has put on hold (identity or label not confirmed) cannot be given
+        if ($medicine->check_status === 'hold') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['medicine_id' => "{$medicine->name} is on hold until a veterinarian confirms it".($medicine->check_note ? " ({$medicine->check_note})" : '').'. Use another product or confirm it in Inventory.']);
+        }
         $held = Quality::heldBatches($medicine->id); // D-189: a quality hold on a batch (or the whole medicine) blocks its use
         if (in_array(null, $held, true)) {
             throw \Illuminate\Validation\ValidationException::withMessages(['medicine_id' => "{$medicine->name} is on quality hold. Use another medicine or ask Quality to release it."]);

@@ -23,14 +23,15 @@ type Case = {
     onset: string; condition: string; symptoms: string | null; severity: string; isolated: boolean; status: string; active: boolean; vet: string | null; diagnosis: string | null; notes: string | null;
     resolved: string | null; age: number; by: string; nextDose: string | null; doseAlert: 'overdue' | 'soon' | null; withdrawal: { meat: string | null; milk: string | null } | null; treatments: Dose[];
 };
-type Medicine = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; qty: number; value: number; status: 'negative' | 'expired' | 'reorder' | 'expiring' | 'ok'; batches: Array<{ batch: string; expiry: string | null; expired: boolean; qty: number }> };
+type Medicine = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; notes?: string | null;
+    spec: string | null; useCase: string | null; source: string | null; packUnit: string | null; packSize: number | null; check: string | null; checkNote: string | null; qty: number; value: number; status: 'negative' | 'expired' | 'reorder' | 'expiring' | 'ok'; batches: Array<{ batch: string; expiry: string | null; expired: boolean; qty: number }> };
 type MedMove = { id: number; on: string; medicine: string; unit: string; type: string; qty: number; batch: string | null; expiry: string | null; by: string; party: string | null };
 type WithdrawalRow = { goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; meat: string | null; milk: string | null };
 type Props = {
     checkups: CheckupData;
     cases: Case[]; reports: Row[]; care: Row[]; withdrawal: WithdrawalRow[]; counts: Record<string, number>; goats: Option[];
     severities: Record<string, string>; statuses: Record<string, string>; routes: Record<string, string>;
-    medicines: Medicine[]; medicineMoves: MedMove[]; medicineCategories: Record<string, string>; medicineUnits: Record<string, string>;
+    medicines: Medicine[]; medicineMoves: MedMove[]; medicineCategories: Record<string, string>; medicineUnits: Record<string, string>; medicinePacks: Record<string, string>; medicineChecks: Record<string, string>;
     medicineTypes: Record<string, { label: string; direction: number }>; medicineAlerts: number; canMedicine: boolean;
     calendar: CalendarRow[]; protocols: Protocol[]; applies: Record<string, string>; careTypes: Record<string, string>; // D-173
     symptomList?: SymptomRow[]; // D-292
@@ -259,7 +260,7 @@ function DoseForm({ c, routes, medicines, onDone }: { c: Case; routes: Record<st
             <Field label="From the medicine store" error={e.medicine_id} hint="Issues it from stock, earliest expiry first">
                 <select className="field" value={form.data.medicine_id} onChange={(x) => form.setData('medicine_id', x.target.value)}>
                     <option value="">Not from the store (type below)</option>
-                    {medicines.filter((m) => m.active).map((m) => <option key={m.id} value={m.id}>{m.name} · {m.qty} {m.unit} in stock</option>)}
+                    {medicines.filter((m) => m.active && !['consumable', 'equipment'].includes(m.category)).map((m) => <option key={m.id} value={m.id} disabled={m.check === 'hold'}>{m.name} · {m.qty} {m.unit} in stock{m.check === 'hold' ? ' · on hold' : m.check === 'to_confirm' ? ' · to confirm' : ''}</option>)}
                 </select>
             </Field>
             {form.data.medicine_id ? (
@@ -354,13 +355,13 @@ function PreventiveForm({ goats, onDone }: { goats: Option[]; onDone?: () => voi
 }
 
 /** D-074: medicine store (workbook "Medicine Stock" and "Medicine Movements"). */
-function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineUnits, medicineTypes, canMedicine }: Props) {
+function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineUnits, medicinePacks, medicineChecks, medicineTypes, canMedicine }: Props) {
     const [open, setOpen] = useState<number | null>(null);
     const [moves, setMoves] = useState(false);
     const [adding, setAdding] = useState<'' | 'medicine' | 'stock'>(''); // D-127
     return (
         <div className="space-y-4">
-            {adding === 'medicine' ? <Sheet onClose={() => setAdding('')}><MedicineAdd categories={medicineCategories} units={medicineUnits} onDone={() => setAdding('')} /></Sheet> : null}
+            {adding === 'medicine' ? <Sheet onClose={() => setAdding('')}><MedicineAdd categories={medicineCategories} units={medicineUnits} packs={medicinePacks} checks={medicineChecks} onDone={() => setAdding('')} /></Sheet> : null}
             {adding === 'stock' && medicines.length ? <Sheet onClose={() => setAdding('')}><MedicineMoveForm medicines={medicines} types={medicineTypes} onDone={() => setAdding('')} /></Sheet> : null}
             <Panel title="Medicines in store" description="Quantity comes from receipts and issues. Treatments take the batch that expires first." flush actions={canMedicine ? <>
                 {medicines.length ? <AddButton primary={false} label="Stock in / out" onClick={() => setAdding('stock')} /> : null}
@@ -376,14 +377,16 @@ function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineU
                                     <span className="text-sm text-ink-soft">{medicineCategories[m.category] ?? m.category}</span>
                                     <span className="ml-auto flex items-center gap-2"><span className="font-semibold">{m.qty} {m.unit}</span><Chip className={MED_STATUS[m.status].className}>{MED_STATUS[m.status].label}</Chip><ChevronDown size={15} className={cx('text-ink-faint', open === m.id && 'rotate-180')} aria-hidden /></span>
                                 </button>
-                                <p className="text-xs text-ink-soft">Reorder at {m.reorder} {m.unit} · PKR {m.costPerUnit}/{m.unit} · worth PKR {m.value.toLocaleString('en-PK')}{m.storage ? ` · ${m.storage}` : ''}{m.supplier ? ` · ${m.supplier}` : ''}</p>
+                                {m.spec || m.useCase ? <p className="text-sm text-ink-soft">{[m.spec, m.useCase].filter(Boolean).join(' · ')}</p> : null}
+                                {m.check && m.check !== 'confirmed' ? <p className="text-sm text-watch-700">{medicineChecks[m.check] ?? m.check}{m.checkNote ? `: ${m.checkNote}` : ''}</p> : null}
+                                <p className="text-xs text-ink-soft">Reorder at {m.reorder} {m.unit}{m.packUnit && m.packSize ? ` · ${medicinePacks[m.packUnit] ?? m.packUnit} of ${m.packSize} ${m.unit}` : ''} · PKR {m.costPerUnit}/{m.unit} · worth PKR {m.value.toLocaleString('en-PK')}{m.storage ? ` · ${m.storage}` : ''}{m.supplier ? ` · ${m.supplier}` : ''}</p>
                                 {open === m.id ? (
                                     <div className="mt-2 rounded-tile bg-glaze p-2 text-sm">
                                         {m.batches.length ? (
                                             <table className="w-full"><thead className="text-left text-ink-soft"><tr><th className="py-1 font-semibold">Batch / Lot</th><th className="font-semibold">Expiry</th><th className="text-right font-semibold">In Stock</th></tr></thead>
                                                 <tbody>{m.batches.map((b) => <tr key={b.batch}><td className="py-1 font-mono">{b.batch}</td><td className={b.expired ? 'font-semibold text-crit-700' : ''}>{b.expiry ?? '—'}{b.expired ? ' (expired)' : ''}</td><td className="text-right">{b.qty} {m.unit}</td></tr>)}</tbody></table>
                                         ) : <p className="text-ink-soft">No batch numbers recorded.</p>}
-                                        {canMedicine ? <MedicineEdit m={m} categories={medicineCategories} /> : null}
+                                        {canMedicine ? <MedicineEdit m={m} categories={medicineCategories} units={medicineUnits} packs={medicinePacks} checks={medicineChecks} /> : null}
                                     </div>
                                 ) : null}
                             </li>

@@ -95,4 +95,28 @@ class InventoryImsTest extends TestCase
         $this->assertStringContainsString('Found in shed 2', StoreMove::where('type', 'adjustment')->value('notes'));
         $this->actingAs($ceo)->post('/inventory/count', ['kind' => 'store', 'counted_on' => $on, 'counts' => [['id' => $gen->id, 'counted' => -1]]])->assertSessionHasErrors('counts.0.counted');
     }
+
+    public function test_a_medicine_keeps_its_label_pack_and_vet_check_and_a_held_one_cannot_be_given(): void
+    {
+        $vet = $this->user('vet');
+        $this->actingAs($vet)->post('/inventory/medicines', ['code' => 'dexafer', 'name' => 'Dexafer Injection', 'category' => 'steroid', 'unit' => 'ml', 'pack_unit' => 'vial', 'pack_size' => 50,
+            'spec' => 'Possibly dexamethasone 2 mg/mL', 'use_case' => 'Potential steroid use', 'check_status' => 'hold', 'check_note' => 'Identity not established', 'opening_qty' => 100])->assertSessionHasNoErrors();
+        $m = Medicine::firstOrFail();
+        $this->assertSame(['vial', 50.0, 'hold', 'Possibly dexamethasone 2 mg/mL'], [$m->pack_unit, $m->pack_size, $m->check_status, $m->spec]);
+        $this->assertSame('Vet consumables', Medicine::CATEGORIES['consumable']);
+
+        try {
+            MedicineStock::issue($m, 2, ['moved_on' => now()->toDateString(), 'recorded_by' => 'vet']);
+            $this->fail('A held product was given.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->assertStringContainsString('on hold', $e->errors()['medicine_id'][0]);
+        }
+
+        // the vet confirms the label; an edit that leaves out the details keeps them; the stock unit is fixed once stock moved
+        $this->actingAs($vet)->post("/inventory/medicines/{$m->id}", ['name' => $m->name, 'category' => 'steroid', 'check_status' => 'confirmed', 'check_note' => null])->assertSessionHasNoErrors();
+        $this->assertSame(['confirmed', 'vial', 'Possibly dexamethasone 2 mg/mL'], [$m->fresh()->check_status, $m->fresh()->pack_unit, $m->fresh()->spec]);
+        $this->assertSame(0.0, MedicineStock::issue($m->fresh(), 2, ['moved_on' => now()->toDateString(), 'recorded_by' => 'vet']));
+        $this->actingAs($vet)->post("/inventory/medicines/{$m->id}", ['name' => $m->name, 'category' => 'steroid', 'unit' => 'vial'])->assertSessionHasErrors('unit');
+        $this->actingAs($vet)->getJson("/inventory/card?kind=medicine&id={$m->id}")->assertJsonPath('item.packSize', 50)->assertJsonPath('item.check', 'confirmed');
+    }
 }

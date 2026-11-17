@@ -13,10 +13,11 @@ type Status = 'ok' | 'low' | 'out' | 'negative';
 type Row = {
     kind: Kind; id: number; code: string | null; name: string; category: string; categoryKey: string; unit: string; unitKey: string; qty: number; reorder: number; value: number; cost: number; status: Status;
     active: boolean; supplier: string | null; storage: string | null; notes: string | null; cp: number | null; dm: number | null;
+    spec: string | null; useCase: string | null; source: string | null; packUnit: string | null; packSize: number | null; check: string | null; checkNote: string | null;
 };
 type Move = { kind: Kind; itemId: number; on: string | null; d: string | null; item: string | null; typeKey: string; type: string; qty: number; unit: string | null; rate: number | null; batch: string | null; party: string | null; reference: string | null; notes: string | null; by: string };
 type Batch = { id: number; item: string; batch: string; qty: number; unit: string; expiry: string; days: number; state: 'expired' | 'expiring' | 'ok' };
-type Master = { categories: Record<string, string>; units: Record<string, string>; types: MoveTypes };
+type Master = { categories: Record<string, string>; units: Record<string, string>; types: MoveTypes; packs?: Record<string, string>; checks?: Record<string, string> };
 type Props = {
     items: Row[]; expiry: Batch[]; moves: Move[]; range: { from: string; to: string }; stores: Kind[];
     masters: Record<Kind, Master>; can: Partial<Record<Kind, boolean>> & { purchase: boolean };
@@ -32,6 +33,7 @@ const STATUS: Record<Status, { label: string; chip: string }> = {
     out: { label: 'Out', chip: 'bg-crit-100 text-crit-700' }, negative: { label: 'Check count', chip: 'bg-crit-100 text-crit-700' },
 };
 const EXPIRY = { expired: { label: 'Expired', chip: 'bg-crit-100 text-crit-700' }, expiring: { label: 'Expiring soon', chip: 'bg-watch-100 text-watch-700' }, ok: { label: 'In date', chip: 'bg-ok-100 text-ok-700' } };
+const CHECK: Record<string, string> = { confirmed: 'Confirmed', to_confirm: 'To confirm', hold: 'On hold' };
 const DELETE: Record<Kind, string> = { feed: 'feed-item', medicine: 'medicine', store: 'store-item' };
 const num = (n: number) => (Math.round(n * 100) / 100).toLocaleString('en-PK');
 const pkr = (n: number) => `PKR ${Math.round(n).toLocaleString('en-PK')}`;
@@ -39,7 +41,7 @@ const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).t
 const today = () => iso(new Date());
 const fmt = (d: string) => d.split('-').reverse().join('/');
 const asFeed = (r: Row): FeedItem => ({ id: r.id, code: r.code ?? '', name: r.name, category: r.categoryKey, costPerKg: r.cost, cp: r.cp, dm: r.dm, reorder: r.reorder, supplier: r.supplier, notes: r.notes, active: r.active, stock: r.qty });
-const asMedicine = (r: Row): MedicineItem => ({ id: r.id, code: r.code ?? '', name: r.name, category: r.categoryKey, unit: r.unitKey, reorder: r.reorder, costPerUnit: r.cost, storage: r.storage, supplier: r.supplier, active: r.active, qty: r.qty });
+const asMedicine = (r: Row): MedicineItem => ({ id: r.id, code: r.code ?? '', name: r.name, category: r.categoryKey, unit: r.unitKey, reorder: r.reorder, costPerUnit: r.cost, storage: r.storage, supplier: r.supplier, active: r.active, qty: r.qty, spec: r.spec, useCase: r.useCase, source: r.source, packUnit: r.packUnit, packSize: r.packSize, check: r.check, checkNote: r.checkNote, notes: r.notes });
 
 type Pop = { what: 'card'; row: Row } | { what: 'new'; kind: Kind | null } | { what: 'edit'; row: Row } | { what: 'move'; kind: Kind | null; itemId?: number };
 
@@ -80,6 +82,9 @@ export default function Inventory({ items, expiry, moves, range, stores, masters
     const itemCols: Col<Row>[] = [
         stockCols[0], stockCols[1], stockCols[2],
         { key: 'unit', label: 'Unit', type: 'enum' },
+        { key: 'spec', label: 'Specification', type: 'text', wrap: true, value: (r) => r.spec ?? '' },
+        { key: 'pack', label: 'Bought as', type: 'enum', value: (r) => (r.packUnit && r.packSize ? `${r.packUnit[0].toUpperCase()}${r.packUnit.slice(1)} of ${num(r.packSize)} ${r.unit}` : '') },
+        { key: 'check', label: 'Vet check', type: 'enum', value: (r) => (r.check ? CHECK[r.check] ?? r.check : ''), render: (r) => (r.check && r.check !== 'confirmed' ? <Chip className={r.check === 'hold' ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'}>{CHECK[r.check]}</Chip> : r.check ? CHECK[r.check] : '') },
         { key: 'supplier', label: 'Supplier', type: 'enum', value: (r) => r.supplier ?? '' },
         { key: 'used', label: 'Used in', type: 'enum', value: (r) => KIND[r.kind].app },
         { key: 'state', label: 'In use', type: 'enum', value: (r) => (r.active ? 'Yes' : 'No') },
@@ -161,13 +166,13 @@ function PickStore({ title, stores, onPick }: { title: string; stores: Kind[]; o
 
 function NewItem({ kind, master, onDone }: { kind: Kind; master: Master; onDone: () => void }) {
     if (kind === 'feed') return <Panel title="New Feed" description="Appears in Feeding (rations, feeding, TMR) and Purchase."><FeedItemForm categories={master.categories} via="inventory" onDone={onDone} /></Panel>;
-    if (kind === 'medicine') return <MedicineAdd categories={master.categories} units={master.units} via="inventory" onDone={onDone} />;
+    if (kind === 'medicine') return <MedicineAdd categories={master.categories} units={master.units} packs={master.packs} checks={master.checks} via="inventory" onDone={onDone} />;
     return <StoreItemForm item={null} categories={master.categories} units={master.units} onDone={onDone} />;
 }
 
 function EditItem({ row, master, onDone }: { row: Row; master: Master; onDone: () => void }) {
     if (row.kind === 'feed') return <Panel title={`Edit ${row.name}`}><FeedItemForm item={asFeed(row)} categories={master.categories} via="inventory" onDone={onDone} /></Panel>;
-    if (row.kind === 'medicine') return <Panel title={`Edit ${row.name}`}><MedicineEdit m={asMedicine(row)} categories={master.categories} via="inventory" onDone={onDone} /></Panel>;
+    if (row.kind === 'medicine') return <Panel title={`Edit ${row.name}`}><MedicineEdit m={asMedicine(row)} categories={master.categories} units={master.units} packs={master.packs} checks={master.checks} via="inventory" onDone={onDone} /></Panel>;
     return <StoreItemForm item={row} categories={master.categories} units={master.units} onDone={onDone} />;
 }
 
@@ -190,6 +195,12 @@ function ItemCard({ row, can, purchase, onEdit, onMove }: { row: Row; can: boole
     const r = data?.item ?? row;
     const facts = [
         ['Store', KIND[r.kind].label], ['Category', r.category], ['Unit', r.unit], ['Used in', KIND[r.kind].app],
+        ...(r.spec ? [['Specification', r.spec]] : []), ...(r.useCase ? [['Use', r.useCase]] : []),
+        ...(r.packUnit && r.packSize ? [['Bought as', `${r.packUnit[0].toUpperCase()}${r.packUnit.slice(1)} of ${num(r.packSize)} ${r.unit}`]] : []),
+        ...(r.check ? [['Vet check', `${CHECK[r.check] ?? r.check}${r.checkNote ? `: ${r.checkNote}` : ''}`]] : []), ...(r.source ? [['Source', r.source]] : []),
+        ...(r.spec ? [['Specification', r.spec]] : []), ...(r.useCase ? [['Use', r.useCase]] : []),
+        ...(r.packUnit && r.packSize ? [['Bought as', `${r.packUnit[0].toUpperCase()}${r.packUnit.slice(1)} of ${num(r.packSize)} ${r.unit}`]] : []),
+        ...(r.check ? [['Vet check', `${CHECK[r.check] ?? r.check}${r.checkNote ? `: ${r.checkNote}` : ''}`]] : []), ...(r.source ? [['Source', r.source]] : []),
         ...(r.supplier ? [['Supplier', r.supplier]] : []), ...(r.storage ? [['Storage', r.storage]] : []),
         ...(r.cp !== null ? [['CP %', String(r.cp)]] : []), ...(r.dm !== null ? [['Dry matter %', String(r.dm)]] : []), ...(r.notes ? [['Notes', r.notes]] : []),
     ];

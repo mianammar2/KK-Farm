@@ -67,7 +67,7 @@ function CalendarCard({ p, isVet }: { p: CalendarRow; isVet: boolean }) {
 }
 
 /** D-173: the vet's vaccine and deworming protocols (Veterinary → Configuration). */
-export function Protocols({ protocols, careTypes, applies, medicines, canEdit }: { protocols: Protocol[]; careTypes: Record<string, string>; applies: Record<string, string>; medicines: Array<{ id: number; name: string; unit: string }>; canEdit: boolean }) {
+export function Protocols({ protocols, careTypes, applies, medicines, canEdit }: { protocols: Protocol[]; careTypes: Record<string, string>; applies: Record<string, string>; medicines: Array<{ id: number; name: string; unit: string; category?: string; check?: string | null }>; canEdit: boolean }) {
     const [editing, setEditing] = useState<Protocol | 'new' | null>(null);
     return (
         <div className="space-y-3">
@@ -90,7 +90,7 @@ export function Protocols({ protocols, careTypes, applies, medicines, canEdit }:
     );
 }
 
-function ProtocolForm({ p, careTypes, applies, medicines, onDone }: { p: Protocol | null; careTypes: Record<string, string>; applies: Record<string, string>; medicines: Array<{ id: number; name: string; unit: string }>; onDone: () => void }) {
+function ProtocolForm({ p, careTypes, applies, medicines, onDone }: { p: Protocol | null; careTypes: Record<string, string>; applies: Record<string, string>; medicines: Array<{ id: number; name: string; unit: string; category?: string; check?: string | null }>; onDone: () => void }) {
     const form = useForm({
         name: p?.name ?? '', kind: p?.kind ?? 'vaccination', medicine_id: p?.medicineId ? String(p.medicineId) : '', dose_per_goat: p?.dose ? String(p.dose) : '',
         applies_to: p?.appliesTo ?? 'all', first_age_days: p?.firstAge !== null && p?.firstAge !== undefined ? String(p.firstAge) : '', interval_days: p?.interval ? String(p.interval) : '', notes: p?.notes ?? '', active: p?.active ?? true,
@@ -104,7 +104,7 @@ function ProtocolForm({ p, careTypes, applies, medicines, onDone }: { p: Protoco
                 <Field label="For" error={e.applies_to}><select className="field" value={form.data.applies_to} onChange={(x) => form.setData('applies_to', x.target.value)}>{Object.entries(applies).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <Field label="First dose at age (days)" error={e.first_age_days} hint="Empty: due now for goats never given it"><input type="number" min={0} className="field" value={form.data.first_age_days} onChange={(x) => form.setData('first_age_days', x.target.value)} /></Field>
                 <Field label="Repeat every (days)" error={e.interval_days} hint="Empty: given once"><input type="number" min={1} className="field" value={form.data.interval_days} onChange={(x) => form.setData('interval_days', x.target.value)} /></Field>
-                <Field label="Product from the medicine store" error={e.medicine_id} hint="Giving it deducts the stock"><select className="field" value={form.data.medicine_id} onChange={(x) => form.setData('medicine_id', x.target.value)}><option value="">None</option>{medicines.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>
+                <Field label="Product from the medicine store" error={e.medicine_id} hint="Giving it deducts the stock"><select className="field" value={form.data.medicine_id} onChange={(x) => form.setData('medicine_id', x.target.value)}><option value="">None</option>{medicines.filter((m) => !m.category || !['consumable', 'equipment'].includes(m.category)).map((m) => <option key={m.id} value={m.id}>{m.name}{m.check === 'hold' ? ' · on hold' : ''}</option>)}</select></Field>
                 <Field label="Dose per goat" error={e.dose_per_goat}><input type="number" step="0.01" min={0} className="field" value={form.data.dose_per_goat} onChange={(x) => form.setData('dose_per_goat', x.target.value)} /></Field>
                 <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                 <label className="flex items-end gap-2 pb-2 text-sm font-semibold"><input type="checkbox" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> Active</label>

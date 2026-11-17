@@ -33,13 +33,16 @@ class MedicineController extends Controller
             'opening_qty' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'batch' => ['nullable', 'string', 'max:40'],
             'expiry_on' => ['nullable', 'date'],
+            'spec' => ['nullable', 'string', 'max:200'], 'use_case' => ['nullable', 'string', 'max:200'], 'source' => ['nullable', 'string', 'max:120'], // D-332
+            'pack_unit' => ['nullable', Rule::in(array_keys(Medicine::PACKS))], 'pack_size' => ['nullable', 'required_with:pack_unit', 'numeric', 'gt:0', 'max:100000'],
+            'check_status' => ['nullable', Rule::in(array_keys(Medicine::CHECKS))], 'check_note' => ['nullable', 'string', 'max:200'], 'notes' => ['nullable', 'string', 'max:200'],
         ], [], self::ATTRIBUTES);
 
         DB::transaction(function () use ($data, $request) {
             $medicine = Medicine::create([
                 'code' => $data['code'], 'name' => $data['name'], 'category' => $data['category'], 'unit' => $data['unit'], 'reorder_level' => $data['reorder_level'] ?? 0,
                 'cost_per_unit_minor' => (int) round(($data['cost_per_unit'] ?? 0) * 100), 'storage' => $data['storage'] ?? null, 'supplier' => $data['supplier'] ?? null,
-            ]);
+            ] + self::details($data));
             if (($data['opening_qty'] ?? 0) > 0) {
                 MedicineMovement::create(['medicine_id' => $medicine->id, 'moved_on' => now(), 'type' => 'opening', 'qty' => $data['opening_qty'], 'batch' => $data['batch'] ?? null, 'expiry_on' => $data['expiry_on'] ?? null, 'rate_minor' => $medicine->cost_per_unit_minor, 'recorded_by' => $request->user()->name]);
             }
@@ -56,14 +59,30 @@ class MedicineController extends Controller
             'name' => ['required', 'string', 'max:120'], 'category' => ['required', Rule::in(array_keys(Medicine::CATEGORIES))],
             'reorder_level' => ['nullable', 'numeric', 'min:0', 'max:1000000'], 'cost_per_unit' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'storage' => ['nullable', 'string', 'max:80'], 'supplier' => ['nullable', 'string', 'max:80'], 'active' => ['boolean'],
+            'unit' => ['nullable', Rule::in(array_keys(Medicine::UNITS))],
+            'spec' => ['nullable', 'string', 'max:200'], 'use_case' => ['nullable', 'string', 'max:200'], 'source' => ['nullable', 'string', 'max:120'], // D-332
+            'pack_unit' => ['nullable', Rule::in(array_keys(Medicine::PACKS))], 'pack_size' => ['nullable', 'required_with:pack_unit', 'numeric', 'gt:0', 'max:100000'],
+            'check_status' => ['nullable', Rule::in(array_keys(Medicine::CHECKS))], 'check_note' => ['nullable', 'string', 'max:200'], 'notes' => ['nullable', 'string', 'max:200'],
         ], [], self::ATTRIBUTES);
+        // D-332: the stock unit can change only while nothing has moved, so past quantities keep their meaning
+        if (! empty($data['unit']) && $data['unit'] !== $medicine->unit && $medicine->movements()->exists()) {
+            throw ValidationException::withMessages(['unit' => "The stock unit cannot change once {$medicine->name} has stock movements."]);
+        }
         $medicine->update([
             'name' => $data['name'], 'category' => $data['category'], 'reorder_level' => $data['reorder_level'] ?? 0, 'cost_per_unit_minor' => (int) round(($data['cost_per_unit'] ?? 0) * 100),
             'storage' => $data['storage'] ?? null, 'supplier' => $data['supplier'] ?? null, 'active' => $data['active'] ?? $medicine->active,
-        ]);
+            'unit' => $data['unit'] ?? $medicine->unit,
+        ] + array_intersect_key(self::details($data), $data)); // only what the form sent
         Farm::log($request->user(), "Updated medicine {$medicine->name}", '/health');
 
         return back()->with('success', "{$medicine->name} saved.");
+    }
+
+    /** D-332: the label details, pack and vet check from a validated form. */
+    private static function details(array $d): array
+    {
+        return ['spec' => $d['spec'] ?? null, 'use_case' => $d['use_case'] ?? null, 'source' => $d['source'] ?? null, 'pack_unit' => $d['pack_unit'] ?? null,
+            'pack_size' => ! empty($d['pack_unit']) ? ($d['pack_size'] ?? null) : null, 'check_status' => $d['check_status'] ?? 'confirmed', 'check_note' => $d['check_note'] ?? null, 'notes' => $d['notes'] ?? null];
     }
 
     /** Receipts, disposals and adjustments. A purchase also records the Medicine expense. Patient issues come from treatments. */

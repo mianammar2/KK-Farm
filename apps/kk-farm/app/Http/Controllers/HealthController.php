@@ -130,10 +130,10 @@ class HealthController extends Controller
 
             return [
                 'id' => $m->id, 'code' => $m->code, 'name' => $m->name, 'category' => $m->category, 'unit' => $m->unit, 'reorder' => $m->reorder_level,
-                'costPerUnit' => $m->cost_per_unit_minor / 100, 'storage' => $m->storage, 'supplier' => $m->supplier, 'active' => $m->active, 'qty' => $q,
+                'costPerUnit' => $m->cost_per_unit_minor / 100, 'storage' => $m->storage, 'supplier' => $m->supplier, 'active' => $m->active, 'qty' => $q, 'notes' => $m->notes,
                 'value' => round(max(0, $q) * $m->cost_per_unit_minor / 100), 'status' => \App\Support\MedicineStock::status($q, $m->reorder_level, $b),
                 'batches' => $b->map(fn ($x) => ['batch' => $x['batch'], 'expiry' => $x['expiry']?->format('d/m/Y'), 'expired' => $x['expiry']?->isPast() ?? false, 'qty' => $x['qty']])->values(),
-            ];
+            ] + \App\Support\Stores::medicineDetails($m);
         });
 
         return [
@@ -142,7 +142,7 @@ class HealthController extends Controller
                 'id' => $mv->id, 'on' => $mv->moved_on->format('d/m'), 'medicine' => $mv->medicine->name, 'unit' => $mv->medicine->unit, 'type' => \App\Models\MedicineMovement::TYPES[$mv->type][0] ?? $mv->type,
                 'qty' => $mv->qty, 'batch' => $mv->batch, 'expiry' => $mv->expiry_on?->format('d/m/Y'), 'by' => $mv->recorded_by, 'party' => $mv->party,
             ]),
-            'medicineCategories' => \App\Models\Medicine::CATEGORIES, 'medicineUnits' => \App\Models\Medicine::UNITS,
+            'medicineCategories' => \App\Models\Medicine::CATEGORIES, 'medicineUnits' => \App\Models\Medicine::UNITS, 'medicinePacks' => \App\Models\Medicine::PACKS, 'medicineChecks' => \App\Models\Medicine::CHECKS,
             'medicineTypes' => collect(\App\Models\MedicineMovement::TYPES)->except(['opening', 'issue'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
             'medicineAlerts' => $medicines->where('active', true)->whereIn('status', ['negative', 'expired', 'reorder', 'expiring'])->count(),
             'canMedicine' => request()->user()->passes('manage_medicine_store'),

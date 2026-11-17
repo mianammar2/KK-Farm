@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import DeleteButton from './DeleteButton';
 import { Button, cx, Field, Panel } from './ui';
 
@@ -10,7 +11,8 @@ import { Button, cx, Field, Panel } from './ui';
 export type Via = 'app' | 'inventory';
 export type MoveTypes = Record<string, { label: string; direction: number }>;
 export type FeedItem = { id: number; code: string; name: string; category: string; costPerKg: number; cp: number | null; dm: number | null; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number };
-export type MedicineItem = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; qty: number };
+export type MedicineItem = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; qty: number;
+    spec?: string | null; useCase?: string | null; source?: string | null; packUnit?: string | null; packSize?: number | null; check?: string | null; checkNote?: string | null; notes?: string | null };
 
 const URLS: Record<Via, { feedItems: string; feedStock: string; medicines: string; medStock: string }> = {
     app: { feedItems: '/feeding/items', feedStock: '/feeding/stock', medicines: '/health/medicines', medStock: '/health/medicine-stock' },
@@ -70,39 +72,65 @@ export function FeedStockForm({ items, movementTypes, onDone, via = 'app', itemI
     );
 }
 
-export function MedicineAdd({ categories, units, onDone, via = 'app' }: { categories: Record<string, string>; units: Record<string, string>; onDone?: () => void; via?: Via }) {
-    const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'ml', reorder_level: '', cost_per_unit: '', storage: '', supplier: '', opening_qty: '', batch: '', expiry_on: '' });
+/** D-332: the purchase pack and the vet's check, defaults for apps that do not pass the lists. */
+const PACKS: Record<string, string> = { vial: 'Vial', ampoule: 'Ampoule', bottle: 'Bottle', can: 'Can', sachet: 'Sachet', box: 'Box', piece: 'Piece', tube: 'Tube', pack: 'Pack' };
+const CHECKS: Record<string, string> = { confirmed: 'Confirmed', to_confirm: 'To confirm', hold: 'On hold' };
+type MedFields = { spec: string; use_case: string; source: string; pack_unit: string; pack_size: string; check_status: string; check_note: string; notes: string; supplier: string; storage: string };
+const medFields = (m?: MedicineItem): MedFields => ({ spec: m?.spec ?? '', use_case: m?.useCase ?? '', source: m?.source ?? '', pack_unit: m?.packUnit ?? '', pack_size: m?.packSize != null ? String(m.packSize) : '', check_status: m?.check ?? 'confirmed', check_note: m?.checkNote ?? '', notes: m?.notes ?? '', supplier: m?.supplier ?? '', storage: m?.storage ?? '' });
+
+/** D-332: label details, purchase pack and the vet's check: the same fields when adding and when editing. */
+function MedicineDetails({ data, set, e, unit, packs = PACKS, checks = CHECKS }: { data: MedFields; set: (k: keyof MedFields, v: string) => void; e: Record<string, string>; unit: string; packs?: Record<string, string>; checks?: Record<string, string> }) {
+    return (
+        <>
+            <div className="col-span-2"><Field label="Specification / active ingredient" error={e.spec} hint="As on the label, e.g. Flunixin meglumine 50 mg/mL"><input className="field" value={data.spec} onChange={(x) => set('spec', x.target.value)} maxLength={200} /></Field></div>
+            <div className="col-span-2"><Field label="Use" error={e.use_case} hint="What the farm uses it for"><input className="field" value={data.use_case} onChange={(x) => set('use_case', x.target.value)} maxLength={200} /></Field></div>
+            <Field label="Bought as" error={e.pack_unit}><select className="field" value={data.pack_unit} onChange={(x) => set('pack_unit', x.target.value)}><option value="">Single {unit}</option>{Object.entries(packs).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            {data.pack_unit ? <Field label={`${unit} in one ${(packs[data.pack_unit] ?? data.pack_unit).toLowerCase()}`} error={e.pack_size}><input type="number" min={0} step="0.01" className="field" value={data.pack_size} onChange={(x) => set('pack_size', x.target.value)} /></Field> : <span />}
+            <Field label="Manufacturer / source" error={e.source}><input className="field" value={data.source} onChange={(x) => set('source', x.target.value)} maxLength={120} /></Field>
+            <Field label="Supplier" error={e.supplier}><input className="field" value={data.supplier} onChange={(x) => set('supplier', x.target.value)} maxLength={80} /></Field>
+            <Field label="Storage" error={e.storage} hint="e.g. Fridge, Vet cabinet"><input className="field" value={data.storage} onChange={(x) => set('storage', x.target.value)} maxLength={80} /></Field>
+            <Field label="Vet check" error={e.check_status} hint="On hold: cannot be given until a vet confirms it"><select className="field" value={data.check_status} onChange={(x) => set('check_status', x.target.value)}>{Object.entries(checks).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            {data.check_status !== 'confirmed' ? <div className="col-span-2"><Field label="What to confirm" error={e.check_note}><input className="field" value={data.check_note} onChange={(x) => set('check_note', x.target.value)} maxLength={200} /></Field></div> : null}
+            <div className="col-span-2"><Field label="Notes (optional)" error={e.notes}><input className="field" value={data.notes} onChange={(x) => set('notes', x.target.value)} maxLength={200} /></Field></div>
+        </>
+    );
+}
+
+export function MedicineAdd({ categories, units, packs, checks, onDone, via = 'app' }: { categories: Record<string, string>; units: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; onDone?: () => void; via?: Via }) {
+    const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'ml', reorder_level: '', cost_per_unit: '', opening_qty: '', batch: '', expiry_on: '', ...medFields() });
     const e = form.errors as Record<string, string>;
     return (
-        <Panel title="Add a medicine">
+        <Panel title="Add a medicine or vet supply">
             <form onSubmit={(ev) => { ev.preventDefault(); form.post(URLS[via].medicines, { preserveScroll: true, onSuccess: () => { form.reset(); onDone?.(); } }); }} className="grid grid-cols-2 gap-3">
                 <Field label="Code" error={e.code} hint="e.g. OXY-LA"><input className="field font-mono uppercase" value={form.data.code} onChange={(x) => form.setData('code', x.target.value)} maxLength={20} /></Field>
                 <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
                 <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-                <Field label="Stock unit" error={e.unit}><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-                <Field label="Reorder at" error={e.reorder_level}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
-                <Field label="PKR per unit" error={e.cost_per_unit}><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
-                <Field label="Stock now" error={e.opening_qty}><input type="number" min={0} className="field" value={form.data.opening_qty} onChange={(x) => form.setData('opening_qty', x.target.value)} /></Field>
+                <Field label="Stock unit" error={e.unit} hint="The unit doses are given in"><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                <MedicineDetails data={form.data} set={(k, v) => form.setData(k, v)} e={e} unit={form.data.unit} packs={packs} checks={checks} />
+                <Field label={`Reorder at (${form.data.unit})`} error={e.reorder_level}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
+                <Field label={`PKR per ${form.data.unit}`} error={e.cost_per_unit}><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
+                <Field label={`Stock now (${form.data.unit})`} error={e.opening_qty}><input type="number" min={0} className="field" value={form.data.opening_qty} onChange={(x) => form.setData('opening_qty', x.target.value)} /></Field>
                 <Field label="Batch / lot" error={e.batch}><input className="field font-mono" value={form.data.batch} onChange={(x) => form.setData('batch', x.target.value)} /></Field>
                 <Field label="Expiry" error={e.expiry_on}><input type="date" className="field" value={form.data.expiry_on} onChange={(x) => form.setData('expiry_on', x.target.value)} /></Field>
-                <Field label="Storage" error={e.storage} hint="e.g. Fridge, Vet cabinet"><input className="field" value={form.data.storage} onChange={(x) => form.setData('storage', x.target.value)} /></Field>
-                <div className="col-span-2"><Button type="submit" disabled={form.processing}>Add medicine</Button></div>
+                <div className="col-span-2"><Button type="submit" disabled={form.processing}>Add</Button></div>
             </form>
         </Panel>
     );
 }
 
-export function MedicineEdit({ m, categories, via = 'app', onDone }: { m: MedicineItem; categories: Record<string, string>; via?: Via; onDone?: () => void }) {
-    const form = useForm({ name: m.name, category: m.category, reorder_level: String(m.reorder), cost_per_unit: String(m.costPerUnit), storage: m.storage ?? '', supplier: m.supplier ?? '', active: m.active });
+export function MedicineEdit({ m, categories, units, packs, checks, via = 'app', onDone }: { m: MedicineItem; categories: Record<string, string>; units?: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; via?: Via; onDone?: () => void }) {
+    const form = useForm({ name: m.name, category: m.category, unit: m.unit, reorder_level: String(m.reorder), cost_per_unit: String(m.costPerUnit), active: m.active, ...medFields(m) });
+    const e = form.errors as Record<string, string>;
     return (
-        <form onSubmit={(ev) => { ev.preventDefault(); form.post(`${URLS[via].medicines}/${m.id}`, { preserveScroll: true, onSuccess: () => onDone?.() }); }} className="mt-2 grid gap-2 border-t border-rule pt-2 sm:grid-cols-3">
-            <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
-            <Field label="Category"><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label={`Reorder at (${m.unit})`}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
-            <Field label="PKR per unit"><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
-            <Field label="Storage"><input className="field" value={form.data.storage} onChange={(x) => form.setData('storage', x.target.value)} /></Field>
-            <label className="flex items-center gap-2 pt-6 text-sm"><input type="checkbox" className="size-4" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> Still used</label>
-            <div className="sm:col-span-3"><Button type="submit" variant="secondary" disabled={form.processing}>Save</Button><DeleteButton type="medicine" id={m.id} name={m.name} /></div>
+        <form onSubmit={(ev) => { ev.preventDefault(); form.post(`${URLS[via].medicines}/${m.id}`, { preserveScroll: true, onSuccess: () => onDone?.() }); }} className="mt-2 grid grid-cols-2 gap-3 border-t border-rule pt-2">
+            <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
+            <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            {units ? <Field label="Stock unit" error={e.unit} hint="Fixed once stock has moved"><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field> : null}
+            <MedicineDetails data={form.data} set={(k, v) => form.setData(k, v)} e={e} unit={form.data.unit} packs={packs} checks={checks} />
+            <Field label={`Reorder at (${form.data.unit})`} error={e.reorder_level}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
+            <Field label={`PKR per ${form.data.unit}`} error={e.cost_per_unit}><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
+            <label className="col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> Still used</label>
+            <div className="col-span-2 flex gap-2"><Button type="submit" variant="secondary" disabled={form.processing}>Save</Button><DeleteButton type="medicine" id={m.id} name={m.name} /></div>
         </form>
     );
 }
@@ -111,7 +139,12 @@ export function MedicineMoveForm({ medicines, types, onDone, via = 'app', itemId
     const form = useForm({ medicine_id: String(itemId ?? medicines.find((m) => m.active)?.id ?? medicines[0].id), type: 'purchase', direction: '', qty: '', batch: '', expiry_on: '', rate: '', moved_on: today(), party: '', reference: '', notes: '' });
     const e = form.errors as Record<string, string>;
     const type = types[form.data.type];
-    const unit = medicines.find((m) => String(m.id) === form.data.medicine_id)?.unit ?? '';
+    const med = medicines.find((m) => String(m.id) === form.data.medicine_id);
+    const unit = med?.unit ?? '';
+    // D-332: bought in packs (a vial of 100 ml), kept and dosed in the stock unit
+    const pack = med?.packUnit && med.packSize ? { name: (PACKS[med.packUnit] ?? med.packUnit).toLowerCase(), size: med.packSize } : null;
+    const [packs, setPacks] = useState('');
+    const [packPrice, setPackPrice] = useState('');
     const incoming = type?.direction === 1 || (type?.direction === 0 && form.data.direction === 'in');
     return (
         <Panel title="Stock in / out" description="Purchases also go into Expenses. Treatments issue stock by themselves.">
@@ -119,6 +152,8 @@ export function MedicineMoveForm({ medicines, types, onDone, via = 'app', itemId
                 <Field label="Medicine" error={e.medicine_id}><select className="field" value={form.data.medicine_id} onChange={(x) => form.setData('medicine_id', x.target.value)}>{medicines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.qty} {m.unit})</option>)}</select></Field>
                 <Field label="What happened" error={e.type}><select className="field" value={form.data.type} onChange={(x) => form.setData('type', x.target.value)}>{Object.entries(types).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
                 {type?.direction === 0 ? <Field label="Stock goes" error={e.direction}><select className="field" value={form.data.direction} onChange={(x) => form.setData('direction', x.target.value)}><option value="">Choose…</option><option value="in">In</option><option value="out">Out</option></select></Field> : null}
+                {pack ? <Field label={`${pack.name[0].toUpperCase()}${pack.name.slice(1)}s`} hint={`1 ${pack.name} = ${pack.size} ${unit}`}><input type="number" min={0} step="1" className="field" value={packs} onChange={(x) => { setPacks(x.target.value); form.setData('qty', x.target.value ? String(Math.round(Number(x.target.value) * pack.size * 100) / 100) : ''); }} /></Field> : null}
+                {pack && form.data.type === 'purchase' ? <Field label={`PKR per ${pack.name}`}><input type="number" min={0} step="0.01" className="field" value={packPrice} onChange={(x) => { setPackPrice(x.target.value); form.setData('rate', x.target.value ? String(Math.round((Number(x.target.value) / pack.size) * 10000) / 10000) : ''); }} /></Field> : null}
                 <Field label={`Quantity (${unit})`} error={e.qty}><input type="number" min={0} step="0.1" className="field" value={form.data.qty} onChange={(x) => form.setData('qty', x.target.value)} /></Field>
                 <Field label="Batch / lot" error={e.batch}><input className="field font-mono" value={form.data.batch} onChange={(x) => form.setData('batch', x.target.value)} /></Field>
                 {incoming ? <Field label="Expiry" error={e.expiry_on}><input type="date" className="field" value={form.data.expiry_on} onChange={(x) => form.setData('expiry_on', x.target.value)} /></Field> : null}

@@ -34,7 +34,7 @@ class InventoryController extends Controller
             'stores' => $stores,
             'masters' => [
                 'feed' => ['categories' => \App\Models\FeedItem::CATEGORIES, 'units' => ['kg' => 'KG'], 'types' => collect(\App\Models\FeedStockMovement::manualTypes())->except('opening')->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]])],
-                'medicine' => ['categories' => \App\Models\Medicine::CATEGORIES, 'units' => \App\Models\Medicine::UNITS, 'types' => collect(\App\Models\MedicineMovement::TYPES)->only(['purchase', 'return', 'disposal', 'adjustment', 'other'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]])],
+                'medicine' => ['categories' => \App\Models\Medicine::CATEGORIES, 'units' => \App\Models\Medicine::UNITS, 'packs' => \App\Models\Medicine::PACKS, 'checks' => \App\Models\Medicine::CHECKS, 'types' => collect(\App\Models\MedicineMovement::TYPES)->only(['purchase', 'return', 'disposal', 'adjustment', 'other'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]])],
                 'store' => ['categories' => StoreItem::CATEGORIES, 'units' => StoreItem::UNITS, 'types' => collect(StoreMove::TYPES)->except(['purchase', 'opening'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]])],
             ],
             'can' => collect(Stores::GATES)->only($stores)->map(fn ($g) => $u->passes($g))->all() + ['purchase' => $u->passes('manage_purchase')],
