@@ -1,6 +1,7 @@
 import BrandMark from './BrandMark';
 import NotificationBell from './NotificationBell';
 import AppScan from './AppScan';
+import AppUpdateNotice from './AppUpdateNotice';
 import { ArtIcon, NavIcon } from './ArtIcon';
 import { canOpen, currentApp, GROUPS, isHere, masterHref, menuHref, rememberApp, sectionsFor, setPageRules } from '../lib/apps';
 import { AppStripContext, type StripData } from './AppStrip';
@@ -336,6 +337,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 transition={reduced ? { duration: 0.15 } : { type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
                 className="kk-page mx-auto max-w-[1440px] px-3 pt-4 pb-28 sm:px-5 lg:py-5"
             >
+                <AppUpdateNotice />{/* D-330: a newer Android app is announced on every page */}
                 <AppScan variant="bar" />{/* D-303: the scanner inside each app, at the top of its pages */}
                 <AppStripContext.Provider value={stripState}>{children}</AppStripContext.Provider>
             </motion.main>

@@ -36,6 +36,7 @@ export type SharedProps = {
     demo: boolean;
     demoLogin: boolean;
     flash: string | null;
+    androidApp?: { code: number; name: string; notes: string } | null; // D-330
     errors: Record<string, string>;
 };
 

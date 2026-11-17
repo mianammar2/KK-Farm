@@ -28,6 +28,20 @@ class HandleInertiaRequests extends Middleware
             'demo' => (bool) config('kkfarm.demo'),
             'demoLogin' => \App\Http\Controllers\AuthController::demoLogin(),
             'flash' => fn () => $request->session()->get('success'),
+            // D-330: the newest Android app on the server, so an open app is told to update at once (not only on its 6-hourly check)
+            'androidApp' => $user ? fn () => self::androidApp() : null,
         ];
+    }
+
+    /** @return array{code: int, name: string, notes: string}|null */
+    public static function androidApp(): ?array
+    {
+        $file = public_path('downloads/kkfarm.json');
+        if (! is_file($file)) {
+            return null;
+        }
+        $i = json_decode((string) file_get_contents($file), true);
+
+        return is_array($i) ? ['code' => (int) ($i['versionCode'] ?? 0), 'name' => (string) ($i['versionName'] ?? ''), 'notes' => (string) ($i['notes'] ?? '')] : null;
     }
 }
