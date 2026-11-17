@@ -135,6 +135,7 @@ return [
     'POST /goats/{animal}/restore' => ['inline' => 'the action checks remove_goats', 'module' => 'goats'],
     'POST /goats/{animal}/rfid' => ['inline' => 'the action checks assign_tags', 'module' => 'goats'],
     'POST /goats/{animal}/rfid/arm' => ['inline' => 'the action checks assign_tags', 'module' => 'goats'],
+    'POST /goats/count' => ['module' => 'goats'], // D-338: anyone who may open the Livestock app counts goats
     'POST /goats/{animal}/tag' => ['inline' => 'the action checks assign_tags', 'module' => 'goats'], // D-336
     'POST /goats/{animal}/tag/remove' => ['inline' => 'the action checks assign_tags', 'module' => 'goats'],
     'POST /goats/{animal}/teeth' => ['inline' => 'the action checks edit_goats, health_checkup, check_teeth', 'module' => 'goats'],

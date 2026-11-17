@@ -241,6 +241,8 @@ Route::middleware('auth')->group(function (): void {
         ->map(fn ($i) => ['key' => $i['key'], 'label' => $i['label'], 'count' => $i['count'], 'severity' => $i['severity'], 'url' => $i['url'], 'action' => $i['action']])->values()));
 
     Route::middleware('module:goats')->group(function (): void {
+        Route::get('/goats/count', [\App\Http\Controllers\GoatCountController::class, 'index']); // D-338: count goats by scanning
+        Route::post('/goats/count', [\App\Http\Controllers\GoatCountController::class, 'store']);
         Route::get('/goats', [GoatController::class, 'index']);
         Route::get('/goats/export', [GoatController::class, 'export']);
         Route::get('/goats/register', [GoatController::class, 'register']);

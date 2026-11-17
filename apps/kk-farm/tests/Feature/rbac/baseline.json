@@ -314,6 +314,15 @@
         "cleaning": 403,
         "finance": 403
     },
+    "GET /goats/count": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 200,
+        "cleaning": 403,
+        "finance": 403
+    },
     "GET /goats/export": {
         "ceo": 200,
         "manager": 200,
@@ -1629,6 +1638,15 @@
         "finance": 403
     },
     "PAGE goats.all_goats  /goats": {
+        "ceo": 200,
+        "manager": 200,
+        "vet": 200,
+        "caretaker": 200,
+        "feeding": 200,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "PAGE goats.goat_count  /goats/count": {
         "ceo": 200,
         "manager": 200,
         "vet": 200,
@@ -3722,6 +3740,15 @@
         "vet": 403,
         "caretaker": 403,
         "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /goats/count": {
+        "ceo": 302,
+        "manager": 302,
+        "vet": 302,
+        "caretaker": 302,
+        "feeding": 302,
         "cleaning": 403,
         "finance": 403
     },

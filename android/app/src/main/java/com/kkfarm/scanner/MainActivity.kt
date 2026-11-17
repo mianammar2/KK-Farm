@@ -91,6 +91,15 @@ class MainActivity : Activity() {
             .show()
     }
 
+    /** D-338: a trigger pull that read many tags goes whole to a page that takes them (Goat Count); otherwise the user picks one. */
+    private fun manyTags(codes: List<String>) {
+        if (!isVisible) { chooseTag(codes); return }
+        val list = org.json.JSONArray(codes).toString()
+        web.evaluateJavascript("(function(){try{return window.kkScanMany&&window.kkScanMany($list)?'1':'0'}catch(e){return '0'}})()") { r ->
+            if (r == "\"1\"") { vibrate(60); Log.i(TAG, "count took ${codes.size} tags") } else chooseTag(codes)
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,7 +191,7 @@ class MainActivity : Activity() {
         intent.removeExtra(EXTRA_CODES)
         when {
             codes.size == 1 -> onScan(codes[0], "reader")
-            codes.size > 1 -> chooseTag(codes)
+            codes.size > 1 -> manyTags(codes)
             intent.getBooleanExtra(EXTRA_OPEN_SCAN, false) -> {
                 intent.removeExtra(EXTRA_OPEN_SCAN)
                 // Keep a half-filled goat register; otherwise show the Scan screen, ready for the read.
@@ -439,6 +448,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.7.0"
-    const val CODE = 18 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.7.1"
+    const val CODE = 19 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

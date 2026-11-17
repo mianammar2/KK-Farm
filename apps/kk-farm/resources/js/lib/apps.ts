@@ -21,6 +21,7 @@ export const APPS: ErpApp[] = [
         S('Overview', '/worker', 'Choose a Job'),
         S('Operations', '/worker', 'Weigh · Temp · Heat · Mating · Milk · Vaccinate · Teeth · Height · Move'),
         S('Operations', '/scan', 'RFID Scan'),
+        S('Operations', '/goats/count', 'Goat Count'), // D-338
         S('Operations', '/feeding?tab=now', 'Feed PENs'),
         S('Operations', '/tasks?tab=mine', 'My Tasks'),
         S('Reporting', '/activity', 'Activity Log'),
@@ -42,6 +43,7 @@ export const APPS: ErpApp[] = [
         S('Operations', '/intake', 'Intake & Quarantine'),
         S('Operations', '/goats?show=newborn', 'Newborns to Complete'),
         S('Operations', '/scan', 'RFID Scan'),
+        S('Operations', '/goats/count', 'Goat Count'), // D-338
         S('Operations', '/movements?kind=transfer', 'PEN Movements'), // D-285: moves and exits are separate
         S('Operations', '/movements?kind=exit', 'Animal Exit'),
         S('Reporting', '/reports/sheet', 'Herd Sheet'), // D-288: one sheet for all reporting
