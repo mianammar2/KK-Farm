@@ -36,6 +36,7 @@ class MedicineController extends Controller
             'spec' => ['nullable', 'string', 'max:200'], 'use_case' => ['nullable', 'string', 'max:200'], 'source' => ['nullable', 'string', 'max:120'], // D-332
             'pack_unit' => ['nullable', Rule::in(array_keys(Medicine::PACKS))], 'pack_size' => ['nullable', 'required_with:pack_unit', 'numeric', 'gt:0', 'max:100000'],
             'check_status' => ['nullable', Rule::in(array_keys(Medicine::CHECKS))], 'check_note' => ['nullable', 'string', 'max:200'], 'notes' => ['nullable', 'string', 'max:200'],
+            'disease_ids' => ['nullable', 'array'], 'disease_ids.*' => ['integer', 'distinct', 'exists:diseases,id'], // D-333
         ], [], self::ATTRIBUTES);
 
         DB::transaction(function () use ($data, $request) {
@@ -43,6 +44,7 @@ class MedicineController extends Controller
                 'code' => $data['code'], 'name' => $data['name'], 'category' => $data['category'], 'unit' => $data['unit'], 'reorder_level' => $data['reorder_level'] ?? 0,
                 'cost_per_unit_minor' => (int) round(($data['cost_per_unit'] ?? 0) * 100), 'storage' => $data['storage'] ?? null, 'supplier' => $data['supplier'] ?? null,
             ] + self::details($data));
+            $medicine->diseases()->sync($data['disease_ids'] ?? []); // D-333
             if (($data['opening_qty'] ?? 0) > 0) {
                 MedicineMovement::create(['medicine_id' => $medicine->id, 'moved_on' => now(), 'type' => 'opening', 'qty' => $data['opening_qty'], 'batch' => $data['batch'] ?? null, 'expiry_on' => $data['expiry_on'] ?? null, 'rate_minor' => $medicine->cost_per_unit_minor, 'recorded_by' => $request->user()->name]);
             }
@@ -63,6 +65,7 @@ class MedicineController extends Controller
             'spec' => ['nullable', 'string', 'max:200'], 'use_case' => ['nullable', 'string', 'max:200'], 'source' => ['nullable', 'string', 'max:120'], // D-332
             'pack_unit' => ['nullable', Rule::in(array_keys(Medicine::PACKS))], 'pack_size' => ['nullable', 'required_with:pack_unit', 'numeric', 'gt:0', 'max:100000'],
             'check_status' => ['nullable', Rule::in(array_keys(Medicine::CHECKS))], 'check_note' => ['nullable', 'string', 'max:200'], 'notes' => ['nullable', 'string', 'max:200'],
+            'disease_ids' => ['nullable', 'array'], 'disease_ids.*' => ['integer', 'distinct', 'exists:diseases,id'], // D-333
         ], [], self::ATTRIBUTES);
         // D-332: the stock unit can change only while nothing has moved, so past quantities keep their meaning
         if (! empty($data['unit']) && $data['unit'] !== $medicine->unit && $medicine->movements()->exists()) {
@@ -73,6 +76,9 @@ class MedicineController extends Controller
             'storage' => $data['storage'] ?? null, 'supplier' => $data['supplier'] ?? null, 'active' => $data['active'] ?? $medicine->active,
             'unit' => $data['unit'] ?? $medicine->unit,
         ] + array_intersect_key(self::details($data), $data)); // only what the form sent
+        if (array_key_exists('disease_ids', $data)) {
+            $medicine->diseases()->sync($data['disease_ids'] ?? []); // D-333
+        }
         Farm::log($request->user(), "Updated medicine {$medicine->name}", '/health');
 
         return back()->with('success', "{$medicine->name} saved.");

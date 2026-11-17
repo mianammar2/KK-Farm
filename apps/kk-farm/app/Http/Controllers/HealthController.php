@@ -124,7 +124,7 @@ class HealthController extends Controller
     {
         $qty = \App\Support\MedicineStock::quantities();
         $batches = \App\Support\MedicineStock::batches();
-        $medicines = \App\Models\Medicine::orderBy('name')->get()->map(function (\App\Models\Medicine $m) use ($qty, $batches) {
+        $medicines = \App\Models\Medicine::with('diseases')->orderBy('name')->get()->map(function (\App\Models\Medicine $m) use ($qty, $batches) {
             $b = $batches[$m->id] ?? collect();
             $q = $qty[$m->id] ?? 0;
 
@@ -142,7 +142,7 @@ class HealthController extends Controller
                 'id' => $mv->id, 'on' => $mv->moved_on->format('d/m'), 'medicine' => $mv->medicine->name, 'unit' => $mv->medicine->unit, 'type' => \App\Models\MedicineMovement::TYPES[$mv->type][0] ?? $mv->type,
                 'qty' => $mv->qty, 'batch' => $mv->batch, 'expiry' => $mv->expiry_on?->format('d/m/Y'), 'by' => $mv->recorded_by, 'party' => $mv->party,
             ]),
-            'medicineCategories' => \App\Models\Medicine::CATEGORIES, 'medicineUnits' => \App\Models\Medicine::UNITS, 'medicinePacks' => \App\Models\Medicine::PACKS, 'medicineChecks' => \App\Models\Medicine::CHECKS,
+            'medicineCategories' => \App\Models\Medicine::CATEGORIES, 'medicineUnits' => \App\Models\Medicine::UNITS, 'medicinePacks' => \App\Models\Medicine::PACKS, 'medicineChecks' => \App\Models\Medicine::CHECKS, 'suggest' => \App\Support\MedicineSuggest::data(), // D-333
             'medicineTypes' => collect(\App\Models\MedicineMovement::TYPES)->except(['opening', 'issue'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
             'medicineAlerts' => $medicines->where('active', true)->whereIn('status', ['negative', 'expired', 'reorder', 'expiring'])->count(),
             'canMedicine' => request()->user()->passes('manage_medicine_store'),
@@ -156,7 +156,8 @@ class HealthController extends Controller
 
         return [
             'id' => $c->id, 'label' => $c->label(), 'goatId' => $c->animal_id, 'number' => $c->animal->farm_number, 'name' => $c->animal->name, 'coat' => $c->animal->coat, 'breed' => $c->animal->breed?->name, 'stage' => $c->animal->effectiveAge(), 'sex' => $c->animal->sex,
-            'onset' => $c->onset_on->format('d/m/Y'), 'condition' => $c->condition, 'symptoms' => $c->symptoms, 'severity' => $c->severity, 'isolated' => $c->isolated,
+            'onset' => $c->onset_on->format('d/m/Y'), 'condition' => $c->condition, 'diseaseId' => \App\Support\MedicineSuggest::diseaseOf($c), // D-333
+             'symptoms' => $c->symptoms, 'severity' => $c->severity, 'isolated' => $c->isolated,
             'status' => $c->status, 'active' => in_array($c->status, HealthCase::ACTIVE, true), 'vet' => $c->vet, 'diagnosis' => $c->diagnosis, 'notes' => $c->notes,
             'resolved' => $c->resolved_on?->format('d/m/Y'), 'age' => $c->ageDays(), 'by' => $c->recorded_by,
             'nextDose' => $next?->format('d/m'), 'doseAlert' => $next && in_array($c->status, HealthCase::ACTIVE, true) ? ($next->lessThan($today) ? 'overdue' : ($next->lessThanOrEqualTo($today->copy()->addDays(2)) ? 'soon' : null)) : null,

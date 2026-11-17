@@ -119,4 +119,33 @@ class InventoryImsTest extends TestCase
         $this->actingAs($vet)->post("/inventory/medicines/{$m->id}", ['name' => $m->name, 'category' => 'steroid', 'unit' => 'vial'])->assertSessionHasErrors('unit');
         $this->actingAs($vet)->getJson("/inventory/card?kind=medicine&id={$m->id}")->assertJsonPath('item.packSize', 50)->assertJsonPath('item.check', 'confirmed');
     }
+
+    public function test_medicines_are_suggested_by_disease_and_care_and_preventive_care_takes_stock(): void
+    {
+        $vet = $this->user('vet');
+        $pneu = \App\Models\Disease::create(['name' => 'Pneumonia', 'category' => 'respiratory']);
+        $abx = Medicine::create(['code' => 'A', 'name' => 'Tygent', 'category' => 'antibiotic', 'unit' => 'ml']);
+        $vit = Medicine::create(['code' => 'V', 'name' => 'Cyanocob', 'category' => 'vitamin', 'unit' => 'ml']);
+        $worm = Medicine::create(['code' => 'W', 'name' => 'Fenzole', 'category' => 'dewormer', 'unit' => 'ml']);
+        MedicineMovement::create(['medicine_id' => $worm->id, 'moved_on' => now()->toDateString(), 'type' => 'opening', 'qty' => 100, 'recorded_by' => 't']);
+
+        // the vet sets the medicines used for a disease on the medicine; an edit without the field keeps the links
+        $this->actingAs($vet)->post("/inventory/medicines/{$vit->id}", ['name' => 'Cyanocob', 'category' => 'vitamin', 'disease_ids' => [$pneu->id]])->assertSessionHasNoErrors();
+        $this->actingAs($vet)->post("/inventory/medicines/{$vit->id}", ['name' => 'Cyanocob 250', 'category' => 'vitamin'])->assertSessionHasNoErrors();
+        $this->assertSame([$pneu->id], $vit->fresh()->diseases->pluck('id')->all());
+
+        $data = \App\Support\MedicineSuggest::data();
+        $d = collect($data['diseases'])->firstWhere('id', $pneu->id);
+        $this->assertSame([$vit->id], $d['set']);
+        $this->assertSame('antibiotic', $data['byDisease']['respiratory'][0]); // Tygent fits a respiratory disease by its type
+        $this->assertSame(['dewormer', 'ectoparasiticide'], $data['byCare']['deworming']);
+
+        // preventive care with a store product takes the dose from stock
+        $breed = \App\Models\Breed::create(['name' => 'Beetal', 'default_gestation_days' => 150]);
+        $goat = \App\Models\Animal::create(['farm_number' => 'B-1', 'sex' => 'female', 'breed_id' => $breed->id, 'birth_date' => now()->subYears(2), 'origin' => 'purchased']);
+        $this->actingAs($vet)->post('/health/preventive', ['animal_ids' => [$goat->id], 'kind' => 'deworming', 'medicine_id' => $worm->id, 'qty_per_goat' => 8, 'given_on' => now()->toDateString(), 'care_status' => 'administered'])->assertSessionHasNoErrors();
+        $this->assertSame(92.0, (float) MedicineStock::quantities()[$worm->id]);
+        $this->assertSame('Fenzole', \App\Models\HealthRecord::where('animal_id', $goat->id)->value('title'));
+        $this->actingAs($vet)->get('/health')->assertInertia(fn (AssertableInertia $p) => $p->where('suggest.byCare.vaccination', ['vaccine']));
+    }
 }

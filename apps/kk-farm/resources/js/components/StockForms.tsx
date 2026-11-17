@@ -12,7 +12,7 @@ export type Via = 'app' | 'inventory';
 export type MoveTypes = Record<string, { label: string; direction: number }>;
 export type FeedItem = { id: number; code: string; name: string; category: string; costPerKg: number; cp: number | null; dm: number | null; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number };
 export type MedicineItem = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; qty: number;
-    spec?: string | null; useCase?: string | null; source?: string | null; packUnit?: string | null; packSize?: number | null; check?: string | null; checkNote?: string | null; notes?: string | null };
+    spec?: string | null; useCase?: string | null; source?: string | null; packUnit?: string | null; packSize?: number | null; check?: string | null; checkNote?: string | null; notes?: string | null; diseaseIds?: number[] };
 
 const URLS: Record<Via, { feedItems: string; feedStock: string; medicines: string; medStock: string }> = {
     app: { feedItems: '/feeding/items', feedStock: '/feeding/stock', medicines: '/health/medicines', medStock: '/health/medicine-stock' },
@@ -20,6 +20,51 @@ const URLS: Record<Via, { feedItems: string; feedStock: string; medicines: strin
 };
 const kg = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString('en-PK')} KG`;
 const pkr = (n: number) => `PKR ${Math.round(n).toLocaleString('en-PK')}`;
+/** D-333: what the server sends to rank medicines (App\\Support\\MedicineSuggest::data). */
+export type Suggest = {
+    byDisease: Record<string, string[]>; byCare: Record<string, string[]>; notGiven: string[];
+    diseases: Array<{ id: number; name: string; category: string; set: number[]; used: Record<string, number> }>;
+};
+export type PickMedicine = { id: number; name: string; unit: string; qty: number; category: string; active: boolean; check?: string | null; checkNote?: string | null; spec?: string | null; useCase?: string | null };
+
+/**
+ * D-333: medicines that can be given, the ones that fit first, each with why: set by the vet for the disease, used
+ * before on cases of it, or a type that fits the disease or the kind of care. Suggestions only: the vet decides.
+ */
+export function rankMedicines<M extends PickMedicine>(medicines: M[], suggest: Suggest | undefined, { diseaseId, care }: { diseaseId?: number | null; care?: string | null }) {
+    const givable = medicines.filter((m) => m.active && !(suggest?.notGiven ?? ['consumable', 'equipment']).includes(m.category));
+    const disease = diseaseId ? suggest?.diseases.find((d) => d.id === diseaseId) : undefined;
+    const why = new Map<number, [number, string]>(); // id → [rank, reason]; lower rank first
+    if (disease) {
+        disease.set.forEach((id, i) => why.set(id, [i, `set for ${disease.name}`]));
+        Object.entries(disease.used).sort((a, b) => b[1] - a[1]).forEach(([id, n], i) => { if (!why.has(Number(id))) why.set(Number(id), [100 + i, `used ${n} time${n === 1 ? '' : 's'} for ${disease.name}`]); });
+    }
+    const cats = disease ? suggest?.byDisease[disease.category] ?? [] : care ? suggest?.byCare[care] ?? [] : [];
+    givable.forEach((m) => { const i = cats.indexOf(m.category); if (i >= 0 && !why.has(m.id)) why.set(m.id, [200 + i, disease ? `fits ${disease.name}` : 'fits this care']); });
+    const suggested = givable.filter((m) => why.has(m.id)).sort((a, b) => why.get(a.id)![0] - why.get(b.id)![0] || a.name.localeCompare(b.name)).map((m) => ({ m, why: why.get(m.id)![1] }));
+    return { disease, suggested, others: givable.filter((m) => !why.has(m.id)) };
+}
+
+const flag = (m: PickMedicine) => (m.check === 'hold' ? ' · on hold' : m.check === 'to_confirm' ? ' · to confirm' : '');
+
+/** D-333: the medicine select used by treatments and preventive care: suggested first, then every other medicine. */
+export function MedicinePicker<M extends PickMedicine>({ medicines, suggest, diseaseId, care, value, onChange, empty = 'Not from the store (type below)' }: { medicines: M[]; suggest?: Suggest; diseaseId?: number | null; care?: string | null; value: string; onChange: (id: string) => void; empty?: string }) {
+    const { disease, suggested, others } = rankMedicines(medicines, suggest, { diseaseId, care });
+    const opt = (m: M, reason?: string) => <option key={m.id} value={m.id} disabled={m.check === 'hold'}>{m.name} · {m.qty} {m.unit} in stock{reason ? ` · ${reason}` : ''}{flag(m)}</option>;
+    const chosen = medicines.find((m) => String(m.id) === value);
+    return (
+        <>
+            <select className="field" value={value} onChange={(x) => onChange(x.target.value)}>
+                <option value="">{empty}</option>
+                {suggested.length ? <optgroup label={disease ? `Suggested for ${disease.name}` : 'Suggested'}>{suggested.map(({ m, why: w }) => opt(m, w))}</optgroup> : null}
+                {others.length ? <optgroup label={suggested.length ? 'Other medicines' : 'Medicines'}>{others.map((m) => opt(m))}</optgroup> : null}
+            </select>
+            {chosen && (chosen.spec || chosen.useCase || chosen.checkNote) ? <span className="mt-1 block text-sm text-ink-soft">{[chosen.spec, chosen.useCase, chosen.check !== 'confirmed' ? chosen.checkNote : null].filter(Boolean).join(' · ')}</span> : null}
+            {suggested.length ? <span className="mt-1 block text-sm text-ink-faint">Suggestions only: the vet decides.</span> : null}
+        </>
+    );
+}
+
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export function FeedItemForm({ item, categories, onDone, via = 'app' }: { item?: FeedItem; categories: Record<string, string>; onDone?: () => void; via?: Via }) {
@@ -75,11 +120,11 @@ export function FeedStockForm({ items, movementTypes, onDone, via = 'app', itemI
 /** D-332: the purchase pack and the vet's check, defaults for apps that do not pass the lists. */
 const PACKS: Record<string, string> = { vial: 'Vial', ampoule: 'Ampoule', bottle: 'Bottle', can: 'Can', sachet: 'Sachet', box: 'Box', piece: 'Piece', tube: 'Tube', pack: 'Pack' };
 const CHECKS: Record<string, string> = { confirmed: 'Confirmed', to_confirm: 'To confirm', hold: 'On hold' };
-type MedFields = { spec: string; use_case: string; source: string; pack_unit: string; pack_size: string; check_status: string; check_note: string; notes: string; supplier: string; storage: string };
-const medFields = (m?: MedicineItem): MedFields => ({ spec: m?.spec ?? '', use_case: m?.useCase ?? '', source: m?.source ?? '', pack_unit: m?.packUnit ?? '', pack_size: m?.packSize != null ? String(m.packSize) : '', check_status: m?.check ?? 'confirmed', check_note: m?.checkNote ?? '', notes: m?.notes ?? '', supplier: m?.supplier ?? '', storage: m?.storage ?? '' });
+type MedFields = { disease_ids: number[]; spec: string; use_case: string; source: string; pack_unit: string; pack_size: string; check_status: string; check_note: string; notes: string; supplier: string; storage: string };
+const medFields = (m?: MedicineItem): MedFields => ({ disease_ids: m?.diseaseIds ?? [], spec: m?.spec ?? '', use_case: m?.useCase ?? '', source: m?.source ?? '', pack_unit: m?.packUnit ?? '', pack_size: m?.packSize != null ? String(m.packSize) : '', check_status: m?.check ?? 'confirmed', check_note: m?.checkNote ?? '', notes: m?.notes ?? '', supplier: m?.supplier ?? '', storage: m?.storage ?? '' });
 
 /** D-332: label details, purchase pack and the vet's check: the same fields when adding and when editing. */
-function MedicineDetails({ data, set, e, unit, packs = PACKS, checks = CHECKS }: { data: MedFields; set: (k: keyof MedFields, v: string) => void; e: Record<string, string>; unit: string; packs?: Record<string, string>; checks?: Record<string, string> }) {
+function MedicineDetails({ data, set, setDiseases, diseases, e, unit, packs = PACKS, checks = CHECKS }: { data: MedFields; set: (k: Exclude<keyof MedFields, 'disease_ids'>, v: string) => void; setDiseases: (ids: number[]) => void; diseases?: Array<{ id: number; name: string }>; e: Record<string, string>; unit: string; packs?: Record<string, string>; checks?: Record<string, string> }) {
     return (
         <>
             <div className="col-span-2"><Field label="Specification / active ingredient" error={e.spec} hint="As on the label, e.g. Flunixin meglumine 50 mg/mL"><input className="field" value={data.spec} onChange={(x) => set('spec', x.target.value)} maxLength={200} /></Field></div>
@@ -91,12 +136,19 @@ function MedicineDetails({ data, set, e, unit, packs = PACKS, checks = CHECKS }:
             <Field label="Storage" error={e.storage} hint="e.g. Fridge, Vet cabinet"><input className="field" value={data.storage} onChange={(x) => set('storage', x.target.value)} maxLength={80} /></Field>
             <Field label="Vet check" error={e.check_status} hint="On hold: cannot be given until a vet confirms it"><select className="field" value={data.check_status} onChange={(x) => set('check_status', x.target.value)}>{Object.entries(checks).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             {data.check_status !== 'confirmed' ? <div className="col-span-2"><Field label="What to confirm" error={e.check_note}><input className="field" value={data.check_note} onChange={(x) => set('check_note', x.target.value)} maxLength={200} /></Field></div> : null}
+            {diseases?.length ? (
+                <div className="col-span-2"><Field label="Used for (diseases)" error={e.disease_ids} hint="Offered first when a case of these diseases is treated">
+                    <div className="flex max-h-44 flex-wrap gap-x-4 gap-y-1 overflow-y-auto rounded-md border border-rule p-2">
+                        {diseases.map((d) => <label key={d.id} className="flex min-h-9 items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={data.disease_ids.includes(d.id)} onChange={(x) => setDiseases(x.target.checked ? [...data.disease_ids, d.id] : data.disease_ids.filter((i) => i !== d.id))} />{d.name}</label>)}
+                    </div>
+                </Field></div>
+            ) : null}
             <div className="col-span-2"><Field label="Notes (optional)" error={e.notes}><input className="field" value={data.notes} onChange={(x) => set('notes', x.target.value)} maxLength={200} /></Field></div>
         </>
     );
 }
 
-export function MedicineAdd({ categories, units, packs, checks, onDone, via = 'app' }: { categories: Record<string, string>; units: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; onDone?: () => void; via?: Via }) {
+export function MedicineAdd({ categories, units, packs, checks, diseases, onDone, via = 'app' }: { categories: Record<string, string>; units: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; diseases?: Array<{ id: number; name: string }>; onDone?: () => void; via?: Via }) {
     const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'ml', reorder_level: '', cost_per_unit: '', opening_qty: '', batch: '', expiry_on: '', ...medFields() });
     const e = form.errors as Record<string, string>;
     return (
@@ -106,7 +158,7 @@ export function MedicineAdd({ categories, units, packs, checks, onDone, via = 'a
                 <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
                 <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <Field label="Stock unit" error={e.unit} hint="The unit doses are given in"><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-                <MedicineDetails data={form.data} set={(k, v) => form.setData(k, v)} e={e} unit={form.data.unit} packs={packs} checks={checks} />
+                <MedicineDetails data={form.data} set={(k, v) => form.setData(k, v)} setDiseases={(ids) => form.setData('disease_ids', ids)} diseases={diseases} e={e} unit={form.data.unit} packs={packs} checks={checks} />
                 <Field label={`Reorder at (${form.data.unit})`} error={e.reorder_level}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
                 <Field label={`PKR per ${form.data.unit}`} error={e.cost_per_unit}><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
                 <Field label={`Stock now (${form.data.unit})`} error={e.opening_qty}><input type="number" min={0} className="field" value={form.data.opening_qty} onChange={(x) => form.setData('opening_qty', x.target.value)} /></Field>
@@ -118,15 +170,15 @@ export function MedicineAdd({ categories, units, packs, checks, onDone, via = 'a
     );
 }
 
-export function MedicineEdit({ m, categories, units, packs, checks, via = 'app', onDone }: { m: MedicineItem; categories: Record<string, string>; units?: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; via?: Via; onDone?: () => void }) {
+export function MedicineEdit({ m, categories, units, packs, checks, diseases, via = 'app', onDone }: { m: MedicineItem; categories: Record<string, string>; units?: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; diseases?: Array<{ id: number; name: string }>; via?: Via; onDone?: () => void }) {
     const form = useForm({ name: m.name, category: m.category, unit: m.unit, reorder_level: String(m.reorder), cost_per_unit: String(m.costPerUnit), active: m.active, ...medFields(m) });
     const e = form.errors as Record<string, string>;
     return (
-        <form onSubmit={(ev) => { ev.preventDefault(); form.post(`${URLS[via].medicines}/${m.id}`, { preserveScroll: true, onSuccess: () => onDone?.() }); }} className="mt-2 grid grid-cols-2 gap-3 border-t border-rule pt-2">
+        <form onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => (diseases ? d : { ...d, disease_ids: undefined })); form.post(`${URLS[via].medicines}/${m.id}`, { preserveScroll: true, onSuccess: () => onDone?.() }); }} className="mt-2 grid grid-cols-2 gap-3 border-t border-rule pt-2">
             <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
             <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             {units ? <Field label="Stock unit" error={e.unit} hint="Fixed once stock has moved"><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field> : null}
-            <MedicineDetails data={form.data} set={(k, v) => form.setData(k, v)} e={e} unit={form.data.unit} packs={packs} checks={checks} />
+            <MedicineDetails data={form.data} set={(k, v) => form.setData(k, v)} setDiseases={(ids) => form.setData('disease_ids', ids)} diseases={diseases} e={e} unit={form.data.unit} packs={packs} checks={checks} />
             <Field label={`Reorder at (${form.data.unit})`} error={e.reorder_level}><input type="number" min={0} className="field" value={form.data.reorder_level} onChange={(x) => form.setData('reorder_level', x.target.value)} /></Field>
             <Field label={`PKR per ${form.data.unit}`} error={e.cost_per_unit}><input type="number" min={0} step="0.01" className="field" value={form.data.cost_per_unit} onChange={(x) => form.setData('cost_per_unit', x.target.value)} /></Field>
             <label className="col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={form.data.active} onChange={(x) => form.setData('active', x.target.checked)} /> Still used</label>

@@ -29,6 +29,12 @@ class Medicine extends Model
     /** D-332: the veterinarian's check of the product. A held product cannot be given (MedicineStock::issue). */
     public const CHECKS = ['confirmed' => 'Confirmed', 'to_confirm' => 'To confirm', 'hold' => 'On hold'];
 
+    /** D-333: the diseases this medicine is set for. */
+    public function diseases()
+    {
+        return $this->belongsToMany(Disease::class, 'disease_medicine');
+    }
+
     public function movements()
     {
         return $this->hasMany(MedicineMovement::class);

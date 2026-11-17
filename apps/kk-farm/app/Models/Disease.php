@@ -24,6 +24,12 @@ class Disease extends Model
         return $names ?: HealthCase::CONDITIONS;
     }
 
+    /** D-333: the medicines the veterinarian sets for this disease (suggested first on its cases). */
+    public function medicines()
+    {
+        return $this->belongsToMany(Medicine::class, 'disease_medicine');
+    }
+
     /** D-292: the symptoms associated with this disease (Symptom Master). */
     public function symptoms()
     {

@@ -79,17 +79,17 @@ final class Stores
         if (in_array('feed', $stores, true)) {
             $q = Feed::stock();
             $rows = $rows->merge(FeedItem::orderByDesc('active')->orderBy('name')->get()->toBase()->map(fn (FeedItem $i) => self::row('feed', $i->id, $i->code, $i->name, FeedItem::CATEGORIES[$i->category] ?? $i->category, 'KG', (float) ($q[$i->id] ?? 0), (float) $i->reorder_level_kg, $i->cost_per_kg_minor)
-                + ['categoryKey' => $i->category, 'unitKey' => 'kg', 'active' => (bool) $i->active, 'supplier' => $i->supplier, 'storage' => null, 'notes' => $i->notes, 'cp' => $i->cp_pct !== null ? (float) $i->cp_pct : null, 'dm' => $i->dm_pct !== null ? (float) $i->dm_pct : null, 'spec' => null, 'useCase' => null, 'source' => null, 'packUnit' => null, 'packSize' => null, 'check' => null, 'checkNote' => null]));
+                + ['categoryKey' => $i->category, 'unitKey' => 'kg', 'active' => (bool) $i->active, 'supplier' => $i->supplier, 'storage' => null, 'notes' => $i->notes, 'cp' => $i->cp_pct !== null ? (float) $i->cp_pct : null, 'dm' => $i->dm_pct !== null ? (float) $i->dm_pct : null, 'spec' => null, 'useCase' => null, 'source' => null, 'packUnit' => null, 'packSize' => null, 'check' => null, 'checkNote' => null, 'diseaseIds' => []]));
         }
         if (in_array('medicine', $stores, true)) {
             $q = MedicineStock::quantities();
-            $rows = $rows->merge(Medicine::orderByDesc('active')->orderBy('name')->get()->toBase()->map(fn (Medicine $m) => self::row('medicine', $m->id, $m->code, $m->name, Medicine::CATEGORIES[$m->category] ?? $m->category, $m->unit, (float) ($q[$m->id] ?? 0), (float) $m->reorder_level, $m->cost_per_unit_minor)
+            $rows = $rows->merge(Medicine::with('diseases')->orderByDesc('active')->orderBy('name')->get()->toBase()->map(fn (Medicine $m) => self::row('medicine', $m->id, $m->code, $m->name, Medicine::CATEGORIES[$m->category] ?? $m->category, $m->unit, (float) ($q[$m->id] ?? 0), (float) $m->reorder_level, $m->cost_per_unit_minor)
                 + ['categoryKey' => $m->category, 'unitKey' => $m->unit, 'active' => (bool) $m->active, 'supplier' => $m->supplier, 'storage' => $m->storage, 'notes' => $m->notes, 'cp' => null, 'dm' => null] + self::medicineDetails($m)));
         }
         if (in_array('store', $stores, true)) {
             $q = self::generalQty();
             $rows = $rows->merge(StoreItem::orderByDesc('active')->orderBy('name')->get()->toBase()->map(fn (StoreItem $s) => self::row('store', $s->id, $s->code, $s->name, StoreItem::CATEGORIES[$s->category] ?? $s->category, StoreItem::UNITS[$s->unit] ?? $s->unit, (float) ($q[$s->id] ?? 0), (float) $s->reorder_level, $s->cost_per_unit_minor)
-                + ['categoryKey' => $s->category, 'unitKey' => $s->unit, 'active' => (bool) $s->active, 'supplier' => null, 'storage' => null, 'notes' => $s->notes, 'cp' => null, 'dm' => null, 'spec' => null, 'useCase' => null, 'source' => null, 'packUnit' => null, 'packSize' => null, 'check' => null, 'checkNote' => null]));
+                + ['categoryKey' => $s->category, 'unitKey' => $s->unit, 'active' => (bool) $s->active, 'supplier' => null, 'storage' => null, 'notes' => $s->notes, 'cp' => null, 'dm' => null, 'spec' => null, 'useCase' => null, 'source' => null, 'packUnit' => null, 'packSize' => null, 'check' => null, 'checkNote' => null, 'diseaseIds' => []]));
         }
 
         return $rows->values()->all();
@@ -98,7 +98,8 @@ final class Stores
     /** D-332: a medicine's label details, purchase pack and vet check, as the pages show and edit them. */
     public static function medicineDetails(Medicine $m): array
     {
-        return ['spec' => $m->spec, 'useCase' => $m->use_case, 'source' => $m->source, 'packUnit' => $m->pack_unit, 'packSize' => $m->pack_size, 'check' => $m->check_status, 'checkNote' => $m->check_note];
+        return ['spec' => $m->spec, 'useCase' => $m->use_case, 'source' => $m->source, 'packUnit' => $m->pack_unit, 'packSize' => $m->pack_size, 'check' => $m->check_status, 'checkNote' => $m->check_note,
+            'diseaseIds' => $m->diseases->pluck('id')->all()]; // D-333
     }
 
     /** D-331: medicine batches that still hold stock and have an expiry date, earliest first, with days left. */
