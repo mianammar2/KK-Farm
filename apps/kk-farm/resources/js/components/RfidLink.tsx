@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { ScanLine } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { native } from '../lib/native';
 import { Button, Chip, Field, Panel } from './ui';
 
 /**
@@ -12,6 +13,27 @@ export default function RfidLink({ goatId, number, current, canAssign, className
     const box = useRef<HTMLInputElement>(null);
     const [open, setOpen] = useState(!current);
     const [reason, setReason] = useState('');
+    // D-337: on the gun, a touch tag is written with the goat's Tag ID (replacing the factory number) and then linked
+    const nfc = native()?.nfcState?.() ?? 'none';
+    const [writing, setWriting] = useState(false);
+    const [nfcError, setNfcError] = useState<string | null>(null);
+    useEffect(() => {
+        const on = (e: Event) => {
+            const d = (e as CustomEvent<{ ok: boolean; code: string; chip: string; error: string | null }>).detail;
+            setWriting(false);
+            if (!d.ok) { setNfcError(d.error ?? 'The tag could not be written. Try again.'); return; }
+            setNfcError(null);
+            router.post(`/goats/${goatId}/tag`, { tag: d.code, chip: d.chip }, { preserveScroll: true, onSuccess: () => setOpen(false) });
+        };
+        window.addEventListener('kk:nfc-written', on);
+        return () => { window.removeEventListener('kk:nfc-written', on); native()?.cancelNfcWrite?.(); };
+    }, [goatId]);
+    const writeByTouch = () => {
+        if (current && current !== number && !window.confirm(`Replace tag ${current} on ${number}? The old tag is closed in the history.`)) return;
+        setNfcError(null);
+        setWriting(true);
+        native()?.writeNfc?.(number);
+    };
     const link = () => {
         if (!form.data.tag.trim()) return;
         if (current && !window.confirm(`Replace tag ${current} on ${number} with ${form.data.tag.trim().toUpperCase()}? The old tag is closed in the history.`)) return;
@@ -39,6 +61,24 @@ export default function RfidLink({ goatId, number, current, canAssign, className
                     </span>
                 ) : null}
             </div>
+            {canAssign && nfc !== 'none' ? (
+                <div className="mt-3 rounded-tile border border-rule bg-glaze px-3 py-3">
+                    {nfc === 'off' ? (
+                        <p className="text-sm">The gun's NFC is switched off. <button type="button" className="text-cobalt-800 underline" onClick={() => native()?.openNfcSettings?.()}>Turn it on</button>, then come back.</p>
+                    ) : writing ? (
+                        <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-sm font-medium">Touch the tag to the back of the gun and hold it still. It will be written with {number}.</p>
+                            <Button type="button" variant="secondary" onClick={() => { native()?.cancelNfcWrite?.(); setWriting(false); }}>Cancel</Button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Button type="button" onClick={writeByTouch}><ScanLine size={16} aria-hidden /> Write tag by touch</Button>
+                            <span className="text-sm text-ink-soft">Writes {number} into the tag, replacing the number it came with, and links it to this goat.</span>
+                        </div>
+                    )}
+                    {nfcError ? <p className="mt-2 text-sm text-crit-700">{nfcError}</p> : null}
+                </div>
+            ) : null}
             {canAssign && open ? (
                 <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                     <Field label={current ? 'New tag' : 'Link a tag'} error={form.errors.tag} hint="Click here, then pull the RFID gun's trigger near the ear tag. Or type the code printed on the tag.">

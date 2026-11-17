@@ -2,6 +2,7 @@
 type Native = {
     vibrate?: (ms: number) => void; isScannerApp?: () => boolean; openSettings?: () => void;
     version?: () => string; versionCode?: () => number; isAutoUpdate?: () => boolean; setAutoUpdate?: (on: boolean) => void; checkForUpdate?: () => void;
+    nfcState?: () => 'none' | 'off' | 'on'; writeNfc?: (code: string) => void; cancelNfcWrite?: () => void; openNfcSettings?: () => void; // D-337
 };
 
 export const native = (): Native | undefined => (typeof window !== 'undefined' ? (window as unknown as { KKNative?: Native }).KKNative : undefined);

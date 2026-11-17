@@ -57,6 +57,16 @@ class MainActivity : Activity() {
     private var pendingAt = 0L
     private var lastCode = ""
     private var lastAt = 0L
+    // D-337: touch (NFC) tags: read on touch, no trigger; the goat page can ask the next touch to write the Tag ID
+    private val nfc by lazy {
+        NfcTags(this, onRead = { code -> runOnUiThread { onScan(code, "nfc") } }, onWritten = { ok, code, chip, error ->
+            runOnUiThread {
+                vibrate(if (ok) 120 else 400)
+                val detail = JSONObject().put("ok", ok).put("code", code).put("chip", chip).put("error", error ?: JSONObject.NULL)
+                web.evaluateJavascript("window.dispatchEvent(new CustomEvent('kk:nfc-written',{detail:$detail}))", null)
+            }
+        })
+    }
 
     private val server: String get() = prefs.getString(KEY_SERVER, DEFAULT_SERVER)!!.trimEnd('/')
     private val action: String get() = prefs.getString(KEY_ACTION, DEFAULT_ACTION)!!
@@ -186,6 +196,7 @@ class MainActivity : Activity() {
         isVisible = true
         visible = true
         handler.post(readerWatchdog)
+        nfc.start()
         pendingChoice?.let { pendingChoice = null; chooseTag(it) }
         Updater.check(this, server)
         pendingUrl?.let { url ->
@@ -198,6 +209,7 @@ class MainActivity : Activity() {
         isVisible = false
         visible = false
         handler.removeCallbacks(readerWatchdog)
+        nfc.stop()
         super.onPause()
     }
 
@@ -395,6 +407,11 @@ class MainActivity : Activity() {
         @JavascriptInterface fun isAutoUpdate(): Boolean = Updater.isAuto(this@MainActivity)
         @JavascriptInterface fun setAutoUpdate(on: Boolean) = Updater.setAuto(this@MainActivity, on)
         @JavascriptInterface fun checkForUpdate() = runOnUiThread { Updater.check(this@MainActivity, server, manual = true) }
+        // D-337: touch (NFC) tags. nfcState: none | off | on. writeNfc: the next touch writes this code into the chip.
+        @JavascriptInterface fun nfcState(): String = nfc.state()
+        @JavascriptInterface fun writeNfc(code: String) = nfc.armWrite(code)
+        @JavascriptInterface fun cancelNfcWrite() = nfc.cancelWrite()
+        @JavascriptInterface fun openNfcSettings() = runOnUiThread { runCatching { startActivity(Intent(android.provider.Settings.ACTION_NFC_SETTINGS)) } }
     }
 
     companion object {
@@ -422,6 +439,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.6.5"
-    const val CODE = 17 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.7.0"
+    const val CODE = 18 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

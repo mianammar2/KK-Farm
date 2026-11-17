@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- D-090: the app installs its own updates (Android still asks the person to confirm) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- D-337: touch (NFC) tags are read on touch and written with the goat's Tag ID -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
     <queries>
         <package android:name="com.rscja.infowedge" />

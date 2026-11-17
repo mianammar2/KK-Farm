@@ -98,10 +98,11 @@ class GoatController extends Controller
     {
         abort_unless($request->user()->passes('assign_tags'), 403);
         $request->merge(['tag' => GoatRegistration::normaliseCode($request->input('tag'))]);
-        $data = $request->validate(['tag' => ['required', 'string', 'max:64', 'regex:/^[A-Z0-9._:-]+$/']], ['tag.regex' => 'A tag code has only letters, digits and . _ : -']);
+        $data = $request->validate(['tag' => ['required', 'string', 'max:64', 'regex:/^[A-Z0-9._:-]+$/'], 'chip' => ['nullable', 'string', 'max:64', 'regex:/^[A-Fa-f0-9]+$/']], ['tag.regex' => 'A tag code has only letters, digits and . _ : -']);
         $had = $animal->openAssignment()->exists();
         Farm::assignTag($animal, \App\Models\RfidTag::firstOrCreate(['tag_code' => $data['tag']], ['status' => 'in_stock']), $had ? 'replacement' : 'initial', $request->user());
-        Farm::log($request->user(), "Linked RFID tag {$data['tag']} to {$animal->farm_number}", "/goats/{$animal->id}");
+        $chip = ! empty($data['chip']) ? ' (written into chip '.strtoupper($data['chip']).')' : ''; // D-337
+        Farm::log($request->user(), "Linked RFID tag {$data['tag']} to {$animal->farm_number}{$chip}", "/goats/{$animal->id}");
 
         return back()->with('success', "RFID tag {$data['tag']} is now linked to {$animal->farm_number}. Scanning it opens this goat.");
     }

@@ -47,5 +47,11 @@ class GoatRfidLinkTest extends TestCase
         $this->actingAs($ceo)->post("/goats/{$goat->id}/tag/remove", ['reason' => 'lost'])->assertSessionHasNoErrors();
         $this->assertSame(0, RfidAssignment::where('animal_id', $goat->id)->whereNull('valid_to')->count());
         $this->actingAs($ceo)->getJson('/lookup/goat?code=E200BBB2')->assertNotFound();
+
+        // D-337: a touch tag written with the goat's Tag ID on the gun is linked under that Tag ID and opens the goat
+        $this->actingAs($ceo)->post("/goats/{$goat->id}/tag", ['tag' => 'MC-071126P-01', 'chip' => '04a1b2c3d4'])->assertSessionHasNoErrors();
+        $this->assertSame(['MC-071126P-01'], RfidAssignment::with('tag')->where('animal_id', $goat->id)->whereNull('valid_to')->get()->pluck('tag.tag_code')->all());
+        $this->actingAs($ceo)->getJson('/lookup/goat?code=mc-071126p-01')->assertOk()->assertSee('MC-071126P-01');
+        $this->actingAs($ceo)->post("/goats/{$goat->id}/tag", ['tag' => 'MC-071126P-01', 'chip' => 'not hex'])->assertSessionHasErrors('chip');
     }
 }
