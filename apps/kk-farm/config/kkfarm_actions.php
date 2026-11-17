@@ -179,6 +179,13 @@ return [
     'POST /inventory/items' => ['inline' => 'the action checks manage_general_store', 'module' => 'inventory'],
     'POST /inventory/items/{item}' => ['inline' => 'the action checks manage_general_store', 'module' => 'inventory'],
     'POST /inventory/moves' => ['inline' => 'the action checks manage_general_store', 'module' => 'inventory'],
+    'POST /inventory/count' => ['inline' => 'the action checks the right of the store being counted', 'module' => 'inventory'], // D-331
+    'POST /inventory/feed-items' => ['inline' => 'the action checks manage_feed_store', 'module' => 'inventory'],
+    'POST /inventory/feed-items/{item}' => ['inline' => 'the action checks manage_feed_store', 'module' => 'inventory'],
+    'POST /inventory/feed-stock' => ['inline' => 'the action checks manage_feed_store', 'module' => 'inventory'],
+    'POST /inventory/medicine-stock' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'inventory'],
+    'POST /inventory/medicines' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'inventory'],
+    'POST /inventory/medicines/{medicine}' => ['inline' => 'the action checks manage_medicine_store', 'module' => 'inventory'],
     'POST /logout' => ['open' => 'the signed-in person\'s own session and password (switch-role works only with the local demo login)'],
     'POST /maintenance/assets' => ['inline' => 'the action checks the person\'s role or a right', 'module' => 'maintenance'],
     'POST /maintenance/assets/{asset}' => ['inline' => 'the action checks the person\'s role or a right', 'module' => 'maintenance'],

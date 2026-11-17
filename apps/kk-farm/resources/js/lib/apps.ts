@@ -149,14 +149,14 @@ export const APPS: ErpApp[] = [
     ] },
     { key: 'inventory', no: '10', label: 'Inventory', art: 'app-inventory', modules: ['inventory', 'feeding', 'health'], linked: ['feeding', 'veterinary', 'purchase', 'maintenance'], sections: [
         S('Overview', '/inventory', 'All Stock'),
-        S('Operations', '/inventory?tab=general', 'General Store'),
-        S('Operations', '/feeding?tab=store', 'Feed Inventory'),
-        S('Operations', '/health?tab=store', 'Medicine Inventory'),
+        S('Operations', '/inventory?tab=items', 'Items'),
+        S('Operations', '/inventory?tab=count', 'Stock Count'),
         S('Operations', '/feeding?tab=tmr', 'TMR Mixing'),
         S('Records', '/inventory?tab=moves', 'Stock Moves'),
         S('Reporting', '/inventory?tab=reorder', 'Reorder List'),
+        S('Reporting', '/inventory?tab=expiry', 'Medicine Expiry'),
         S('Reporting', '/reports?section=spending', 'Consumption & Spending'),
-        S('Configuration', '/inventory?tab=general', 'Store Items'),
+        S('Configuration', '/inventory?tab=items', 'Item Master'),
     ] },
     { key: 'purchase', no: '11', label: 'Purchase', art: 'app-purchase', modules: ['purchase', 'finance', 'goats', 'animal_purchase'], linked: ['inventory', 'livestock', 'veterinary', 'housing', 'accounting'], sections: [
         S('Overview', '/purchase', 'Purchase Orders'),

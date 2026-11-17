@@ -80,24 +80,8 @@ class FeedCostController extends Controller
         abort_unless($this->canCount($request), 403);
         $data = $request->validate(['counts' => ['required', 'array', 'min:1', 'max:100'], 'counts.*.feed_item_id' => ['required', 'distinct', 'exists:feed_items,id'],
             'counts.*.counted_kg' => ['required', 'numeric', 'min:0', 'max:10000000'], 'counted_on' => ['required', 'date', 'before_or_equal:today'], 'notes' => ['nullable', 'string', 'max:200']]);
-        $n = DB::transaction(function () use ($data, $request) {
-            DB::statement('LOCK TABLE feed_stock_movements IN SHARE ROW EXCLUSIVE MODE');
-            $book = Feed::stock(true);
-            $n = 0;
-            foreach ($data['counts'] as $c) {
-                $item = FeedItem::findOrFail($c['feed_item_id']);
-                $was = (float) ($book[$item->id] ?? 0);
-                $diff = round((float) $c['counted_kg'] - $was, 2);
-                $mv = abs($diff) >= 0.01 ? FeedStockMovement::create(['feed_item_id' => $item->id, 'moved_on' => $data['counted_on'], 'type' => 'adjustment', 'qty_kg' => $diff,
-                    'rate_minor' => $item->cost_per_kg_minor, 'reference' => 'Stock count', 'notes' => $diff < 0 ? 'Shrinkage found at count' : 'Surplus found at count', 'recorded_by' => $request->user()->name]) : null;
-                FeedStockCount::create(['feed_item_id' => $item->id, 'counted_on' => $data['counted_on'], 'book_kg' => $was, 'counted_kg' => $c['counted_kg'], 'diff_kg' => $diff,
-                    'value_minor' => (int) round($diff * $item->cost_per_kg_minor), 'movement_id' => $mv?->id, 'notes' => $data['notes'] ?? null, 'counted_by' => $request->user()->name]);
-                $n++;
-            }
-            Tenant::flush();
-
-            return $n;
-        });
+        // D-331: one count rule for every store (App\Support\Stores::count)
+        $n = \App\Support\Stores::count('feed', array_map(fn ($c) => ['id' => (int) $c['feed_item_id'], 'counted' => (float) $c['counted_kg']], $data['counts']), $data['counted_on'], $data['notes'] ?? null, $request->user()->name);
         Farm::log($request->user(), "Counted {$n} feeds in the store", '/feed-cost?tab=stock');
 
         return back()->with('success', "Stock count saved for {$n} feeds. Differences are posted as adjustments.");

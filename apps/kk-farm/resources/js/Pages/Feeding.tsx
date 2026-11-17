@@ -7,6 +7,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import AddButton from '../components/AddButton';
 import Sheet from '../components/Sheet';
+import { FeedItemForm, FeedStockForm } from '../components/StockForms';
 import { BreedBadge } from '../components/GoatBadges';
 import { useTabParam } from '../lib/useTabParam';
 import { TmrPanel, WasteReport, type TmrBoard, type WasteReportData } from '../components/Tmr';
@@ -330,8 +331,8 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
 
     return (
         <div>
-            {adding === 'feed' ? <Sheet onClose={() => setAdding('')}><Panel title="Add a feed"><ItemForm categories={categories} onDone={() => setAdding('')} /></Panel></Sheet> : null}
-            {adding === 'stock' && items.length ? <Sheet onClose={() => setAdding('')}><StockForm items={items} movementTypes={movementTypes} onDone={() => setAdding('')} /></Sheet> : null}
+            {adding === 'feed' ? <Sheet onClose={() => setAdding('')}><Panel title="Add a feed"><FeedItemForm categories={categories} onDone={() => setAdding('')} /></Panel></Sheet> : null}
+            {adding === 'stock' && items.length ? <Sheet onClose={() => setAdding('')}><FeedStockForm items={items} movementTypes={movementTypes} onDone={() => setAdding('')} /></Sheet> : null}
             <div className="space-y-4">
                 <Panel title="Feeds in store" flush actions={can.store ? <>
                     {items.length ? <AddButton primary={false} label="Stock in / out" onClick={() => setAdding('stock')} /> : null}
@@ -351,7 +352,7 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
                                         <span className="ml-auto flex items-center gap-2"><span className="font-semibold">{kg(i.stock)}</span><Chip className={STOCK[i.status].className}>{STOCK[i.status].label}</Chip></span>
                                     </div>
                                     <div className="mt-0.5 text-sm text-ink-soft">{pkr(i.costPerKg)}/KG · worth {pkr(i.value)} · reorder at {kg(i.reorder)}{i.daysLeft !== null ? ` · about ${i.daysLeft} days left` : ''}{i.supplier ? ` · ${i.supplier}` : ''}</div>
-                                    {can.store ? (edit === i.id ? <ItemForm item={i} categories={categories} onDone={() => setEdit(null)} /> : <button type="button" className="mt-1 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setEdit(i.id)}>Edit</button>) : null}{can.store && edit !== i.id ? <DeleteButton type="feed-item" id={i.id} name={i.name} /> : null}
+                                    {can.store ? (edit === i.id ? <FeedItemForm item={i} categories={categories} onDone={() => setEdit(null)} /> : <button type="button" className="mt-1 text-sm font-semibold text-cobalt-800 hover:underline" onClick={() => setEdit(i.id)}>Edit</button>) : null}{can.store && edit !== i.id ? <DeleteButton type="feed-item" id={i.id} name={i.name} /> : null}
                                 </li>
                             ))}
                         </ul>
@@ -363,56 +364,6 @@ function Store({ items, movements, categories, movementTypes, can }: Props) {
                 </Panel>
             </div>
         </div>
-    );
-}
-
-function ItemForm({ item, categories, onDone }: { item?: Item; categories: Record<string, string>; onDone?: () => void }) {
-    const form = useForm({ code: item?.code ?? '', name: item?.name ?? '', category: item?.category ?? 'concentrate', cost_per_kg: item ? String(item.costPerKg) : '', cp_pct: item?.cp != null ? String(item.cp) : '', dm_pct: item?.dm != null ? String(item.dm) : '', reorder_level_kg: item ? String(item.reorder) : '', opening_kg: '', supplier: item?.supplier ?? '', notes: item?.notes ?? '', active: item?.active ?? true });
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-        form.post(item ? `/feeding/items/${item.id}` : '/feeding/items', { preserveScroll: true, onSuccess: () => { if (!item) form.reset(); onDone?.(); } });
-    };
-
-    return (
-        <form onSubmit={submit} className={cx('grid gap-3', item ? 'mt-2 sm:grid-cols-3' : '')}>
-            {!item ? <Field label="Code" error={form.errors.code} hint="Short, e.g. WS, CONC, BRAN"><input className="field font-mono uppercase" value={form.data.code} onChange={(e) => form.setData('code', e.target.value)} maxLength={20} /></Field> : null}
-            <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Wheat straw (Bhoosa)" /></Field>
-            <Field label="Category" error={form.errors.category}><select className="field" value={form.data.category} onChange={(e) => form.setData('category', e.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="Cost PKR per KG" error={form.errors.cost_per_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" value={form.data.cost_per_kg} onChange={(e) => form.setData('cost_per_kg', e.target.value)} /></Field>
-            <Field label="CP % (Bag Label)" error={form.errors.cp_pct} hint="Crude protein printed on the bag, e.g. 32 for CP 32"><input className="field" type="number" inputMode="decimal" min={0.5} max={60} step="0.1" placeholder="Not known" value={form.data.cp_pct} onChange={(e) => form.setData('cp_pct', e.target.value)} /></Field>
-            <Field label="Dry Matter %" error={form.errors.dm_pct} hint="e.g. straw (toori) about 90, bran (chokar) about 89, green fodder 20 to 25"><input className="field" type="number" inputMode="decimal" min={5} max={100} step="0.1" placeholder="Not known" value={form.data.dm_pct} onChange={(e) => form.setData('dm_pct', e.target.value)} /></Field>
-            <Field label="Reorder when below (KG)" error={form.errors.reorder_level_kg}><input className="field" type="number" inputMode="decimal" min={0} value={form.data.reorder_level_kg} onChange={(e) => form.setData('reorder_level_kg', e.target.value)} /></Field>
-            {!item ? <Field label="Stock now (KG)" error={form.errors.opening_kg} hint="Opening stock. Later receipts go through Stock in / out."><input className="field" type="number" inputMode="decimal" min={0} value={form.data.opening_kg} onChange={(e) => form.setData('opening_kg', e.target.value)} /></Field> : null}
-            <Field label="Supplier" error={form.errors.supplier}><input className="field" value={form.data.supplier} onChange={(e) => form.setData('supplier', e.target.value)} /></Field>
-            {item ? <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="size-5" checked={form.data.active} onChange={(e) => form.setData('active', e.target.checked)} /> Still used</label> : null}
-            <div className={cx('flex gap-2', item ? 'sm:col-span-3' : '')}><Button type="submit" disabled={form.processing}>{item ? 'Save' : 'Add feed'}</Button>{item ? <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button> : null}</div>
-        </form>
-    );
-}
-
-function StockForm({ items, movementTypes, onDone }: { items: Item[]; movementTypes: Props['movementTypes']; onDone?: () => void }) {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const form = useForm({ feed_item_id: String(items.find((i) => i.active)?.id ?? items[0].id), type: 'purchase', direction: '', qty_kg: '', rate: '', moved_on: todayIso, party: '', reference: '', notes: '' });
-    const type = movementTypes[form.data.type];
-    const item = items.find((i) => i.id === Number(form.data.feed_item_id));
-
-    return (
-        <Panel title="Stock in / out" description="Purchases also go into Expenses automatically.">
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/feeding/stock', { preserveScroll: true, onSuccess: () => { form.reset('qty_kg', 'rate', 'party', 'reference', 'notes'); onDone?.(); } }); }} className="space-y-3">
-                <Field label="Feed" error={form.errors.feed_item_id}><select className="field" value={form.data.feed_item_id} onChange={(e) => form.setData('feed_item_id', e.target.value)}>{items.map((i) => <option key={i.id} value={i.id}>{i.name} ({kg(i.stock)})</option>)}</select></Field>
-                <Field label="What happened" error={form.errors.type}><select className="field" value={form.data.type} onChange={(e) => form.setData('type', e.target.value)}>{Object.entries(movementTypes).filter(([k]) => k !== 'opening').map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
-                {type?.direction === 0 ? <Field label="Stock goes" error={form.errors.direction}><select className="field" value={form.data.direction} onChange={(e) => form.setData('direction', e.target.value)}><option value="">Choose…</option><option value="in">In (more than recorded)</option><option value="out">Out (less than recorded)</option></select></Field> : null}
-                <div className="grid grid-cols-2 gap-2">
-                    <Field label="Quantity KG" error={form.errors.qty_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.1" value={form.data.qty_kg} onChange={(e) => form.setData('qty_kg', e.target.value)} /></Field>
-                    <Field label={form.data.type === 'purchase' ? 'Price PKR / KG' : 'PKR / KG (optional)'} error={form.errors.rate}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" placeholder={item ? String(item.costPerKg) : ''} value={form.data.rate} onChange={(e) => form.setData('rate', e.target.value)} /></Field>
-                </div>
-                {form.data.type === 'purchase' && form.data.qty_kg && form.data.rate ? <p className="text-sm text-ink-soft">Expense: {pkr(Number(form.data.qty_kg) * Number(form.data.rate))}. New cost per kg: {pkr(Number(form.data.rate))}.</p> : null}
-                <Field label="Date" error={form.errors.moved_on}><input className="field" type="date" max={todayIso} value={form.data.moved_on} onChange={(e) => form.setData('moved_on', e.target.value)} /></Field>
-                <Field label="Supplier / party" error={form.errors.party}><input className="field" value={form.data.party} onChange={(e) => form.setData('party', e.target.value)} /></Field>
-                <Field label="Invoice / reference" error={form.errors.reference}><input className="field" value={form.data.reference} onChange={(e) => form.setData('reference', e.target.value)} /></Field>
-                <Button type="submit" className="w-full" disabled={form.processing}>Save</Button>
-            </form>
-        </Panel>
     );
 }
 

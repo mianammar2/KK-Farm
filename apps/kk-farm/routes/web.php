@@ -394,6 +394,15 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/inventory/items', [\App\Http\Controllers\InventoryController::class, 'storeItem']);
         Route::post('/inventory/items/{item}', [\App\Http\Controllers\InventoryController::class, 'updateItem'])->whereNumber('item');
         Route::post('/inventory/moves', [\App\Http\Controllers\InventoryController::class, 'move']);
+        // D-331: the full inventory: every store's items and stock are kept here, through the same actions the apps use
+        Route::get('/inventory/card', [\App\Http\Controllers\InventoryController::class, 'card']);
+        Route::post('/inventory/count', [\App\Http\Controllers\InventoryController::class, 'count']);
+        Route::post('/inventory/feed-items', [FeedingController::class, 'storeItem']);
+        Route::post('/inventory/feed-items/{item}', [FeedingController::class, 'updateItem'])->whereNumber('item');
+        Route::post('/inventory/feed-stock', [FeedingController::class, 'stock']);
+        Route::post('/inventory/medicines', [\App\Http\Controllers\MedicineController::class, 'store']);
+        Route::post('/inventory/medicines/{medicine}', [\App\Http\Controllers\MedicineController::class, 'update'])->whereNumber('medicine');
+        Route::post('/inventory/medicine-stock', [\App\Http\Controllers\MedicineController::class, 'movement']);
     });
     Route::middleware('module:purchase')->group(function (): void {
         Route::get('/purchase', [\App\Http\Controllers\PurchaseController::class, 'index']);

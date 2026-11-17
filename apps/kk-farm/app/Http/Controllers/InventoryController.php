@@ -14,27 +14,60 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** D-178: Inventory: all three stores in one view, and the general store (consumables, spares, tools). */
+/** D-178: Inventory: all three stores in one view, and the general store (consumables, spares, tools). D-331: the full inventory system. */
 class InventoryController extends Controller
 {
     public function index(Request $request): Response
     {
-        $qty = Stores::generalQty();
+        $u = $request->user();
         // D-241 (RBAC §4): inventory is scoped by store: vet → medicine, feeding → feed, caretaker and cleaning → general store
-        $stores = Stores::visibleTo($request->user());
-        $general = in_array('store', $stores, true);
+        $stores = Stores::visibleTo($u);
+        // D-331: one full inventory: every item of every store, stock in and out, counts, expiry and the whole ledger
+        $from = $request->date('from')?->toDateString() ?? now()->subDays(90)->toDateString();
+        $to = $request->date('to')?->toDateString() ?? now()->toDateString();
 
         return Inertia::render('Inventory', [
-            'overview' => collect(Stores::overview())->whereIn('kind', $stores)->values(),
-            'moves' => collect(Stores::recentMoves())->whereIn('kind', $stores)->values(),
+            'items' => Stores::items($stores),
+            'expiry' => in_array('medicine', $stores, true) ? Stores::expiry() : [],
+            'moves' => Stores::ledger($stores, null, null, $from, $to, 1500),
+            'range' => ['from' => $from, 'to' => $to],
             'stores' => $stores,
-            'items' => ! $general ? [] : StoreItem::orderByDesc('active')->orderBy('name')->get()->map(fn (StoreItem $i) => [
-                'id' => $i->id, 'code' => $i->code, 'name' => $i->name, 'category' => $i->category, 'unit' => $i->unit, 'reorder' => $i->reorder_level, 'cost' => $i->cost_per_unit_minor / 100,
-                'active' => $i->active, 'notes' => $i->notes, 'qty' => (float) ($qty[$i->id] ?? 0), 'status' => Stores::status((float) ($qty[$i->id] ?? 0), $i->reorder_level),
-            ]),
-            'categories' => StoreItem::CATEGORIES, 'units' => StoreItem::UNITS, 'moveTypes' => collect(StoreMove::TYPES)->except('purchase')->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]]),
-            'can' => ['manage' => $request->user()->passes('manage_general_store')],
+            'masters' => [
+                'feed' => ['categories' => \App\Models\FeedItem::CATEGORIES, 'units' => ['kg' => 'KG'], 'types' => collect(\App\Models\FeedStockMovement::manualTypes())->except('opening')->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]])],
+                'medicine' => ['categories' => \App\Models\Medicine::CATEGORIES, 'units' => \App\Models\Medicine::UNITS, 'types' => collect(\App\Models\MedicineMovement::TYPES)->only(['purchase', 'return', 'disposal', 'adjustment', 'other'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]])],
+                'store' => ['categories' => StoreItem::CATEGORIES, 'units' => StoreItem::UNITS, 'types' => collect(StoreMove::TYPES)->except(['purchase', 'opening'])->map(fn ($t) => ['label' => $t[0], 'direction' => $t[1]])],
+            ],
+            'can' => collect(Stores::GATES)->only($stores)->map(fn ($g) => $u->passes($g))->all() + ['purchase' => $u->passes('manage_purchase')],
         ]);
+    }
+
+    /** D-331: one item's card: its details, batches with stock, and every movement (JSON for the pop card). */
+    public function card(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate(['kind' => ['required', Rule::in(array_keys(Stores::KINDS))], 'id' => ['required', 'integer']]);
+        abort_unless(in_array($data['kind'], Stores::visibleTo($request->user()), true), 403);
+        $item = collect(Stores::items([$data['kind']]))->firstWhere('id', (int) $data['id']);
+        abort_unless($item, 404);
+        $batches = $data['kind'] === 'medicine' ? collect(Stores::expiry())->where('id', (int) $data['id'])->values()->all() : [];
+
+        return response()->json(['item' => $item, 'batches' => $batches, 'moves' => Stores::ledger([$data['kind']], $data['kind'], (int) $data['id'], null, null, 300)]);
+    }
+
+    /** D-331: a physical count of one store; each difference becomes an adjustment (the same rule as the feed count). */
+    public function count(Request $request): RedirectResponse
+    {
+        $kind = $request->validate(['kind' => ['required', Rule::in(array_keys(Stores::KINDS))]])['kind'];
+        abort_unless($request->user()->passes(Stores::GATES[$kind]) && in_array($kind, Stores::visibleTo($request->user()), true), 403);
+        $table = ['feed' => 'feed_items', 'medicine' => 'medicines', 'store' => 'store_items'][$kind];
+        $data = $request->validate([
+            'counts' => ['required', 'array', 'min:1', 'max:300'], 'counts.*.id' => ['required', 'integer', 'distinct', "exists:{$table},id"],
+            'counts.*.counted' => ['required', 'numeric', 'min:0', 'max:10000000'],
+            'counted_on' => ['required', 'date', 'before_or_equal:today'], 'notes' => ['nullable', 'string', 'max:200'],
+        ], [], ['counts.*.counted' => 'counted quantity']);
+        $n = Stores::count($kind, array_map(fn ($c) => ['id' => (int) $c['id'], 'counted' => (float) $c['counted']], $data['counts']), $data['counted_on'], $data['notes'] ?? null, $request->user()->name);
+        Farm::log($request->user(), "Counted {$n} items in the ".Stores::KINDS[$kind].' store', '/inventory?tab=count');
+
+        return back()->with('success', "Stock count saved for {$n} items. Differences are posted as adjustments.");
     }
 
     private function itemData(Request $request, ?StoreItem $item = null): array
