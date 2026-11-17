@@ -72,7 +72,11 @@ class InventoryController extends Controller
 
     private function itemData(Request $request, ?StoreItem $item = null): array
     {
-        $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        if ($item) {
+            $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        } else {
+            \App\Support\ItemCode::fill($request, 'store_items', 'GEN'); // D-335
+        }
 
         return $request->validate([
             'code' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9._-]+$/', function ($a, $v, $fail) use ($item) {

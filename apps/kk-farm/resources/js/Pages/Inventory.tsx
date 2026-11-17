@@ -5,7 +5,7 @@ import AddButton from '../components/AddButton';
 import DataGrid, { type Col } from '../components/DataGrid';
 import DeleteButton from '../components/DeleteButton';
 import Sheet from '../components/Sheet';
-import { FeedItemForm, FeedStockForm, MedicineAdd, MedicineEdit, MedicineMoveForm, type FeedItem, type MedicineItem, type MoveTypes } from '../components/StockForms';
+import { CodeField, FeedItemForm, FeedStockForm, MedicineAdd, MedicineEdit, MedicineMoveForm, type FeedItem, type MedicineItem, type MoveTypes } from '../components/StockForms';
 import { Button, Chip, cx, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
 import { useTabParam } from '../lib/useTabParam';
 
@@ -355,7 +355,7 @@ function StoreItemForm({ item, categories, units, onDone }: { item: Row | null; 
     return (
         <Panel title={item ? `Edit ${item.name}` : 'New Store Item'}>
             <form onSubmit={(ev) => { ev.preventDefault(); item ? form.post(`/inventory/items/${item.id}`, { preserveScroll: true, onSuccess: onDone }) : form.post('/inventory/items', { preserveScroll: true, onSuccess: onDone }); }} className="grid grid-cols-2 gap-3">
-                <Field label="Code" error={e.code}><input className="field font-mono uppercase" value={form.data.code} onChange={(x) => form.setData('code', x.target.value)} required /></Field>
+                {item ? <Field label="Code" error={e.code}><input className="field font-mono uppercase" value={form.data.code} onChange={(x) => form.setData('code', x.target.value)} required maxLength={20} /></Field> : <CodeField value={form.data.code} name={form.data.name} error={e.code} onChange={(v) => form.setData('code', v)} />}
                 <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} required /></Field>
                 <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <Field label="Unit" error={e.unit}><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>

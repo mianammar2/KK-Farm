@@ -65,6 +65,23 @@ export function MedicinePicker<M extends PickMedicine>({ medicines, suggest, dis
     );
 }
 
+// D-335: same rule as App\Support\ItemCode::fromName; a blank Code is made from the name on save.
+const FILLER = new Set(['INJECTION', 'INJ', 'POWDER', 'TABLET', 'TABLETS', 'TAB', 'BOLUS', 'SPRAY', 'SOLUTION', 'ORAL', 'LIQUID', 'SUSPENSION', 'CREAM', 'OINTMENT', 'SYRUP', 'DROPS', 'GEL', 'FOR', 'AND', 'THE', 'OF', 'WITH']);
+export function codeFromName(name: string): string {
+    const words = name.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    const kept = words.filter((w) => !FILLER.has(w));
+    const w = kept.length ? kept : words;
+    return w.length ? w[0].slice(0, 10) + (w[1] ? `-${w[1].slice(0, 6)}` : '') : '';
+}
+export function CodeField({ value, name, error, onChange }: { value: string; name: string; error?: string; onChange: (v: string) => void }) {
+    const auto = codeFromName(name);
+    return (
+        <Field label="Code" error={error} hint={value ? 'Your own code' : auto ? `Auto: ${auto} (type to use your own)` : 'Made from the name, or type your own'}>
+            <input className="field font-mono uppercase" value={value} onChange={(e) => onChange(e.target.value)} placeholder={auto || 'Auto'} maxLength={20} />
+        </Field>
+    );
+}
+
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export function FeedItemForm({ item, categories, onDone, via = 'app' }: { item?: FeedItem; categories: Record<string, string>; onDone?: () => void; via?: Via }) {
@@ -76,7 +93,7 @@ export function FeedItemForm({ item, categories, onDone, via = 'app' }: { item?:
 
     return (
         <form onSubmit={submit} className={cx('grid gap-3', item ? 'mt-2 sm:grid-cols-3' : '')}>
-            {!item ? <Field label="Code" error={form.errors.code} hint="Short, e.g. WS, CONC, BRAN"><input className="field font-mono uppercase" value={form.data.code} onChange={(e) => form.setData('code', e.target.value)} maxLength={20} /></Field> : null}
+            {!item ? <CodeField value={form.data.code} name={form.data.name} error={form.errors.code} onChange={(v) => form.setData('code', v)} /> : null}
             <Field label="Name" error={form.errors.name}><input className="field" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="e.g. Wheat straw (Bhoosa)" /></Field>
             <Field label="Category" error={form.errors.category}><select className="field" value={form.data.category} onChange={(e) => form.setData('category', e.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Cost PKR per KG" error={form.errors.cost_per_kg}><input className="field" type="number" inputMode="decimal" min={0} step="0.01" value={form.data.cost_per_kg} onChange={(e) => form.setData('cost_per_kg', e.target.value)} /></Field>
@@ -154,7 +171,7 @@ export function MedicineAdd({ categories, units, packs, checks, diseases, onDone
     return (
         <Panel title="Add a medicine or vet supply">
             <form onSubmit={(ev) => { ev.preventDefault(); form.post(URLS[via].medicines, { preserveScroll: true, onSuccess: () => { form.reset(); onDone?.(); } }); }} className="grid grid-cols-2 gap-3">
-                <Field label="Code" error={e.code} hint="e.g. OXY-LA"><input className="field font-mono uppercase" value={form.data.code} onChange={(x) => form.setData('code', x.target.value)} maxLength={20} /></Field>
+                <CodeField value={form.data.code} name={form.data.name} error={e.code} onChange={(v) => form.setData('code', v)} />
                 <Field label="Name" error={e.name}><input className="field" value={form.data.name} onChange={(x) => form.setData('name', x.target.value)} /></Field>
                 <Field label="Category" error={e.category}><select className="field" value={form.data.category} onChange={(x) => form.setData('category', x.target.value)}>{Object.entries(categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <Field label="Stock unit" error={e.unit} hint="The unit doses are given in"><select className="field" value={form.data.unit} onChange={(x) => form.setData('unit', x.target.value)}>{Object.entries(units).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>

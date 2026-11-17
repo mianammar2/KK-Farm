@@ -254,7 +254,7 @@ class FeedingController extends Controller
     public function storeItem(Request $request): RedirectResponse
     {
         abort_unless($request->user()->passes('manage_feed_store'), 403);
-        $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        \App\Support\ItemCode::fill($request, 'feed_items', 'FEED'); // D-335
         $data = $request->validate([
             'code' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9._-]+$/', 'unique:feed_items,code'],
             'name' => ['required', 'string', 'max:80'],

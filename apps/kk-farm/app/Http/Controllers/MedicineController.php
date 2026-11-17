@@ -20,7 +20,7 @@ class MedicineController extends Controller
     public function store(Request $request): RedirectResponse
     {
         abort_unless($request->user()->passes('manage_medicine_store'), 403);
-        $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        \App\Support\ItemCode::fill($request, 'medicines', 'MED'); // D-335: blank code is made from the name
         $data = $request->validate([
             'code' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9._-]+$/', 'unique:medicines,code'],
             'name' => ['required', 'string', 'max:120'],

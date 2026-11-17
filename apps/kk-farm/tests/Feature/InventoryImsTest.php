@@ -159,4 +159,18 @@ class InventoryImsTest extends TestCase
         $this->assertStringContainsString('Confirmed by Test vet on '.now()->format('d/m/Y').' (was On hold: Product identity to confirm)', $m->check_note);
         $this->assertSame(1.0, MedicineStock::issue($m, 1, ['moved_on' => now()->toDateString(), 'recorded_by' => 'vet'])); // given now (1 ml short: none in stock)
     }
+    public function test_a_blank_code_is_made_from_the_name_and_never_clashes(): void // D-335
+    {
+        $ceo = $this->user('ceo');
+        $this->assertSame('ALMOX-LA', \App\Support\ItemCode::fromName('Almox LA Injection'));
+        $this->assertSame('ACTIBOL', \App\Support\ItemCode::fromName('Actibol Injection'));
+        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => '', 'name' => 'Actibol Injection', 'category' => 'vitamin', 'unit' => 'ml'])->assertSessionHasNoErrors();
+        $this->actingAs($ceo)->post('/inventory/medicines', ['name' => 'Actibol Injection', 'category' => 'vitamin', 'unit' => 'ml'])->assertSessionHasNoErrors();
+        $this->assertSame(['ACTIBOL', 'ACTIBOL-2'], \App\Models\Medicine::orderBy('id')->pluck('code')->all());
+        $this->actingAs($ceo)->post('/inventory/feed-items', ['name' => 'Wheat straw', 'category' => 'roughage', 'cost_per_kg' => 30])->assertSessionHasNoErrors();
+        $this->assertTrue(\App\Models\FeedItem::where('code', 'WHEAT-STRAW')->exists());
+        $this->actingAs($ceo)->post('/inventory/items', ['name' => 'Gloves', 'category' => 'bedding', 'unit' => 'kg'])->assertSessionHasNoErrors();
+        $this->assertTrue(\App\Models\StoreItem::where('code', 'GLOVES')->exists());
+        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => 'actibol', 'name' => 'Other', 'category' => 'vitamin', 'unit' => 'ml'])->assertSessionHasErrors('code');
+    }
 }
