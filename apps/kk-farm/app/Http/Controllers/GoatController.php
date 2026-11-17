@@ -90,7 +90,31 @@ class GoatController extends Controller
                 'animal_class' => $animal->animal_class, 'repro_status' => $animal->repro_status, 'kid_stage' => $animal->kid_stage, 'health_flag' => $animal->health_flag,
                 'pen_id' => (string) $animal->pen_id, 'ownership' => $animal->ownership, 'notes' => $animal->notes, 'custom_fields' => $animal->custom_fields ?: (object) [],
             ],
-        ]] + $this->formProps($request));
+        ], 'rfid' => $animal->openAssignment()->with('tag')->first()?->tag?->tag_code] + $this->formProps($request)); // D-336
+    }
+
+    /** D-336: link an RFID tag to this goat from its own page (scan with the gun or type the code); the scanners then find it by that tag. */
+    public function tag(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('assign_tags'), 403);
+        $request->merge(['tag' => GoatRegistration::normaliseCode($request->input('tag'))]);
+        $data = $request->validate(['tag' => ['required', 'string', 'max:64', 'regex:/^[A-Z0-9._:-]+$/']], ['tag.regex' => 'A tag code has only letters, digits and . _ : -']);
+        $had = $animal->openAssignment()->exists();
+        Farm::assignTag($animal, \App\Models\RfidTag::firstOrCreate(['tag_code' => $data['tag']], ['status' => 'in_stock']), $had ? 'replacement' : 'initial', $request->user());
+        Farm::log($request->user(), "Linked RFID tag {$data['tag']} to {$animal->farm_number}", "/goats/{$animal->id}");
+
+        return back()->with('success', "RFID tag {$data['tag']} is now linked to {$animal->farm_number}. Scanning it opens this goat.");
+    }
+
+    /** D-336: take the RFID tag off this goat (lost, damaged or removed); the goat keeps its Tag ID and history. */
+    public function untag(Request $request, Animal $animal): RedirectResponse
+    {
+        abort_unless($request->user()->passes('assign_tags'), 403);
+        $data = $request->validate(['reason' => ['required', Rule::in(['lost', 'damaged', 'removed'])]]);
+        Farm::closeOpenTag($animal, $data['reason'], $request->user());
+        Farm::log($request->user(), "Removed the RFID tag from {$animal->farm_number} ({$data['reason']})", "/goats/{$animal->id}");
+
+        return back()->with('success', 'RFID tag removed. The goat keeps its Tag ID and full history.');
     }
 
     public function update(Request $request, Animal $animal): RedirectResponse
@@ -610,6 +634,7 @@ class GoatController extends Controller
                 'dam' => ! $pedigree ? null : ($animal->dam ? ['id' => $animal->dam->id, 'number' => $animal->dam->farm_number] : ($animal->dam_tag ? ['id' => null, 'number' => $animal->dam_tag] : null)),
             ],
             'photos' => $animal->photos->map(fn (AnimalPhoto $p) => ['id' => $p->id, 'notes' => $p->notes, 'isProfile' => $p->is_profile, 'by' => $p->added_by, 'on' => $p->created_at->format('d/m/Y')]),
+            'canAssignTags' => $request->user()->passes('assign_tags'), // D-336
             'tags' => RfidAssignment::with('tag')->where('animal_id', $animal->id)->orderByDesc('valid_from')->get()
                 ->map(fn (RfidAssignment $r) => ['code' => $r->tag->tag_code, 'from' => $r->valid_from->format('d/m/Y'), 'to' => $r->valid_to?->format('d/m/Y'), 'reason' => $r->reason_assigned, 'closed' => $r->reason_unassigned, 'by' => $r->assigned_by]),
             'weights' => $weights->map(fn ($w) => ['on' => $w->measured_on->format('Y-m-d'), 'kg' => $w->weight_kg]),

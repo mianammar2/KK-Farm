@@ -17,6 +17,7 @@ import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, LibIcon, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
+import RfidLink from '../../components/RfidLink';
 
 type Dental = { code: string; fromAge?: boolean; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
 type Goat = GoatCard & { saleHint?: SaleHint; arrivedOn?: string | null; arrivedEntered?: boolean; sourceFarm?: string | null; inBreeding?: boolean; ageStage?: { code: string; label: string; range: string } | null; dental?: Dental; withdrawal: { meat: string | null; milk: string | null } | null; origin: string; birthDate: string | null; estimated: boolean; height: number | null; shed: string | null; penPurpose: string | null; feedingGroup: string | null; exitReason: string | null; exitDate: string | null; adg: number | null; lifetimeAdg: number | null; identity: string; classification: string; teeth: string | null; removal: { by: string | null; on: string | null; reason: string | null; voidedBy: string | null; voidedOn: string | null } | null; sire: { id: string | null; number: string } | null; dam: { id: string | null; number: string } | null };
@@ -24,6 +25,7 @@ type Props = {
     goat: Goat;
     photos: Array<{ id: number; notes: string | null; isProfile: boolean; by: string; on: string }>;
     tags: Array<{ code: string; from: string; to: string | null; reason: string; closed: string | null; by: string }>;
+    canAssignTags?: boolean; // D-336
     weights: Array<{ on: string; kg: number }>;
     records: GoatRecord[]; // D-249
     death: DeathData | null; // D-260
@@ -227,7 +229,7 @@ export default function GoatShow(props: Props) {
             <Tabs
                 value={tab}
                 onChange={setTab}
-                tabs={[{ id: 'overview', label: 'Overview' }, { id: 'timeline', label: 'Lifecycle', count: timeline.length }, { id: 'health', label: 'Health', count: cases.length + health.length }, { id: 'breeding', label: 'Breeding & pedigree' }, { id: 'photos', label: 'Photos', count: photos.length }, { id: 'tags', label: 'RFID history', count: tags.length }]}
+                tabs={[{ id: 'overview', label: 'Overview' }, { id: 'timeline', label: 'Lifecycle', count: timeline.length }, { id: 'health', label: 'Health', count: cases.length + health.length }, { id: 'breeding', label: 'Breeding & pedigree' }, { id: 'photos', label: 'Photos', count: photos.length }, { id: 'tags', label: 'RFID Tag', count: tags.length }]}
             />
 
             {tab === 'overview' ? (
@@ -369,6 +371,7 @@ export default function GoatShow(props: Props) {
                 </Panel>
             ) : null}
 
+            {tab === 'tags' && goat.status === 'active' ? <RfidLink goatId={goat.id} number={goat.number} current={tags.find((t) => !t.to)?.code} canAssign={Boolean(props.canAssignTags)} className="mb-4" /> : null /* D-336 */}
             {tab === 'tags' ? (
                 <Panel flush title="RFID assignment history" description="Tags can be reused. Identity and records stay with the goat.">
                     <div className="overflow-x-auto">
@@ -377,7 +380,7 @@ export default function GoatShow(props: Props) {
                             <tbody>{tags.map((t) => <tr key={t.code + t.from}><td className="font-semibold"><Link href={`/scan?tag=${t.code}`} className="text-cobalt-800 hover:underline">{t.code}</Link></td><td>{t.from}</td><td>{t.to ?? 'Current'}</td><td className="capitalize">{t.reason}</td><td className="capitalize">{t.closed ?? '—'}</td></tr>)}</tbody>
                         </table>
                     </div>
-                    {!tags.length ? <Empty title="No tag assigned yet">Assign one from the RFID Scan screen.</Empty> : null}
+                    {!tags.length ? <Empty title="No tag assigned yet">Link one above: click the box and scan the ear tag with the RFID gun.</Empty> : null}
                 </Panel>
             ) : null}
         </>

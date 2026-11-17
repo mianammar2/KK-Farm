@@ -272,6 +272,8 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/removal/decide', [GoatController::class, 'decideRemoval']);
         Route::post('/goats/{animal}/restore', [GoatController::class, 'restore']);
         Route::post('/goats/{animal}/teeth', [GoatController::class, 'teeth']); // D-106
+        Route::post('/goats/{animal}/tag', [GoatController::class, 'tag']); // D-336: link an RFID tag on the goat's own page
+        Route::post('/goats/{animal}/tag/remove', [GoatController::class, 'untag']);
         Route::post('/goats/{animal}/castration', [GoatController::class, 'castration']); // D-230
         Route::get('/media/{photo}', [GoatController::class, 'media']);
     });

@@ -7,6 +7,7 @@ import PhotoPicker from '../../components/PhotoPicker';
 import DataGrid, { type Col } from '../../components/DataGrid';
 import { Button, Chip, Field, Note, PageHeader, Panel } from '../../components/ui';
 import type { Option } from '../../types';
+import RfidLink from '../../components/RfidLink';
 
 type Choice = { value: string | number; label: string; next?: string; used?: Record<string, number>; breed?: number | null; code?: string; shed?: number; shedName?: string };
 type DamMating = { sireId: string | null; sire: string | null; sireBreed: number | null; status: string; matedOn: string; expected: string | null; expectedLabel: string | null };
@@ -17,7 +18,7 @@ type RoleOption = { value: string; label: string; sex: string; group: string; pu
 type TeethRange = { code: string; label: string; from: number; to: number | null };
 type RegRow = { id: string; number: string; origin: string; breed: string | null; sex: string | null; code: string | null; role: string | null; pen: string | null; arrived: string | null; source: string | null; enteredIso: string | null; entered: string | null; by: string | null; status: string };
 type Props = { registered?: RegRow[]; roleOptions: RoleOption[]; teethRanges: TeethRange[]; epc: string | null; fields: FieldDef[]; lookups: Record<string, Choice[]>; classSex: Record<string, string>; classification: Classify; damMatings: Record<string, DamMating>; mixedBreedId: number | null; teethMonths: Record<string, number>; ageStages: AgeStage[]; canAssignTags: boolean; untagged: Option[];
-    goat?: { id: string; number: string; values: Record<string, any> } };
+    goat?: { id: string; number: string; values: Record<string, any> }; rfid?: string | null };
 
 /** D-091: measurements and arrival answers are taken once, when registering; later they are new weighings or health records. */
 const REGISTER_ONLY = ['rfid_epc', 'latest_weight_kg', 'height_in', 'body_score', 'temperature_f', 'pregnant_at_arrival', 'pregnancy_days', 'milking_at_arrival', 'days_in_milk', 'lifecycle_status'];
@@ -27,7 +28,7 @@ const TEMP_HIGH = 103.5;
 
 const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); // the device's local date
 
-export default function Register({ registered = [], epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, ageStages, canAssignTags, untagged, goat, roleOptions, teethRanges }: Props) {
+export default function Register({ registered = [], epc, fields, lookups, classSex, classification, damMatings, mixedBreedId, teethMonths, ageStages, canAssignTags, untagged, goat, rfid, roleOptions, teethRanges }: Props) {
     const editing = Boolean(goat);
     const [penShed, setPenShed] = useState<number | undefined>(undefined);
     const [estMonths, setEstMonths] = useState('');
@@ -382,6 +383,7 @@ export default function Register({ registered = [], epc, fields, lookups, classS
                         <PhotoPicker compact value={form.data.photo} onChange={(file) => form.setData('photo', file)} error={form.errors.photo} />
                     </div>
                 ) : null}
+                {goat ? <RfidLink goatId={goat.id} number={goat.number} current={rfid} canAssign={canAssignTags} /> : null /* D-336 */}
                 {shown.filter((section) => section.fields.some((f) => !hidden(f))).map((section, index) => (
                     <Fragment key={section.name}>
                     <Panel title={section.name === 'Birth' && !farmBorn ? 'Aging' : section.name}>

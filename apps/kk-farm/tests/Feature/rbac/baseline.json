@@ -3869,6 +3869,24 @@
         "cleaning": 403,
         "finance": 403
     },
+    "POST /goats/{animal}/tag": {
+        "ceo": 302,
+        "manager": 302,
+        "vet": 302,
+        "caretaker": 302,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
+    "POST /goats/{animal}/tag/remove": {
+        "ceo": 302,
+        "manager": 302,
+        "vet": 302,
+        "caretaker": 302,
+        "feeding": 403,
+        "cleaning": 403,
+        "finance": 403
+    },
     "POST /goats/{animal}/teeth": {
         "ceo": 302,
         "manager": 403,
