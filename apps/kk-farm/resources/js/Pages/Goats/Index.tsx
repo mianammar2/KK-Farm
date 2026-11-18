@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, LayoutGrid, List, Search } from 'lucide-react';
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { saveGoatWalk } from '../../components/GoatStepper';
 import { useHideAppStrip } from '../../components/AppStrip';
 import GoatProfileCard from '../../components/GoatProfileCard';
 import Sheet from '../../components/Sheet';
@@ -113,7 +114,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
     });
     const setView = (v: 'table' | 'cards') => { setViewState(v); try { localStorage.setItem('kk.goats.view', v); } catch { /* storage off */ } };
     const [tone, setTone] = useState<Tone | ''>(() => (params.get('tone') as Tone | null) ?? ''); // D-165: ?tone=healthy from the dashboard
-    const [sort, setSort] = useState<{ key: SortKey; up: boolean }>({ key: 'number', up: true });
+    const [sort, setSort] = useState<{ key: SortKey; up: boolean }>(() => ({ key: (params.get('sort') as SortKey | null) ?? 'number', up: params.get('dir') !== 'desc' })); // D-342: kept on Back to the list
     const [adding, setAdding] = useState(false);
 
     const rows = useMemo(() => {
@@ -131,6 +132,13 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             return sort.up ? order : -order;
         });
     }, [goats, query, show, breed, sex, pen, health, vital, status, sort, tone]);
+    // D-342: the goat page steps through this list (filters and sort as shown here) with Previous / Next
+    useEffect(() => {
+        const parts = [query.trim() && `“${query.trim()}”`, breed, sex && (sex === 'female' ? 'Females' : 'Males'), pen, health && (health === 'treatment' ? 'In treatment' : health[0].toUpperCase() + health.slice(1)),
+            vital && VITALS[vital]?.label, tone && TONES[tone as Tone]?.label, show && showLabels[show], status === 'left' ? 'Left the farm' : status === 'all' ? 'All records' : ''].filter(Boolean);
+        const qs = new URLSearchParams(Object.entries({ q: query.trim(), breed, sex, pen, health, vital, tone, show, status: status === 'active' ? '' : status, sort: sort.key === 'number' ? '' : sort.key, dir: sort.up ? '' : 'desc' }).filter(([, v]) => v) as string[][]).toString();
+        saveGoatWalk({ ids: rows.map((g) => g.id), numbers: rows.map((g) => g.number), label: parts.join(' · '), back: `/goats${qs ? `?${qs}` : ''}` });
+    }, [rows, query, breed, sex, pen, health, vital, tone, show, status, showLabels, sort]);
     const counts = useMemo(() => goats.reduce((c, g) => { const t = toneOf(g); c[t] = (c[t] ?? 0) + 1; return c; }, {} as Partial<Record<Tone, number>>), [goats]);
     useHideAppStrip(); // D-259: these cards are the registry's numbers; the app strip is not shown as well
     // D-259: health cards split the goats on the farm (each in one); the others count every goat they fit (pregnant, lactating …)

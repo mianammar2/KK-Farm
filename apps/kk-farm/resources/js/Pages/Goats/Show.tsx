@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import GoatStepper from '../../components/GoatStepper';
 import { useConfirm } from '../../components/Confirm';
 import PhotoPicker from '../../components/PhotoPicker';
 import { Camera, ClipboardPlus, MoveRight, Pencil, Scale, Star, Stethoscope, Trash2, Thermometer, TriangleAlert } from 'lucide-react';
@@ -101,6 +102,7 @@ export default function GoatShow(props: Props) {
         <>
             {removeBox}
             <Head title={goat.number} />
+            <GoatStepper key={goat.id} id={goat.id} />
             {/* D-073: withdrawal from the veterinarian's treatment dates. */}
             {goat.withdrawal ? (
                 <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 rounded-tile border border-crit-500/40 bg-crit-100 px-4 py-3 text-crit-700">
