@@ -467,6 +467,5 @@ main { min-width: 0; }
 @media print {
     body:has(.kk-print-list) > *:not(.kk-print-list) { display: none !important; }
     .kk-print-list { display: block !important; }
-    .kk-print-list * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 @page { margin: 10mm; }

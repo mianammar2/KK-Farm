@@ -359,7 +359,7 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
     );
 }
 
-/** D-345: the filtered, sorted list on paper: S.No. and the registry's columns, in plain text; prints alone (app.css). */
+/** D-345: the filtered, sorted list on paper, black and white: # and the registry's columns (no RFID), in plain text; prints alone (app.css). */
 function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals & { tags?: string[] }>; roleNames: Record<string, string>; label: string }) {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -371,10 +371,10 @@ function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals &
             <h1 className="text-base font-bold">KK Farms · Goat Registry</h1>
             <p className="mb-2">{rows.length} goats{label ? ` · ${label}` : ''} · printed {printed}</p>
             <table className="w-full border-collapse">
-                <thead><tr className="border-b-2 border-black text-left">{['#', 'Tag ID', 'Breed', 'Gender', 'Role', 'Age', 'Weight', 'Temp', 'PEN', 'Status', 'RFID'].map((h) => <th key={h} className="px-1 py-1">{h}</th>)}</tr></thead>
+                <thead><tr className="border-b-2 border-black text-left">{['#', 'Tag ID', 'Breed', 'Gender', 'Role', 'Age', 'Weight', 'Temp', 'PEN', 'Status'].map((h) => <th key={h} className="px-1 py-1">{h}</th>)}</tr></thead>
                 <tbody>
                     {rows.map((g, i) => (
-                        <tr key={g.id} className="border-b border-gray-300" style={{ breakInside: 'avoid', background: g.tempState === 'high' ? '#f6c9c9' : g.tempState === 'low' ? '#fbdcc0' : undefined }}>
+                        <tr key={g.id} className="border-b border-gray-300" style={{ breakInside: 'avoid' }}>
                             <td className="px-1 py-0.5 text-right">{i + 1}</td>
                             <td className="px-1 py-0.5 font-mono font-semibold">{g.number}</td>
                             <td className="px-1 py-0.5">{g.breed ?? ''}</td>
@@ -385,7 +385,6 @@ function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals &
                             <td className="px-1 py-0.5">{g.tempF != null ? `${g.tempF} °F ${g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : 'Normal'} · ${g.tempOn}` : ''}</td>
                             <td className="px-1 py-0.5">{g.pen ?? ''}</td>
                             <td className="px-1 py-0.5">{g.status === 'active' ? health[g.health] ?? g.health : 'Left farm'}{g.repro === 'pregnant' ? ', Pregnant' : ''}</td>
-                            <td className="px-1 py-0.5 font-mono">{g.tag ?? ''}</td>
                         </tr>
                     ))}
                 </tbody>
