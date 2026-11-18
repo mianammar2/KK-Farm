@@ -1,5 +1,6 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { ArrowDown, ArrowUp, LayoutGrid, List, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, LayoutGrid, List, Printer, Search } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { saveGoatWalk } from '../../components/GoatStepper';
 import { useHideAppStrip } from '../../components/AppStrip';
@@ -116,6 +117,14 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
     const [tone, setTone] = useState<Tone | ''>(() => (params.get('tone') as Tone | null) ?? ''); // D-165: ?tone=healthy from the dashboard
     const [sort, setSort] = useState<{ key: SortKey; up: boolean }>(() => ({ key: (params.get('sort') as SortKey | null) ?? 'number', up: params.get('dir') !== 'desc' })); // D-342: kept on Back to the list
     const [adding, setAdding] = useState(false);
+    const [printing, setPrinting] = useState(false); // D-345: print the filtered list
+    useEffect(() => {
+        if (!printing) return;
+        const done = () => setPrinting(false);
+        window.addEventListener('afterprint', done);
+        const t = window.setTimeout(() => window.print(), 50);
+        return () => { window.clearTimeout(t); window.removeEventListener('afterprint', done); };
+    }, [printing]);
 
     const rows = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -132,6 +141,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             return sort.up ? order : -order;
         });
     }, [goats, query, show, breed, sex, pen, health, vital, status, sort, tone]);
+    const printLabel = [query.trim() && `“${query.trim()}”`, breed, sex && (sex === 'female' ? 'Females' : 'Males'), pen, health && (health === 'treatment' ? 'In treatment' : health[0].toUpperCase() + health.slice(1)),
+        vital && VITALS[vital]?.label, tone && TONES[tone as Tone]?.label, show && showLabels[show], status === 'left' ? 'Left the farm' : status === 'all' ? 'All records' : ''].filter(Boolean).join(' · ');
     // D-342: the goat page steps through this list (filters and sort as shown here) with Previous / Next
     useEffect(() => {
         const parts = [query.trim() && `“${query.trim()}”`, breed, sex && (sex === 'female' ? 'Females' : 'Males'), pen, health && (health === 'treatment' ? 'In treatment' : health[0].toUpperCase() + health.slice(1)),
@@ -156,6 +167,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
         { key: 'missing', label: 'Missing data', n: tagged('missing'), on: show === 'missing', pick: show === 'missing' ? only(() => undefined) : only(() => setShow('missing')), dot: 'bg-watch-400' },
     ];
     const { rows: shown, pager } = usePaged(rows, { size: PAGE, id: 'goats' }); // D-263: numbered pages
+    const serial = useMemo(() => new Map(rows.map((g, i) => [g.id, i + 1])), [rows]); // D-345: S.No. in the filtered, sorted list
     const pickTone = (t: Tone | '') => { setTone(t); if (t === 'left') setStatus('all'); };
 
     const sortBy = (key: SortKey) => setSort((s) => ({ key, up: s.key === key ? !s.up : true }));
@@ -256,6 +268,10 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                         <option value="active">On farm</option><option value="left">Left the farm</option><option value="all">All records</option>
                     </select>
                     </div>
+                    <button type="button" onClick={() => setPrinting(true)} disabled={!rows.length} title={`Print these ${rows.length} goats`}
+                        className="flex min-h-11 items-center gap-1.5 rounded-tile border border-rule-strong px-3 text-sm font-semibold text-cobalt-900 hover:bg-cobalt-100 disabled:opacity-40 max-sm:hidden">
+                        <Printer size={17} aria-hidden /> Print
+                    </button>
                     <div className="flex rounded-tile border border-rule-strong max-sm:hidden" role="group" aria-label="View">
                         <button type="button" aria-pressed={view === 'table'} aria-label="Table view" onClick={() => setView('table')} className={cx('grid size-11 place-items-center rounded-l-[5px]', view === 'table' ? 'bg-cobalt-100 text-cobalt-900' : 'text-ink-soft')}><List size={17} /></button>
                         <button type="button" aria-pressed={view === 'cards'} aria-label="Card view" onClick={() => setView('cards')} className={cx('grid size-11 place-items-center rounded-r-[5px]', view === 'cards' ? 'bg-cobalt-100 text-cobalt-900' : 'text-ink-soft')}><LayoutGrid size={17} /></button>
@@ -267,12 +283,13 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 ) : view === 'table' ? (
                     <div className="overflow-x-auto">
                         <table className="data-table min-w-[940px] [&_td]:px-2.5 [&_td]:py-2 [&_th]:px-2.5">
-                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="temp" label="Temp" /><Th id="pen" label="PEN" /><th>Status</th><th>Current Tag</th></tr></thead>
+                            <thead><tr><th className="w-10 text-right">#</th><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="temp" label="Temp" /><Th id="pen" label="PEN" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
                                     return (
                                         <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors', !(g.tempState === 'high' || g.tempState === 'low') && 'hover:bg-glaze', g.tempState === 'high' || g.tempState === 'low' ? TEMP_ROW[g.tempState] : TONES[t].row)}>
+                                            <td className="text-right font-mono text-sm text-ink-soft tabular-nums">{serial.get(g.id)}</td>
                                             <td className="relative">
                                                 <span aria-hidden className={cx('absolute inset-y-1.5 left-0 w-1 rounded-r-full', TONES[t].bar)} />
                                                 <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
@@ -316,6 +333,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 )}
                 {pager}
             </Panel>
+            {printing ? createPortal(<PrintList rows={rows} roleNames={roleNames} label={printLabel} />, document.body) : null}
             {tagging ? <RfidAttachSheet goat={tagging} onClose={() => setTagging(null)} /> : null}
             {profile ? <Sheet onClose={() => setProfile(null)}><div className="p-4 sm:p-5"><GoatProfileCard id={profile} /></div></Sheet> : null}
         </>
@@ -338,5 +356,40 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
                 <div className="flex gap-2 sm:col-span-2 lg:col-span-3"><Button type="submit" disabled={form.processing}>Register goat</Button><Button variant="quiet" onClick={onDone}>Cancel</Button></div>
             </form>
         </Panel>
+    );
+}
+
+/** D-345: the filtered, sorted list on paper: S.No. and the registry's columns, in plain text; prints alone (app.css). */
+function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals & { tags?: string[] }>; roleNames: Record<string, string>; label: string }) {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const printed = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const health: Record<string, string> = { healthy: 'Healthy', watch: 'Watch', treatment: 'In treatment', critical: 'Critical' };
+    return (
+        <div className="kk-print-list hidden bg-white p-4 text-[11px] text-black print:block">
+            <style>{'@page { size: A4 landscape; margin: 10mm; }'}</style>
+            <h1 className="text-base font-bold">KK Farms · Goat Registry</h1>
+            <p className="mb-2">{rows.length} goats{label ? ` · ${label}` : ''} · printed {printed}</p>
+            <table className="w-full border-collapse">
+                <thead><tr className="border-b-2 border-black text-left">{['#', 'Tag ID', 'Breed', 'Gender', 'Role', 'Age', 'Weight', 'Temp', 'PEN', 'Status', 'RFID'].map((h) => <th key={h} className="px-1 py-1">{h}</th>)}</tr></thead>
+                <tbody>
+                    {rows.map((g, i) => (
+                        <tr key={g.id} className="border-b border-gray-300" style={{ breakInside: 'avoid', background: g.tempState === 'high' ? '#f6c9c9' : g.tempState === 'low' ? '#fbdcc0' : undefined }}>
+                            <td className="px-1 py-0.5 text-right">{i + 1}</td>
+                            <td className="px-1 py-0.5 font-mono font-semibold">{g.number}</td>
+                            <td className="px-1 py-0.5">{g.breed ?? ''}</td>
+                            <td className="px-1 py-0.5">{g.sex === 'female' ? 'Female' : g.sex === 'male' ? 'Male' : ''}</td>
+                            <td className="px-1 py-0.5">{(g.roles ?? []).map((r) => `${r} ${roleNames[r] ?? ''}`.trim()).join(', ')}</td>
+                            <td className="px-1 py-0.5">{g.ageCode ?? ''}{g.ageExact && g.age ? ` · ${g.age}` : ''}</td>
+                            <td className="px-1 py-0.5">{g.weight ? `${g.weight} KG` : ''}{g.weightBand && g.weightBand !== 'normal' ? ` (${g.weightBand === 'low' ? 'Low' : 'High'})` : ''}{g.weightChange ? ` ${g.weightChange > 0 ? '▲ +' : '▼ '}${g.weightChange}` : ''}{g.weightOn ? ` · ${g.weightOn}` : ''}</td>
+                            <td className="px-1 py-0.5">{g.tempF != null ? `${g.tempF} °F ${g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : 'Normal'} · ${g.tempOn}` : ''}</td>
+                            <td className="px-1 py-0.5">{g.pen ?? ''}</td>
+                            <td className="px-1 py-0.5">{g.status === 'active' ? health[g.health] ?? g.health : 'Left farm'}{g.repro === 'pregnant' ? ', Pregnant' : ''}</td>
+                            <td className="px-1 py-0.5 font-mono">{g.tag ?? ''}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }
