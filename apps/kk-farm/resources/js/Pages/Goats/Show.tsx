@@ -430,8 +430,8 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
     if (kind === 'weight') {
         return (
             <form onSubmit={(e) => { e.preventDefault(); weight.post('/weights', options); }} className="flex flex-wrap items-end gap-2">
-                <div className="w-44"><Field label="Weight (KG)" error={weight.errors.weight_kg}><input inputMode="decimal" autoFocus className="field" value={weight.data.weight_kg} onChange={(e) => weight.setData('weight_kg', e.target.value)} /></Field></div>
                 <div className="w-44"><Field label="Weighed on" error={weight.errors.measured_on}><input type="date" className="field" max={today} value={weight.data.measured_on} onChange={(e) => weight.setData('measured_on', e.target.value)} /></Field></div>
+                <div className="w-44"><Field label="Weight (KG)" error={weight.errors.weight_kg}><input inputMode="decimal" autoFocus className="field" value={weight.data.weight_kg} onChange={(e) => weight.setData('weight_kg', e.target.value)} /></Field></div>
                 <Button type="submit" disabled={weight.processing}>Save weight</Button>
             </form>
         );
@@ -446,8 +446,8 @@ function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: strin
         const reading = (v: string) => { const n = Number(v); temp.setData({ ...temp.data, temperature_f: v, outcome: v !== '' && (n < 101.3 || n > 103.5) ? 'monitor' : 'healthy' }); };
         return (
             <form onSubmit={(e) => { e.preventDefault(); temp.post('/health/checkups', { ...options, onSuccess: () => temp.reset('temperature_f') }); }} className="flex flex-wrap items-end gap-2">
-                <div className="w-40"><Field label="Temperature (°F)" error={temp.errors.temperature_f} hint="Normal 101.3–103.5"><input inputMode="decimal" autoFocus required className="field" value={temp.data.temperature_f} onChange={(e) => reading(e.target.value.replace(/[^0-9.]/g, ''))} /></Field></div>
                 <div className="w-44"><Field label="Checked on" error={temp.errors.checked_on}><input type="date" className="field" max={today} value={temp.data.checked_on} onChange={(e) => temp.setData('checked_on', e.target.value)} /></Field></div>
+                <div className="w-40"><Field label="Temperature (°F)" error={temp.errors.temperature_f}><input inputMode="decimal" autoFocus required className="field" placeholder="Normal 101.3–103.5" value={temp.data.temperature_f} onChange={(e) => reading(e.target.value.replace(/[^0-9.]/g, ''))} /></Field></div>
                 <div className="w-36"><Field label="Result" error={temp.errors.outcome}><select className="field" value={temp.data.outcome} onChange={(e) => temp.setData('outcome', e.target.value)}><option value="healthy">Healthy</option><option value="monitor">Watch</option><option value="sick">Sick</option></select></Field></div>
                 <Button type="submit" disabled={temp.processing || temp.data.temperature_f === ''}>Save temperature</Button>
                 {temp.data.temperature_f !== '' ? <span className={`pb-2.5 text-sm font-semibold ${normal ? 'text-ok-700' : 'text-crit-700'}`}>{normal ? 'Normal' : t > 103.5 ? 'High: the goat goes on Watch' : 'Low: the goat goes on Watch'}</span> : null}
@@ -848,8 +848,8 @@ function HeightForm({ goatId, onDone }: { goatId: string; onDone: () => void }) 
     const f = useForm({ height_in: '', measured_on: today });
     return (
         <form onSubmit={(e) => { e.preventDefault(); f.post(`/goats/${goatId}/height`, { preserveScroll: true, onSuccess: onDone }); }} className="flex flex-wrap items-end gap-2">
-            <div className="w-44"><Field label="Height in inches (withers)" error={f.errors.height_in}><input inputMode="decimal" autoFocus className="field" value={f.data.height_in} onChange={(e) => f.setData('height_in', e.target.value.replace(/[^0-9.]/g, ''))} required /></Field></div>
             <div className="w-44"><Field label="Measured on" error={f.errors.measured_on}><input type="date" className="field" max={today} value={f.data.measured_on} onChange={(e) => f.setData('measured_on', e.target.value)} required /></Field></div>
+            <div className="w-44"><Field label="Height in inches (withers)" error={f.errors.height_in}><input inputMode="decimal" autoFocus className="field" value={f.data.height_in} onChange={(e) => f.setData('height_in', e.target.value.replace(/[^0-9.]/g, ''))} required /></Field></div>
             <Button type="submit" disabled={f.processing}>Save height</Button>
         </form>
     );
