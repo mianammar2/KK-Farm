@@ -522,6 +522,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.1"
-    const val CODE = 21 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.2"
+    const val CODE = 22 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

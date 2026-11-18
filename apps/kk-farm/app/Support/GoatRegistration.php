@@ -33,7 +33,16 @@ final class GoatRegistration
 
     public static function normaliseCode(?string $code): string
     {
-        return strtoupper(trim((string) $code));
+        $code = strtoupper(trim((string) $code));
+        // D-339: a UHF tag written by the gun carries the Tag ID as ASCII in its EPC; read raw (hex), it is that Tag ID
+        if ($code !== '' && strlen($code) % 2 === 0 && ctype_xdigit($code)) {
+            $text = rtrim((string) hex2bin($code), "\0");
+            if (preg_match('/^[A-Z0-9._:-]{4,64}$/', $text) && preg_match('/[A-Z]/', $text) && str_contains($text, '-')) {
+                return $text;
+            }
+        }
+
+        return $code;
     }
 
     /** @param Collection<int, FieldDefinition> $definitions */

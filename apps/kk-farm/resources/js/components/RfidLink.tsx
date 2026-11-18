@@ -36,9 +36,10 @@ export default function RfidLink({ goatId, number, current, canAssign, className
     useEffect(() => {
         if (!uhf || !canAssign || writing) return;
         const onTouch = (e: Event) => {
-            const code = (e as CustomEvent<{ code: string; epc: string }>).detail.code;
-            if (code === current) return;
-            if (current && !window.confirm(`Replace tag ${current} on ${number}? The old tag is closed in the history.`)) return;
+            const { code, epc } = (e as CustomEvent<{ code: string; epc: string }>).detail;
+            if (code === current && code === number) return;
+            // the goat's own tag still carrying its factory number: write the Tag ID with no question
+            if (current && current !== code && current !== epc && !window.confirm(`Replace tag ${current} on ${number}? The old tag is closed in the history.`)) return;
             if (code === number) { router.post(`/goats/${goatId}/tag`, { tag: number }, { preserveScroll: true, onSuccess: () => setOpen(false) }); return; }
             setNfcError(null);
             setWriting(true);

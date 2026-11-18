@@ -54,4 +54,12 @@ class GoatRfidLinkTest extends TestCase
         $this->actingAs($ceo)->getJson('/lookup/goat?code=mc-071126p-01')->assertOk()->assertSee('MC-071126P-01');
         $this->actingAs($ceo)->post("/goats/{$goat->id}/tag", ['tag' => 'MC-071126P-01', 'chip' => 'not hex'])->assertSessionHasErrors('chip');
     }
+
+    public function test_a_uhf_tag_written_with_the_tag_id_reads_as_that_tag_id(): void
+    {
+        $this->assertSame('MC-181026P-17', \App\Support\GoatRegistration::normaliseCode(bin2hex('MC-181026P-17')."00"));
+        $this->assertSame('MC-TEST-0001', \App\Support\GoatRegistration::normaliseCode('4d432d544553542d30303031'));
+        $this->assertSame('E20000166515015616107331', \App\Support\GoatRegistration::normaliseCode('e20000166515015616107331'));
+        $this->assertSame('300833B2DDD9014000000000', \App\Support\GoatRegistration::normaliseCode('300833B2DDD9014000000000'));
+    }
 }

@@ -10,14 +10,19 @@ object ScanParser {
     // The C72 trigger is announced as a broadcast by Chainway's scan service (KEY_UP seen in logcat; KEY_DOWN assumed alongside it).
     val TRIGGER_ACTIONS = listOf("com.rscja.android.KEY_DOWN", "com.rscja.android.KEY_UP")
 
-    private val KNOWN_EXTRAS = listOf("data", "barcode_string", "barcodeData", "scannerdata", "epc", "EPC", "barcode", "code")
+    private val KNOWN_EXTRAS = listOf("rfid_epc", "data", "barcode_string", "barcodeData", "scannerdata", "epc", "EPC", "barcode", "code")
     private val TAG_PATTERN = Regex("^[A-Za-z0-9._:-]{4,64}$")
     // Empty or failed reads come back as all zeros (seen on the C72) or all F.
     private val JUNK_PATTERN = Regex("^(0+|F+)$")
+    // D-339: an empty read comes back with result=0 and words like RFID / SCANNER in other extras; those are never tags.
+    private val NOT_TAGS = setOf("RFID", "SCANNER", "BARCODE", "UHF", "NFC", "SUCCESS", "FAIL", "FAILED", "TRUE", "FALSE", "NULL")
+    private val NOT_TAG_KEYS = setOf("source", "result", "type", "scantype", "rfid_rssi", "rssi", "rfid_pc", "rfid_tid", "codetype", "symbology", "length", "time")
 
     fun codes(intent: Intent, preferredExtra: String): List<String> {
         val extras = intent.extras ?: return emptyList()
-        val keys = listOf(preferredExtra) + KNOWN_EXTRAS + extras.keySet()
+        @Suppress("DEPRECATION")
+        if (extras.get("result")?.toString()?.trim() == "0") return emptyList() // the reader found nothing
+        val keys = (listOf(preferredExtra) + KNOWN_EXTRAS + extras.keySet()).filter { it.lowercase() !in NOT_TAG_KEYS }
         for (key in keys.distinct()) {
             @Suppress("DEPRECATION")
             val value = when (val v = extras.get(key)) {
@@ -26,7 +31,8 @@ object ScanParser {
                 is CharSequence -> v.toString()
                 else -> null
             } ?: continue
-            val codes = value.split(Regex("[\\s,;]+")).map { it.trim().uppercase() }.filter { TAG_PATTERN.matches(it) && !JUNK_PATTERN.matches(it) }.distinct()
+            val codes = value.split(Regex("[\\s,;]+")).map { it.trim().uppercase() }.filter { TAG_PATTERN.matches(it) && !JUNK_PATTERN.matches(it) && it !in NOT_TAGS }
+                .map { UhfReader.decode(it) }.distinct() // a tag written by KK Farm reads as its Tag ID
             if (codes.isNotEmpty()) return codes
         }
         return emptyList()
