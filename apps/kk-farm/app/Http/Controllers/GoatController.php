@@ -102,8 +102,10 @@ class GoatController extends Controller
                 $late = $t->next_dose_on->lt(now()->startOfDay());
                 $out[] = [$late ? 'crit' : 'warn', ($late ? 'Dose overdue ' : 'Dose due ').$t->next_dose_on->format('d/m'), 'dose'];
             }
-            if (($v['weightChange'] ?? 0) <= -1) { // D-348: a loss of 1 KG or more; smaller swings are weighing noise
-                $out[] = ['warn', "Lost {$v['weightChange']} KG", 'weight_loss'];
+            $before = ($a->latestWeight?->weight_kg ?? 0) - ($v['weightChange'] ?? 0);
+            if (($v['weightChange'] ?? 0) < 0 && $before > 0 && -$v['weightChange'] / $before >= 0.025) { // D-350: a loss of 2.5% of body weight or more
+                $pct = round(-$v['weightChange'] / $before * 100, 1);
+                $out[] = ['warn', "Lost {$v['weightChange']} KG ({$pct}%)", 'weight_loss'];
             }
             if (($v['weightBand'] ?? null) === 'low') {
                 $out[] = ['info', 'Low weight', 'weight_low'];

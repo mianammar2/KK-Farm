@@ -25,7 +25,7 @@ const CARDS: Array<{ key: string; label: string; kinds: Kind[]; bar: string }> =
     { key: 'temp_low', label: 'Low temperature', kinds: ['temp_low'], bar: 'bg-treat-400' },
     { key: 'case', label: 'Open cases', kinds: ['case'], bar: 'bg-treat-400' },
     { key: 'dose', label: 'Doses due', kinds: ['dose'], bar: 'bg-watch-400' },
-    { key: 'weight_loss', label: 'Lost 1 KG or more', kinds: ['weight_loss'], bar: 'bg-watch-400' },
+    { key: 'weight_loss', label: 'Lost 2.5% of weight', kinds: ['weight_loss'], bar: 'bg-watch-400' },
     { key: 'watch', label: 'On Watch', kinds: ['watch', 'treatment', 'critical'], bar: 'bg-watch-400' },
     { key: 'all', label: 'All goats', kinds: [], bar: 'bg-cobalt-600' },
 ];

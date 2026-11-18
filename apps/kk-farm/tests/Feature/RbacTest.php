@@ -120,10 +120,10 @@ class RbacTest extends TestCase
     public function test_caretaker_records_work_but_never_treats_or_sees_money(): void
     {
         $c = $this->user('caretaker');
-        foreach (['record_weights', 'record_milk', 'assign_tags'] as $g) { // D-252: checkups and concern reports are the vet's by default
+        foreach (['record_weights', 'record_milk'] as $g) { // D-252: checkups and concern reports are the vet's by default
             $this->assertTrue($c->passes($g), $g);
         }
-        foreach (['clinical', 'open_cases', 'approve_breeding', 'edit_goats', 'health_checkup', 'health_entry', 'report_concern'] as $g) {
+        foreach (['clinical', 'open_cases', 'approve_breeding', 'edit_goats', 'health_checkup', 'health_entry', 'report_concern', 'assign_tags'] as $g) { // D-350: RFID linking is the administrator's
             $this->assertFalse($c->passes($g), $g);
         }
         foreach (['/finance', '/sales', '/value', '/health?tab=cases'] as $url) {

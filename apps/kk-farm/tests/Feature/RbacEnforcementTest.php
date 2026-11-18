@@ -64,7 +64,7 @@ class RbacEnforcementTest extends TestCase
             ['/feeding/record', [], ['vet', 'caretaker', 'finance', 'cleaning'], ['feeding', 'manager']],
             ['/feeding/leftover', [], ['vet', 'caretaker'], ['feeding']],
             ['/operations/handovers', [], ['finance'], ['caretaker', 'cleaning', 'manager']],
-            ['/goats/rfid/disarm', [], ['feeding', 'cleaning', 'finance'], ['caretaker', 'vet']],
+            ['/goats/rfid/disarm', [], ['feeding', 'cleaning', 'finance', 'caretaker', 'vet'], ['ceo']], // D-350
             ["/goats/$id/photos", [], ['feeding', 'cleaning', 'finance'], ['caretaker', 'vet']],
             ['/fattening/selections', [], ['vet', 'feeding', 'caretaker', 'finance'], ['manager']],
             ['/environment/rounds', [], ['vet', 'finance', 'feeding'], ['caretaker', 'cleaning']],

@@ -91,7 +91,7 @@ return [
         'plan_rations' => ['ceo', 'manager', 'feeding'],
         'manage_feed_store' => ['ceo', 'manager', 'feeding'],
         'manage_general_store' => ['ceo', 'manager', 'caretaker', 'cleaning'],
-        'assign_tags' => ['ceo', 'manager', 'vet', 'caretaker'],
+        'assign_tags' => ['ceo'], // D-350: the administrator links RFID tags (tickable for others in Settings → Access)
         'manage_sheds' => ['ceo', 'manager'],
         'edit_goats' => ['ceo'], // D-252: only the Administrator edits a goat's details unless a role or person is ticked
         'remove_goats' => ['ceo'], // D-252: only the Administrator removes or restores a goat entry unless a role or person is ticked

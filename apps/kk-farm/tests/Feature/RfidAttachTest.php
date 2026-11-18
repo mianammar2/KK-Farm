@@ -49,7 +49,7 @@ class RfidAttachTest extends TestCase
 
     public function test_typing_a_code_attaches_it_and_a_new_code_replaces_it_keeping_history(): void
     {
-        $manager = $this->user('manager');
+        $manager = $this->user('ceo'); // D-350: the administrator links RFID tags
         $goat = $this->goat('TD141026-01');
 
         $this->actingAs($manager)->post("/goats/{$goat->id}/rfid", ['tag' => ' e2801170000002aa '])->assertSessionHasNoErrors();
@@ -67,7 +67,7 @@ class RfidAttachTest extends TestCase
 
     public function test_a_tag_on_another_goat_moves_only_after_confirming(): void
     {
-        $manager = $this->user('manager');
+        $manager = $this->user('ceo'); // D-350: the administrator links RFID tags
         $first = $this->goat('TD141026-01');
         $second = $this->goat('TD141026-02');
         $this->actingAs($manager)->post("/goats/{$first->id}/rfid", ['tag' => 'E2801170000002AA'])->assertSessionHasNoErrors();
@@ -83,7 +83,7 @@ class RfidAttachTest extends TestCase
 
     public function test_the_gun_scan_after_scan_rfid_offers_the_tag_to_that_goat(): void
     {
-        $manager = $this->user('manager');
+        $manager = $this->user('ceo'); // D-350: the administrator links RFID tags
         $goat = $this->goat('TD141026-01');
 
         // Without Scan RFID, an unknown tag starts the goat register as before.
@@ -108,13 +108,16 @@ class RfidAttachTest extends TestCase
     {
         $goat = $this->goat('TD141026-01');
         $this->actingAs($this->user('finance'))->post("/goats/{$goat->id}/rfid", ['tag' => 'E2801170000002AA'])->assertForbidden();
-        $this->actingAs($this->user('manager'))->post("/goats/{$goat->id}/rfid", ['tag' => 'AB'])->assertSessionHasErrors('tag');
+        foreach (['manager', 'vet', 'caretaker'] as $role) { // D-350: administrator only by default
+            $this->actingAs($this->user($role))->post("/goats/{$goat->id}/rfid", ['tag' => 'E2801170000002AA'])->assertForbidden();
+        }
+        $this->actingAs($this->user('ceo'))->post("/goats/{$goat->id}/rfid", ['tag' => 'AB'])->assertSessionHasErrors('tag');
         $this->assertNull($this->tagOf($goat));
     }
 
     public function test_linking_an_rfid_never_changes_the_tag_id(): void
     {
-        $manager = $this->user('manager');
+        $manager = $this->user('ceo'); // D-350: the administrator links RFID tags
         $goat = $this->goat('TD141026-07');
         $before = $goat->fresh()->only(['id', 'farm_number', 'name', 'pen_id']);
 

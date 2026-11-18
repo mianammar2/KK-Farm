@@ -149,7 +149,7 @@ class GoatRegistrationTest extends TestCase
         $dam = $this->goat('DAM-1', 'female');
         $sire = $this->goat('SIRE-1', 'male');
 
-        $this->actingAs($this->user('manager'))->post('/goats', $this->payload([
+        $this->actingAs($this->user('ceo'))->post('/goats', $this->payload([ // D-350: the administrator links RFID tags
             'rfid_epc' => strtolower(self::EPC), 'from_scan' => true, 'tag_id' => 'KK-501', 'name' => 'Noor', 'animal_class' => 'replacement_female',
             'repro_status' => 'pregnant', 'temperature_f' => 102.5, 'health_flag' => 'monitor', 'ownership' => 'partner', 'source_farm' => 'Cholistan Farm', 'acquired_on' => now()->subMonth()->toDateString(),
             'sire_id' => $sire->id, 'dam_id' => $dam->id, 'birth_weight_kg' => 3.2, 'latest_weight_kg' => 31.5, 'purchase_cost_pkr' => 18500, 'notes' => 'Calm.',
@@ -260,7 +260,9 @@ class GoatRegistrationTest extends TestCase
         $this->assertSame(0, Animal::count());
         $this->assertSame(0, RfidTag::count());
 
-        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['rfid_epc' => self::EPC]))->assertSessionHasNoErrors();
+        $this->actingAs($this->user('manager'))->post('/goats', $this->payload(['rfid_epc' => self::EPC]))->assertSessionHasErrors(); // D-350: a manager registers, the administrator links the tag
+        $this->assertSame(0, Animal::count());
+        $this->actingAs($this->user('ceo'))->post('/goats', $this->payload(['rfid_epc' => self::EPC]))->assertSessionHasNoErrors();
         $this->assertSame(1, Animal::count());
     }
 
