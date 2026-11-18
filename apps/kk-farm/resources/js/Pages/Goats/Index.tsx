@@ -217,7 +217,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
 
             <Panel flush>
                 <div className="flex flex-wrap items-center gap-2 border-b border-rule p-3">
-                    <div className="relative min-w-0 flex-1 sm:min-w-52">
+                    <div className="relative min-w-0 flex-1 sm:min-w-48">
                         <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint" />
                         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Number, name, breed or tag" aria-label="Search the registry" className="field pl-9" />
                     </div>
@@ -226,25 +226,25 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                         Filters{activeFilters ? <span className="grid size-5 place-items-center rounded-full bg-cobalt-800 text-xs text-white">{activeFilters}</span> : null}
                     </button>
                     <div className={cx('contents', !filtersOpen && 'max-sm:hidden')}>
-                    <select aria-label="Breed" value={breed} onChange={(e) => setBreed(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                    <select aria-label="Breed" value={breed} onChange={(e) => setBreed(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-40 sm:flex-none sm:basis-auto">
                         <option value="">All breeds</option>
                         {Object.values(breeds).map((b) => <option key={b}>{b}</option>)}
                     </select>
-                    <select aria-label="Gender" value={sex} onChange={(e) => setSex(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                    <select aria-label="Gender" value={sex} onChange={(e) => setSex(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-40 sm:flex-none sm:basis-auto">
                         <option value="">All genders</option><option value="female">Female</option><option value="male">Male</option>
                     </select>
-                    <select aria-label="PEN" value={pen} onChange={(e) => setPen(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                    <select aria-label="PEN" value={pen} onChange={(e) => setPen(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-48 sm:flex-none sm:basis-auto">
                         <option value="">All PENs</option>
                         {pens.map((p) => <option key={p.id} value={p.name}>{p.name}: {p.purpose}</option>)}
                     </select>
-                    <select aria-label="Health" value={health} onChange={(e) => setHealth(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                    <select aria-label="Health" value={health} onChange={(e) => setHealth(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-40 sm:flex-none sm:basis-auto">
                         <option value="">Any health</option><option value="healthy">Healthy</option><option value="watch">Watch</option><option value="treatment">In treatment</option><option value="critical">Critical</option>
                     </select>
-                    <select aria-label="Temperature and weight" value={vital} onChange={(e) => setVital(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                    <select aria-label="Temperature and weight" value={vital} onChange={(e) => setVital(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-48 sm:flex-none sm:basis-auto">
                         <option value="">Any temp & weight</option>
                         {Object.entries(VITALS).map(([k, v]) => <option key={k} value={k}>{v.label} ({goats.filter((g) => g.status === 'active' && v.test(g)).length})</option>)}
                     </select>
-                    <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                    <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-40 sm:flex-none sm:basis-auto">
                         <option value="active">On farm</option><option value="left">Left the farm</option><option value="all">All records</option>
                     </select>
                     </div>
@@ -258,7 +258,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                     <Empty title="No goats match these filters"><button type="button" onClick={clear} className="font-semibold text-turq-800 underline">Clear filters</button> to see the whole registry.</Empty>
                 ) : view === 'table' ? (
                     <div className="overflow-x-auto">
-                        <table className="data-table min-w-[1000px]">
+                        <table className="data-table min-w-[940px] [&_td]:px-2.5 [&_td]:py-2 [&_th]:px-2.5">
                             <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="temp" label="Temp" /><Th id="pen" label="PEN" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
@@ -271,13 +271,13 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                             </td>
                                             <td><BreedBadge breed={g.breed} withName /></td>
                                             <td><SexIcon sex={g.sex} label /></td>
-                                            <td>{g.roles?.length ? <div className="flex flex-col gap-0.5">{g.roles.map((r) => <span key={r} className="whitespace-nowrap text-xs"><b className="font-mono text-cobalt-800">{r}</b> <span className="text-ink-soft">{roleNames[r] ?? ''}</span></span>)}</div> : <span className="text-ink-faint">—</span>}</td>
+                                            <td>{g.roles?.length ? <div className="flex flex-col gap-0.5">{g.roles.map((r) => <span key={r} className="text-xs leading-tight"><b className="font-mono text-cobalt-800">{r}</b> <span className="text-ink-soft">{roleNames[r] ?? ''}</span></span>)}</div> : <span className="text-ink-faint">—</span>}</td>
                                             <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} code={g.ageCode} withLabel />{g.ageExact ? g.age : !g.ageCode ? <span className="text-ink-faint">Unknown</span> : null}</span></td>
                                             <td><WeightCell g={g} /></td>
                                             <td><TempCell g={g} /></td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} /></div></td>
-                                            <td className="text-sm text-ink-soft"><span className="flex items-center gap-1.5">{g.tag ? <span className="font-mono">{g.tag}</span> : 'No tag'}{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}</span></td>
+                                            <td className="text-sm text-ink-soft">{g.tag ? <span className="font-mono text-xs" title={g.tag}>{g.tag.length > 16 ? `…${g.tag.slice(-8)}` : g.tag}</span> : <span className="text-ink-faint">No tag</span>}</td>
                                         </tr>
                                     );
                                 })}
