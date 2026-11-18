@@ -32,15 +32,56 @@ class GoatController extends Controller
     {
         $goats = Animal::with(['breed', 'pen.shed', 'latestWeight', 'photos', 'openAssignment.tag'])->orderBy('farm_number')->get();
         $tags = \App\Support\HerdStats::tagsFor($goats); // D-071: the dashboard links here with ?show=KEY
+        $vitals = self::vitals($goats); // D-340: weight gain or loss, low or high weight, temperature
 
         return Inertia::render('Goats/Index', [
-            'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]]),
+            'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]] + $vitals[$a->id]),
             'showLabels' => \App\Support\HerdStats::labels(),
             'roleNames' => collect(\App\Support\Designations::allCodes())->keys()->mapWithKeys(fn ($c) => [$c => \App\Support\Designations::labels([$c])[$c] ?? $c]), // D-252: the Role column
             'teethOptions' => \App\Support\Teeth::options(), 'teethShort' => \App\Support\Teeth::short(), 'canEdit' => request()->user()->passes('edit_goats'), 'canTag' => request()->user()->passes('assign_tags'), // D-106, D-144
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
+    }
+
+    /**
+     * D-340: for the registry. Weight change since the weighing before the last one (stock-style up or down); weight
+     * against similar goats (same breed, gender and age stage, at least 3 weighed): more than 15% under their average is
+     * Low, more than 15% over is High; the last temperature taken, in °C, against the normal range (D-098).
+     *
+     * @param  \Illuminate\Support\Collection<int, Animal>  $goats
+     * @return array<string, array<string, mixed>>
+     */
+    public static function vitals(\Illuminate\Support\Collection $goats): array
+    {
+        $weights = \App\Models\WeightRecord::orderByDesc('measured_on')->orderByDesc('id')->get(['animal_id', 'measured_on', 'weight_kg'])->groupBy('animal_id');
+        $temps = \App\Models\HealthCheckup::whereNotNull('temperature_f')->orderByDesc('checked_on')->orderByDesc('id')->get(['animal_id', 'checked_on', 'temperature_f'])->groupBy('animal_id');
+        [$lowF, $highF] = \App\Models\HealthCheckup::NORMAL['temperature_f'];
+        $c = fn (float $f): float => round(($f - 32) * 5 / 9, 1);
+
+        $group = fn (Animal $a): string => implode('|', [$a->breed_id, $a->sex, $a->ageStageCode()]);
+        $averages = $goats->filter(fn (Animal $a) => $a->status === 'active' && $a->latestWeight)->groupBy($group)
+            ->map(fn ($g) => $g->count() >= 3 ? $g->avg(fn (Animal $a) => $a->latestWeight->weight_kg) : null);
+
+        return $goats->mapWithKeys(function (Animal $a) use ($weights, $temps, $lowF, $highF, $c, $group, $averages) {
+            $w = $weights[$a->id] ?? collect();
+            [$last, $before] = [$w[0] ?? null, $w[1] ?? null];
+            $avg = $a->latestWeight ? ($averages[$group($a)] ?? null) : null;
+            $band = $avg ? ($a->latestWeight->weight_kg < $avg * 0.85 ? 'low' : ($a->latestWeight->weight_kg > $avg * 1.15 ? 'high' : 'normal')) : null;
+            $t = ($temps[$a->id] ?? collect())->first();
+            $f = $t ? (float) $t->temperature_f : null;
+
+            return [$a->id => [
+                'weightChange' => $last && $before ? round($last->weight_kg - $before->weight_kg, 1) : null,
+                'weightSince' => $before?->measured_on->format('d/m/Y'),
+                'weightOn' => $last?->measured_on->format('d/m/Y'),
+                'weightBand' => $band, 'weightAvg' => $avg ? round($avg, 1) : null,
+                'tempC' => $f !== null ? $c($f) : null,
+                'tempState' => $f === null ? null : ($f > $highF ? 'high' : ($f < $lowF ? 'low' : 'normal')),
+                'tempOn' => $t?->checked_on->format('d/m/Y'),
+                'tempRange' => $c($lowF).'–'.$c($highF).' °C',
+            ]];
+        })->all();
     }
 
     /**

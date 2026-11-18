@@ -13,8 +13,10 @@ import { AgeBadge, BreedBadge, GoatBadges } from '../../components/GoatBadges';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
-type Props = { goats: Array<GoatCard & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; roleNames?: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
-type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'pen';
+/** D-340: weight change since the weighing before, weight against similar goats, last temperature in °C. */
+type Vitals = { weightChange?: number | null; weightSince?: string | null; weightOn?: string | null; weightBand?: 'low' | 'normal' | 'high' | null; weightAvg?: number | null; tempC?: number | null; tempState?: 'low' | 'normal' | 'high' | null; tempOn?: string | null; tempRange?: string };
+type Props = { goats: Array<GoatCard & Vitals & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; roleNames?: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
+type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'temp' | 'pen';
 type Goat = Props['goats'][number];
 
 /**
@@ -36,6 +38,47 @@ const TONES = {
 type Tone = keyof typeof TONES;
 const toneOf = (g: Goat): Tone => g.status !== 'active' ? 'left' : g.health !== 'healthy' ? g.health : g.repro === 'pregnant' ? 'pregnant' : g.repro === 'lactating' ? 'lactating' : 'healthy';
 const LITE = inScannerApp();
+
+/** D-340: a high temperature turns the row red, a low one orange. */
+const TEMP_ROW = { high: 'bg-crit-100', low: 'bg-treat-100' } as const;
+const VITALS: Record<string, { label: string; test: (g: Vitals) => boolean }> = {
+    temp_high: { label: 'High temperature', test: (g) => g.tempState === 'high' },
+    temp_low: { label: 'Low temperature', test: (g) => g.tempState === 'low' },
+    weight_low: { label: 'Low weight', test: (g) => g.weightBand === 'low' },
+    weight_high: { label: 'High weight', test: (g) => g.weightBand === 'high' },
+    weight_loss: { label: 'Losing weight', test: (g) => (g.weightChange ?? 0) < 0 },
+    weight_gain: { label: 'Gaining weight', test: (g) => (g.weightChange ?? 0) > 0 },
+};
+
+/** Stock style: the weight, then ▲ gain in green or ▼ loss in red since the weighing before. */
+function WeightCell({ g }: { g: Vitals & { weight?: number | null } }) {
+    if (!g.weight) return <span className="text-ink-faint">None yet</span>;
+    const d = g.weightChange;
+    return (
+        <div className="flex flex-col gap-0.5 whitespace-nowrap">
+            <span className="flex items-center gap-1.5 font-medium tabular-nums">{g.weight} KG
+                {g.weightBand && g.weightBand !== 'normal' ? <span className={cx('rounded px-1 text-xs font-semibold', g.weightBand === 'low' ? 'bg-watch-100 text-watch-700' : 'bg-cobalt-100 text-cobalt-800')} title={`Similar goats average ${g.weightAvg} KG`}>{g.weightBand === 'low' ? 'Low' : 'High'}</span> : null}
+            </span>
+            {d != null ? (
+                <span className={cx('text-xs font-semibold tabular-nums', d > 0 ? 'text-ok-700' : d < 0 ? 'text-crit-700' : 'text-ink-soft')} title={`Since ${g.weightSince} (weighed ${g.weightOn})`}>
+                    {d > 0 ? '▲' : d < 0 ? '▼' : '■'} {d > 0 ? '+' : ''}{d} KG <span className="font-normal text-ink-faint">since {g.weightSince?.slice(0, 5)}</span>
+                </span>
+            ) : null}
+        </div>
+    );
+}
+
+function TempCell({ g }: { g: Vitals }) {
+    if (g.tempC == null) return <span className="text-ink-faint">Not taken</span>;
+    const tone = g.tempState === 'high' ? 'bg-crit-500 text-white' : g.tempState === 'low' ? 'bg-treat-400 text-white' : 'bg-ok-100 text-ok-700';
+    return (
+        <div className="flex flex-col gap-0.5 whitespace-nowrap" title={`Normal ${g.tempRange} · taken ${g.tempOn}`}>
+            <span className="flex items-center gap-1.5"><span className="font-medium tabular-nums">{g.tempC} °C</span>
+                <span className={cx('rounded px-1.5 text-xs font-semibold', tone)}>{g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : 'Normal'}</span></span>
+            <span className="text-xs text-ink-faint">{g.tempOn}</span>
+        </div>
+    );
+}
 const PAGE = 25; // D-263: rows per page (the person can choose 10–100)
 /** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
 const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
@@ -56,8 +99,9 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
     const [pen, setPen] = useState(() => params.get('pen') ?? ''); // D-120: opened from a pen on the dashboard
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [health, setHealth] = useState(() => params.get('health') ?? '');
+    const [vital, setVital] = useState(() => params.get('vital') ?? ''); // D-340
     const [status, setStatus] = useState(() => params.get('status') ?? (params.get('exit') ? 'left' : 'active'));
-    const activeFilters = [breed, sex, pen, health].filter(Boolean).length + (status !== 'active' ? 1 : 0);
+    const activeFilters = [breed, sex, pen, health, vital].filter(Boolean).length + (status !== 'active' ? 1 : 0);
     // Phones and the gun open on cards (a wide table needs sideways scrolling there); the choice is remembered.
     const [view, setViewState] = useState<'table' | 'cards'>(() => {
         try { const v = localStorage.getItem('kk.goats.view'); if (v === 'table' || v === 'cards') return v; } catch { /* storage off */ }
@@ -74,15 +118,15 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             (!q || [g.number, g.name, g.tag, g.breed, g.animalId].some((v) => v?.toLowerCase().includes(q))) &&
             (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || (health === 'unwell' ? g.health !== 'healthy' : g.health === health)) &&
             (!stage || (stage === 'none' ? !g.stageCode : g.stageCode === stage)) && (!teeth || (g.teethCode ?? 'UNK') === teeth) && (!exitReason || (g.exitReason ?? '') === exitReason) &&
-            (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone),
+            (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone) && (!vital || (VITALS[vital]?.test(g) ?? true)),
         );
-        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : (g[sort.key] ?? '') as string);
+        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'temp' ? (g as Vitals).tempC ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : (g[sort.key] ?? '') as string);
         return [...list].sort((a, b) => {
             const [x, y] = [value(a), value(b)];
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
             return sort.up ? order : -order;
         });
-    }, [goats, query, show, breed, sex, pen, health, status, sort, tone]);
+    }, [goats, query, show, breed, sex, pen, health, vital, status, sort, tone]);
     const counts = useMemo(() => goats.reduce((c, g) => { const t = toneOf(g); c[t] = (c[t] ?? 0) + 1; return c; }, {} as Partial<Record<Tone, number>>), [goats]);
     useHideAppStrip(); // D-259: these cards are the registry's numbers; the app strip is not shown as well
     // D-259: health cards split the goats on the farm (each in one); the others count every goat they fit (pregnant, lactating …)
@@ -111,7 +155,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             </button>
         </th>
     );
-    const clear = () => { setQuery(''); setShow(''); setBreed(''); setSex(''); setPen(''); setHealth(''); setStatus('active'); setTone(''); };
+    const clear = () => { setQuery(''); setShow(''); setBreed(''); setSex(''); setPen(''); setHealth(''); setVital(''); setStatus('active'); setTone(''); };
 
     return (
         <>
@@ -192,6 +236,10 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                     <select aria-label="Health" value={health} onChange={(e) => setHealth(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="">Any health</option><option value="healthy">Healthy</option><option value="watch">Watch</option><option value="treatment">In treatment</option><option value="critical">Critical</option>
                     </select>
+                    <select aria-label="Temperature and weight" value={vital} onChange={(e) => setVital(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
+                        <option value="">Any temp & weight</option>
+                        {Object.entries(VITALS).map(([k, v]) => <option key={k} value={k}>{v.label} ({goats.filter((g) => g.status === 'active' && v.test(g)).length})</option>)}
+                    </select>
                     <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="field min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:w-auto sm:flex-none sm:basis-auto">
                         <option value="active">On farm</option><option value="left">Left the farm</option><option value="all">All records</option>
                     </select>
@@ -206,13 +254,13 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                     <Empty title="No goats match these filters"><button type="button" onClick={clear} className="font-semibold text-turq-800 underline">Clear filters</button> to see the whole registry.</Empty>
                 ) : view === 'table' ? (
                     <div className="overflow-x-auto">
-                        <table className="data-table min-w-[900px]">
-                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="pen" label="PEN" /><th>Status</th><th>Current Tag</th></tr></thead>
+                        <table className="data-table min-w-[1000px]">
+                            <thead><tr><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="temp" label="Temp" /><Th id="pen" label="PEN" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
                                     return (
-                                        <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors hover:bg-glaze', TONES[t].row)}>
+                                        <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors hover:bg-glaze', g.tempState === 'high' || g.tempState === 'low' ? TEMP_ROW[g.tempState] : TONES[t].row)}>
                                             <td className="relative">
                                                 <span aria-hidden className={cx('absolute inset-y-1.5 left-0 w-1 rounded-r-full', TONES[t].bar)} />
                                                 <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
@@ -221,7 +269,8 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                             <td><SexIcon sex={g.sex} label /></td>
                                             <td>{g.roles?.length ? <div className="flex flex-col gap-0.5">{g.roles.map((r) => <span key={r} className="whitespace-nowrap text-xs"><b className="font-mono text-cobalt-800">{r}</b> <span className="text-ink-soft">{roleNames[r] ?? ''}</span></span>)}</div> : <span className="text-ink-faint">—</span>}</td>
                                             <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} code={g.ageCode} withLabel />{g.ageExact ? g.age : !g.ageCode ? <span className="text-ink-faint">Unknown</span> : null}</span></td>
-                                            <td className="whitespace-nowrap">{g.weight ? `${g.weight} KG` : <span className="text-ink-faint">None yet</span>}</td>
+                                            <td><WeightCell g={g} /></td>
+                                            <td><TempCell g={g} /></td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} /></div></td>
                                             <td className="text-sm text-ink-soft"><span className="flex items-center gap-1.5">{g.tag ? <span className="font-mono">{g.tag}</span> : 'No tag'}{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}</span></td>
@@ -237,13 +286,15 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                             const t = toneOf(g);
                             return (
                                 <Link key={g.id} href={`/goats/${g.id}`} style={rise(i)}
-                                    className={cx('kk-rise kk-lift relative flex items-center gap-3 overflow-hidden rounded-tile border border-rule bg-tile py-2 pr-2.5 pl-3.5', TONES[t].row)}>
+                                    className={cx('kk-rise kk-lift relative flex items-center gap-3 overflow-hidden rounded-tile border border-rule bg-tile py-2 pr-2.5 pl-3.5', g.tempState === 'high' || g.tempState === 'low' ? TEMP_ROW[g.tempState] : TONES[t].row)}>
                                     <span aria-hidden className={cx('absolute inset-y-0 left-0 w-1.5', TONES[t].bar)} />
                                     {g.photo ? <img src={`/media/${g.photo}`} alt="" loading="lazy" className="size-14 shrink-0 rounded-tile object-cover" /> : <GoatPortrait number={g.number} sex={g.sex} stage={g.stage} repro={g.repro} size={56} />}
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5"><span className="shrink-0 font-mono font-semibold text-cobalt-900">{g.number}</span><GoatBadges breed={g.breed} stage={g.stage} code={g.ageCode} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}<SexIcon sex={g.sex} />{t === 'critical' ? <span className="kk-beat size-2 shrink-0 rounded-full bg-crit-500" /> : null}</div>
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
-                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.ageCode ? `${g.ageCode}${g.ageExact && g.age ? ` · ${g.age}` : ''}` : g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)}` : 'age unknown'}{g.roles?.length ? ` · ${g.roles.join(' ')}` : ''}{g.weight ? ` · ${g.weight} KG` : ''}</div>
+                                        <div className="truncate text-xs text-ink-soft">{g.breed} · {g.ageCode ? `${g.ageCode}${g.ageExact && g.age ? ` · ${g.age}` : ''}` : g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)}` : 'age unknown'}{g.roles?.length ? ` · ${g.roles.join(' ')}` : ''}{g.weight ? ` · ${g.weight} KG` : ''}
+                                            {g.weightChange ? <b className={g.weightChange > 0 ? 'text-ok-700' : 'text-crit-700'}> {g.weightChange > 0 ? '▲ +' : '▼ '}{g.weightChange}</b> : null}
+                                            {g.tempC != null ? <b className={g.tempState === 'high' ? 'text-crit-700' : g.tempState === 'low' ? 'text-treat-700' : 'text-ok-700'}> · {g.tempC} °C</b> : null}</div>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} />{g.pen ? <span className="font-mono text-xs text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>
