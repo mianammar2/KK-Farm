@@ -154,14 +154,13 @@ export default function GoatShow(props: Props) {
                         {/* Phones: the everyday actions as one tidy grid of icons; rarer ones as links below it. */}
                         {onFarm || (!removed && can.edit) ? (
                             <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
+                                {onFarm && auth?.gates.includes('health_checkup') ? <ActionTile icon={<Thermometer size={20} aria-hidden />} label="Regular checkup" active={panel === 'temp'} onClick={() => setPanel(panel === 'temp' ? null : 'temp')} /> : null}
                                 {onFarm && scanMating ? <ActionTile icon={<LibIcon name="app-reports" size={26} />} label="Ultrasound" onClick={() => setScan(true)} /> : null}
                                 {onFarm && pregnancy && can.breeding ? <ActionTile icon={<LibIcon name="ic-pregnant" size={26} />} label="Pregnancy" primary onClick={() => setOutcome(true)} /> : null}
                                 {onFarm && healthEntry?.canCheck ? <ActionTile icon={<LibIcon name="app-veterinary" size={26} />} label="Checkup" primary onClick={() => setEntry('checkup')} /> : null}
                                 {onFarm && healthEntry?.canEntry ? <ActionTile icon={<LibIcon name="ic-under-treatment" size={26} />} label="Health Entry" onClick={() => setEntry('')} /> : null}
                                 {onFarm && auth?.gates.includes('record_weights') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
-                                {onFarm && auth?.gates.includes('record_height') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Height" active={panel === 'height'} onClick={() => setPanel(panel === 'height' ? null : 'height')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
-                                {onFarm && auth?.gates.includes('health_checkup') ? <ActionTile icon={<Thermometer size={20} aria-hidden />} label="Regular checkup" active={panel === 'temp'} onClick={() => setPanel(panel === 'temp' ? null : 'temp')} /> : null}
                                 {onFarm && auth?.gates.includes('move_goats') ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
                                 {!removed && can.edit ? <ActionTile icon={<LibIcon name="app-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
                             </div>
@@ -176,13 +175,12 @@ export default function GoatShow(props: Props) {
                         {onFarm || (!removed && can.edit) ? (
                             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-rule pt-3 max-sm:hidden" role="toolbar" aria-label="Actions">
                                 {onFarm ? <>
+                                    {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Regular checkup</Button> : null}
                                     {scanMating ? <Button variant="secondary" onClick={() => setScan(true)}><LibIcon name="app-reports" size={18} /> Ultrasound</Button> : null}
                                     {pregnancy && can.breeding ? <Button onClick={() => setOutcome(true)}><LibIcon name="ic-pregnant" size={18} /> Pregnancy Outcome</Button> : null}
                                     {healthEntry?.canCheck ? <Button onClick={() => setEntry('checkup')}><LibIcon name="app-veterinary" size={18} /> Health checkup</Button> : null}
                                     {healthEntry?.canEntry ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
                                     {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
-                                    {auth?.gates.includes('record_height') ? <Button variant="secondary" onClick={() => setPanel(panel === 'height' ? null : 'height')}><LibIcon name="app-growth" size={18} /> Add height</Button> : null}
-                                    {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Regular checkup</Button> : null}
                                     <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                     {auth?.gates.includes('move_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button> : null}
                                 </> : null}
