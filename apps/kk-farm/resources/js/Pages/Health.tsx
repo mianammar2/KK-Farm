@@ -243,8 +243,25 @@ function CaseCard({ c, isVet, statuses, routes, medicines, suggest }: { c: Case;
                             <Button variant="secondary" onClick={() => setMode(mode === 'status' ? 'none' : 'status')}>Update case</Button>
                         </div>
                     ) : null}
-                    {mode === 'dose' ? <DoseForm c={c} routes={routes} medicines={medicines} suggest={suggest} onDone={() => setMode('none')} /> : null}
-                    {mode === 'status' ? <StatusForm c={c} statuses={statuses} onDone={() => setMode('none')} /> : null}
+                    {/* D-349: the treatment and the case update open as centred pop cards, not inside the list */}
+                    {mode === 'dose' ? (
+                        <Sheet onClose={() => setMode('none')}>
+                            <div className="p-4 sm:p-5">
+                                <h2 className="text-lg font-bold text-cobalt-900">Add treatment · {c.number} · {c.label}</h2>
+                                <p className="mb-3 text-sm text-ink-soft">{c.condition}</p>
+                                <DoseForm c={c} routes={routes} medicines={medicines} suggest={suggest} onDone={() => setMode('none')} />
+                            </div>
+                        </Sheet>
+                    ) : null}
+                    {mode === 'status' ? (
+                        <Sheet onClose={() => setMode('none')}>
+                            <div className="p-4 sm:p-5">
+                                <h2 className="text-lg font-bold text-cobalt-900">Update case · {c.number} · {c.label}</h2>
+                                <p className="mb-3 text-sm text-ink-soft">{c.condition}</p>
+                                <StatusForm c={c} statuses={statuses} onDone={() => setMode('none')} />
+                            </div>
+                        </Sheet>
+                    ) : null}
                 </div>
             ) : null}
         </section>
