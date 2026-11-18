@@ -41,7 +41,14 @@ class GoatController extends Controller
      */
     public function vetGoats(): Response
     {
-        return $this->registry(true);
+        $goats = Animal::with(['breed', 'pen.shed', 'latestWeight', 'photos'])->where('status', 'active')->orderBy('farm_number')->get();
+        $vitals = self::vitals($goats);
+        $issues = self::issues($goats, $vitals);
+
+        return Inertia::render('Health/VetGoats', [
+            'goats' => $goats->map(fn (Animal $a) => $a->card() + $vitals[$a->id] + ['issues' => $issues[$a->id] ?? []])->values(),
+            'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => $p->fullName())->sort()->values(),
+        ]);
     }
 
     private function registry(bool $vet): Response
@@ -49,11 +56,9 @@ class GoatController extends Controller
         $goats = Animal::with(['breed', 'pen.shed', 'latestWeight', 'photos', 'openAssignment.tag'])->orderBy('farm_number')->get();
         $tags = \App\Support\HerdStats::tagsFor($goats); // D-071: the dashboard links here with ?show=KEY
         $vitals = self::vitals($goats); // D-340: weight gain or loss, low or high weight, temperature
-        $issues = $vet ? self::issues($goats, $vitals) : [];
 
         return Inertia::render('Goats/Index', [
-            'vet' => $vet,
-            'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]] + $vitals[$a->id] + ($vet ? ['issues' => $issues[$a->id] ?? []] : [])),
+            'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]] + $vitals[$a->id]),
             'showLabels' => \App\Support\HerdStats::labels(),
             'roleNames' => collect(\App\Support\Designations::allCodes())->keys()->mapWithKeys(fn ($c) => [$c => \App\Support\Designations::labels([$c])[$c] ?? $c]), // D-252: the Role column
             'teethOptions' => \App\Support\Teeth::options(), 'teethShort' => \App\Support\Teeth::short(), 'canEdit' => request()->user()->passes('edit_goats'), 'canTag' => request()->user()->passes('assign_tags'), // D-106, D-144
@@ -81,32 +86,34 @@ class GoatController extends Controller
 
         return $goats->filter(fn (Animal $a) => $a->status === 'active')->mapWithKeys(function (Animal $a) use ($vitals, $cases, $reports, $doses, $sev) {
             $v = $vitals[$a->id] ?? [];
-            $out = [];
+            $out = []; // [tone, text, kind]; temperature and weight are also shown in their own columns
             if ($a->health_status === 'critical') {
-                $out[] = ['crit', 'Critical'];
+                $out[] = ['crit', 'Critical', 'critical'];
             }
             if (($v['tempState'] ?? null) === 'high') {
-                $out[] = ['crit', "High temperature {$v['tempF']} °F (".substr((string) $v['tempOn'], 0, 5).')'];
+                $out[] = ['crit', "{$v['tempF']} °F high", 'temp_high'];
             } elseif (($v['tempState'] ?? null) === 'low') {
-                $out[] = ['warn', "Low temperature {$v['tempF']} °F (".substr((string) $v['tempOn'], 0, 5).')'];
+                $out[] = ['warn', "{$v['tempF']} °F low", 'temp_low'];
             }
             foreach ($cases[$a->id] ?? [] as $c) {
-                $out[] = [$sev[$c->severity] ?? 'warn', "{$c->label()} {$c->condition} · ".\App\Models\HealthCase::STATUSES[$c->status]];
+                $out[] = [$sev[$c->severity] ?? 'warn', "{$c->label()} {$c->condition}", 'case'];
             }
             foreach ($doses[$a->id] ?? [] as $t) {
-                $out[] = [$t->next_dose_on->lt(now()->startOfDay()) ? 'crit' : 'warn', ($t->next_dose_on->lt(now()->startOfDay()) ? 'Dose overdue ' : 'Dose due ').$t->next_dose_on->format('d/m')];
+                $late = $t->next_dose_on->lt(now()->startOfDay());
+                $out[] = [$late ? 'crit' : 'warn', ($late ? 'Dose overdue ' : 'Dose due ').$t->next_dose_on->format('d/m'), 'dose'];
             }
-            if (($v['weightChange'] ?? 0) < 0) {
-                $out[] = ['warn', "Losing weight {$v['weightChange']} KG"];
+            if (($v['weightChange'] ?? 0) <= -1) { // D-348: a loss of 1 KG or more; smaller swings are weighing noise
+                $out[] = ['warn', "Lost {$v['weightChange']} KG", 'weight_loss'];
             }
             if (($v['weightBand'] ?? null) === 'low') {
-                $out[] = ['warn', 'Low weight for its group'];
+                $out[] = ['info', 'Low weight', 'weight_low'];
             }
-            foreach ($reports[$a->id] ?? [] as $r) {
-                $out[] = ['info', 'Report: '.$r->title];
+            if (($reports[$a->id] ?? collect())->isNotEmpty()) {
+                $n = count($reports[$a->id]);
+                $out[] = ['info', $n > 1 ? "{$n} open reports" : 'Open report', 'report'];
             }
-            if (in_array($a->health_status, ['watch', 'treatment'], true) && ! $out) {
-                $out[] = ['info', $a->health_status === 'watch' ? 'On Watch' : 'In treatment'];
+            if (in_array($a->health_status, ['watch', 'treatment'], true)) {
+                $out[] = ['info', $a->health_status === 'watch' ? 'On Watch' : 'In treatment', $a->health_status];
             }
 
             return [$a->id => $out];

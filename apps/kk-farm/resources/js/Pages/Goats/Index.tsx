@@ -16,9 +16,8 @@ import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, Rep
 import type { GoatCard } from '../../types';
 
 /** D-340: weight change since the weighing before, weight against similar goats, last temperature in °F. */
-type Vitals = { weightChange?: number | null; weightSince?: string | null; weightOn?: string | null; weightBand?: 'low' | 'normal' | 'high' | null; weightAvg?: number | null; tempF?: number | null; tempState?: 'low' | 'normal' | 'high' | null; tempOn?: string | null; tempChange?: number | null; tempSince?: string | null; tempRange?: string };
-type Issue = [tone: 'crit' | 'warn' | 'info', text: string]; // D-348
-type Props = { vet?: boolean; goats: Array<GoatCard & Vitals & { tags?: string[]; issues?: Issue[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; roleNames?: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
+export type Vitals = { weightChange?: number | null; weightSince?: string | null; weightOn?: string | null; weightBand?: 'low' | 'normal' | 'high' | null; weightAvg?: number | null; tempF?: number | null; tempState?: 'low' | 'normal' | 'high' | null; tempOn?: string | null; tempChange?: number | null; tempSince?: string | null; tempRange?: string };
+type Props = { goats: Array<GoatCard & Vitals & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; roleNames?: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
 type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'temp' | 'pen';
 type Goat = Props['goats'][number];
 
@@ -54,7 +53,7 @@ const VITALS: Record<string, { label: string; test: (g: Vitals) => boolean }> = 
 };
 
 /** Stock style: the weight, then ▲ gain in green or ▼ loss in red since the weighing before. */
-function WeightCell({ g }: { g: Vitals & { weight?: number | null } }) {
+export function WeightCell({ g }: { g: Vitals & { weight?: number | null } }) {
     if (!g.weight) return <span className="text-ink-faint">None yet</span>;
     const d = g.weightChange;
     return (
@@ -85,7 +84,7 @@ function tempTone(g: Vitals): string {
     return before > 103.5 || before < 101.3 ? 'text-ok-700' : 'text-ink-soft';
 }
 
-function TempCell({ g }: { g: Vitals }) {
+export function TempCell({ g }: { g: Vitals }) {
     if (g.tempF == null) return <span className="text-ink-faint">Not taken</span>;
     const tone = g.tempState === 'high' ? 'bg-crit-500 text-white' : g.tempState === 'low' ? 'bg-treat-400 text-white' : 'bg-ok-100 text-ok-700';
     return (
@@ -108,13 +107,7 @@ const PAGE = 25; // D-263: rows per page (the person can choose 10–100)
 /** Rows rise in one after another (first 12 only), on the compositor; the gun gets a single quick fade. */
 const rise = (i: number): CSSProperties => (LITE ? {} : { animationDelay: `${Math.min(i, 12) * 22}ms` });
 
-const ISSUE_TONE = { crit: 'border-crit-500 bg-crit-100 text-crit-700', warn: 'border-treat-400 bg-treat-100 text-treat-700', info: 'border-rule-strong bg-glaze text-ink-soft' } as const;
-const issueRank = (g: { issues?: Issue[] }) => (g.issues ?? []).reduce((n, [t]) => n + (t === 'crit' ? 100 : t === 'warn' ? 10 : 1), 0);
-
-export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, canTag = false, roleNames = {}, vet = false }: Props) {
-    // D-348: the Veterinary app opens on the goats that need the vet, most urgent first; one click shows all goats
-    const [needOnly, setNeedOnly] = useState(() => vet && (typeof window === 'undefined' || new URLSearchParams(window.location.search).get('all') !== '1'));
-    const needCount = vet ? goats.filter((g) => g.status === 'active' && (g.issues ?? []).length).length : 0;
+export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, canTag = false, roleNames = {} }: Props) {
     const [tagging, setTagging] = useState<Goat | null>(null); // D-144
     const [profile, setProfile] = useState<string | null>(null); // D-300: a goat's profile card, without leaving the list
     const url = usePage().url;
@@ -157,16 +150,15 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             (!q || [g.number, g.name, g.tag, g.breed, g.animalId].some((v) => v?.toLowerCase().includes(q))) &&
             (!show || (g.tags ?? []).includes(show)) && (!breed || g.breed === breed) && (!sex || g.sex === sex) && (!pen || g.pen === pen) && (!health || (health === 'unwell' ? g.health !== 'healthy' : g.health === health)) &&
             (!stage || (stage === 'none' ? !g.stageCode : g.stageCode === stage)) && (!teeth || (g.teethCode ?? 'UNK') === teeth) && (!exitReason || (g.exitReason ?? '') === exitReason) &&
-            (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone) && (!vital || (VITALS[vital]?.test(g) ?? true)) && (!needOnly || (g.issues ?? []).length > 0),
+            (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone) && (!vital || (VITALS[vital]?.test(g) ?? true)),
         );
         const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'temp' ? (g as Vitals).tempF ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : (g[sort.key] ?? '') as string);
         return [...list].sort((a, b) => {
-            if (vet && sort.key === 'number' && sort.up) { const r = issueRank(b) - issueRank(a); if (r) return r; } // most urgent first
             const [x, y] = [value(a), value(b)];
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
             return sort.up ? order : -order;
         });
-    }, [goats, query, show, breed, sex, pen, health, vital, status, sort, tone, needOnly, vet]);
+    }, [goats, query, show, breed, sex, pen, health, vital, status, sort, tone]);
     const printLabel = [query.trim() && `“${query.trim()}”`, breed, sex && (sex === 'female' ? 'Females' : 'Males'), pen, health && (health === 'treatment' ? 'In treatment' : health[0].toUpperCase() + health.slice(1)),
         vital && VITALS[vital]?.label, tone && TONES[tone as Tone]?.label, show && showLabels[show], status === 'left' ? 'Left the farm' : status === 'all' ? 'All records' : ''].filter(Boolean).join(' · ');
     // D-342: the goat page steps through this list (filters and sort as shown here) with Previous / Next
@@ -174,7 +166,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
         const parts = [query.trim() && `“${query.trim()}”`, breed, sex && (sex === 'female' ? 'Females' : 'Males'), pen, health && (health === 'treatment' ? 'In treatment' : health[0].toUpperCase() + health.slice(1)),
             vital && VITALS[vital]?.label, tone && TONES[tone as Tone]?.label, show && showLabels[show], status === 'left' ? 'Left the farm' : status === 'all' ? 'All records' : ''].filter(Boolean);
         const qs = new URLSearchParams(Object.entries({ q: query.trim(), breed, sex, pen, health, vital, tone, show, status: status === 'active' ? '' : status, sort: sort.key === 'number' ? '' : sort.key, dir: sort.up ? '' : 'desc' }).filter(([, v]) => v) as string[][]).toString();
-        saveGoatWalk({ ids: rows.map((g) => g.id), numbers: rows.map((g) => g.number), label: parts.join(' · '), back: `${vet ? '/health/goats' : '/goats'}${qs ? `?${qs}` : ''}` });
+        saveGoatWalk({ ids: rows.map((g) => g.id), numbers: rows.map((g) => g.number), label: parts.join(' · '), back: `/goats${qs ? `?${qs}` : ''}` });
     }, [rows, query, breed, sex, pen, health, vital, tone, show, status, showLabels, sort]);
     const counts = useMemo(() => goats.reduce((c, g) => { const t = toneOf(g); c[t] = (c[t] ?? 0) + 1; return c; }, {} as Partial<Record<Tone, number>>), [goats]);
     useHideAppStrip(); // D-259: these cards are the registry's numbers; the app strip is not shown as well
@@ -209,16 +201,9 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
 
     return (
         <>
-            <Head title={vet ? 'Goats to Check' : 'Goat Registry'} />
-            {vet ? (
-                <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Which goats">
-                    <button type="button" aria-pressed={needOnly} onClick={() => setNeedOnly(true)} className={cx('min-h-11 rounded-tile border px-4 text-sm font-semibold', needOnly ? 'border-crit-500 bg-crit-500 text-white' : 'border-rule-strong bg-tile text-cobalt-900')}>Needs attention ({needCount})</button>
-                    <button type="button" aria-pressed={!needOnly} onClick={() => setNeedOnly(false)} className={cx('min-h-11 rounded-tile border px-4 text-sm font-semibold', !needOnly ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule-strong bg-tile text-cobalt-900')}>All goats ({goats.filter((g) => g.status === 'active').length})</button>
-                    <span className="text-sm text-ink-soft">High or low temperature, losing or low weight, an open case or report, a dose due, Watch or worse.</span>
-                </div>
-            ) : null}
+            <Head title="Goat Registry" />
             <PageHeader
-                title={vet ? 'Goats to Check' : 'Goat Registry'}
+                title="Goat Registry"
                 description={status === 'active' // D-268: the total is the goats on the farm now; dead, sold or gone are counted only under Left the farm
                     ? `${rows.length === onFarm.length ? `${onFarm.length} goats on the farm` : `${rows.length} of ${onFarm.length} goats on the farm shown`}.`
                     : `${rows.length} goats shown, including ${goats.length - onFarm.length} that left the farm (they stay on record).`}
@@ -316,7 +301,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                 ) : view === 'table' ? (
                     <div className="overflow-x-auto">
                         <table className="data-table min-w-[940px] [&_td]:px-2.5 [&_td]:py-2 [&_th]:px-2.5">
-                            <thead><tr><th className="w-10 text-right">#</th><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th>{vet ? null : <th>Role</th>}<Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="temp" label="Temp" /><Th id="pen" label="PEN" /><th>Status</th>{vet ? <th>Needs attention</th> : <th>Current Tag</th>}</tr></thead>
+                            <thead><tr><th className="w-10 text-right">#</th><Th id="name" label="Goat" /><Th id="breed" label="Breed" /><th>Gender</th><th>Role</th><Th id="age" label="Age" /><Th id="weight" label="Weight" /><Th id="temp" label="Temp" /><Th id="pen" label="PEN" /><th>Status</th><th>Current Tag</th></tr></thead>
                             <tbody>
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
@@ -329,14 +314,13 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                             </td>
                                             <td><BreedBadge breed={g.breed} withName /></td>
                                             <td><SexIcon sex={g.sex} label /></td>
-                                            {vet ? null : <td>{g.roles?.length ? <div className="flex flex-col gap-0.5">{g.roles.map((r) => <span key={r} className="text-xs leading-tight"><b className="font-mono text-cobalt-800">{r}</b> <span className="text-ink-soft">{roleNames[r] ?? ''}</span></span>)}</div> : <span className="text-ink-faint">—</span>}</td>}
+                                            <td>{g.roles?.length ? <div className="flex flex-col gap-0.5">{g.roles.map((r) => <span key={r} className="text-xs leading-tight"><b className="font-mono text-cobalt-800">{r}</b> <span className="text-ink-soft">{roleNames[r] ?? ''}</span></span>)}</div> : <span className="text-ink-faint">—</span>}</td>
                                             <td className="whitespace-nowrap"><span className="inline-flex items-center gap-1.5"><AgeBadge stage={g.stage} code={g.ageCode} withLabel />{g.ageExact ? g.age : !g.ageCode ? <span className="text-ink-faint">Unknown</span> : null}</span></td>
                                             <td><WeightCell g={g} /></td>
                                             <td><TempCell g={g} /></td>
                                             <td className="font-mono text-sm">{g.pen ?? '—'}</td>
                                             <td><div className="flex flex-wrap gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-sm text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} /></div></td>
-                                            {vet ? <td><div className="flex max-w-80 flex-wrap gap-1">{(g.issues ?? []).map(([tone, text], k) => <span key={k} className={cx('rounded border px-1.5 py-0.5 text-xs font-semibold leading-tight', ISSUE_TONE[tone])}>{text}</span>)}{!(g.issues ?? []).length ? <span className="text-sm text-ink-faint">Nothing to check</span> : null}</div></td> : null}
-                                            {vet ? null : <td className="text-sm text-ink-soft">{g.tag ? <span className="font-mono text-xs" title={g.tag}>{g.tag.length > 16 ? `…${g.tag.slice(-8)}` : g.tag}</span> : <span className="text-ink-faint">No tag</span>}</td>}
+                                            <td className="text-sm text-ink-soft">{g.tag ? <span className="font-mono text-xs" title={g.tag}>{g.tag.length > 16 ? `…${g.tag.slice(-8)}` : g.tag}</span> : <span className="text-ink-faint">No tag</span>}</td>
                                         </tr>
                                     );
                                 })}
