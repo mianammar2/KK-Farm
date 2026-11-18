@@ -189,7 +189,7 @@ final class Checkups
                 $data['outcome'] = 'monitor';
             }
             $checkup = HealthCheckup::create([
-                'animal_id' => $goat->id, 'checked_on' => $on, 'temperature_f' => $data['temperature_f'] ?? null, 'body_score' => $data['body_score'] ?? null, 'weight_kg' => $data['weight_kg'] ?? null,
+                'animal_id' => $goat->id, 'checked_on' => $on, 'checked_time' => $data['checked_time'] ?? null, 'temperature_f' => $data['temperature_f'] ?? null, 'body_score' => $data['body_score'] ?? null, 'weight_kg' => $data['weight_kg'] ?? null,
                 'ultrasound' => $goat->sex === 'female' ? ($data['ultrasound'] ?? null) : null, 'fetuses' => $data['fetuses'] ?? null,
                 'ultrasound_status' => $goat->sex === 'female' ? ($data['ultrasound_status'] ?? null) : null, 'viability' => $data['viability'] ?? null,
                 'days_pregnant' => $data['days_pregnant'] ?? null, 'findings' => $data['findings'] ?? null, 'outcome' => $data['outcome'], 'examiner' => $by->name,
@@ -197,7 +197,7 @@ final class Checkups
             $parts = [];
 
             if (! empty($data['weight_kg'])) {
-                WeightRecord::create(['animal_id' => $goat->id, 'measured_on' => $on, 'weight_kg' => $data['weight_kg'], 'body_score' => $data['body_score'] ?? null, 'context' => 'checkup', 'measured_by' => $by->name]);
+                WeightRecord::create(['animal_id' => $goat->id, 'measured_on' => $on, 'measured_time' => $data['checked_time'] ?? null, 'weight_kg' => $data['weight_kg'], 'body_score' => $data['body_score'] ?? null, 'context' => 'checkup', 'measured_by' => $by->name]);
                 $parts[] = "{$data['weight_kg']} KG";
             }
             if ($checkup->ultrasound) {
@@ -234,7 +234,8 @@ final class Checkups
             $readings = array_filter([
                 $checkup->temperature_f !== null ? "{$checkup->temperature_f} °F" : null, $checkup->body_score ? "body {$checkup->body_score}/5" : null,
             ]);
-            Farm::event($goat, 'health', 'Health checkup: '.HealthCheckup::OUTCOMES[$checkup->outcome].(($readings || $parts) ? ' · '.implode(' · ', [...$readings, ...$parts]) : ''), $by->name, Carbon::parse($on));
+            $taken = ! empty($data['checked_time']) ? ' · taken at '.Carbon::parse($data['checked_time'])->format('g:i A') : ''; // D-344: the time of the checkup, not of the typing
+            Farm::event($goat, 'health', 'Health checkup: '.HealthCheckup::OUTCOMES[$checkup->outcome].(($readings || $parts) ? ' · '.implode(' · ', [...$readings, ...$parts]) : '').$taken, $by->name, Carbon::parse($on));
 
             return $checkup;
         });

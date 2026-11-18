@@ -161,7 +161,7 @@ export default function GoatShow(props: Props) {
                                 {onFarm && auth?.gates.includes('record_weights') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Weight" active={panel === 'weight'} onClick={() => setPanel(panel === 'weight' ? null : 'weight')} /> : null}
                                 {onFarm && auth?.gates.includes('record_height') ? <ActionTile icon={<LibIcon name="app-growth" size={26} />} label="Height" active={panel === 'height'} onClick={() => setPanel(panel === 'height' ? null : 'height')} /> : null}
                                 {onFarm ? <ActionTile icon={<Camera size={20} />} label="Photo" active={panel === 'photo'} onClick={() => setPanel(panel === 'photo' ? null : 'photo')} /> : null}
-                                {onFarm && auth?.gates.includes('health_checkup') ? <ActionTile icon={<Thermometer size={20} aria-hidden />} label="Temp check" active={panel === 'temp'} onClick={() => setPanel(panel === 'temp' ? null : 'temp')} /> : null}
+                                {onFarm && auth?.gates.includes('health_checkup') ? <ActionTile icon={<Thermometer size={20} aria-hidden />} label="Regular checkup" active={panel === 'temp'} onClick={() => setPanel(panel === 'temp' ? null : 'temp')} /> : null}
                                 {onFarm && auth?.gates.includes('move_goats') ? <ActionTile icon={<LibIcon name="ic-transferred" size={26} />} label="Move" active={panel === 'move'} onClick={() => setPanel(panel === 'move' ? null : 'move')} /> : null}
                                 {!removed && can.edit ? <ActionTile icon={<LibIcon name="app-settings" size={26} />} label="Edit" onClick={() => router.visit(`/goats/${goat.id}/edit`)} /> : null}
                             </div>
@@ -182,7 +182,7 @@ export default function GoatShow(props: Props) {
                                     {healthEntry?.canEntry ? <Button variant="secondary" onClick={() => setEntry('')}><LibIcon name="ic-under-treatment" size={18} /> New health entry</Button> : null}
                                     {auth?.gates.includes('record_weights') ? <Button variant="secondary" onClick={() => setPanel(panel === 'weight' ? null : 'weight')}><LibIcon name="app-growth" size={18} /> Add weight</Button> : null}
                                     {auth?.gates.includes('record_height') ? <Button variant="secondary" onClick={() => setPanel(panel === 'height' ? null : 'height')}><LibIcon name="app-growth" size={18} /> Add height</Button> : null}
-                                    {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Temp check</Button> : null}
+                                    {auth?.gates.includes('health_checkup') ? <Button variant="secondary" onClick={() => setPanel(panel === 'temp' ? null : 'temp')}><Thermometer size={16} aria-hidden /> Regular checkup</Button> : null}
                                     <Button variant="secondary" onClick={() => setPanel(panel === 'photo' ? null : 'photo')}><Camera size={16} aria-hidden /> Add photo</Button>
                                     {auth?.gates.includes('move_goats') ? <Button variant="secondary" onClick={() => setPanel(panel === 'move' ? null : 'move')}><LibIcon name="ic-transferred" size={18} /> Move</Button> : null}
                                 </> : null}
@@ -209,7 +209,8 @@ export default function GoatShow(props: Props) {
                         <Button onClick={() => setPanel('weight')}><LibIcon name="app-growth" size={18} /> Enter birth weight</Button>
                     </div>
                 ) : null}
-                {panel ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} conditions={healthEntry?.conditions ?? []} /></div> : null}
+                {panel === 'temp' ? <Sheet onClose={() => setPanel(null)}><RegularCheckup goat={goat} canHeight={auth?.gates.includes('record_height') ?? false} onDone={() => setPanel(null)} /></Sheet> : null}
+                {panel && panel !== 'temp' ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} conditions={healthEntry?.conditions ?? []} /></div> : null}
                 {death?.report && death.report.status !== 'approved' ? <DeathBanner r={death.report} canDecide={!!auth?.gates.includes('approve_death')} /> : null}
             </section>
 
@@ -954,5 +955,49 @@ function DayDetail({ goatId, on }: { goatId: string; on: string }) {
                 {![d.weights, d.heights, d.checkups, d.care, d.treatments, d.teeth, d.moves].some((x) => x.length) ? <p className="mt-4 text-sm text-ink-soft">Nothing else recorded on this day.</p> : null}
             </>}
         </div>
+    );
+}
+
+/**
+ * D-344: Regular checkup, in a pop card. The date, the time it was taken (optional: when the goat was checked, not when
+ * this is typed), then temperature, weight and height, each optional but at least one. The result follows the
+ * temperature (outside normal: Watch); the vet can change it.
+ */
+function RegularCheckup({ goat, canHeight, onDone }: { goat: { id: string; number: string }; canHeight: boolean; onDone: () => void }) {
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const f = useForm({ checked_on: today, checked_time: '', temperature_f: '', weight_kg: '', height_in: '', outcome: 'healthy' });
+    const t = Number(f.data.temperature_f);
+    const hasTemp = f.data.temperature_f !== '';
+    const state = !hasTemp ? null : t > 103.5 ? 'high' : t < 101.3 ? 'low' : 'normal';
+    const num = (v: string) => v.replace(/[^0-9.]/g, '');
+    const setTemp = (v: string) => { const n = Number(v); f.setData({ ...f.data, temperature_f: v, outcome: v !== '' && (n < 101.3 || n > 103.5) ? 'monitor' : f.data.outcome === 'monitor' ? 'healthy' : f.data.outcome }); };
+    const empty = !hasTemp && f.data.weight_kg === '' && f.data.height_in === '';
+    const errors = f.errors as Record<string, string | undefined>;
+
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); f.post(`/goats/${goat.id}/regular-checkup`, { preserveScroll: true, onSuccess: onDone }); }} className="p-4 sm:p-5">
+            <h2 className="text-lg font-bold text-cobalt-900">Regular checkup · {goat.number}</h2>
+            <p className="mb-4 text-sm text-ink-soft">Fill in what was taken. Temperature, weight and height are each optional, but at least one is needed.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Date" error={errors.checked_on}><input type="date" className="field" max={today} required value={f.data.checked_on} onChange={(e) => f.setData('checked_on', e.target.value)} /></Field>
+                <Field label="Time of the checkup (optional)" error={errors.checked_time}><input type="time" className="field" value={f.data.checked_time} onChange={(e) => f.setData('checked_time', e.target.value)} /></Field>
+                <Field label="Temperature (°F)" error={errors.temperature_f}>
+                    <div className="flex items-center gap-2">
+                        <input inputMode="decimal" autoFocus className="field" placeholder="Normal 101.3–103.5" value={f.data.temperature_f} onChange={(e) => setTemp(num(e.target.value))} />
+                        {state ? <span className={cx('shrink-0 rounded px-2 py-1 text-xs font-semibold', state === 'high' ? 'bg-crit-500 text-white' : state === 'low' ? 'bg-treat-400 text-white' : 'bg-ok-100 text-ok-700')}>{state === 'high' ? 'High' : state === 'low' ? 'Low' : 'Normal'}</span> : null}
+                    </div>
+                </Field>
+                <Field label="Weight (KG)" error={errors.weight_kg}><input inputMode="decimal" className="field" placeholder="e.g. 32.5" value={f.data.weight_kg} onChange={(e) => f.setData('weight_kg', num(e.target.value))} /></Field>
+                {canHeight ? <Field label="Height (inches, withers)" error={errors.height_in}><input inputMode="decimal" className="field" placeholder="e.g. 24" value={f.data.height_in} onChange={(e) => f.setData('height_in', num(e.target.value))} /></Field> : null}
+                {hasTemp || f.data.weight_kg !== '' ? (
+                    <Field label="Result" error={errors.outcome}><select className="field" value={f.data.outcome} onChange={(e) => f.setData('outcome', e.target.value)}><option value="healthy">Healthy</option><option value="monitor">Watch</option><option value="sick">Sick</option></select></Field>
+                ) : null}
+            </div>
+            {state && state !== 'normal' ? <p className="mt-3 text-sm font-semibold text-crit-700">{state === 'high' ? 'High' : 'Low'} temperature: the goat goes on Watch and the vet is alerted.</p> : null}
+            <div className="mt-4 flex gap-2">
+                <Button type="submit" disabled={f.processing || empty}>Save checkup</Button>
+                <Button variant="quiet" onClick={onDone}>Cancel</Button>
+            </div>
+        </form>
     );
 }

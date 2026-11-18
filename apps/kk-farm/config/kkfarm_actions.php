@@ -128,6 +128,7 @@ return [
     'POST /reports/operations/correct' => ['inline' => 'the action checks the app, who recorded it and correct_health_records', 'open' => 'every app\'s log: the action checks the operation\'s app itself'], // D-313
     'POST /heights/{record}' => ['inline' => 'the action checks record_height and who measured', 'module' => 'goats'], // D-311
     'POST /goats/{animal}/height' => ['inline' => 'the action checks record_height', 'module' => 'goats'],
+    'POST /goats/{animal}/regular-checkup' => ['inline' => 'the action checks health_checkup (and record_height for a height)', 'module' => 'goats'], // D-344
     'POST /goats/{animal}/photos' => ['gate' => 'add_goat_photos', 'module' => 'goats'],
     'POST /goats/{animal}/photos/{photo}/profile' => ['gate' => 'add_goat_photos', 'module' => 'goats'],
     'POST /goats/{animal}/removal' => ['inline' => 'the action checks edit_goats, remove_goats', 'module' => 'goats'],

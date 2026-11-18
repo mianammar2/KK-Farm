@@ -825,6 +825,56 @@ class GoatController extends Controller
         return back()->with('success', "Height {$data['height_in']} in saved for {$animal->farm_number}.");
     }
 
+    /**
+     * D-344: Regular checkup from the goat page: date, the time it was taken (optional), then temperature, weight and
+     * height, each optional but at least one. Temperature and weight are a health checkup (the same rules: out-of-range
+     * readings and weight drops put the goat on Watch and alert the vet); height is a height record. One log line holds it all.
+     */
+    public function regularCheckup(Request $request, Animal $animal): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user->passes('health_checkup'), 403);
+        abort_unless($animal->status === 'active', 422);
+        $data = $request->validate([
+            'checked_on' => ['required', 'date', 'before_or_equal:today'], 'checked_time' => ['nullable', 'date_format:H:i'],
+            'temperature_f' => ['nullable', 'numeric', 'between:93,110'], 'weight_kg' => ['nullable', 'numeric', 'between:0.5,150'], 'height_in' => ['nullable', 'numeric', 'between:4,60'],
+            'outcome' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\HealthCheckup::OUTCOMES))],
+        ], [], ['temperature_f' => 'temperature', 'weight_kg' => 'weight', 'height_in' => 'height']);
+        if (($data['temperature_f'] ?? null) === null && ($data['weight_kg'] ?? null) === null && ($data['height_in'] ?? null) === null) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['temperature_f' => 'Enter the temperature, the weight or the height (at least one).']);
+        }
+        if (($data['height_in'] ?? null) !== null && ! $user->passes('record_height')) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['height_in' => 'Your role cannot record a height.']);
+        }
+        $time = $data['checked_time'] ?? null;
+        $at = \Illuminate\Support\Carbon::parse($data['checked_on'].($time ? " {$time}" : ''), 'Asia/Karachi');
+        $parts = [];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($animal, $data, $user, $time, $at, &$parts) {
+            if (($data['temperature_f'] ?? null) !== null || ($data['weight_kg'] ?? null) !== null) {
+                $c = \App\Support\Checkups::record($animal, ['checked_on' => $data['checked_on'], 'checked_time' => $time, 'temperature_f' => $data['temperature_f'] ?? null, 'weight_kg' => $data['weight_kg'] ?? null, 'outcome' => $data['outcome']], $user);
+                if ($c->temperature_f !== null) {
+                    [$lo, $hi] = \App\Models\HealthCheckup::NORMAL['temperature_f'];
+                    $parts[] = "{$c->temperature_f} °F (".($c->temperature_f > $hi ? 'high' : ($c->temperature_f < $lo ? 'low' : 'normal')).')';
+                }
+                if ($c->weight_kg !== null) {
+                    $parts[] = "{$c->weight_kg} KG";
+                }
+                $parts[] = 'result '.strtolower(\App\Models\HealthCheckup::OUTCOMES[$c->fresh()->outcome] ?? $c->outcome);
+            }
+            if (($data['height_in'] ?? null) !== null) {
+                \App\Models\HeightRecord::create(['animal_id' => $animal->id, 'measured_on' => $data['checked_on'], 'measured_time' => $time, 'height_cm' => round((float) $data['height_in'] * 2.54, 1), 'measured_by' => $user->name]);
+                $animal->update(['height_cm' => \App\Models\HeightRecord::where('animal_id', $animal->id)->orderByDesc('measured_on')->orderByDesc('id')->value('height_cm')]);
+                Farm::event($animal, 'weight', "Height {$data['height_in']} in measured".($time ? ' · taken at '.$at->format('g:i A') : ''), $user->name, \Illuminate\Support\Carbon::parse($data['checked_on']));
+                $parts[] = "{$data['height_in']} in";
+            }
+        });
+        $when = $at->format('d/m/Y').($time ? ' at '.$at->format('g:i A') : '');
+        Farm::log($user, "Regular checkup of {$animal->farm_number} on {$when}: ".implode(', ', $parts), "/goats/{$animal->id}");
+
+        return back()->with('success', "Regular checkup saved for {$animal->farm_number}: ".implode(', ', $parts).'.');
+    }
+
     /** D-311: correct a height: the person who measured, or the administrator. The old values stay as a revision; the goat's height follows its latest record. */
     public function correctHeight(Request $request, \App\Models\HeightRecord $record): RedirectResponse
     {
