@@ -14,7 +14,7 @@ use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** D-340: the registry shows weight gain or loss, low or high weight against similar goats, and the last temperature in °C. */
+/** D-340: the registry shows weight gain or loss, low or high weight against similar goats, and the last temperature in °F. */
 class GoatVitalsTest extends TestCase
 {
     use RefreshDatabase;
@@ -37,10 +37,10 @@ class GoatVitalsTest extends TestCase
         $ceo = User::create(['name' => 'Boss', 'email' => 'b@vitals.test', 'password' => 'x', 'role' => 'ceo', 'org_id' => $org->id, 'active' => true]);
 
         $this->actingAs($ceo)->get('/goats')->assertInertia(fn ($p) => $p->component('Goats/Index')
-            ->where('goats.0.number', 'MC-1')->where('goats.0.weightChange', 2.5)->where('goats.0.tempC', 39)->where('goats.0.tempState', 'normal')
-            ->where('goats.1.weightChange', -1.2)->where('goats.1.tempC', 40.6)->where('goats.1.tempState', 'high')
-            ->where('goats.2.weightChange', null)->where('goats.2.tempC', null)
-            ->where('goats.3.weightBand', 'low')->where('goats.3.tempState', 'low')->where('goats.3.tempC', 37.8)
-            ->where('goats.0.tempRange', '38.5–39.7 °C'));
+            ->where('goats.0.number', 'MC-1')->where('goats.0.weightChange', 2.5)->where('goats.0.tempF', 102.2)->where('goats.0.tempState', 'normal')
+            ->where('goats.1.weightChange', -1.2)->where('goats.1.tempF', 105)->where('goats.1.tempState', 'high')
+            ->where('goats.2.weightChange', null)->where('goats.2.tempF', null)
+            ->where('goats.3.weightBand', 'low')->where('goats.3.tempState', 'low')->where('goats.3.tempF', 100)
+            ->where('goats.0.tempRange', '101.3–103.5 °F'));
     }
 }

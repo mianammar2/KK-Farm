@@ -13,8 +13,8 @@ import { AgeBadge, BreedBadge, GoatBadges } from '../../components/GoatBadges';
 import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, ReproChip, SexIcon } from '../../components/ui';
 import type { GoatCard } from '../../types';
 
-/** D-340: weight change since the weighing before, weight against similar goats, last temperature in °C. */
-type Vitals = { weightChange?: number | null; weightSince?: string | null; weightOn?: string | null; weightBand?: 'low' | 'normal' | 'high' | null; weightAvg?: number | null; tempC?: number | null; tempState?: 'low' | 'normal' | 'high' | null; tempOn?: string | null; tempRange?: string };
+/** D-340: weight change since the weighing before, weight against similar goats, last temperature in °F. */
+type Vitals = { weightChange?: number | null; weightSince?: string | null; weightOn?: string | null; weightBand?: 'low' | 'normal' | 'high' | null; weightAvg?: number | null; tempF?: number | null; tempState?: 'low' | 'normal' | 'high' | null; tempOn?: string | null; tempRange?: string };
 type Props = { goats: Array<GoatCard & Vitals & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; roleNames?: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
 type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'temp' | 'pen';
 type Goat = Props['goats'][number];
@@ -69,11 +69,11 @@ function WeightCell({ g }: { g: Vitals & { weight?: number | null } }) {
 }
 
 function TempCell({ g }: { g: Vitals }) {
-    if (g.tempC == null) return <span className="text-ink-faint">Not taken</span>;
+    if (g.tempF == null) return <span className="text-ink-faint">Not taken</span>;
     const tone = g.tempState === 'high' ? 'bg-crit-500 text-white' : g.tempState === 'low' ? 'bg-treat-400 text-white' : 'bg-ok-100 text-ok-700';
     return (
         <div className="flex flex-col gap-0.5 whitespace-nowrap" title={`Normal ${g.tempRange} · taken ${g.tempOn}`}>
-            <span className="flex items-center gap-1.5"><span className="font-medium tabular-nums">{g.tempC} °C</span>
+            <span className="flex items-center gap-1.5"><span className="font-medium tabular-nums">{g.tempF} °F</span>
                 <span className={cx('rounded px-1.5 text-xs font-semibold', tone)}>{g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : 'Normal'}</span></span>
             <span className="text-xs text-ink-faint">{g.tempOn}</span>
         </div>
@@ -120,7 +120,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
             (!stage || (stage === 'none' ? !g.stageCode : g.stageCode === stage)) && (!teeth || (g.teethCode ?? 'UNK') === teeth) && (!exitReason || (g.exitReason ?? '') === exitReason) &&
             (status === 'all' || (status === 'active' ? g.status === 'active' : g.status !== 'active')) && (!tone || toneOf(g) === tone) && (!vital || (VITALS[vital]?.test(g) ?? true)),
         );
-        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'temp' ? (g as Vitals).tempC ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : (g[sort.key] ?? '') as string);
+        const value = (g: GoatCard): string | number => (sort.key === 'weight' ? g.weight ?? 0 : sort.key === 'temp' ? (g as Vitals).tempF ?? 0 : sort.key === 'age' ? g.ageMonths ?? -1 : (g[sort.key] ?? '') as string);
         return [...list].sort((a, b) => {
             const [x, y] = [value(a), value(b)];
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
@@ -294,7 +294,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                         {g.name ? <div className="truncate text-xs text-ink-soft">{g.name}</div> : null}
                                         <div className="truncate text-xs text-ink-soft">{g.breed} · {g.ageCode ? `${g.ageCode}${g.ageExact && g.age ? ` · ${g.age}` : ''}` : g.stage ? `${g.stage[0].toUpperCase()}${g.stage.slice(1)}` : 'age unknown'}{g.roles?.length ? ` · ${g.roles.join(' ')}` : ''}{g.weight ? ` · ${g.weight} KG` : ''}
                                             {g.weightChange ? <b className={g.weightChange > 0 ? 'text-ok-700' : 'text-crit-700'}> {g.weightChange > 0 ? '▲ +' : '▼ '}{g.weightChange}</b> : null}
-                                            {g.tempC != null ? <b className={g.tempState === 'high' ? 'text-crit-700' : g.tempState === 'low' ? 'text-treat-700' : 'text-ok-700'}> · {g.tempC} °C</b> : null}</div>
+                                            {g.tempF != null ? <b className={g.tempState === 'high' ? 'text-crit-700' : g.tempState === 'low' ? 'text-treat-700' : 'text-ok-700'}> · {g.tempF} °F</b> : null}</div>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">{g.status === 'active' ? <HealthChip health={g.health} /> : <span className="text-xs text-ink-soft">{g.status === 'voided' ? 'Removed (wrong entry)' : 'Left farm'}</span>}<ReproChip repro={g.repro} until={g.monitorUntil} />{g.pen ? <span className="font-mono text-xs text-ink-faint">{g.pen}</span> : null}</div>
                                     </div>
                                 </Link>

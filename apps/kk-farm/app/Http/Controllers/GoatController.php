@@ -47,7 +47,7 @@ class GoatController extends Controller
     /**
      * D-340: for the registry. Weight change since the weighing before the last one (stock-style up or down); weight
      * against similar goats (same breed, gender and age stage, at least 3 weighed): more than 15% under their average is
-     * Low, more than 15% over is High; the last temperature taken, in °C, against the normal range (D-098).
+     * Low, more than 15% over is High; the last temperature taken, in °F, against the normal range (D-098).
      *
      * @param  \Illuminate\Support\Collection<int, Animal>  $goats
      * @return array<string, array<string, mixed>>
@@ -57,13 +57,12 @@ class GoatController extends Controller
         $weights = \App\Models\WeightRecord::orderByDesc('measured_on')->orderByDesc('id')->get(['animal_id', 'measured_on', 'weight_kg'])->groupBy('animal_id');
         $temps = \App\Models\HealthCheckup::whereNotNull('temperature_f')->orderByDesc('checked_on')->orderByDesc('id')->get(['animal_id', 'checked_on', 'temperature_f'])->groupBy('animal_id');
         [$lowF, $highF] = \App\Models\HealthCheckup::NORMAL['temperature_f'];
-        $c = fn (float $f): float => round(($f - 32) * 5 / 9, 1);
 
         $group = fn (Animal $a): string => implode('|', [$a->breed_id, $a->sex, $a->ageStageCode()]);
         $averages = $goats->filter(fn (Animal $a) => $a->status === 'active' && $a->latestWeight)->groupBy($group)
             ->map(fn ($g) => $g->count() >= 3 ? $g->avg(fn (Animal $a) => $a->latestWeight->weight_kg) : null);
 
-        return $goats->mapWithKeys(function (Animal $a) use ($weights, $temps, $lowF, $highF, $c, $group, $averages) {
+        return $goats->mapWithKeys(function (Animal $a) use ($weights, $temps, $lowF, $highF, $group, $averages) {
             $w = $weights[$a->id] ?? collect();
             [$last, $before] = [$w[0] ?? null, $w[1] ?? null];
             $avg = $a->latestWeight ? ($averages[$group($a)] ?? null) : null;
@@ -76,10 +75,10 @@ class GoatController extends Controller
                 'weightSince' => $before?->measured_on->format('d/m/Y'),
                 'weightOn' => $last?->measured_on->format('d/m/Y'),
                 'weightBand' => $band, 'weightAvg' => $avg ? round($avg, 1) : null,
-                'tempC' => $f !== null ? $c($f) : null,
+                'tempF' => $f, // D-340: shown in °F, as the vets record it
                 'tempState' => $f === null ? null : ($f > $highF ? 'high' : ($f < $lowF ? 'low' : 'normal')),
                 'tempOn' => $t?->checked_on->format('d/m/Y'),
-                'tempRange' => $c($lowF).'–'.$c($highF).' °C',
+                'tempRange' => $lowF.'–'.$highF.' °F',
             ]];
         })->all();
     }
