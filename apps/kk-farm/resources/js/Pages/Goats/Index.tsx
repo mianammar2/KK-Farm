@@ -40,7 +40,7 @@ const toneOf = (g: Goat): Tone => g.status !== 'active' ? 'left' : g.health !== 
 const LITE = inScannerApp();
 
 /** D-340: a high temperature turns the row red, a low one orange. */
-const TEMP_ROW = { high: 'bg-crit-100', low: 'bg-treat-100' } as const;
+const TEMP_ROW = { high: 'bg-crit-500/30 hover:bg-crit-500/40', low: 'bg-treat-400/40 hover:bg-treat-400/50' } as const; // the owner: darker, to stand out
 const VITALS: Record<string, { label: string; test: (g: Vitals) => boolean }> = {
     temp_high: { label: 'High temperature', test: (g) => g.tempState === 'high' },
     temp_low: { label: 'Low temperature', test: (g) => g.tempState === 'low' },
@@ -260,7 +260,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
                                 {shown.map((g, i) => {
                                     const t = toneOf(g);
                                     return (
-                                        <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors hover:bg-glaze', g.tempState === 'high' || g.tempState === 'low' ? TEMP_ROW[g.tempState] : TONES[t].row)}>
+                                        <tr key={g.id} style={rise(i)} className={cx('kk-rise transition-colors', !(g.tempState === 'high' || g.tempState === 'low') && 'hover:bg-glaze', g.tempState === 'high' || g.tempState === 'low' ? TEMP_ROW[g.tempState] : TONES[t].row)}>
                                             <td className="relative">
                                                 <span aria-hidden className={cx('absolute inset-y-1.5 left-0 w-1 rounded-r-full', TONES[t].bar)} />
                                                 <div className="flex flex-wrap items-center gap-1.5 pl-1"><GoatLabel goat={g} badges={false} />{canTag && g.status === 'active' ? <RfidButton goat={g} onOpen={() => setTagging(g)} /> : null}{t === 'critical' ? <span className="kk-beat size-2.5 shrink-0 rounded-full bg-crit-500" title="Critical" /> : null}</div>
