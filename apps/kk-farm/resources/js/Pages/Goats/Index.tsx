@@ -59,11 +59,15 @@ function WeightCell({ g }: { g: Vitals & { weight?: number | null } }) {
             <span className="flex items-center gap-1.5 font-medium tabular-nums">{g.weight} KG
                 {g.weightBand && g.weightBand !== 'normal' ? <span className={cx('rounded px-1 text-xs font-semibold', g.weightBand === 'low' ? 'bg-watch-100 text-watch-700' : 'bg-cobalt-100 text-cobalt-800')} title={`Similar goats average ${g.weightAvg} KG`}>{g.weightBand === 'low' ? 'Low' : 'High'}</span> : null}
             </span>
-            {d != null ? (
-                <span className={cx('text-xs font-semibold tabular-nums', d > 0 ? 'text-ok-700' : d < 0 ? 'text-crit-700' : 'text-ink-soft')} title={`Since ${g.weightSince} (weighed ${g.weightOn})`}>
-                    {d > 0 ? '▲' : d < 0 ? '▼' : '■'} {d > 0 ? '+' : ''}{d} KG <span className="font-normal text-ink-faint">since {g.weightSince?.slice(0, 5)}</span>
-                </span>
-            ) : null}
+            {/* the date of the latest weighing, like the temperature's; then the change since the weighing before */}
+            <span className="flex items-center gap-1.5 text-xs tabular-nums">
+                <span className="text-ink-faint">{g.weightOn}</span>
+                {d != null ? (
+                    <span className={cx('font-semibold', d > 0 ? 'text-ok-700' : d < 0 ? 'text-crit-700' : 'text-ink-soft')} title={`Change since ${g.weightSince}`}>
+                        {d > 0 ? '▲' : d < 0 ? '▼' : '■'} {d > 0 ? '+' : ''}{d} KG
+                    </span>
+                ) : null}
+            </span>
         </div>
     );
 }
