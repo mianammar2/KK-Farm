@@ -103,6 +103,15 @@ export default function GoatShow(props: Props) {
             {removeBox}
             <Head title={goat.number} />
             <GoatStepper key={goat.id} id={goat.id} />
+            {/* D-348: what about this goat needs the vet, from the same checks as Goats to Check */}
+            {(props as { issues?: Array<[string, string]> }).issues?.length ? (
+                <div role="status" className="mb-3 flex flex-wrap items-center gap-1.5 rounded-tile border border-crit-500/40 bg-crit-100/50 px-3 py-2">
+                    <strong className="mr-1 text-sm text-crit-700">Needs attention:</strong>
+                    {((props as { issues?: Array<[string, string]> }).issues ?? []).map(([tone, text], k) => (
+                        <span key={k} className={cx('rounded border px-1.5 py-0.5 text-xs font-semibold', tone === 'crit' ? 'border-crit-500 bg-crit-100 text-crit-700' : tone === 'warn' ? 'border-treat-400 bg-treat-100 text-treat-700' : 'border-rule-strong bg-glaze text-ink-soft')}>{text}</span>
+                    ))}
+                </div>
+            ) : null}
             {/* D-073: withdrawal from the veterinarian's treatment dates. */}
             {goat.withdrawal ? (
                 <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 rounded-tile border border-crit-500/40 bg-crit-100 px-4 py-3 text-crit-700">

@@ -30,18 +30,87 @@ class GoatController extends Controller
 {
     public function index(): Response
     {
+        return $this->registry(false);
+    }
+
+    /**
+     * D-348: the Veterinary app's main page: the same registry, opened on the goats that need the vet (high or low
+     * temperature, losing or low weight, Watch / In treatment / Critical, an open case or report, a dose due), each
+     * with its reasons; the vet can switch to all goats. It lives in the Veterinary app (module health), so a vet
+     * works without the Livestock app.
+     */
+    public function vetGoats(): Response
+    {
+        return $this->registry(true);
+    }
+
+    private function registry(bool $vet): Response
+    {
         $goats = Animal::with(['breed', 'pen.shed', 'latestWeight', 'photos', 'openAssignment.tag'])->orderBy('farm_number')->get();
         $tags = \App\Support\HerdStats::tagsFor($goats); // D-071: the dashboard links here with ?show=KEY
         $vitals = self::vitals($goats); // D-340: weight gain or loss, low or high weight, temperature
+        $issues = $vet ? self::issues($goats, $vitals) : [];
 
         return Inertia::render('Goats/Index', [
-            'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]] + $vitals[$a->id]),
+            'vet' => $vet,
+            'goats' => $goats->map(fn (Animal $a) => $a->card() + ['tag' => $a->openAssignment?->tag?->tag_code, 'tags' => $tags[$a->id]] + $vitals[$a->id] + ($vet ? ['issues' => $issues[$a->id] ?? []] : [])),
             'showLabels' => \App\Support\HerdStats::labels(),
             'roleNames' => collect(\App\Support\Designations::allCodes())->keys()->mapWithKeys(fn ($c) => [$c => \App\Support\Designations::labels([$c])[$c] ?? $c]), // D-252: the Role column
             'teethOptions' => \App\Support\Teeth::options(), 'teethShort' => \App\Support\Teeth::short(), 'canEdit' => request()->user()->passes('edit_goats'), 'canTag' => request()->user()->passes('assign_tags'), // D-106, D-144
             'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
             'pens' => Pen::with('shed')->where('kind', 'pen')->get()->map(fn (Pen $p) => ['id' => $p->id, 'name' => $p->fullName(), 'purpose' => $p->purpose])->sortBy('name')->values(),
         ]);
+    }
+
+    /**
+     * D-348: what about each goat on the farm needs the vet, most urgent first. Each issue: [tone, text] with tone
+     * crit | warn | info. Read from the same facts the registry shows (temperature, weight) plus open cases, open
+     * reports and doses due.
+     *
+     * @param  \Illuminate\Support\Collection<int, Animal>  $goats
+     * @param  array<string, array<string, mixed>>  $vitals
+     * @return array<string, list<array{0: string, 1: string}>>
+     */
+    public static function issues(\Illuminate\Support\Collection $goats, array $vitals): array
+    {
+        $cases = \App\Models\HealthCase::whereIn('status', \App\Models\HealthCase::ACTIVE)->orderBy('case_no')->get()->groupBy('animal_id');
+        $reports = \App\Models\HealthRecord::where('status', 'open')->orderByDesc('occurred_on')->get(['animal_id', 'title'])->groupBy('animal_id');
+        $doses = \App\Models\Treatment::with('healthCase')->whereNotNull('next_dose_on')->where('next_dose_on', '<=', now()->addDays(2)->toDateString())
+            ->whereHas('healthCase', fn ($q) => $q->whereIn('status', \App\Models\HealthCase::ACTIVE))->get()->groupBy(fn ($t) => $t->healthCase->animal_id);
+        $sev = ['emergency' => 'crit', 'high' => 'crit', 'moderate' => 'warn', 'low' => 'info'];
+
+        return $goats->filter(fn (Animal $a) => $a->status === 'active')->mapWithKeys(function (Animal $a) use ($vitals, $cases, $reports, $doses, $sev) {
+            $v = $vitals[$a->id] ?? [];
+            $out = [];
+            if ($a->health_status === 'critical') {
+                $out[] = ['crit', 'Critical'];
+            }
+            if (($v['tempState'] ?? null) === 'high') {
+                $out[] = ['crit', "High temperature {$v['tempF']} °F (".substr((string) $v['tempOn'], 0, 5).')'];
+            } elseif (($v['tempState'] ?? null) === 'low') {
+                $out[] = ['warn', "Low temperature {$v['tempF']} °F (".substr((string) $v['tempOn'], 0, 5).')'];
+            }
+            foreach ($cases[$a->id] ?? [] as $c) {
+                $out[] = [$sev[$c->severity] ?? 'warn', "{$c->label()} {$c->condition} · ".\App\Models\HealthCase::STATUSES[$c->status]];
+            }
+            foreach ($doses[$a->id] ?? [] as $t) {
+                $out[] = [$t->next_dose_on->lt(now()->startOfDay()) ? 'crit' : 'warn', ($t->next_dose_on->lt(now()->startOfDay()) ? 'Dose overdue ' : 'Dose due ').$t->next_dose_on->format('d/m')];
+            }
+            if (($v['weightChange'] ?? 0) < 0) {
+                $out[] = ['warn', "Losing weight {$v['weightChange']} KG"];
+            }
+            if (($v['weightBand'] ?? null) === 'low') {
+                $out[] = ['warn', 'Low weight for its group'];
+            }
+            foreach ($reports[$a->id] ?? [] as $r) {
+                $out[] = ['info', 'Report: '.$r->title];
+            }
+            if (in_array($a->health_status, ['watch', 'treatment'], true) && ! $out) {
+                $out[] = ['info', $a->health_status === 'watch' ? 'On Watch' : 'In treatment'];
+            }
+
+            return [$a->id => $out];
+        })->all();
     }
 
     /**
@@ -656,7 +725,10 @@ class GoatController extends Controller
         $pedigree = $request->user()->passes('see_goat_pedigree'); // D-266 F-14: the feeding staff see tag, pen and feeding group, not parentage or records
         $weightDays = $weights->count() > 1 ? max(1, $weights->first()->measured_on->diffInDays($weights->last()->measured_on)) : null;
 
+        $vetIssues = $request->user()->canModule('health') && $animal->status === 'active' ? (self::issues(collect([$animal]), self::vitals(collect([$animal])))[$animal->id] ?? []) : []; // D-348
+
         return Inertia::render('Goats/Show', [
+            'issues' => $vetIssues,
             'goat' => $animal->card() + [
                 'origin' => $animal->origin, 'birthDate' => $animal->birth_date?->format('d/m/Y'), 'estimated' => $animal->birth_date_is_estimate, 'height' => $animal->height_cm !== null ? round((float) $animal->height_cm / 2.54, 1) : null, // inches (D-065)
                 'shed' => $animal->pen?->shed?->name, 'penPurpose' => $animal->pen?->purpose, 'feedingGroup' => $animal->feedingGroup?->name ?? FeedingGroup::where('code', \App\Support\Feed::groupCode($animal))->value('name'), // D-054: automatic group

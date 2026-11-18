@@ -240,6 +240,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/notifications', fn (\Illuminate\Http\Request $r) => response()->json(collect(\App\Support\ActionCenter::items($r->user()))
         ->map(fn ($i) => ['key' => $i['key'], 'label' => $i['label'], 'count' => $i['count'], 'severity' => $i['severity'], 'url' => $i['url'], 'action' => $i['action']])->values()));
 
+    // D-348: the goat page and the vet's goat actions belong to the Veterinary app too, so a vet works without Livestock.
+    // Each action still checks its own right (gate). Static /goats/... paths are in the group below and match first.
+    Route::get('/health/goats', [GoatController::class, 'vetGoats'])->middleware('module:health'); // D-348: Goats to Check
     Route::middleware('module:goats')->group(function (): void {
         Route::get('/goats/count', [\App\Http\Controllers\GoatCountController::class, 'index']); // D-338: count goats by scanning
         Route::post('/goats/count', [\App\Http\Controllers\GoatCountController::class, 'store']);
@@ -247,26 +250,16 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/goats/export', [GoatController::class, 'export']);
         Route::get('/goats/register', [GoatController::class, 'register']);
         Route::post('/goats', [GoatController::class, 'store']);
-        Route::get('/goats/find', [GoatController::class, 'find']); // D-293: typed Tag ID or scanned RFID → the goat
-        Route::get('/goats/{animal}', [GoatController::class, 'show']);
-        Route::get('/goats/{animal}/peek', [GoatController::class, 'peek']); // D-248: the card when a goat is tapped in the 3D shed
         Route::post('/goats/{animal}/rfid/arm', [\App\Http\Controllers\RfidAttachController::class, 'arm']); // D-144
         Route::post('/goats/rfid/disarm', [\App\Http\Controllers\RfidAttachController::class, 'disarm']);
         Route::post('/goats/{animal}/rfid', [\App\Http\Controllers\RfidAttachController::class, 'attach']);
-        Route::post('/goats/{animal}/photos', [GoatController::class, 'addPhoto']);
         Route::post('/goats/{animal}/photos/{photo}/profile', [GoatController::class, 'setProfilePhoto']);
         Route::post('/goats/{animal}/exit', [GoatController::class, 'exitFarm']);
-        Route::post('/goats/{animal}/death', [\App\Http\Controllers\DeathController::class, 'store']);
-        Route::post('/goats/{animal}/slaughter', [\App\Http\Controllers\DeathController::class, 'slaughter']); // D-320 // D-260: the vet reports
         Route::post('/goats/{animal}/height', [GoatController::class, 'height']); // D-262
-        Route::post('/goats/{animal}/regular-checkup', [GoatController::class, 'regularCheckup']); // D-344
         Route::post('/heights/{record}', [GoatController::class, 'correctHeight']); // D-311: correct a height
-        Route::get('/goats/{animal}/day/{on}', [GoatController::class, 'day']);
-        Route::get('/goats/{animal}/profile', [GoatController::class, 'profile']); // D-300: the full profile card, JSON // D-270: one day's records, JSON
         Route::get('/reports/sheet', [\App\Http\Controllers\HerdSheetController::class, 'index']); // D-288: the Herd Sheet
         Route::get('/reports/records', [\App\Http\Controllers\RecordsReportController::class, 'index']); // D-270
         Route::get('/reports/records/day', [\App\Http\Controllers\RecordsReportController::class, 'day']); // D-270, JSON
-        Route::post('/goats/{animal}/cull', [\App\Http\Controllers\DeathController::class, 'cull']); // D-260: out of breeding, not off the farm
         Route::post('/death-reports/{report}', [\App\Http\Controllers\DeathController::class, 'decide']); // D-260: the administrator approves
         Route::post('/goats/{animal}/birth-date', [GoatController::class, 'correctBirth']); // D-080
         Route::get('/goats/{animal}/edit', [GoatController::class, 'edit']); // D-091
@@ -279,6 +272,18 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/goats/{animal}/tag/remove', [GoatController::class, 'untag']);
         Route::post('/goats/{animal}/castration', [GoatController::class, 'castration']); // D-230
         Route::get('/media/{photo}', [GoatController::class, 'media']);
+    });
+    Route::middleware('module:goats,health')->group(function (): void { // D-348
+        Route::get('/goats/find', [GoatController::class, 'find']); // D-293: typed Tag ID or scanned RFID → the goat
+        Route::get('/goats/{animal}', [GoatController::class, 'show']);
+        Route::get('/goats/{animal}/peek', [GoatController::class, 'peek']); // D-248: the card when a goat is tapped in the 3D shed
+        Route::post('/goats/{animal}/photos', [GoatController::class, 'addPhoto']);
+        Route::post('/goats/{animal}/death', [\App\Http\Controllers\DeathController::class, 'store']);
+        Route::post('/goats/{animal}/slaughter', [\App\Http\Controllers\DeathController::class, 'slaughter']); // D-320 // D-260: the vet reports
+        Route::post('/goats/{animal}/regular-checkup', [GoatController::class, 'regularCheckup']); // D-344
+        Route::get('/goats/{animal}/day/{on}', [GoatController::class, 'day']);
+        Route::get('/goats/{animal}/profile', [GoatController::class, 'profile']); // D-300: the full profile card, JSON // D-270: one day's records, JSON
+        Route::post('/goats/{animal}/cull', [\App\Http\Controllers\DeathController::class, 'cull']); // D-260: out of breeding, not off the farm
     });
 
     Route::middleware('module:scan')->group(function (): void {

@@ -33,7 +33,8 @@ class HealthController extends Controller
             ->whereHas('animal', fn ($q) => $q->active())->orderBy('next_due_on')->limit(30)->get();
         $withdrawal = Withdrawal::active();
         $goatsById = Animal::whereIn('id', $withdrawal->keys())->get()->keyBy('id');
-        $cases = HealthCase::with(['animal', 'treatments'])->where(fn ($q) => $q->whereIn('status', HealthCase::ACTIVE)->orWhere('resolved_on', '>=', now()->subDays(30)))
+        $cases = HealthCase::with(['animal', 'treatments'])->whereHas('animal', fn ($q) => $q->where('status', 'active')) // D-347: goats that left the farm are off the list; their cases stay in their history
+            ->where(fn ($q) => $q->whereIn('status', HealthCase::ACTIVE)->orWhere('resolved_on', '>=', now()->subDays(30)))
             ->orderByRaw("case status when 'open' then 0 when 'under_treatment' then 1 when 'monitoring' then 2 else 3 end")
             ->orderByRaw("case severity when 'emergency' then 0 when 'high' then 1 when 'moderate' then 2 else 3 end")->orderByDesc('onset_on')->get();
         $today = now()->startOfDay();

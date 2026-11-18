@@ -120,16 +120,16 @@ return [
     'POST /goats/rfid/disarm' => ['gate' => 'assign_tags', 'module' => 'goats'],
     'POST /goats/{animal}/birth-date' => ['inline' => 'the action checks edit_goats', 'module' => 'goats'],
     'POST /goats/{animal}/castration' => ['inline' => 'the action checks clinical', 'module' => 'goats'],
-    'POST /goats/{animal}/cull' => ['inline' => 'the action checks cull_breeding', 'module' => 'goats'],
-    'POST /goats/{animal}/death' => ['inline' => 'the action checks report_death', 'module' => 'goats'],
-    'POST /goats/{animal}/slaughter' => ['inline' => 'the action checks report_slaughter', 'module' => 'goats'], // D-320
+    'POST /goats/{animal}/cull' => ['inline' => 'the action checks cull_breeding', 'module' => ['goats', 'health']],
+    'POST /goats/{animal}/death' => ['inline' => 'the action checks report_death', 'module' => ['goats', 'health']],
+    'POST /goats/{animal}/slaughter' => ['inline' => 'the action checks report_slaughter', 'module' => ['goats', 'health']], // D-320
     'POST /goats/{animal}/edit' => ['inline' => 'the action checks edit_goats', 'module' => 'goats'],
     'POST /goats/{animal}/exit' => ['inline' => 'the action checks exit_animal', 'module' => 'goats'],
     'POST /reports/operations/correct' => ['inline' => 'the action checks the app, who recorded it and correct_health_records', 'open' => 'every app\'s log: the action checks the operation\'s app itself'], // D-313
     'POST /heights/{record}' => ['inline' => 'the action checks record_height and who measured', 'module' => 'goats'], // D-311
     'POST /goats/{animal}/height' => ['inline' => 'the action checks record_height', 'module' => 'goats'],
-    'POST /goats/{animal}/regular-checkup' => ['inline' => 'the action checks health_checkup (and record_height for a height)', 'module' => 'goats'], // D-344
-    'POST /goats/{animal}/photos' => ['gate' => 'add_goat_photos', 'module' => 'goats'],
+    'POST /goats/{animal}/regular-checkup' => ['inline' => 'the action checks health_checkup (and record_height for a height)', 'module' => ['goats', 'health']], // D-344
+    'POST /goats/{animal}/photos' => ['gate' => 'add_goat_photos', 'module' => ['goats', 'health']],
     'POST /goats/{animal}/photos/{photo}/profile' => ['gate' => 'add_goat_photos', 'module' => 'goats'],
     'POST /goats/{animal}/removal' => ['inline' => 'the action checks edit_goats, remove_goats', 'module' => 'goats'],
     'POST /goats/{animal}/removal/decide' => ['inline' => 'the action checks remove_goats', 'module' => 'goats'],

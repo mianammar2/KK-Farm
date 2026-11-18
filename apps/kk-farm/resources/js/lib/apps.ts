@@ -11,6 +11,7 @@ export const GROUPS: MenuGroup[] = ['Overview', 'Operations', 'Records', 'Report
 export type ErpApp = {
     key: string; no: string; label: string; art: string; modules: string[];
     sections: Array<{ href: string; label: string; group: MenuGroup }>; linked: string[];
+    also?: string[]; // D-348: other paths this app's menu stays on when opened from it (e.g. a goat's page from Veterinary)
 };
 
 const S = (group: MenuGroup, href: string, label: string) => ({ group, href, label });
@@ -75,7 +76,8 @@ export const APPS: ErpApp[] = [
         S('Operations', '/milking', 'Mother Care & Lactation'),
         S('Records', '/sheds', 'Maternity Unit'),
     ] },
-    { key: 'veterinary', no: '05', label: 'Veterinary', art: 'app-veterinary', modules: ['health'], linked: ['livestock', 'maternity', 'inventory', 'operations'], sections: [
+    { key: 'veterinary', no: '05', label: 'Veterinary', art: 'app-veterinary', modules: ['health'], linked: ['livestock', 'maternity', 'inventory', 'operations'], also: ['/goats/'], sections: [
+        S('Overview', '/health/goats', 'Goats to Check'), // D-348: the vet's main page
         S('Operations', '/health?tab=checkups', 'Daily Health & Checkups'),
         S('Operations', '/health?tab=cases', 'Medical Cases'),
         S('Operations', '/health?tab=doses', 'Doses Due'), // D-304
@@ -382,7 +384,7 @@ export function currentApp(url: string, modules: string[]): ErpApp | null {
     let last: string | null = null;
     try { last = sessionStorage.getItem(LAST); } catch { /* private mode */ }
     const base = (h: string) => h.split('#')[0].split('?')[0];
-    const owns = (a: ErpApp) => sectionsFor(a).some((x) => base(x.href) === path || (path.startsWith(`${base(x.href)}/`) && base(x.href) !== '/'));
+    const owns = (a: ErpApp) => sectionsFor(a).some((x) => base(x.href) === path || (path.startsWith(`${base(x.href)}/`) && base(x.href) !== '/')) || (a.also ?? []).some((p) => path.startsWith(p));
     const remembered = apps.find((a) => a.key === last);
     if (remembered && owns(remembered)) return remembered;
     return apps.find((a) => sectionsFor(a).some((x) => isHere(x.href, url))) ?? apps.find(owns) ?? null;
