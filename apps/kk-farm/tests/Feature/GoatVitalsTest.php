@@ -34,11 +34,12 @@ class GoatVitalsTest extends TestCase
         $w($c, 34, 5);
         $w($d, 22, 5); // far under the group average: Low
         $t($a, 102.2); $t($b, 105.0); $t($d, 100.0);
+        HealthCheckup::create(['animal_id' => $b->id, 'checked_on' => now()->subDays(6), 'temperature_f' => 103.4, 'outcome' => 'healthy', 'examiner' => 'Vet']); // the reading before
         $ceo = User::create(['name' => 'Boss', 'email' => 'b@vitals.test', 'password' => 'x', 'role' => 'ceo', 'org_id' => $org->id, 'active' => true]);
 
         $this->actingAs($ceo)->get('/goats')->assertInertia(fn ($p) => $p->component('Goats/Index')
             ->where('goats.0.number', 'MC-1')->where('goats.0.weightChange', 2.5)->where('goats.0.tempF', 102.2)->where('goats.0.tempState', 'normal')
-            ->where('goats.1.weightChange', -1.2)->where('goats.1.tempF', 105)->where('goats.1.tempState', 'high')
+            ->where('goats.1.weightChange', -1.2)->where('goats.1.tempF', 105)->where('goats.1.tempChange', 1.6)->where('goats.0.tempChange', null)->where('goats.1.tempState', 'high')
             ->where('goats.2.weightChange', null)->where('goats.2.tempF', null)
             ->where('goats.3.weightBand', 'low')->where('goats.3.tempState', 'low')->where('goats.3.tempF', 100)
             ->where('goats.0.tempRange', '101.3–103.5 °F'));

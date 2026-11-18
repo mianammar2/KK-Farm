@@ -67,7 +67,8 @@ class GoatController extends Controller
             [$last, $before] = [$w[0] ?? null, $w[1] ?? null];
             $avg = $a->latestWeight ? ($averages[$group($a)] ?? null) : null;
             $band = $avg ? ($a->latestWeight->weight_kg < $avg * 0.85 ? 'low' : ($a->latestWeight->weight_kg > $avg * 1.15 ? 'high' : 'normal')) : null;
-            $t = ($temps[$a->id] ?? collect())->first();
+            $tl = $temps[$a->id] ?? collect();
+            [$t, $tBefore] = [$tl[0] ?? null, $tl[1] ?? null];
             $f = $t ? (float) $t->temperature_f : null;
 
             return [$a->id => [
@@ -78,6 +79,8 @@ class GoatController extends Controller
                 'tempF' => $f, // D-340: shown in °F, as the vets record it
                 'tempState' => $f === null ? null : ($f > $highF ? 'high' : ($f < $lowF ? 'low' : 'normal')),
                 'tempOn' => $t?->checked_on->format('d/m/Y'),
+                'tempChange' => $t && $tBefore ? round($f - (float) $tBefore->temperature_f, 1) : null, // D-346: since the reading before
+                'tempSince' => $tBefore?->checked_on->format('d/m/Y'),
                 'tempRange' => $lowF.'–'.$highF.' °F',
             ]];
         })->all();

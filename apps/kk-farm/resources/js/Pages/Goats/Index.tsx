@@ -16,7 +16,7 @@ import { Button, cx, Empty, Field, GoatLabel, HealthChip, PageHeader, Panel, Rep
 import type { GoatCard } from '../../types';
 
 /** D-340: weight change since the weighing before, weight against similar goats, last temperature in °F. */
-type Vitals = { weightChange?: number | null; weightSince?: string | null; weightOn?: string | null; weightBand?: 'low' | 'normal' | 'high' | null; weightAvg?: number | null; tempF?: number | null; tempState?: 'low' | 'normal' | 'high' | null; tempOn?: string | null; tempRange?: string };
+type Vitals = { weightChange?: number | null; weightSince?: string | null; weightOn?: string | null; weightBand?: 'low' | 'normal' | 'high' | null; weightAvg?: number | null; tempF?: number | null; tempState?: 'low' | 'normal' | 'high' | null; tempOn?: string | null; tempChange?: number | null; tempSince?: string | null; tempRange?: string };
 type Props = { goats: Array<GoatCard & Vitals & { tags?: string[] }>; breeds: Record<string, string>; pens: Array<{ id: number; name: string; purpose: string }>; showLabels: Record<string, string>; roleNames?: Record<string, string>; teethOptions: Record<string, string>; teethShort?: Record<string, string>; canEdit: boolean; canTag?: boolean };
 type SortKey = 'number' | 'name' | 'breed' | 'age' | 'weight' | 'temp' | 'pen';
 type Goat = Props['goats'][number];
@@ -74,6 +74,16 @@ function WeightCell({ g }: { g: Vitals & { weight?: number | null } }) {
     );
 }
 
+/** A temperature moving toward the normal range is good (green), away from it bad (red), inside it neutral. */
+function tempTone(g: Vitals): string {
+    const d = g.tempChange ?? 0;
+    if (!d) return 'text-ink-soft';
+    if (g.tempState === 'high') return d < 0 ? 'text-ok-700' : 'text-crit-700';
+    if (g.tempState === 'low') return d > 0 ? 'text-ok-700' : 'text-crit-700';
+    const before = (g.tempF ?? 0) - d;
+    return before > 103.5 || before < 101.3 ? 'text-ok-700' : 'text-ink-soft';
+}
+
 function TempCell({ g }: { g: Vitals }) {
     if (g.tempF == null) return <span className="text-ink-faint">Not taken</span>;
     const tone = g.tempState === 'high' ? 'bg-crit-500 text-white' : g.tempState === 'low' ? 'bg-treat-400 text-white' : 'bg-ok-100 text-ok-700';
@@ -81,7 +91,15 @@ function TempCell({ g }: { g: Vitals }) {
         <div className="flex flex-col gap-0.5 whitespace-nowrap" title={`Normal ${g.tempRange} · taken ${g.tempOn}`}>
             <span className="flex items-center gap-1.5"><span className="font-medium tabular-nums">{g.tempF} °F</span>
                 <span className={cx('rounded px-1.5 text-xs font-semibold', tone)}>{g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : 'Normal'}</span></span>
-            <span className="text-xs text-ink-faint">{g.tempOn}</span>
+            {/* D-346: stock style like the weight: ▲ / ▼ since the reading before; green when it moved toward normal, red when away */}
+            <span className="flex items-center gap-1.5 text-xs tabular-nums">
+                <span className="text-ink-faint">{g.tempOn}</span>
+                {g.tempChange != null ? (
+                    <span className={cx('font-semibold', tempTone(g))} title={`Change since ${g.tempSince}`}>
+                        {g.tempChange > 0 ? '▲' : g.tempChange < 0 ? '▼' : '■'} {g.tempChange > 0 ? '+' : ''}{g.tempChange} °F
+                    </span>
+                ) : null}
+            </span>
         </div>
     );
 }
@@ -362,15 +380,15 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
 /**
  * D-345: the filtered, sorted list on paper, black and white. The browser's own header and footer (date, title, address,
  * page number) are switched off (@page margin 0), so the title, the filters and the print time appear once, at the top.
- * One fact per column, nothing wraps: # · Tag ID · Breed · Gender · Role · Age · Weight · Change · Weighed · Temp · Taken · PEN · Status.
+ * One fact per column, nothing wraps, no High/Low words: # · Tag ID · Breed · Gender · Role · Age · Weight · Change · Weighed · Temp · Temp change · Taken · PEN · Status.
  */
 function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals & { tags?: string[] }>; roleNames: Record<string, string>; label: string }) {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const printed = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     const health: Record<string, string> = { healthy: 'Healthy', watch: 'Watch', treatment: 'In treatment', critical: 'Critical' };
-    const cols = ['#', 'Tag ID', 'Breed', 'Gender', 'Role', 'Age', 'Weight', 'Change', 'Weighed', 'Temp', 'Taken', 'PEN', 'Status'];
-    const right = new Set(['#', 'Weight', 'Change', 'Temp']);
+    const cols = ['#', 'Tag ID', 'Breed', 'Gender', 'Role', 'Age', 'Weight', 'Change', 'Weighed', 'Temp', 'Temp change', 'Taken', 'PEN', 'Status'];
+    const right = new Set(['#', 'Weight', 'Change', 'Temp', 'Temp change']);
     const cell = (h: string) => cx('px-1.5 py-1 whitespace-nowrap', right.has(h) && 'text-right');
     return (
         <div className="kk-print-list hidden bg-white px-[12mm] py-[10mm] text-[8pt] leading-tight text-black print:block">
@@ -393,10 +411,11 @@ function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals &
                             <td className={cell('')}>{g.sex === 'female' ? 'Female' : g.sex === 'male' ? 'Male' : '—'}</td>
                             <td className={cell('')}>{(g.roles ?? []).map((r) => roleNames[r] ?? r).join(', ') || '—'}</td>
                             <td className={cell('')}>{g.ageCode ?? '—'}</td>
-                            <td className={cell('Weight')}>{g.weight ? `${g.weight} KG` : '—'}{g.weightBand && g.weightBand !== 'normal' ? ` ${g.weightBand === 'low' ? 'Low' : 'High'}` : ''}</td>
+                            <td className={cell('Weight')}>{g.weight ? `${g.weight} KG` : '—'}</td>
                             <td className={cell('Change')}>{g.weightChange ? `${g.weightChange > 0 ? '▲ +' : '▼ '}${g.weightChange}` : '—'}</td>
                             <td className={cell('')}>{g.weightOn ?? '—'}</td>
-                            <td className={cell('Temp')}>{g.tempF != null ? `${g.tempF} °F ${g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : ''}`.trim() : '—'}</td>
+                            <td className={cell('Temp')}>{g.tempF != null ? `${g.tempF} °F` : '—'}</td>
+                            <td className={cell('Temp change')}>{g.tempChange ? `${g.tempChange > 0 ? '▲ +' : '▼ '}${g.tempChange}` : '—'}</td>
                             <td className={cell('')}>{g.tempOn ?? '—'}</td>
                             <td className={cell('')}>{g.pen ?? '—'}</td>
                             <td className={cell('')}>{g.status === 'active' ? health[g.health] ?? g.health : 'Left farm'}{g.repro === 'pregnant' ? ', Pregnant' : ''}</td>
