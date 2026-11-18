@@ -411,6 +411,9 @@ class HealthController extends Controller
         unset($data['symptom_ids']);
         $data['disease_id'] = \App\Models\Disease::whereRaw('lower(name) = lower(?)', [$data['condition']])->value('id'); // D-292: linked to the Disease Master
         $animal = Animal::findOrFail($data['animal_id']);
+        if ($animal->status !== 'active') { // D-347: no new case on a goat that has left the farm
+            throw \Illuminate\Validation\ValidationException::withMessages(['animal_id' => "{$animal->farm_number} has left the farm".($animal->exit_date ? ' on '.$animal->exit_date->format('d/m/Y') : '').'. A case cannot be opened for it.']);
+        }
 
         $case = DB::transaction(function () use ($data, $animal, $request, $symptomIds) {
             DB::statement('LOCK TABLE health_cases IN SHARE ROW EXCLUSIVE MODE');

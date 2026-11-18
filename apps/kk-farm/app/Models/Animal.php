@@ -110,6 +110,12 @@ class Animal extends Model
         static::creating(function (self $a) {
             $a->animal_code ??= \App\Support\AnimalCode::next(); // D-208 / BR-001
         });
+        // D-347: leaving the farm closes the goat's open health cases and reports
+        static::updated(function (self $a) {
+            if ($a->wasChanged('status') && $a->getOriginal('status') === 'active' && $a->status !== 'active') {
+                \App\Support\ExitHealth::close($a);
+            }
+        });
         static::saving(function (self $a) {
             if ($a->isDirty('health_flag') && $a->health_flag) {
                 $a->health_status = self::FLAG_TO_STATUS[$a->health_flag] ?? 'healthy';
