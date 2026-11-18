@@ -68,6 +68,55 @@ class MainActivity : Activity() {
         })
     }
 
+    // D-339: the UHF reader driven by this app (Chainway SDK in app/libs). Without the SDK, state() is "none" and InfoWedge reads.
+    private val uhf by lazy { UhfReader(this) }
+    private val held = LinkedHashMap<String, UhfReader.Read>()
+    private val heldNew = ArrayList<String>()
+    private var heldStreamed = false
+    private var holdingTrigger = false
+    private val flushHeld = object : Runnable {
+        override fun run() {
+            if (heldNew.isNotEmpty()) {
+                val batch = org.json.JSONArray(heldNew.toList()).toString()
+                heldNew.clear()
+                web.evaluateJavascript("(function(){try{return window.kkScanMany&&window.kkScanMany($batch)?'1':'0'}catch(e){return '0'}})()") { r -> if (r == "\"1\"") heldStreamed = true }
+            }
+            if (holdingTrigger) handler.postDelayed(this, 250)
+        }
+    }
+
+    /** Trigger down: read the whole room until it is released. A page that counts (Goat Count) gets the tags live. */
+    private fun beginHold() {
+        if (holdingTrigger) return
+        holdingTrigger = true
+        held.clear(); heldNew.clear(); heldStreamed = false
+        uhf.startHold { t -> runOnUiThread { if (held.put(t.code, t) == null) { heldNew.add(t.code); vibrate(15) } } }
+        handler.postDelayed(flushHeld, 250)
+    }
+
+    /** Trigger up: stop. Not on a counting page, the nearest tag opens (or the user picks when two are equally near). */
+    private fun endHold() {
+        if (!holdingTrigger) return
+        holdingTrigger = false
+        uhf.stopHold()
+        handler.postDelayed({
+            flushHeld.run()
+            handler.postDelayed({
+                if (heldStreamed) { vibrate(60); Log.i(TAG, "count took ${held.size} tags"); return@postDelayed }
+                val reads = held.values.sortedByDescending { it.rssi }
+                when {
+                    reads.isEmpty() -> Log.i(TAG, "trigger released, no tags")
+                    reads.size == 1 || reads[0].rssi - reads[1].rssi >= 6 -> onScan(reads[0].code, "uhf")
+                    else -> chooseTag(reads.map { it.code })
+                }
+            }, 150)
+        }, 120)
+    }
+
+    private fun sendEvent(name: String, detail: JSONObject) = runOnUiThread {
+        web.evaluateJavascript("window.dispatchEvent(new CustomEvent('$name',{detail:$detail}))", null)
+    }
+
     private val server: String get() = prefs.getString(KEY_SERVER, DEFAULT_SERVER)!!.trimEnd('/')
     private val action: String get() = prefs.getString(KEY_ACTION, DEFAULT_ACTION)!!
     private val extraKey: String get() = prefs.getString(KEY_EXTRA, DEFAULT_EXTRA)!!
@@ -204,7 +253,7 @@ class MainActivity : Activity() {
         super.onResume()
         isVisible = true
         visible = true
-        handler.post(readerWatchdog)
+        if (!uhf.open()) handler.post(readerWatchdog) // our own reader runs the UHF module; otherwise keep InfoWedge alive
         nfc.start()
         pendingChoice?.let { pendingChoice = null; chooseTag(it) }
         Updater.check(this, server)
@@ -219,6 +268,8 @@ class MainActivity : Activity() {
         visible = false
         handler.removeCallbacks(readerWatchdog)
         nfc.stop()
+        endHold()
+        uhf.close()
         super.onPause()
     }
 
@@ -336,6 +387,16 @@ class MainActivity : Activity() {
         }
     }
 
+    /** D-339: with our own UHF reader, the trigger reads while held. Key codes are logged so new guns can be checked. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode in TRIGGER_KEYS && uhf.state() == "ready") {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) { Log.i(TAG, "trigger down ${event.keyCode}"); beginHold() }
+            if (event.action == KeyEvent.ACTION_UP) endHold()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         Log.i(TAG, "keyDown code=$keyCode ${KeyEvent.keyCodeToString(keyCode)} scan=${event.scanCode}")
         when (keyCode) {
@@ -420,11 +481,24 @@ class MainActivity : Activity() {
         @JavascriptInterface fun nfcState(): String = nfc.state()
         @JavascriptInterface fun writeNfc(code: String) = nfc.armWrite(code)
         @JavascriptInterface fun cancelNfcWrite() = nfc.cancelWrite()
+        // D-339: UHF through the SDK. uhfState: none | ready | error. uhfTouch(true): a tag held against the gun is read with no
+        // trigger (event kk:uhf-touch). writeUhf: overwrite the touching tag's EPC with this Tag ID (event kk:uhf-written).
+        @JavascriptInterface fun uhfState(): String = uhf.state()
+        @JavascriptInterface fun uhfTouch(on: Boolean) {
+            if (!on) { uhf.stopTouch(); return }
+            uhf.startTouch { t -> vibrate(40); sendEvent("kk:uhf-touch", JSONObject().put("code", t.code).put("epc", t.epc)) }
+        }
+        @JavascriptInterface fun writeUhf(code: String) = uhf.write(code) { ok, written, old, error ->
+            vibrate(if (ok) 120 else 400)
+            sendEvent("kk:uhf-written", JSONObject().put("ok", ok).put("code", written).put("chip", old).put("error", error ?: JSONObject.NULL))
+        }
         @JavascriptInterface fun openNfcSettings() = runOnUiThread { runCatching { startActivity(Intent(android.provider.Settings.ACTION_NFC_SETTINGS)) } }
     }
 
     companion object {
         const val TAG = "KKFarm"
+        /** C72 trigger keys (pistol grip and side keys) as reported on Chainway units; confirm with adb logcat -s KKFarm. */
+        private val TRIGGER_KEYS = setOf(139, 280, 291, 293, 294, 311, 312, 313, 315)
         private const val PENDING_SCAN_MS = 120_000L
         private const val REQUEST_PHOTO = 41
         private const val INFOWEDGE_PACKAGE = "com.rscja.infowedge"
@@ -448,6 +522,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.7.1"
-    const val CODE = 19 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.0"
+    const val CODE = 20 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

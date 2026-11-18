@@ -11,8 +11,8 @@ android {
         applicationId = "com.kkfarm.scanner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 19
-        versionName = "0.7.1"
+        versionCode = 20
+        versionName = "0.8.0"
     }
 
     buildTypes {
@@ -29,4 +29,7 @@ android {
 dependencies {
     // FileProvider: hands the camera app a file to save the goat photo into.
     implementation("androidx.core:core:1.13.1")
+    // D-339: Chainway DeviceAPI SDK, vendor-supplied and kept out of git. Drop the .aar in app/libs/ and rebuild;
+    // without it the app still builds and InfoWedge stays the reader.
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
 }

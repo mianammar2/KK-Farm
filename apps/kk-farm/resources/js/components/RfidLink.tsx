@@ -15,6 +15,9 @@ export default function RfidLink({ goatId, number, current, canAssign, className
     const [reason, setReason] = useState('');
     // D-337: on the gun, a touch tag is written with the goat's Tag ID (replacing the factory number) and then linked
     const nfc = native()?.nfcState?.() ?? 'none';
+    // D-339: with the Chainway SDK in the gun app, UHF tags work the same way: touch the tag to the gun, no trigger
+    const uhf = native()?.uhfState?.() === 'ready';
+    const touch = uhf ? 'on' : nfc;
     const [writing, setWriting] = useState(false);
     const [nfcError, setNfcError] = useState<string | null>(null);
     useEffect(() => {
@@ -26,13 +29,30 @@ export default function RfidLink({ goatId, number, current, canAssign, className
             router.post(`/goats/${goatId}/tag`, { tag: d.code, chip: d.chip }, { preserveScroll: true, onSuccess: () => setOpen(false) });
         };
         window.addEventListener('kk:nfc-written', on);
-        return () => { window.removeEventListener('kk:nfc-written', on); native()?.cancelNfcWrite?.(); };
+        window.addEventListener('kk:uhf-written', on);
+        return () => { window.removeEventListener('kk:nfc-written', on); window.removeEventListener('kk:uhf-written', on); native()?.cancelNfcWrite?.(); };
     }, [goatId]);
+    // D-339: a UHF tag touched to the gun: already carrying this goat's Tag ID, it is linked; otherwise the Tag ID is written into it first
+    useEffect(() => {
+        if (!uhf || !canAssign || writing) return;
+        const onTouch = (e: Event) => {
+            const code = (e as CustomEvent<{ code: string; epc: string }>).detail.code;
+            if (code === current) return;
+            if (current && !window.confirm(`Replace tag ${current} on ${number}? The old tag is closed in the history.`)) return;
+            if (code === number) { router.post(`/goats/${goatId}/tag`, { tag: number }, { preserveScroll: true, onSuccess: () => setOpen(false) }); return; }
+            setNfcError(null);
+            setWriting(true);
+            native()?.writeUhf?.(number);
+        };
+        window.addEventListener('kk:uhf-touch', onTouch);
+        native()?.uhfTouch?.(true);
+        return () => { window.removeEventListener('kk:uhf-touch', onTouch); native()?.uhfTouch?.(false); };
+    }, [uhf, canAssign, writing, current, number, goatId]);
     const writeByTouch = () => {
         if (current && current !== number && !window.confirm(`Replace tag ${current} on ${number}? The old tag is closed in the history.`)) return;
         setNfcError(null);
         setWriting(true);
-        native()?.writeNfc?.(number);
+        if (uhf) native()?.writeUhf?.(number); else native()?.writeNfc?.(number);
     };
     const link = () => {
         if (!form.data.tag.trim()) return;
@@ -61,19 +81,19 @@ export default function RfidLink({ goatId, number, current, canAssign, className
                     </span>
                 ) : null}
             </div>
-            {canAssign && nfc !== 'none' ? (
+            {canAssign && touch !== 'none' ? (
                 <div className="mt-3 rounded-tile border border-rule bg-glaze px-3 py-3">
-                    {nfc === 'off' ? (
+                    {touch === 'off' ? (
                         <p className="text-sm">The gun's NFC is switched off. <button type="button" className="text-cobalt-800 underline" onClick={() => native()?.openNfcSettings?.()}>Turn it on</button>, then come back.</p>
                     ) : writing ? (
                         <div className="flex flex-wrap items-center gap-3">
-                            <p className="text-sm font-medium">Touch the tag to the back of the gun and hold it still. It will be written with {number}.</p>
+                            <p className="text-sm font-medium">Touch the tag to the {uhf ? 'top' : 'back'} of the gun and hold it still. It will be written with {number}.</p>
                             <Button type="button" variant="secondary" onClick={() => { native()?.cancelNfcWrite?.(); setWriting(false); }}>Cancel</Button>
                         </div>
                     ) : (
                         <div className="flex flex-wrap items-center gap-3">
                             <Button type="button" onClick={writeByTouch}><ScanLine size={16} aria-hidden /> Write tag by touch</Button>
-                            <span className="text-sm text-ink-soft">Writes {number} into the tag, replacing the number it came with, and links it to this goat.</span>
+                            <span className="text-sm text-ink-soft">{uhf ? `Or just touch the tag to the top of the gun: ${number} is written into it, replacing the number it came with, and it is linked to this goat.` : `Writes ${number} into the tag, replacing the number it came with, and links it to this goat.`}</span>
                         </div>
                     )}
                     {nfcError ? <p className="mt-2 text-sm text-crit-700">{nfcError}</p> : null}
