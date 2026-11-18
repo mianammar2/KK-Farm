@@ -468,4 +468,3 @@ main { min-width: 0; }
     body:has(.kk-print-list) > *:not(.kk-print-list) { display: none !important; }
     .kk-print-list { display: block !important; }
 }
-@page { margin: 10mm; }

@@ -359,32 +359,47 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
     );
 }
 
-/** D-345: the filtered, sorted list on paper, black and white: # and the registry's columns (no RFID), in plain text; prints alone (app.css). */
+/**
+ * D-345: the filtered, sorted list on paper, black and white. The browser's own header and footer (date, title, address,
+ * page number) are switched off (@page margin 0), so the title, the filters and the print time appear once, at the top.
+ * One fact per column, nothing wraps: # · Tag ID · Breed · Gender · Role · Age · Weight · Change · Weighed · Temp · Taken · PEN · Status.
+ */
 function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals & { tags?: string[] }>; roleNames: Record<string, string>; label: string }) {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const printed = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     const health: Record<string, string> = { healthy: 'Healthy', watch: 'Watch', treatment: 'In treatment', critical: 'Critical' };
+    const cols = ['#', 'Tag ID', 'Breed', 'Gender', 'Role', 'Age', 'Weight', 'Change', 'Weighed', 'Temp', 'Taken', 'PEN', 'Status'];
+    const right = new Set(['#', 'Weight', 'Change', 'Temp']);
+    const cell = (h: string) => cx('px-1.5 py-1 whitespace-nowrap', right.has(h) && 'text-right');
     return (
-        <div className="kk-print-list hidden bg-white p-4 text-[11px] text-black print:block">
-            <style>{'@page { size: A4 landscape; margin: 10mm; }'}</style>
-            <h1 className="text-base font-bold">KK Farms · Goat Registry</h1>
-            <p className="mb-2">{rows.length} goats{label ? ` · ${label}` : ''} · printed {printed}</p>
+        <div className="kk-print-list hidden bg-white px-[12mm] py-[10mm] text-[9pt] leading-tight text-black print:block">
+            <style>{'@page { size: A4 landscape; margin: 0; }'}</style>
+            <header className="mb-3 flex items-end justify-between border-b-2 border-black pb-1.5">
+                <div>
+                    <h1 className="text-[14pt] font-bold">KK Farms · Goat Registry</h1>
+                    <p className="text-[9pt]">{rows.length} goat{rows.length === 1 ? '' : 's'}{label ? ` · ${label}` : ''}</p>
+                </div>
+                <p className="text-[9pt]">Printed {printed}</p>
+            </header>
             <table className="w-full border-collapse">
-                <thead><tr className="border-b-2 border-black text-left">{['#', 'Tag ID', 'Breed', 'Gender', 'Role', 'Age', 'Weight', 'Temp', 'PEN', 'Status'].map((h) => <th key={h} className="px-1 py-1">{h}</th>)}</tr></thead>
+                <thead><tr className="border-b border-black text-left text-[8.5pt] uppercase tracking-wide">{cols.map((h) => <th key={h} className={cell(h)}>{h}</th>)}</tr></thead>
                 <tbody>
                     {rows.map((g, i) => (
                         <tr key={g.id} className="border-b border-gray-300" style={{ breakInside: 'avoid' }}>
-                            <td className="px-1 py-0.5 text-right">{i + 1}</td>
-                            <td className="px-1 py-0.5 font-mono font-semibold">{g.number}</td>
-                            <td className="px-1 py-0.5">{g.breed ?? ''}</td>
-                            <td className="px-1 py-0.5">{g.sex === 'female' ? 'Female' : g.sex === 'male' ? 'Male' : ''}</td>
-                            <td className="px-1 py-0.5">{(g.roles ?? []).map((r) => `${r} ${roleNames[r] ?? ''}`.trim()).join(', ')}</td>
-                            <td className="px-1 py-0.5">{g.ageCode ?? ''}{g.ageExact && g.age ? ` · ${g.age}` : ''}</td>
-                            <td className="px-1 py-0.5">{g.weight ? `${g.weight} KG` : ''}{g.weightBand && g.weightBand !== 'normal' ? ` (${g.weightBand === 'low' ? 'Low' : 'High'})` : ''}{g.weightChange ? ` ${g.weightChange > 0 ? '▲ +' : '▼ '}${g.weightChange}` : ''}{g.weightOn ? ` · ${g.weightOn}` : ''}</td>
-                            <td className="px-1 py-0.5">{g.tempF != null ? `${g.tempF} °F ${g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : 'Normal'} · ${g.tempOn}` : ''}</td>
-                            <td className="px-1 py-0.5">{g.pen ?? ''}</td>
-                            <td className="px-1 py-0.5">{g.status === 'active' ? health[g.health] ?? g.health : 'Left farm'}{g.repro === 'pregnant' ? ', Pregnant' : ''}</td>
+                            <td className={cell('#')}>{i + 1}</td>
+                            <td className={cx(cell(''), 'font-mono font-semibold')}>{g.number}</td>
+                            <td className={cell('')}>{g.breed ?? '—'}</td>
+                            <td className={cell('')}>{g.sex === 'female' ? 'Female' : g.sex === 'male' ? 'Male' : '—'}</td>
+                            <td className={cell('')}>{(g.roles ?? []).map((r) => roleNames[r] ?? r).join(', ') || '—'}</td>
+                            <td className={cell('')}>{g.ageCode ?? '—'}</td>
+                            <td className={cell('Weight')}>{g.weight ? `${g.weight} KG` : '—'}{g.weightBand && g.weightBand !== 'normal' ? ` ${g.weightBand === 'low' ? 'Low' : 'High'}` : ''}</td>
+                            <td className={cell('Change')}>{g.weightChange ? `${g.weightChange > 0 ? '▲ +' : '▼ '}${g.weightChange}` : '—'}</td>
+                            <td className={cell('')}>{g.weightOn ?? '—'}</td>
+                            <td className={cell('Temp')}>{g.tempF != null ? `${g.tempF} °F ${g.tempState === 'high' ? 'High' : g.tempState === 'low' ? 'Low' : ''}`.trim() : '—'}</td>
+                            <td className={cell('')}>{g.tempOn ?? '—'}</td>
+                            <td className={cell('')}>{g.pen ?? '—'}</td>
+                            <td className={cell('')}>{g.status === 'active' ? health[g.health] ?? g.health : 'Left farm'}{g.repro === 'pregnant' ? ', Pregnant' : ''}</td>
                         </tr>
                     ))}
                 </tbody>
