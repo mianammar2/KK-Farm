@@ -7,7 +7,7 @@ import { canOpen, currentApp, GROUPS, isHere, masterHref, menuHref, rememberApp,
 import { AppStripContext, type StripData } from './AppStrip';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
-    BarChart3, Beef, CalendarCheck, ChevronDown, ChevronRight, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History } from 'lucide-react';
+    BarChart3, Beef, CalendarCheck, ChevronDown, ChevronRight, ClipboardList, HeartPulse, LayoutGrid, LogOut, Menu, Network, Radio, Scale, Search, Settings, Users, Wallet, Warehouse, BookOpen, Cpu, Wheat, X, ArrowLeftRight, BellRing, TrendingUp, Milk, History, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cx } from './ui';
@@ -243,6 +243,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
         return () => c.abort();
     }, [landing, page.url]);
     const [drawer, setDrawer] = useState(false);
+    // D-341: the left menu can be folded away on a computer for more room; the choice is remembered on this browser
+    const [folded, setFoldedState] = useState(() => { try { return localStorage.getItem('kk.sidebar') === 'folded'; } catch { return false; } });
+    const setFolded = (v: boolean) => { setFoldedState(v); try { localStorage.setItem('kk.sidebar', v ? 'folded' : 'open'); } catch { /* storage off */ } };
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState<string | null>(null);
     const path = page.url.split('#')[0].split('?')[0]; // D-183: ignore the #anchor (e.g. /settings#users)
@@ -277,10 +280,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
 
     return (
-        <div className={cx('min-h-dvh overflow-x-clip bg-glaze', !home && 'lg:pl-60')}>
+        <div className={cx('min-h-dvh overflow-x-clip bg-glaze', !home && !folded && 'lg:pl-60')}>
             {/* The Scan page and the register page have their own scan field. */}
             <ScanCapture disabled={path === '/scan' || path === '/goats/register'} />
-            {home ? null : (
+            {home || folded ? null : (
                 <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-cobalt-900 pt-4 lg:flex">
                     <Brand />
                     <NavList path={path} url={fullUrl} modules={auth.modules} />
@@ -309,6 +312,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <button type="button" aria-label="Open menu" onClick={() => setDrawer(true)} className="grid size-11 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100 lg:hidden">
                     <Menu size={21} />
                 </button>
+                {home ? null : (
+                    <button type="button" onClick={() => setFolded(!folded)} aria-label={folded ? 'Show the menu' : 'Hide the menu'} title={folded ? 'Show the menu' : 'Hide the menu'}
+                        className="hidden size-10 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100 lg:grid">
+                        {folded ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+                    </button>
+                )}
                 {/* D-168: back to the app launcher from anywhere */}
                 <Link href="/apps" aria-label="All apps" title="All apps" className={cx('grid size-10 shrink-0 place-items-center rounded-tile text-cobalt-800 hover:bg-cobalt-100', home && 'bg-cobalt-100')}>
                     <LayoutGrid size={20} />
