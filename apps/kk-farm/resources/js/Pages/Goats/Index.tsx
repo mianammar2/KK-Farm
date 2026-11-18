@@ -373,17 +373,17 @@ function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals &
     const right = new Set(['#', 'Weight', 'Change', 'Temp']);
     const cell = (h: string) => cx('px-1.5 py-1 whitespace-nowrap', right.has(h) && 'text-right');
     return (
-        <div className="kk-print-list hidden bg-white px-[12mm] py-[10mm] text-[9pt] leading-tight text-black print:block">
+        <div className="kk-print-list hidden bg-white px-[12mm] py-[10mm] text-[8pt] leading-tight text-black print:block">
             <style>{'@page { size: A4 landscape; margin: 0; }'}</style>
             <header className="mb-3 flex items-end justify-between border-b-2 border-black pb-1.5">
                 <div>
-                    <h1 className="text-[14pt] font-bold">KK Farms · Goat Registry</h1>
-                    <p className="text-[9pt]">{rows.length} goat{rows.length === 1 ? '' : 's'}{label ? ` · ${label}` : ''}</p>
+                    <h1 className="text-[12pt] font-bold">KK Farms · Goat Registry</h1>
+                    <p className="text-[8pt]">{rows.length} goat{rows.length === 1 ? '' : 's'}{label ? ` · ${label}` : ''}</p>
                 </div>
-                <p className="text-[9pt]">Printed {printed}</p>
+                <p className="text-[8pt]">Printed {printed}</p>
             </header>
             <table className="w-full border-collapse">
-                <thead><tr className="border-b border-black text-left text-[8.5pt] uppercase tracking-wide">{cols.map((h) => <th key={h} className={cell(h)}>{h}</th>)}</tr></thead>
+                <thead><tr className="border-b border-black text-left text-[8pt] uppercase tracking-wide">{cols.map((h) => <th key={h} className={cell(h)}>{h}</th>)}</tr></thead>
                 <tbody>
                     {rows.map((g, i) => (
                         <tr key={g.id} className="border-b border-gray-300" style={{ breakInside: 'avoid' }}>
