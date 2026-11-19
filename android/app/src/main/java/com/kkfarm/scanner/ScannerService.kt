@@ -67,7 +67,10 @@ class ScannerService : Service() {
 
     private fun onTrigger(action: String) {
         val now = System.currentTimeMillis()
-        if (MainActivity.visible || !prefs.getBoolean(MainActivity.KEY_OPEN_ON_TRIGGER, true) || now - lastTriggerAt < 1500) return
+        // D-353: only a real press (KEY_DOWN), and not just after the user left KK Farm (closing the reader makes the scan
+        // service announce a key, which pulled KK Farm back over every other app).
+        if (action != "com.rscja.android.KEY_DOWN" || MainActivity.visible || now - MainActivity.pausedAt < 5000) return
+        if (!prefs.getBoolean(MainActivity.KEY_OPEN_ON_TRIGGER, true) || now - lastTriggerAt < 1500) return
         lastTriggerAt = now
         Log.i(MainActivity.TAG, "trigger ($action) while KK Farm is in the background: opening the Scan screen")
         open(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_SCAN, true))

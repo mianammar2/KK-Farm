@@ -49,17 +49,19 @@ class UhfReader(private val context: Context) {
 
     fun close() {
         stopAll()
+        synchronized(lock) {} // wait for a running read or write to stop before the module is freed
         reader?.let { r -> runCatching { r.javaClass.getMethod("free").invoke(r) } }
         reader = null // state keeps its last value, so the page still knows the SDK is there; open() runs again on resume
     }
 
     private fun call(name: String, vararg args: Any?): Any? {
         val r = reader ?: return null
-        val m = r.javaClass.methods.firstOrNull { it.name == name && it.parameterTypes.size == args.size } ?: return null
+        val m = r.javaClass.methods.firstOrNull { it.name == name && it.parameterTypes.size == args.size }
+            ?: run { Log.w(MainActivity.TAG, "UHF SDK has no $name/${args.size}"); return null }
         return runCatching { m.invoke(r, *args) }.onFailure { Log.w(MainActivity.TAG, "UHF $name failed: ${it.cause?.message ?: it.message}") }.getOrNull()
     }
 
-    private fun setPower(dbm: Int) { call("setPower", dbm) }
+    private fun setPower(dbm: Int) { Log.i(MainActivity.TAG, "UHF setPower($dbm) = ${call("setPower", dbm)}") }
 
     private fun startInventory(): Boolean = (call("startInventoryTag") as? Boolean) ?: false
     private fun stopInventory() { call("stopInventory") }
@@ -76,7 +78,8 @@ class UhfReader(private val context: Context) {
 
     /** Reads at full power until [stopHold]. Each tag is reported once per hold, with its best signal. */
     fun startHold(onTag: (Read) -> Unit) {
-        if (reader == null || holding) return
+        if (holding) return
+        if (reader == null && !open()) { Log.w(MainActivity.TAG, "UHF hold: reader not open ($state)"); return }
         stopTouch()
         holding = true
         thread(name = "uhf-hold") {
@@ -84,13 +87,17 @@ class UhfReader(private val context: Context) {
                 busy = true
                 setPower(FULL_POWER)
                 val seen = HashSet<String>()
-                if (startInventory()) {
+                var reads = 0
+                val started = startInventory()
+                Log.i(MainActivity.TAG, "UHF hold: startInventoryTag = $started")
+                if (started) {
                     while (holding) {
                         val t = nextTag()
                         if (t == null) { Thread.sleep(15); continue }
+                        reads++
                         if (seen.add(t.epc)) onTag(t)
                     }
-                    stopInventory()
+                    Log.i(MainActivity.TAG, "UHF hold: stopInventory = ${call("stopInventory")}, $reads reads, ${seen.size} tags")
                 }
                 busy = false
             }

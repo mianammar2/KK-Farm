@@ -94,6 +94,8 @@ class MainActivity : Activity() {
         handler.postDelayed(flushHeld, 250)
     }
 
+    private val release = Runnable { Log.i(TAG, "trigger released"); endHold() }
+
     /** Trigger up: stop. Not on a counting page, the nearest tag opens (or the user picks when two are equally near). */
     private fun endHold() {
         if (!holdingTrigger) return
@@ -105,7 +107,7 @@ class MainActivity : Activity() {
                 if (heldStreamed) { vibrate(60); Log.i(TAG, "count took ${held.size} tags"); return@postDelayed }
                 val reads = held.values.sortedByDescending { it.rssi }
                 when {
-                    reads.isEmpty() -> Log.i(TAG, "trigger released, no tags")
+                    reads.isEmpty() -> Log.i(TAG, "trigger released, no tags (reader ${uhf.state()})")
                     reads.size == 1 || reads[0].rssi - reads[1].rssi >= 6 -> onScan(reads[0].code, "uhf")
                     else -> chooseTag(reads.map { it.code })
                 }
@@ -266,7 +268,9 @@ class MainActivity : Activity() {
     override fun onPause() {
         isVisible = false
         visible = false
+        pausedAt = System.currentTimeMillis()
         handler.removeCallbacks(readerWatchdog)
+        handler.removeCallbacks(release)
         nfc.stop()
         endHold()
         uhf.close()
@@ -390,8 +394,11 @@ class MainActivity : Activity() {
     /** D-339: with our own UHF reader, the trigger reads while held. Key codes are logged so new guns can be checked. */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode in TRIGGER_KEYS && uhf.state() == "ready") {
-            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) { Log.i(TAG, "trigger down ${event.keyCode}"); beginHold() }
-            if (event.action == KeyEvent.ACTION_UP) endHold()
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                handler.removeCallbacks(release) // a key repeat while held, not a new press
+                if (!holdingTrigger) { Log.i(TAG, "trigger down ${event.keyCode}"); beginHold() }
+            }
+            if (event.action == KeyEvent.ACTION_UP) { handler.removeCallbacks(release); handler.postDelayed(release, RELEASE_MS) }
             return true
         }
         return super.dispatchKeyEvent(event)
@@ -498,7 +505,12 @@ class MainActivity : Activity() {
     companion object {
         const val TAG = "KKFarm"
         /** C72 trigger keys (pistol grip and side keys) as reported on Chainway units; confirm with adb logcat -s KKFarm. */
-        private val TRIGGER_KEYS = setOf(139, 280, 291, 293, 294, 311, 312, 313, 315)
+        // D-353: only the pistol trigger (293 on the C72; the others are other Chainway models). Side keys 139 and 294 are left alone.
+        private val TRIGGER_KEYS = setOf(280, 291, 293, 311, 312, 313, 315)
+        /** Holding the C72 trigger sends up/down pairs about every 0.5 s; a release counts only when no press follows within this. */
+        private const val RELEASE_MS = 650L
+        /** When KK Farm last left the screen: the scan service does not pull it back for a moment after (D-353). */
+        @Volatile var pausedAt = 0L
         private const val PENDING_SCAN_MS = 120_000L
         private const val REQUEST_PHOTO = 41
         private const val INFOWEDGE_PACKAGE = "com.rscja.infowedge"
@@ -522,6 +534,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.2"
-    const val CODE = 22 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.3"
+    const val CODE = 23 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }
