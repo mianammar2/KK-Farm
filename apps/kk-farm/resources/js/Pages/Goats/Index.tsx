@@ -380,7 +380,7 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
 /**
  * D-345: the filtered, sorted list on paper, black and white. The browser's own header and footer (date, title, address,
  * page number) are switched off (@page margin 0), so the title, the filters and the print time appear once, at the top.
- * One fact per column, nothing wraps, no High/Low words: # · Tag ID · Breed · Gender · Role · Age · Weight · Change · Weighed · Temp · Temp change · Taken · PEN · Status.
+ * One fact per column, nothing wraps, Temp says High or Low when out of range (D-351): # · Tag ID · Breed · Gender · Role · Age · Weight · Change · Weighed · Temp · Temp change · Taken · PEN · Status.
  */
 function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals & { tags?: string[] }>; roleNames: Record<string, string>; label: string }) {
     const d = new Date();
@@ -414,7 +414,7 @@ function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals &
                             <td className={cell('Weight')}>{g.weight ? `${g.weight} KG` : '—'}</td>
                             <td className={cell('Change')}>{g.weightChange ? `${g.weightChange > 0 ? '▲ +' : '▼ '}${g.weightChange}` : '—'}</td>
                             <td className={cell('')}>{g.weightOn ?? '—'}</td>
-                            <td className={cell('Temp')}>{g.tempF != null ? `${g.tempF} °F` : '—'}</td>
+                            <td className={cell('Temp')}>{g.tempF != null ? `${g.tempF} °F${g.tempState === 'high' ? ' High' : g.tempState === 'low' ? ' Low' : ''}` : '—'}</td>
                             <td className={cell('Temp change')}>{g.tempChange ? `${g.tempChange > 0 ? '▲ +' : '▼ '}${g.tempChange}` : '—'}</td>
                             <td className={cell('')}>{g.tempOn ?? '—'}</td>
                             <td className={cell('')}>{g.pen ?? '—'}</td>
