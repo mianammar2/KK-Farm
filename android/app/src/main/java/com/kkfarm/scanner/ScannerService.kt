@@ -52,6 +52,7 @@ class ScannerService : Service() {
         }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED) else @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(receiver, filter)
         running = true
+        GunAgent.start(this) // D-355: reports to Settings → Guns whenever the gun is on
         Log.i(MainActivity.TAG, "scanner service listening for ${filter.actionsIterator().asSequence().toList()}")
     }
 

@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- D-090: the app installs its own updates (Android still asks the person to confirm) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- D-355: the Administrator can install the latest app from Settings → Guns; the remote screen can wake the gun -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- D-337: touch (NFC) tags are read on touch and written with the goat's Tag ID -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
@@ -43,6 +46,20 @@
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Connects the handheld RFID reader trigger to the farm app" />
         </service>
+
+        <!-- D-355: the remote screen (switched on once in the gun's Accessibility settings) -->
+        <service
+            android:name=".RemoteControl"
+            android:exported="true"
+            android:label="@string/remote_control_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/remote_control" />
+        </service>
+
+        <receiver android:name=".SelfUpdate$InstallStatus" android:exported="false" />
 
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

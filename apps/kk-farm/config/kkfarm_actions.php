@@ -23,6 +23,7 @@ return [
     'PATCH /sheds/{shed}' => ['inline' => 'the action checks manage_sheds', 'module' => 'sheds'],
     'DELETE /settings/guns/{gun}' => ['module' => 'settings', 'why' => 'Settings is the Administrator\'s alone (Access::module)'],
     'POST /gun/report' => ['open' => 'D-354: the gun app reports its own version, reader state and log with the signed-in person\'s session; it changes no farm data'],
+    'POST /gun/screen' => ['open' => 'D-355: the gun app sends its own screen for the remote screen, with the signed-in person\'s session; it changes no farm data'],
     'POST /settings/guns/{gun}' => ['module' => 'settings', 'why' => 'Settings is the Administrator\'s alone (Access::module)'],
     'POST /settings/guns/{gun}/commands' => ['module' => 'settings', 'why' => 'Settings is the Administrator\'s alone (Access::module)'],
     'POST /account/password' => ['open' => 'the signed-in person\'s own session and password (switch-role works only with the local demo login)'],

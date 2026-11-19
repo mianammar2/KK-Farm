@@ -10,7 +10,9 @@ class GunDevice extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['state' => 'array', 'last_seen_at' => 'datetime', 'logs_at' => 'datetime'];
+    protected $hidden = ['screen', 'logs', 'key_hash'];
+
+    protected $casts = ['can' => 'array', 'state' => 'array', 'last_seen_at' => 'datetime', 'logs_at' => 'datetime', 'screen_at' => 'datetime'];
 
     public function commands(): HasMany
     {

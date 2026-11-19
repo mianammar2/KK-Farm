@@ -14,9 +14,19 @@ class GunCommand extends Model
         'reopen_reader' => 'Restart the reader',
         'reload' => 'Reload the page',
         'check_update' => 'Check for an update',
+        'open_app' => 'Open KK Farm',
+        'install_update' => 'Install the latest app',
     ];
+
+    /**
+     * D-355: remote screen (the gun's Remote control switched on in Accessibility): a screenshot, a tap or swipe at a
+     * point given as a fraction of the screen, a system key, text into the focused field, wake the screen.
+     */
+    public const REMOTE = ['screenshot', 'tap', 'swipe', 'key', 'text', 'wake'];
+
+    public const KEYS = ['back', 'home', 'recents', 'notifications'];
 
     protected $guarded = [];
 
-    protected $casts = ['sent_at' => 'datetime', 'done_at' => 'datetime'];
+    protected $casts = ['sent_at' => 'datetime', 'done_at' => 'datetime', 'args' => 'array'];
 }

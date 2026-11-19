@@ -61,37 +61,62 @@ object GunLink {
         p.inputStream.bufferedReader().use { it.readText() }.also { p.waitFor() }
     }.getOrElse { "could not read the log: ${it.message}" }
 
+    private const val PREF_KEY = "gun_key"
+
     /**
-     * Posts one report. Runs on a worker thread. Returns the server's answer ({commands, every}), or null when
-     * nobody is signed in on the gun or the server cannot be reached.
+     * Posts one report. Runs on a worker thread. With the gun's own key (given by the server on the first report while
+     * someone was signed in) it uses /api/v1/gun/report and works with nobody signed in; without it, the session.
+     * Returns the server's answer ({commands, every, key?}), or null when it cannot report.
      */
-    fun report(server: String, body: JSONObject): JSONObject? {
-        val cookies = CookieManager.getInstance().getCookie(server) ?: return null
-        val xsrf = cookies.split(";").map { it.trim() }.firstOrNull { it.startsWith("XSRF-TOKEN=") }?.substringAfter("=")
-            ?.let { URLDecoder.decode(it, "UTF-8") } ?: return null
+    fun report(context: Context, server: String, body: JSONObject): JSONObject? {
+        val answer = post(context, server, "/gun/report", body) ?: return null
+        answer.optString("key").takeIf { it.startsWith("kkg_") }?.let { prefs(context).edit().putString(PREF_KEY, it).apply(); Log.i(MainActivity.TAG, "gun key received") }
+        return answer
+    }
+
+    fun screen(context: Context, server: String, body: JSONObject): Boolean = post(context, server, "/gun/screen", body) != null
+
+    private fun post(context: Context, server: String, path: String, body: JSONObject): JSONObject? {
+        val key = prefs(context).getString(PREF_KEY, null)
+        val headers = LinkedHashMap<String, String>()
+        val url: String
+        if (key != null) {
+            url = "$server/api/v1$path"
+            headers["Authorization"] = "Bearer $key"
+        } else {
+            val cookies = runCatching { CookieManager.getInstance().getCookie(server) }.getOrNull() ?: return null
+            val xsrf = cookies.split(";").map { it.trim() }.firstOrNull { it.startsWith("XSRF-TOKEN=") }?.substringAfter("=")
+                ?.let { URLDecoder.decode(it, "UTF-8") } ?: return null
+            url = "$server$path"
+            headers["X-XSRF-TOKEN"] = xsrf
+            headers["Cookie"] = cookies
+            headers["X-Requested-With"] = "XMLHttpRequest"
+        }
         return runCatching {
-            val c = URL("$server/gun/report").openConnection() as HttpURLConnection
+            val c = URL(url).openConnection() as HttpURLConnection
             c.requestMethod = "POST"
             c.connectTimeout = 10_000
-            c.readTimeout = 20_000
+            c.readTimeout = 30_000
             c.doOutput = true
             c.instanceFollowRedirects = false
             c.setRequestProperty("Content-Type", "application/json")
             c.setRequestProperty("Accept", "application/json")
-            c.setRequestProperty("X-Requested-With", "XMLHttpRequest")
-            c.setRequestProperty("X-XSRF-TOKEN", xsrf)
-            c.setRequestProperty("Cookie", cookies)
             c.setRequestProperty("User-Agent", "KKFarmScanner/${BuildConfigVersion.NAME}")
+            headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
             c.outputStream.use { it.write(body.toString().toByteArray()) }
             val code = c.responseCode
-            if (code != 200) { Log.i(MainActivity.TAG, "gun report: server said $code"); c.disconnect(); return null }
+            if (code == 401 && key != null) { // the gun was removed on Settings → Guns: start again with the next signed-in report
+                prefs(context).edit().remove(PREF_KEY).apply()
+                Log.i(MainActivity.TAG, "gun key refused: cleared")
+            }
+            if (code != 200) { Log.i(MainActivity.TAG, "gun $path: server said $code"); c.disconnect(); return null }
             JSONObject(c.inputStream.bufferedReader().use { it.readText() }).also { c.disconnect() }
-        }.onFailure { Log.i(MainActivity.TAG, "gun report failed: ${it.message}") }.getOrNull()
+        }.onFailure { Log.i(MainActivity.TAG, "gun $path failed: ${it.message}") }.getOrNull()
     }
 
-    fun commands(answer: JSONObject?): List<Pair<Long, String>> {
+    fun commands(answer: JSONObject?): List<Triple<Long, String, JSONObject>> {
         val list: JSONArray = answer?.optJSONArray("commands") ?: return emptyList()
-        return (0 until list.length()).map { list.getJSONObject(it).let { c -> c.getLong("id") to c.getString("command") } }
+        return (0 until list.length()).map { list.getJSONObject(it).let { c -> Triple(c.getLong("id"), c.getString("command"), c.optJSONObject("args") ?: JSONObject()) } }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences("kkfarm", Context.MODE_PRIVATE)

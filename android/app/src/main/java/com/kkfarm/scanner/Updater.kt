@@ -109,7 +109,7 @@ object Updater {
         )
     }
 
-    private fun download(context: Context, url: String, code: Int, sha256: String): File {
+    fun download(context: Context, url: String, code: Int, sha256: String): File {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() } // only the newest download is kept
         val file = File(dir, "kkfarm-$code.apk")

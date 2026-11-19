@@ -10,5 +10,8 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             ScannerService.start(context)
         }
+        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) { // D-355: after an update, back to KK Farm
+            runCatching { context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
     }
 }

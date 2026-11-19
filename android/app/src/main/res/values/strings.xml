@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_control_label">KK Farms remote control</string>
+    <string name="remote_control_description">Lets the farm\'s Administrator see this gun\'s screen and tap on it from Settings → Guns on the KK Farms website, to check and fix the gun from the office. It acts only on commands from the farm\'s own server.</string>
+</resources>

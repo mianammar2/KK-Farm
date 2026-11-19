@@ -44,7 +44,7 @@ import org.json.JSONObject
  *
  * The physical menu key (≡) opens the settings: server address and broadcast action.
  */
-class MainActivity : Activity() {
+class MainActivity : Activity(), GunAgent.Host {
 
     private lateinit var web: WebView
     private val prefs by lazy { getSharedPreferences("kkfarm", Context.MODE_PRIVATE) }
@@ -96,86 +96,47 @@ class MainActivity : Activity() {
 
     private val release = Runnable { Log.i(TAG, "trigger released"); endHold() }
 
-    // ---------- D-354: reports to the server, and the Administrator's test commands from Settings → Guns ----------
-    private val gunResults = ArrayList<JSONObject>()
-    @Volatile private var gunSendLog = false
-    private var gunBusy = false
-    private val gunLoop = Runnable { gunReport() }
-
-    private fun gunState(): JSONObject = JSONObject().apply {
-        put("page", web.url?.let { Uri.parse(it).path } ?: "")
-        put("onScreen", isVisible)
-        put("lastTrigger", GunLink.lastTrigger)
-        put("lastHold", GunLink.lastHold)
-        put("lastScan", GunLink.lastScan)
-        put("service", if (ScannerService.running) "Running" else "Not running")
-        put("infowedge", if (runCatching { packageManager.getPackageInfo(INFOWEDGE_PACKAGE, 0) }.isSuccess) "Installed" else "Not installed")
-        runCatching { (getSystemService(BATTERY_SERVICE) as android.os.BatteryManager).getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) }.getOrNull()?.let { put("battery", "$it%") }
-        put("android", Build.VERSION.RELEASE)
-        put("model", Build.MODEL)
-        GunLink.lastCrash(this@MainActivity)?.let { put("crash", it) }
+    // ---------- D-354 / D-355: Settings → Guns. GunAgent (run by the scan service) reports; this screen runs what needs the app ----------
+    override fun hostState(o: JSONObject) {
+        o.put("page", web.url?.let { Uri.parse(it).path } ?: "")
+        o.put("onScreen", isVisible)
     }
 
-    /** Main thread: gathers the state, posts it on a worker thread, runs the commands that come back, and plans the next report. */
-    private fun gunReport() {
-        handler.removeCallbacks(gunLoop)
-        if (gunBusy) { handler.postDelayed(gunLoop, 2000); return }
-        gunBusy = true
-        val results = synchronized(gunResults) { ArrayList(gunResults).also { gunResults.clear() } }
-        val withLog = gunSendLog
-        gunSendLog = false
-        val body = JSONObject().put("install_id", GunLink.installId(this)).put("version", BuildConfigVersion.NAME).put("code", BuildConfigVersion.CODE)
-            .put("reader", uhf.state()).put("state", gunState())
-        if (results.isNotEmpty()) body.put("results", org.json.JSONArray(results))
-        val srv = server
-        Thread {
-            if (withLog) body.put("logs", GunLink.ownLog())
-            val answer = GunLink.report(srv, body)
-            runOnUiThread {
-                gunBusy = false
-                if (answer == null) { // not signed in or no network: keep the answers and the log for the next try
-                    synchronized(gunResults) { gunResults.addAll(0, results) }
-                    if (withLog) gunSendLog = true
-                }
-                GunLink.commands(answer).forEach { (id, command) -> gunRun(id, command) }
-                handler.postDelayed(gunLoop, (answer?.optInt("every", 60) ?: 60).coerceIn(5, 300) * 1000L)
-            }
-        }.start()
-    }
+    override fun reader(): String = uhf.state()
 
-    private fun gunDone(id: Long, ok: Boolean, text: String) {
-        Log.i(TAG, "server command $id ${if (ok) "done" else "failed"}: $text")
-        synchronized(gunResults) { gunResults.add(JSONObject().put("id", id).put("ok", ok).put("text", text.take(3900))) }
-        handler.postDelayed(gunLoop, 300)
-    }
+    override fun onScreen(): Boolean = isVisible
+
+    override fun snapshot(): android.graphics.Bitmap? = runCatching {
+        val v = window.decorView
+        android.graphics.Bitmap.createBitmap(v.width, v.height, android.graphics.Bitmap.Config.ARGB_8888).also { v.draw(android.graphics.Canvas(it)) }
+    }.getOrNull()
 
     /** Read-only tests: nothing here writes, locks or kills a tag. */
-    private fun gunRun(id: Long, command: String) {
-        Log.i(TAG, "server command $id: $command")
+    override fun run(id: Long, command: String, done: (ok: Boolean, text: String) -> Unit): Boolean {
         when (command) {
-            "send_logs" -> { gunSendLog = true; gunDone(id, true, "Log sent (${BuildConfigVersion.NAME}).") }
-            "reload" -> { web.reload(); gunDone(id, true, "Reloaded ${web.url?.let { Uri.parse(it).path } ?: ""}") }
-            "check_update" -> { Updater.check(this, server, manual = true); gunDone(id, true, "Checked. Installed ${BuildConfigVersion.NAME}; if a newer app is on the server, the gun now asks to install it.") }
+            "reload" -> { web.reload(); done(true, "Reloaded ${web.url?.let { Uri.parse(it).path } ?: ""}") }
+            "check_update" -> { Updater.check(this, server, manual = true); done(true, "Checked. Installed ${BuildConfigVersion.NAME}; if a newer app is on the server, the gun now asks to install it.") }
             "reopen_reader" -> {
-                if (!isVisible) { gunDone(id, false, "KK Farm is not on screen on the gun. Open it there and send again."); return }
-                Thread { uhf.close(); uhf.open(); runOnUiThread { gunDone(id, uhf.state() == "ready", "Reader after restart: ${uhf.state()}") } }.start()
+                if (!isVisible) { done(false, "KK Farm is not on screen on the gun."); return true }
+                Thread { uhf.close(); uhf.open(); runOnUiThread { done(uhf.state() == "ready", "Reader after restart: ${uhf.state()}") } }.start()
             }
-            "test_read" -> gunTestRead(id)
-            else -> gunDone(id, false, "This app (${BuildConfigVersion.NAME}) does not know '$command'. Update the app.")
+            "test_read" -> testRead(done)
+            else -> return false
         }
+        return true
     }
 
-    private fun gunTestRead(id: Long) {
-        if (!isVisible) { gunDone(id, false, "KK Farm is not on screen on the gun. Open it there and send again."); return }
-        if (holdingTrigger) { gunDone(id, false, "Someone is holding the trigger. Try again."); return }
-        if (uhf.state() != "ready" && !uhf.open()) { gunDone(id, false, "Reader ${uhf.state()}: it would not start."); return }
+    private fun testRead(done: (ok: Boolean, text: String) -> Unit) {
+        if (!isVisible) { done(false, "KK Farm is not on screen on the gun."); return }
+        if (holdingTrigger) { done(false, "Someone is holding the trigger. Try again."); return }
+        if (uhf.state() != "ready" && !uhf.open()) { done(false, "Reader ${uhf.state()}: it would not start."); return }
         val seen = LinkedHashMap<String, UhfReader.Read>()
         uhf.startHold { t -> synchronized(seen) { seen[t.epc] = t } }
         handler.postDelayed({
             uhf.stopHold()
             handler.postDelayed({
                 val reads = synchronized(seen) { seen.values.sortedByDescending { it.rssi } }
-                gunDone(id, true, "${reads.size} tags in 3 s at full power. ${GunLink.lastHold}" + reads.take(15).joinToString("") { "\n${it.code}  ${it.rssi} dBm" })
+                done(true, "${reads.size} tags in 3 s at full power. ${GunLink.lastHold}" + reads.take(15).joinToString("") { "\n${it.code}  ${it.rssi} dBm" })
             }, 500)
         }, 3000)
     }
@@ -306,8 +267,8 @@ class MainActivity : Activity() {
             layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (3 * resources.displayMetrics.density).toInt())
         }
         setContentView(android.widget.FrameLayout(this).apply { addView(web); addView(progress) })
-        GunLink.catchCrashes(this) // D-354
-        handler.postDelayed(gunLoop, 5000)
+        GunAgent.start(this) // D-354: also started by the scan service; reports whether or not this screen is open
+        GunAgent.host = this
 
         if (savedInstanceState != null) {
             web.restoreState(savedInstanceState)
@@ -345,11 +306,17 @@ class MainActivity : Activity() {
         nfc.start()
         pendingChoice?.let { pendingChoice = null; chooseTag(it) }
         Updater.check(this, server)
-        handler.postDelayed(gunLoop, 1500) // D-354: report soon after the app comes back
+        GunAgent.host = this
+        GunAgent.hostReady() // D-355: commands that opened the app run now, and a report goes soon
         pendingUrl?.let { url ->
             pendingUrl = null
             if (System.currentTimeMillis() - pendingAt < PENDING_SCAN_MS) web.loadUrl(url)
         }
+    }
+
+    override fun onDestroy() {
+        if (GunAgent.host === this) GunAgent.host = null
+        super.onDestroy()
     }
 
     override fun onPause() {
@@ -603,7 +570,7 @@ class MainActivity : Activity() {
         private const val REQUEST_PHOTO = 41
         private const val INFOWEDGE_PACKAGE = "com.rscja.infowedge"
         private const val INFOWEDGE_SERVICE = "com.rscja.infowedge.SERVICE"
-        private const val KEY_SERVER = "server"
+        const val KEY_SERVER = "server"
         private const val KEY_ACTION = "action"
         private const val KEY_EXTRA = "extra"
         // The farm server (D-045). For laptop testing set http://localhost:8000 in settings and use adb reverse.
@@ -622,6 +589,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.4"
-    const val CODE = 24 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.5"
+    const val CODE = 25 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

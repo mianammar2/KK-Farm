@@ -42,7 +42,7 @@ class GunRemoteTest extends TestCase
         $cmd = GunCommand::sole();
 
         $this->actingAs($caretaker)->postJson('/gun/report', ['install_id' => $id])
-            ->assertJson(['commands' => [['id' => $cmd->id, 'command' => 'test_read']], 'every' => 10]);
+            ->assertJson(['commands' => [['id' => $cmd->id, 'command' => 'test_read']], 'every' => 2]);
         $this->assertSame('sent', $cmd->fresh()->status);
         $this->actingAs($caretaker)->postJson('/gun/report', ['install_id' => $id])->assertJson(['commands' => []]); // sent once only
 
@@ -60,6 +60,46 @@ class GunRemoteTest extends TestCase
         $this->actingAs($admin)->delete("/settings/guns/{$gun->id}")->assertRedirect();
         $this->assertSame(0, GunDevice::count());
         $this->assertSame(0, GunCommand::count());
+    }
+
+    public function test_remote_screen_tap_and_image(): void
+    {
+        [, $admin, $caretaker] = $this->org('screen-farm');
+        $id = (string) Str::uuid();
+        $this->actingAs($caretaker)->postJson('/gun/report', ['install_id' => $id, 'can' => ['remote' => true]])->assertOk();
+        $gun = GunDevice::sole();
+
+        $this->actingAs($admin)->post("/settings/guns/{$gun->id}/commands", ['command' => 'tap', 'x' => 1.5, 'y' => 0.2])->assertSessionHasErrors('x');
+        $this->actingAs($admin)->post("/settings/guns/{$gun->id}/commands", ['command' => 'tap', 'x' => 0.5, 'y' => 0.25])->assertRedirect();
+        $this->actingAs($caretaker)->postJson('/gun/report', ['install_id' => $id])
+            ->assertJson(['commands' => [['command' => 'tap', 'args' => ['x' => 0.5, 'y' => 0.25]]], 'every' => 2]);
+
+        $jpeg = "\xFF\xD8\xFF\xE0".str_repeat('x', 50);
+        $this->actingAs($caretaker)->postJson('/gun/screen', ['install_id' => $id, 'image' => base64_encode('not a jpeg'), 'w' => 720, 'h' => 1440])->assertStatus(422);
+        $this->actingAs($caretaker)->postJson('/gun/screen', ['install_id' => $id, 'image' => base64_encode($jpeg), 'w' => 720, 'h' => 1440])->assertOk();
+        $this->assertSame($jpeg, $this->actingAs($admin)->get("/settings/guns/{$gun->id}/screen")->assertOk()->assertHeader('Content-Type', 'image/jpeg')->getContent());
+        $this->actingAs($caretaker)->get("/settings/guns/{$gun->id}/screen")->assertForbidden();
+        $this->actingAs($admin)->get('/settings/guns')->assertInertia(fn ($p) => $p->where('guns.0.can.remote', true)->missing('guns.0.screen'));
+    }
+
+    public function test_the_gun_reports_with_its_own_key_after_the_first_signed_in_report(): void
+    {
+        [, $admin, $caretaker] = $this->org('key-farm');
+        $id = (string) Str::uuid();
+        $key = $this->actingAs($caretaker)->postJson('/gun/report', ['install_id' => $id])->assertOk()->json('key');
+        $this->assertStringStartsWith('kkg_', $key);
+        $this->actingAs($caretaker)->postJson('/gun/report', ['install_id' => $id])->assertOk()->assertJsonMissingPath('key'); // given once
+        $gun = GunDevice::sole();
+        $this->actingAs($admin)->post("/settings/guns/{$gun->id}/commands", ['command' => 'open_app'])->assertRedirect();
+
+        auth()->logout();
+        $this->postJson('/api/v1/gun/report', ['install_id' => $id], ['Authorization' => 'Bearer wrong'])->assertStatus(401);
+        $this->postJson('/api/v1/gun/report', ['install_id' => (string) Str::uuid()], ['Authorization' => "Bearer {$key}"])->assertStatus(409);
+        $this->postJson('/api/v1/gun/report', ['install_id' => $id, 'version' => '0.8.5', 'state' => ['onScreen' => false]], ['Authorization' => "Bearer {$key}"])
+            ->assertOk()->assertJson(['commands' => [['command' => 'open_app']]]);
+        $this->postJson('/api/v1/gun/screen', ['install_id' => $id, 'image' => base64_encode("\xFF\xD8\xFF".'abc'), 'w' => 10, 'h' => 20], ['Authorization' => "Bearer {$key}"])->assertOk();
+        $this->assertSame('0.8.5', $gun->fresh()->app_version);
+        $this->assertNotNull($gun->fresh()->screen_at);
     }
 
     public function test_another_farm_never_sees_the_gun(): void
