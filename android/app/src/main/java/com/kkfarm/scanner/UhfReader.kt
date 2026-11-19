@@ -79,7 +79,7 @@ class UhfReader(private val context: Context) {
     /** Reads at full power until [stopHold]. Each tag is reported once per hold, with its best signal. */
     fun startHold(onTag: (Read) -> Unit) {
         if (holding) return
-        if (reader == null && !open()) { Log.w(MainActivity.TAG, "UHF hold: reader not open ($state)"); return }
+        if (reader == null && !open()) { Log.w(MainActivity.TAG, "UHF hold: reader not open ($state)"); GunLink.lastHold = "${GunLink.now()} reader not open ($state)"; return }
         stopTouch()
         holding = true
         thread(name = "uhf-hold") {
@@ -99,6 +99,7 @@ class UhfReader(private val context: Context) {
                     }
                     Log.i(MainActivity.TAG, "UHF hold: stopInventory = ${call("stopInventory")}, $reads reads, ${seen.size} tags")
                 }
+                GunLink.lastHold = "${GunLink.now()} start=$started, $reads reads, ${seen.size} tags"
                 busy = false
             }
         }

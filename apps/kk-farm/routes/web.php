@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/switch-role', [AuthController::class, 'login']); // demo login only (D-044)
     Route::get('/account/password', [AuthController::class, 'editPassword']);
     Route::post('/account/password', [AuthController::class, 'updatePassword']);
+    Route::post('/gun/report', [\App\Http\Controllers\GunController::class, 'report']); // D-354: the gun app reports itself (anyone signed in on a gun)
     // D-090: the app on each device and its updates
     Route::get('/account/app', function () {
         $file = public_path('downloads/kkfarm.json');
@@ -518,6 +519,11 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/settings', [SettingsController::class, 'index']);
         Route::get('/settings/{section}', [SettingsController::class, 'index'])->whereIn('section', ['breeds', 'ages', 'system']); // D-215
         Route::get('/settings/access', [\App\Http\Controllers\AccessController::class, 'roles']);
+        Route::get('/settings/guns', [\App\Http\Controllers\GunController::class, 'index']); // D-354
+        Route::get('/settings/guns/{gun}/logs', [\App\Http\Controllers\GunController::class, 'logs']);
+        Route::post('/settings/guns/{gun}/commands', [\App\Http\Controllers\GunController::class, 'command']);
+        Route::post('/settings/guns/{gun}', [\App\Http\Controllers\GunController::class, 'update']);
+        Route::delete('/settings/guns/{gun}', [\App\Http\Controllers\GunController::class, 'destroy']);
         Route::get('/settings/access/tools', [\App\Http\Controllers\AccessToolsController::class, 'index']); // D-266: history, Why?, health
         Route::get('/settings/access/levels/preview', [\App\Http\Controllers\AccessToolsController::class, 'levelPreview']); // D-266 step 5c
         Route::post('/settings/access/levels', [\App\Http\Controllers\AccessToolsController::class, 'setLevel']);

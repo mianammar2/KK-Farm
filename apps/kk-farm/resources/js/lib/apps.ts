@@ -304,6 +304,7 @@ export const APPS: ErpApp[] = [
         S('Configuration', '/settings/ages', 'Age Groups'),
         S('Configuration', '/settings/fields', 'Register Fields'),
         S('Configuration', '/settings/system', 'System'),
+        S('Configuration', '/settings/guns', 'Guns'), // D-354
     ] },
 ];
 

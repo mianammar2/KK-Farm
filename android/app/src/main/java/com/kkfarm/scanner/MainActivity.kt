@@ -96,6 +96,90 @@ class MainActivity : Activity() {
 
     private val release = Runnable { Log.i(TAG, "trigger released"); endHold() }
 
+    // ---------- D-354: reports to the server, and the Administrator's test commands from Settings → Guns ----------
+    private val gunResults = ArrayList<JSONObject>()
+    @Volatile private var gunSendLog = false
+    private var gunBusy = false
+    private val gunLoop = Runnable { gunReport() }
+
+    private fun gunState(): JSONObject = JSONObject().apply {
+        put("page", web.url?.let { Uri.parse(it).path } ?: "")
+        put("onScreen", isVisible)
+        put("lastTrigger", GunLink.lastTrigger)
+        put("lastHold", GunLink.lastHold)
+        put("lastScan", GunLink.lastScan)
+        put("service", if (ScannerService.running) "Running" else "Not running")
+        put("infowedge", if (runCatching { packageManager.getPackageInfo(INFOWEDGE_PACKAGE, 0) }.isSuccess) "Installed" else "Not installed")
+        runCatching { (getSystemService(BATTERY_SERVICE) as android.os.BatteryManager).getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) }.getOrNull()?.let { put("battery", "$it%") }
+        put("android", Build.VERSION.RELEASE)
+        put("model", Build.MODEL)
+        GunLink.lastCrash(this@MainActivity)?.let { put("crash", it) }
+    }
+
+    /** Main thread: gathers the state, posts it on a worker thread, runs the commands that come back, and plans the next report. */
+    private fun gunReport() {
+        handler.removeCallbacks(gunLoop)
+        if (gunBusy) { handler.postDelayed(gunLoop, 2000); return }
+        gunBusy = true
+        val results = synchronized(gunResults) { ArrayList(gunResults).also { gunResults.clear() } }
+        val withLog = gunSendLog
+        gunSendLog = false
+        val body = JSONObject().put("install_id", GunLink.installId(this)).put("version", BuildConfigVersion.NAME).put("code", BuildConfigVersion.CODE)
+            .put("reader", uhf.state()).put("state", gunState())
+        if (results.isNotEmpty()) body.put("results", org.json.JSONArray(results))
+        val srv = server
+        Thread {
+            if (withLog) body.put("logs", GunLink.ownLog())
+            val answer = GunLink.report(srv, body)
+            runOnUiThread {
+                gunBusy = false
+                if (answer == null) { // not signed in or no network: keep the answers and the log for the next try
+                    synchronized(gunResults) { gunResults.addAll(0, results) }
+                    if (withLog) gunSendLog = true
+                }
+                GunLink.commands(answer).forEach { (id, command) -> gunRun(id, command) }
+                handler.postDelayed(gunLoop, (answer?.optInt("every", 60) ?: 60).coerceIn(5, 300) * 1000L)
+            }
+        }.start()
+    }
+
+    private fun gunDone(id: Long, ok: Boolean, text: String) {
+        Log.i(TAG, "server command $id ${if (ok) "done" else "failed"}: $text")
+        synchronized(gunResults) { gunResults.add(JSONObject().put("id", id).put("ok", ok).put("text", text.take(3900))) }
+        handler.postDelayed(gunLoop, 300)
+    }
+
+    /** Read-only tests: nothing here writes, locks or kills a tag. */
+    private fun gunRun(id: Long, command: String) {
+        Log.i(TAG, "server command $id: $command")
+        when (command) {
+            "send_logs" -> { gunSendLog = true; gunDone(id, true, "Log sent (${BuildConfigVersion.NAME}).") }
+            "reload" -> { web.reload(); gunDone(id, true, "Reloaded ${web.url?.let { Uri.parse(it).path } ?: ""}") }
+            "check_update" -> { Updater.check(this, server, manual = true); gunDone(id, true, "Checked. Installed ${BuildConfigVersion.NAME}; if a newer app is on the server, the gun now asks to install it.") }
+            "reopen_reader" -> {
+                if (!isVisible) { gunDone(id, false, "KK Farm is not on screen on the gun. Open it there and send again."); return }
+                Thread { uhf.close(); uhf.open(); runOnUiThread { gunDone(id, uhf.state() == "ready", "Reader after restart: ${uhf.state()}") } }.start()
+            }
+            "test_read" -> gunTestRead(id)
+            else -> gunDone(id, false, "This app (${BuildConfigVersion.NAME}) does not know '$command'. Update the app.")
+        }
+    }
+
+    private fun gunTestRead(id: Long) {
+        if (!isVisible) { gunDone(id, false, "KK Farm is not on screen on the gun. Open it there and send again."); return }
+        if (holdingTrigger) { gunDone(id, false, "Someone is holding the trigger. Try again."); return }
+        if (uhf.state() != "ready" && !uhf.open()) { gunDone(id, false, "Reader ${uhf.state()}: it would not start."); return }
+        val seen = LinkedHashMap<String, UhfReader.Read>()
+        uhf.startHold { t -> synchronized(seen) { seen[t.epc] = t } }
+        handler.postDelayed({
+            uhf.stopHold()
+            handler.postDelayed({
+                val reads = synchronized(seen) { seen.values.sortedByDescending { it.rssi } }
+                gunDone(id, true, "${reads.size} tags in 3 s at full power. ${GunLink.lastHold}" + reads.take(15).joinToString("") { "\n${it.code}  ${it.rssi} dBm" })
+            }, 500)
+        }, 3000)
+    }
+
     /** Trigger up: stop. Not on a counting page, the nearest tag opens (or the user picks when two are equally near). */
     private fun endHold() {
         if (!holdingTrigger) return
@@ -222,6 +306,8 @@ class MainActivity : Activity() {
             layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (3 * resources.displayMetrics.density).toInt())
         }
         setContentView(android.widget.FrameLayout(this).apply { addView(web); addView(progress) })
+        GunLink.catchCrashes(this) // D-354
+        handler.postDelayed(gunLoop, 5000)
 
         if (savedInstanceState != null) {
             web.restoreState(savedInstanceState)
@@ -259,6 +345,7 @@ class MainActivity : Activity() {
         nfc.start()
         pendingChoice?.let { pendingChoice = null; chooseTag(it) }
         Updater.check(this, server)
+        handler.postDelayed(gunLoop, 1500) // D-354: report soon after the app comes back
         pendingUrl?.let { url ->
             pendingUrl = null
             if (System.currentTimeMillis() - pendingAt < PENDING_SCAN_MS) web.loadUrl(url)
@@ -373,6 +460,7 @@ class MainActivity : Activity() {
         lastCode = code
         lastAt = now
         Log.i(TAG, "scan $code via $via")
+        GunLink.lastScan = "${GunLink.now()} $code via $via"
         vibrate(40)
         val url = "$server/scan?tag=" + URLEncoder.encode(code, "UTF-8")
         if (isVisible) {
@@ -396,7 +484,7 @@ class MainActivity : Activity() {
         if (event.keyCode in TRIGGER_KEYS && uhf.state() == "ready") {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 handler.removeCallbacks(release) // a key repeat while held, not a new press
-                if (!holdingTrigger) { Log.i(TAG, "trigger down ${event.keyCode}"); beginHold() }
+                if (!holdingTrigger) { Log.i(TAG, "trigger down ${event.keyCode}"); GunLink.lastTrigger = "${GunLink.now()} key ${event.keyCode}, reader ${uhf.state()}"; beginHold() }
             }
             if (event.action == KeyEvent.ACTION_UP) { handler.removeCallbacks(release); handler.postDelayed(release, RELEASE_MS) }
             return true
@@ -534,6 +622,6 @@ class MainActivity : Activity() {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.3"
-    const val CODE = 23 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.4"
+    const val CODE = 24 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }
