@@ -378,7 +378,7 @@ function AddGoat({ breeds, pens, onDone }: { breeds: Props['breeds']; pens: Prop
 }
 
 /**
- * D-345: the filtered, sorted list on paper, black and white. The browser's own header and footer (date, title, address,
+ * D-345: the filtered, sorted list on paper, black and white except the ▲ / ▼ columns, coloured as on screen (D-352). The browser's own header and footer (date, title, address,
  * page number) are switched off (@page margin 0), so the title, the filters and the print time appear once, at the top.
  * One fact per column, nothing wraps, Temp says High or Low when out of range (D-351): # · Tag ID · Breed · Gender · Role · Age · Weight · Change · Weighed · Temp · Temp change · Taken · PEN · Status.
  */
@@ -391,7 +391,7 @@ function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals &
     const right = new Set(['#', 'Weight', 'Change', 'Temp', 'Temp change']);
     const cell = (h: string) => cx('px-1.5 py-1 whitespace-nowrap', right.has(h) && 'text-right');
     return (
-        <div className="kk-print-list hidden bg-white px-[12mm] py-[10mm] text-[8pt] leading-tight text-black print:block">
+        <div className="kk-print-list hidden bg-white px-[12mm] py-[10mm] text-[8pt] leading-tight text-black [print-color-adjust:exact] [-webkit-print-color-adjust:exact] print:block">
             <style>{'@page { size: A4 landscape; margin: 0; }'}</style>
             <header className="mb-3 flex items-end justify-between border-b-2 border-black pb-1.5">
                 <div>
@@ -412,10 +412,10 @@ function PrintList({ rows, roleNames, label }: { rows: Array<GoatCard & Vitals &
                             <td className={cell('')}>{(g.roles ?? []).map((r) => roleNames[r] ?? r).join(', ') || '—'}</td>
                             <td className={cell('')}>{g.ageCode ?? '—'}</td>
                             <td className={cell('Weight')}>{g.weight ? `${g.weight} KG` : '—'}</td>
-                            <td className={cell('Change')}>{g.weightChange ? `${g.weightChange > 0 ? '▲ +' : '▼ '}${g.weightChange}` : '—'}</td>
+                            <td className={cx(cell('Change'), 'font-semibold', g.weightChange ? (g.weightChange > 0 ? 'text-ok-700' : 'text-crit-700') : '')}>{g.weightChange ? `${g.weightChange > 0 ? '▲ +' : '▼ '}${g.weightChange}` : '—'}</td>
                             <td className={cell('')}>{g.weightOn ?? '—'}</td>
                             <td className={cell('Temp')}>{g.tempF != null ? `${g.tempF} °F${g.tempState === 'high' ? ' High' : g.tempState === 'low' ? ' Low' : ''}` : '—'}</td>
-                            <td className={cell('Temp change')}>{g.tempChange ? `${g.tempChange > 0 ? '▲ +' : '▼ '}${g.tempChange}` : '—'}</td>
+                            <td className={cx(cell('Temp change'), 'font-semibold', g.tempChange ? tempTone(g) : '')}>{g.tempChange ? `${g.tempChange > 0 ? '▲ +' : '▼ '}${g.tempChange}` : '—'}</td>
                             <td className={cell('')}>{g.tempOn ?? '—'}</td>
                             <td className={cell('')}>{g.pen ?? '—'}</td>
                             <td className={cell('')}>{g.status === 'active' ? health[g.health] ?? g.health : 'Left farm'}{g.repro === 'pregnant' ? ', Pregnant' : ''}</td>
