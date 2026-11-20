@@ -26,6 +26,8 @@ class UhfReader(private val context: Context) {
 
     private var reader: Any? = null
     private var tagInfoClass: Class<*>? = null
+    /** D-357: tags arrive through the SDK's inventory callback (as in Chainway's own UHF app); the buffer stayed empty. */
+    private val incoming = java.util.concurrent.ConcurrentLinkedQueue<Any>()
     @Volatile private var state = "none"
     @Volatile private var busy = false // one job at a time: hold-read, touch burst or write
     private val lock = Object()
@@ -41,7 +43,7 @@ class UhfReader(private val context: Context) {
             val r = cls.getMethod("getInstance").invoke(null)!!
             val ok = runCatching { cls.getMethod("init", Context::class.java).invoke(r, context) }.getOrElse { cls.getMethod("init").invoke(r) } as Boolean
             tagInfoClass = runCatching { Class.forName("com.rscja.deviceapi.entity.UHFTAGInfo") }.getOrNull()
-            if (ok) { reader = r; state = "ready" } else state = "error"
+            if (ok) { reader = r; state = "ready"; listen(r) } else state = "error"
             Log.i(MainActivity.TAG, "UHF SDK init ok=$ok")
             if (ok) Log.i(MainActivity.TAG, "UHF settings: ${settings()}")
             ok
@@ -79,17 +81,36 @@ class UhfReader(private val context: Context) {
         runCatching { r.javaClass.getMethod("free").invoke(r) }
         val ok = runCatching { (runCatching { r.javaClass.getMethod("init", Context::class.java).invoke(r, context) }.getOrElse { r.javaClass.getMethod("init").invoke(r) }) as Boolean }.getOrDefault(false)
         Log.i(MainActivity.TAG, "UHF reopened ok=$ok")
+        if (ok) listen(r)
         if (!ok) state = "error"
         return ok
     }
 
     private fun setPower(dbm: Int) { Log.i(MainActivity.TAG, "UHF setPower($dbm) = ${call("setPower", dbm)}") }
 
-    private fun startInventory(): Boolean = (call("startInventoryTag") as? Boolean) ?: false
+    /** Gives the SDK a callback that queues each tag it reads. */
+    private fun listen(r: Any) {
+        runCatching {
+            val itf = Class.forName("com.rscja.deviceapi.interfaces.IUHFInventoryCallback")
+            val cb = java.lang.reflect.Proxy.newProxyInstance(itf.classLoader, arrayOf(itf)) { proxy, m, args ->
+                when (m.name) {
+                    "callback" -> { args?.getOrNull(0)?.let { incoming.add(it) }; null }
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "equals" -> proxy === args?.getOrNull(0)
+                    "toString" -> "KKFarmInventoryCallback"
+                    else -> null
+                }
+            }
+            r.javaClass.getMethod("setInventoryCallback", itf).invoke(r, cb)
+            Log.i(MainActivity.TAG, "UHF inventory callback set")
+        }.onFailure { Log.w(MainActivity.TAG, "UHF inventory callback not set: ${it.message}") }
+    }
+
+    private fun startInventory(): Boolean { incoming.clear(); return (call("startInventoryTag") as? Boolean) ?: false }
     private fun stopInventory() { call("stopInventory") }
 
     private fun nextTag(): Read? {
-        val info = call("readTagFromBuffer") ?: return null
+        val info = incoming.poll() ?: call("readTagFromBuffer") ?: return null
         val epc = (runCatching { info.javaClass.getMethod("getEPC").invoke(info) as String? }.getOrNull() ?: return null).uppercase(Locale.ROOT)
         val rssi = runCatching { (info.javaClass.getMethod("getRssi").invoke(info) as String?)?.replace(",", ".")?.toDouble() }.getOrNull() ?: -99.0
         return Read(decode(epc), epc, rssi)
@@ -121,14 +142,7 @@ class UhfReader(private val context: Context) {
                         if (seen.add(t.epc)) onTag(t)
                     }
                     Log.i(MainActivity.TAG, "UHF hold: stopInventory = ${call("stopInventory")}, $reads reads, ${seen.size} tags")
-                    if (seen.isEmpty()) { // D-356: say why: the reader's settings and a few single reads
-                        Log.i(MainActivity.TAG, "UHF diag: ${settings()}")
-                        repeat(5) { k ->
-                            val one = call("inventorySingleTag")
-                            val epc = one?.let { runCatching { it.javaClass.getMethod("getEPC").invoke(it) }.getOrNull() }
-                            Log.i(MainActivity.TAG, "UHF diag single $k: ${if (one == null) "nothing" else "EPC $epc"}")
-                        }
-                    }
+                    if (seen.isEmpty()) Log.i(MainActivity.TAG, "UHF no tags; reader: ${settings()}")
                 }
                 GunLink.lastHold = "${GunLink.now()} start=$started, $reads reads, ${seen.size} tags"
                 busy = false
