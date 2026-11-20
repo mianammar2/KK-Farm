@@ -40,7 +40,7 @@ function scan(): void {
 
 export function startCardTables(): void {
     if (typeof window === 'undefined' || typeof MutationObserver === 'undefined') return;
-    const queue = () => { if (!queued) { queued = true; requestAnimationFrame(scan); } };
+    const queue = () => { if (!queued) { queued = true; setTimeout(scan, 30); } };
     new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
     queue();
 }

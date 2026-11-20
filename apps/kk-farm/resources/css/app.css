@@ -485,7 +485,8 @@ main { min-width: 0; }
     table[data-cards] td:empty, table[data-cards] td[data-blank='1']:not(:first-child) { display: none; }
     table[data-cards] tr[data-card-wide] td { display: block; text-align: left !important; }
     table[data-cards] tr[data-card-wide] td::before { content: none; }
-    table[data-cards] td > * { min-width: 0; }
+    table[data-cards] tr { box-sizing: border-box; width: 100%; }
+    table[data-cards] td > * { min-width: 0; max-width: 100%; white-space: normal !important; overflow-wrap: anywhere; }
     /* the wrapper that used to scroll sideways no longer needs to */
     .overflow-x-auto:has(> table[data-cards]) { overflow-x: visible; }
 }
