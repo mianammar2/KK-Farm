@@ -270,8 +270,11 @@ class MainActivity : Activity(), GunAgent.Host {
         GunAgent.start(this) // D-354: also started by the scan service; reports whether or not this screen is open
         GunAgent.host = this
 
-        if (savedInstanceState != null) {
-            web.restoreState(savedInstanceState)
+        // D-356: only the page's address is kept when Android stops the screen; the WebView's whole saved state
+        // (its history with every page's data) went over Android's 1 MB limit and crashed the app.
+        val savedUrl = savedInstanceState?.getString(KEY_PAGE)?.takeIf { it.startsWith(server) }
+        if (savedUrl != null) {
+            web.loadUrl(savedUrl)
         } else {
             web.loadUrl(intent?.dataString ?: "$server/apps") // D-169: open on the Apps panel; a scan still opens /scan
         }
@@ -408,7 +411,7 @@ class MainActivity : Activity(), GunAgent.Host {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        web.saveState(outState)
+        web.url?.let { outState.putString(KEY_PAGE, it) }
     }
 
     private fun vibrate(ms: Long) {
@@ -571,6 +574,7 @@ class MainActivity : Activity(), GunAgent.Host {
         private const val INFOWEDGE_PACKAGE = "com.rscja.infowedge"
         private const val INFOWEDGE_SERVICE = "com.rscja.infowedge.SERVICE"
         const val KEY_SERVER = "server"
+        private const val KEY_PAGE = "page_url"
         private const val KEY_ACTION = "action"
         private const val KEY_EXTRA = "extra"
         // The farm server (D-045). For laptop testing set http://localhost:8000 in settings and use adb reverse.
@@ -589,6 +593,6 @@ class MainActivity : Activity(), GunAgent.Host {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.5"
-    const val CODE = 25 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.6"
+    const val CODE = 26 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }
