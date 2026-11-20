@@ -81,22 +81,28 @@ class RemoteControl : AccessibilityService() {
     /** The whole screen as a JPEG, [width] pixels wide. Android allows about 3 per second. */
     fun screenshot(width: Int, done: (jpeg: ByteArray?, w: Int, h: Int, error: String?) -> Unit) {
         if (Build.VERSION.SDK_INT < 30) { done(null, 0, 0, "Android ${Build.VERSION.RELEASE} cannot take screenshots for apps"); return }
-        takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+        // D-357: the picture is copied, scaled and compressed on a worker thread, not the app's main thread (the
+        // page stuttered while the remote screen was open); the answer goes back on the main thread.
+        val main = android.os.Handler(mainLooper)
+        takeScreenshot(Display.DEFAULT_DISPLAY, worker, object : TakeScreenshotCallback {
             override fun onSuccess(shot: ScreenshotResult) {
                 runCatching {
                     val hw = Bitmap.wrapHardwareBuffer(shot.hardwareBuffer, shot.colorSpace) ?: error("no image")
                     val full = hw.copy(Bitmap.Config.ARGB_8888, false)
                     hw.recycle(); shot.hardwareBuffer.close()
-                    done(GunAgent.jpeg(full, width), full.width, full.height, null)
+                    val jpeg = GunAgent.jpeg(full, width)
+                    val w = full.width; val h = full.height
                     full.recycle()
-                }.onFailure { done(null, 0, 0, it.message) }
+                    main.post { done(jpeg, w, h, null) }
+                }.onFailure { e -> main.post { done(null, 0, 0, e.message) } }
             }
 
-            override fun onFailure(code: Int) = done(null, 0, 0, "screenshot refused (code $code)")
+            override fun onFailure(code: Int) { main.post { done(null, 0, 0, "screenshot refused (code $code)") } }
         })
     }
 
     companion object {
+        private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
         @Volatile var instance: RemoteControl? = null
     }
 }

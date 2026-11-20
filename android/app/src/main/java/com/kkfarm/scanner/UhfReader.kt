@@ -37,17 +37,34 @@ class UhfReader(private val context: Context) {
 
     fun open(): Boolean {
         if (reader != null) return true
-        val cls = runCatching { Class.forName("com.rscja.deviceapi.RFIDWithUHFUART") }.getOrNull()
+        val cls = sdkClass()
         if (cls == null) { state = "none"; return false }
         return runCatching {
             val r = cls.getMethod("getInstance").invoke(null)!!
             val ok = runCatching { cls.getMethod("init", Context::class.java).invoke(r, context) }.getOrElse { cls.getMethod("init").invoke(r) } as Boolean
-            tagInfoClass = runCatching { Class.forName("com.rscja.deviceapi.entity.UHFTAGInfo") }.getOrNull()
+            tagInfoClass = runCatching { Class.forName("com.rscja.deviceapi.entity.UHFTAGInfo", true, cls.classLoader) }.getOrNull()
             if (ok) { reader = r; state = "ready"; listen(r) } else state = "error"
             Log.i(MainActivity.TAG, "UHF SDK init ok=$ok")
             if (ok) Log.i(MainActivity.TAG, "UHF settings: ${settings()}")
             ok
         }.getOrElse { Log.w(MainActivity.TAG, "UHF SDK init failed: ${it.message}"); state = "error"; false }
+    }
+
+    /**
+     * D-357: the reader library the gun itself ships (inside Chainway's AppCenter, the app whose UHF screen reads
+     * tags), else the one built into this app. The built-in one (V2.0.3, 2026) left this gun's module finding no tags
+     * after it opened it; the gun's own library matches its module.
+     */
+    private fun sdkClass(): Class<*>? {
+        val name = "com.rscja.deviceapi.RFIDWithUHFUART"
+        for (pkg in listOf("com.rscja.ht")) {
+            val c = runCatching {
+                val ctx = context.createPackageContext(pkg, Context.CONTEXT_INCLUDE_CODE or Context.CONTEXT_IGNORE_SECURITY)
+                Class.forName(name, true, ctx.classLoader)
+            }.onFailure { Log.i(MainActivity.TAG, "UHF library of $pkg not usable: ${it.message}") }.getOrNull()
+            if (c != null) { Log.i(MainActivity.TAG, "UHF library: the gun's own ($pkg)"); return c }
+        }
+        return runCatching { Class.forName(name) }.getOrNull()?.also { Log.i(MainActivity.TAG, "UHF library: built into the app") }
     }
 
     fun close() {
@@ -65,7 +82,7 @@ class UhfReader(private val context: Context) {
     }
 
     /** The reader's region, power and module versions, for the log (no serial numbers). */
-    private fun settings(): String = listOf("getFrequencyMode", "getPower", "getVersion", "getHardwareVersion", "getEPCAndTIDUserMode", "getGen2")
+    private fun settings(): String = listOf("getFrequencyMode", "getPower", "getCW", "getFastId", "getFastInventoryMode", "getProtocol", "getRFLink", "getTagFocus", "getTemperature", "isPowerOn", "getGen2")
         .joinToString(", ") { n -> "$n=${if (reader!!.javaClass.methods.any { it.name == n && it.parameterTypes.isEmpty() }) call(n)?.let { v -> if (v.javaClass.name.startsWith("com.rscja")) runCatching { v.javaClass.declaredFields.joinToString(";") { f -> f.isAccessible = true; "${f.name}:${f.get(v)}" } }.getOrDefault(v.toString()) else v.toString() } else "n/a"}" }
 
     /**
@@ -73,12 +90,18 @@ class UhfReader(private val context: Context) {
      * right after KK Farm opened it; the module then answers nothing and every read finds 0 tags. Before each job:
      * a quick question to the module, and when it does not answer, the module is opened again.
      */
+    @Volatile private var fresh = false
+
     private fun ensureAlive(): Boolean {
         val r = reader ?: return false
         val power = call("getPower") as? Int ?: -1
         if (power > 0) return true
-        Log.i(MainActivity.TAG, "UHF module not answering (power=$power): opening it again")
+        // The first job after the app starts opens the module once more from clean: opened at boot (before InfoWedge
+        // had opened and freed it) the module answered but found no tags until it was opened again.
+        fresh = true
+        Log.i(MainActivity.TAG, "UHF opening the module again (power=$power)")
         runCatching { r.javaClass.getMethod("free").invoke(r) }
+        Thread.sleep(800) // let the module power down fully before it is opened again
         val ok = runCatching { (runCatching { r.javaClass.getMethod("init", Context::class.java).invoke(r, context) }.getOrElse { r.javaClass.getMethod("init").invoke(r) }) as Boolean }.getOrDefault(false)
         Log.i(MainActivity.TAG, "UHF reopened ok=$ok")
         if (ok) listen(r)
@@ -86,12 +109,31 @@ class UhfReader(private val context: Context) {
         return ok
     }
 
-    private fun setPower(dbm: Int) { Log.i(MainActivity.TAG, "UHF setPower($dbm) = ${call("setPower", dbm)}") }
+    private fun setPower(dbm: Int) {
+        val now = call("getPower") as? Int
+        if (now == dbm) return // D-357: set only when it changes
+        Log.i(MainActivity.TAG, "UHF setPower($dbm) from $now = ${call("setPower", dbm)}")
+    }
 
-    /** Gives the SDK a callback that queues each tag it reads. */
+    /**
+     * Gives the SDK a callback that queues each tag it reads, and puts the module in EPC-only inventory.
+     * D-357: Chainway's own UHF app sets EPC mode right after init; without it this gun's module answered every
+     * command but found no tags (GetTagCount=0) until that app had run once.
+     */
     private fun listen(r: Any) {
+        // D-357: the band. InfoWedge's KK Farm profile had left the module on 920-925 MHz (mode 2), where this gun
+        // found no tags; on 865-868 MHz (mode 4, the band used in Pakistan, as InfoWedge's default profile sets)
+        // it reads them.
+        val band = runCatching { r.javaClass.getMethod("getFrequencyMode").invoke(r) as Int }.getOrDefault(-1)
+        if (band != BAND) Log.i(MainActivity.TAG, "UHF band $band -> $BAND: ${runCatching { r.javaClass.getMethod("setFrequencyMode", Int::class.javaPrimitiveType).invoke(r, BAND) }.getOrElse { "failed: ${it.message}" }}")
+        Log.i(MainActivity.TAG, "UHF EPC mode = ${runCatching {
+            val e = Class.forName("com.rscja.deviceapi.entity.InventoryModeEntity", true, r.javaClass.classLoader)
+            val b = Class.forName("com.rscja.deviceapi.entity.InventoryModeEntity\$Builder", true, r.javaClass.classLoader)
+            val entity = b.getMethod("build").invoke(b.getMethod("setMode", Int::class.javaPrimitiveType).invoke(b.getConstructor().newInstance(), 0))
+            r.javaClass.getMethod("setEPCAndTIDUserMode", e).invoke(r, entity)
+        }.getOrElse { "failed: ${it.cause?.message ?: it.message}" }}")
         runCatching {
-            val itf = Class.forName("com.rscja.deviceapi.interfaces.IUHFInventoryCallback")
+            val itf = Class.forName("com.rscja.deviceapi.interfaces.IUHFInventoryCallback", true, r.javaClass.classLoader)
             val cb = java.lang.reflect.Proxy.newProxyInstance(itf.classLoader, arrayOf(itf)) { proxy, m, args ->
                 when (m.name) {
                     "callback" -> { args?.getOrNull(0)?.let { incoming.add(it) }; null }
@@ -249,6 +291,7 @@ class UhfReader(private val context: Context) {
     }
 
     companion object {
+        const val BAND = 4 // Chainway frequency mode 4: 865-868 MHz
         const val FULL_POWER = 30 // dBm: reads across a 40×20 ft room
         const val TOUCH_POWER = 5
         const val WRITE_POWER = 10

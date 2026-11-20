@@ -152,15 +152,39 @@ object GunAgent {
     private fun screenSoon(ms: Long) = handler.postDelayed({ screen(null) }, ms)
 
     /** Sends the screen: the whole screen with remote control, else the app's own page when it is on screen. */
+    private var lastShot = 0L
+    private var shooting = false
+    private val shotWaiting = ArrayList<Long?>()
+
     private fun screen(id: Long?) {
         val rc = RemoteControl.instance
         if (rc != null) {
-            rc.screenshot(540) { jpeg, w, h, error -> if (jpeg != null) upload(id, jpeg, w, h) else id?.let { done(it, false, error ?: "No screenshot") } }
+            // D-357: one screenshot at a time and at most about one a second (Android refuses faster ones, and each
+            // costs the gun work); requests that come meanwhile share the next one.
+            shotWaiting.add(id)
+            if (shooting) return
+            val wait = 1200 - (System.currentTimeMillis() - lastShot)
+            shooting = true
+            handler.postDelayed({
+                val ids = ArrayList(shotWaiting).also { shotWaiting.clear() }
+                lastShot = System.currentTimeMillis()
+                rc.screenshot(540) { jpeg, w, h, error ->
+                    shooting = false
+                    if (jpeg != null) uploadMany(ids, jpeg, w, h) else ids.filterNotNull().forEach { done(it, false, error ?: "No screenshot") }
+                    if (shotWaiting.isNotEmpty()) screen(shotWaiting.removeAt(0))
+                }
+            }, wait.coerceAtLeast(0))
             return
         }
         val shot = host?.takeIf { it.onScreen() }?.snapshot()
         if (shot == null) { id?.let { done(it, false, "Remote control is off, and KK Farm is not on screen, so there is nothing to show.") }; return }
         upload(id, jpeg(shot, 540), shot.width, shot.height, "KK Farm page only (remote control is off)")
+    }
+
+    private fun uploadMany(ids: List<Long?>, jpeg: ByteArray, w: Int, h: Int) {
+        val real = ids.filterNotNull()
+        upload(real.firstOrNull(), jpeg, w, h)
+        real.drop(1).forEach { done(it, true, "Screen sent") }
     }
 
     private fun upload(id: Long?, jpeg: ByteArray, w: Int, h: Int, note: String = "Screen sent") {
