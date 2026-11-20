@@ -19,6 +19,17 @@ document.addEventListener('visibilitychange', () => {
     else if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000) router.reload();
 });
 
+// D-357: on the gun a page that focuses a field on open would pop the on-screen keyboard over it, though the
+// trigger does the scanning. Fields focused by a page itself lose focus there; a field the person taps still opens it.
+if (LITE) {
+    router.on('navigate', () => {
+        window.setTimeout(() => {
+            const el = document.activeElement;
+            if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.blur();
+        }, 0);
+    });
+}
+
 type PageModule = { default: ComponentType & { layout?: unknown } };
 
 const pages = import.meta.glob<PageModule>('./Pages/**/*.tsx');
@@ -39,5 +50,5 @@ createInertiaApp({
             </MotionConfig>,
         );
     },
-    progress: { color: '#e0a526', delay: 120 },
+    progress: LITE ? false : { color: '#e0a526', delay: 120 }, // D-357: no web-style loading bar on the gun
 });

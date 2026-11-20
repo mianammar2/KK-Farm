@@ -1,3 +1,4 @@
+import { inScannerApp } from '../lib/native';
 import { Link, usePage } from '@inertiajs/react';
 import { ScanLine, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -76,7 +77,7 @@ export default function AppScan({ listen = true, variant = 'bar' }: { listen?: b
         window.addEventListener('kk:scan', on);
         return () => window.removeEventListener('kk:scan', on);
     }, [app, lookUp, listen]);
-    useEffect(() => { if (open && !found) setTimeout(() => input.current?.focus(), 50); }, [open, found]);
+    useEffect(() => { if (open && !found && !inScannerApp()) setTimeout(() => input.current?.focus(), 50); }, [open, found]); // D-357: not on the gun (keyboard)
 
     if (!auth || !app) return null; // D-303: only inside an app
     const gates = auth.gates ?? [];

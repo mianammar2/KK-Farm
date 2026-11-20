@@ -43,6 +43,7 @@ class UhfReader(private val context: Context) {
             tagInfoClass = runCatching { Class.forName("com.rscja.deviceapi.entity.UHFTAGInfo") }.getOrNull()
             if (ok) { reader = r; state = "ready" } else state = "error"
             Log.i(MainActivity.TAG, "UHF SDK init ok=$ok")
+            if (ok) Log.i(MainActivity.TAG, "UHF settings: ${settings()}")
             ok
         }.getOrElse { Log.w(MainActivity.TAG, "UHF SDK init failed: ${it.message}"); state = "error"; false }
     }
@@ -59,6 +60,27 @@ class UhfReader(private val context: Context) {
         val m = r.javaClass.methods.firstOrNull { it.name == name && it.parameterTypes.size == args.size }
             ?: run { Log.w(MainActivity.TAG, "UHF SDK has no $name/${args.size}"); return null }
         return runCatching { m.invoke(r, *args) }.onFailure { Log.w(MainActivity.TAG, "UHF $name failed: ${it.cause?.message ?: it.message}") }.getOrNull()
+    }
+
+    /** The reader's region, power and module versions, for the log (no serial numbers). */
+    private fun settings(): String = listOf("getFrequencyMode", "getPower", "getVersion", "getHardwareVersion", "getEPCAndTIDUserMode", "getGen2")
+        .joinToString(", ") { n -> "$n=${if (reader!!.javaClass.methods.any { it.name == n && it.parameterTypes.isEmpty() }) call(n)?.let { v -> if (v.javaClass.name.startsWith("com.rscja")) runCatching { v.javaClass.declaredFields.joinToString(";") { f -> f.isAccessible = true; "${f.name}:${f.get(v)}" } }.getOrDefault(v.toString()) else v.toString() } else "n/a"}" }
+
+    /**
+     * D-356: Chainway's InfoWedge opens and then frees (powers off) the UHF module whenever an app comes to the front,
+     * right after KK Farm opened it; the module then answers nothing and every read finds 0 tags. Before each job:
+     * a quick question to the module, and when it does not answer, the module is opened again.
+     */
+    private fun ensureAlive(): Boolean {
+        val r = reader ?: return false
+        val power = call("getPower") as? Int ?: -1
+        if (power > 0) return true
+        Log.i(MainActivity.TAG, "UHF module not answering (power=$power): opening it again")
+        runCatching { r.javaClass.getMethod("free").invoke(r) }
+        val ok = runCatching { (runCatching { r.javaClass.getMethod("init", Context::class.java).invoke(r, context) }.getOrElse { r.javaClass.getMethod("init").invoke(r) }) as Boolean }.getOrDefault(false)
+        Log.i(MainActivity.TAG, "UHF reopened ok=$ok")
+        if (!ok) state = "error"
+        return ok
     }
 
     private fun setPower(dbm: Int) { Log.i(MainActivity.TAG, "UHF setPower($dbm) = ${call("setPower", dbm)}") }
@@ -85,6 +107,7 @@ class UhfReader(private val context: Context) {
         thread(name = "uhf-hold") {
             synchronized(lock) {
                 busy = true
+                ensureAlive()
                 setPower(FULL_POWER)
                 val seen = HashSet<String>()
                 var reads = 0
@@ -98,6 +121,14 @@ class UhfReader(private val context: Context) {
                         if (seen.add(t.epc)) onTag(t)
                     }
                     Log.i(MainActivity.TAG, "UHF hold: stopInventory = ${call("stopInventory")}, $reads reads, ${seen.size} tags")
+                    if (seen.isEmpty()) { // D-356: say why: the reader's settings and a few single reads
+                        Log.i(MainActivity.TAG, "UHF diag: ${settings()}")
+                        repeat(5) { k ->
+                            val one = call("inventorySingleTag")
+                            val epc = one?.let { runCatching { it.javaClass.getMethod("getEPC").invoke(it) }.getOrNull() }
+                            Log.i(MainActivity.TAG, "UHF diag single $k: ${if (one == null) "nothing" else "EPC $epc"}")
+                        }
+                    }
                 }
                 GunLink.lastHold = "${GunLink.now()} start=$started, $reads reads, ${seen.size} tags"
                 busy = false
@@ -121,6 +152,7 @@ class UhfReader(private val context: Context) {
                 if (holding) { Thread.sleep(200); continue }
                 val best = synchronized(lock) {
                     busy = true
+                    ensureAlive()
                     setPower(TOUCH_POWER)
                     val reads = burst(300)
                     busy = false
@@ -164,6 +196,7 @@ class UhfReader(private val context: Context) {
             synchronized(lock) {
                 busy = true
                 try {
+                    ensureAlive()
                     setPower(WRITE_POWER)
                     val near = burst(600).filter { it.rssi >= TOUCH_RSSI }
                     when {

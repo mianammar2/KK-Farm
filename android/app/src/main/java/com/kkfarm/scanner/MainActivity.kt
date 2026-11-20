@@ -49,7 +49,7 @@ class MainActivity : Activity(), GunAgent.Host {
     private lateinit var web: WebView
     private val prefs by lazy { getSharedPreferences("kkfarm", Context.MODE_PRIVATE) }
     private var isVisible = false
-    private lateinit var progress: android.widget.ProgressBar
+    private lateinit var progress: android.view.View
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var cameraUri: Uri? = null
     private var pendingChoice: List<String>? = null
@@ -221,9 +221,8 @@ class MainActivity : Activity(), GunAgent.Host {
             // ("Open camera", capture attribute) or a chooser with the gallery and the camera.
             webChromeClient = object : WebChromeClient() {
                 override fun onProgressChanged(view: WebView, newProgress: Int) {
-                    val bar = this@MainActivity.progress
-                    bar.progress = newProgress
-                    bar.visibility = if (newProgress >= 100) android.view.View.GONE else android.view.View.VISIBLE
+                    // D-357: the cover shows only until the first page is drawn; later loads keep the page in view
+                    if (newProgress >= 80) this@MainActivity.progress.visibility = android.view.View.GONE
                 }
 
                 override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
@@ -260,11 +259,15 @@ class MainActivity : Activity(), GunAgent.Host {
                 }
             }
         }
-        // A thin loading bar along the top, like a native app, instead of a blank screen while pages load.
-        progress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progressTintList = android.content.res.ColorStateList.valueOf(0xFFC9A23F.toInt()) // KK Farms gold
-            layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (3 * resources.displayMetrics.density).toInt())
+        // D-357: a KK Farms green cover with a spinner while the app starts, like a native app, instead of a
+        // website's loading bar along the top.
+        progress = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(0xFF0F3D2A.toInt())
+            isClickable = true
+            addView(android.widget.ProgressBar(this@MainActivity).apply {
+                indeterminateTintList = android.content.res.ColorStateList.valueOf(0xFFC9A23F.toInt()) // KK Farms gold
+                layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER)
+            })
         }
         setContentView(android.widget.FrameLayout(this).apply { addView(web); addView(progress) })
         GunAgent.start(this) // D-354: also started by the scan service; reports whether or not this screen is open
@@ -593,6 +596,6 @@ class MainActivity : Activity(), GunAgent.Host {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.6"
-    const val CODE = 26 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.7"
+    const val CODE = 27 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }
