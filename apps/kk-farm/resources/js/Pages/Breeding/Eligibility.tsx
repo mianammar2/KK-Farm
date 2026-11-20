@@ -1,3 +1,4 @@
+import Sheet from '../../components/Sheet';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
@@ -66,7 +67,7 @@ function GoatRow({ r, canApprove }: { r: Row; canApprove: boolean }) {
                     {c.info ? null : c.ok ? <Check size={12} aria-hidden /> : <X size={12} aria-hidden />}<span className="font-semibold">{CHECK_LABEL[k] ?? k}:</span> {c.label}
                 </li>
             ))}</ul> : null}
-            {open ? (
+            {open ? (<Sheet onClose={() => setOpen(false)} title="Breeding Approval">
                 <form className="mt-3 grid max-w-xl gap-2 rounded-tile bg-glaze p-3" onSubmit={(e) => { e.preventDefault(); form.post(`/breeding/eligibility/${r.id}`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <div className="flex gap-3 text-sm" role="radiogroup">{(['approved', 'rejected'] as const).map((d) => <label key={d} className="flex items-center gap-1.5"><input type="radio" checked={form.data.decision === d} onChange={() => form.setData('decision', d)} />{d === 'approved' ? 'Approve for breeding' : 'Do not approve'}</label>)}</div>
                     {form.data.decision === 'approved' ? <>
@@ -77,7 +78,7 @@ function GoatRow({ r, canApprove }: { r: Row; canApprove: boolean }) {
                     </> : null}
                     <Field label={form.data.decision === 'approved' && failed ? 'Reason for override' : 'Notes'} error={form.errors.reason ?? form.errors.decision}><input className="field" value={form.data.reason} onChange={(e) => form.setData('reason', e.target.value)} /></Field>
                     <span className="flex gap-2"><Button type="submit" disabled={form.processing}>Save decision</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></span>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );
@@ -112,13 +113,13 @@ function RulesPanel({ rules, breeds, canEdit }: { rules: Rule[]; breeds: Array<{
                             {r.breedId ? <button type="button" className="ml-3 inline-flex items-center gap-1 text-xs font-semibold text-crit-700 hover:underline" onClick={() => { if (window.confirm(`Remove the ${r.breed} rule?`)) router.delete(`/breeding/eligibility/rules/${r.id}`, { preserveScroll: true }); }}><Trash2 size={13} aria-hidden /> Remove</button> : null}</> : null}</td></tr>
                 ))}</tbody>
             </table></div>
-            {editing ? (
+            {editing ? (<Sheet onClose={() => setEditing(null)} title="Breeding Eligibility Rule">
                 <form onSubmit={save} className="flex flex-wrap items-end gap-2 border-t border-rule p-4">
                     <div className="w-44"><Field label="Breed" error={form.errors.breed_id}><select className="field" value={form.data.breed_id} disabled={editing !== 'new'} onChange={(e) => form.setData('breed_id', e.target.value)}><option value="">All breeds</option>{breeds.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field></div>
                     <div className="w-28"><Field label="Sex" error={form.errors.sex}><select className="field" value={form.data.sex} disabled={editing !== 'new'} onChange={(e) => form.setData('sex', e.target.value)}><option value="female">Female</option><option value="male">Male</option></select></Field></div>
                     {n('min_age_months', 'Min age (months)')}{n('min_weight_kg', 'Min weight KG')}{n('mature_weight_kg', 'Mature weight KG', 'Not set')}{n('min_mature_pct', '% of mature')}{n('min_bcs', 'Min BCS', 'Not checked')}{n('weight_max_age_days', 'Weight valid (days)')}
                     <Button type="submit" disabled={form.processing}>Save rule</Button><Button type="button" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button>
-                </form>
+                </form></Sheet>
             ) : null}
         </Panel>
     );

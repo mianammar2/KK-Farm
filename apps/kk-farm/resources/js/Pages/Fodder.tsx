@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
@@ -109,7 +110,7 @@ function Crops({ crops, fields, options }: Props) {
     return (
         <div className="space-y-3">
             {adding ? (
-                <Panel title="Sow a Crop">
+                <Sheet onClose={() => setAdding(false)}><Panel title="Sow a Crop">
                     <form className="grid gap-3 p-4 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, variety: nul(d.variety), expected_harvest_on: nul(d.expected_harvest_on), notes: nul(d.notes) })); form.post('/fodder/crops', { preserveScroll: true, onSuccess: () => setAdding(false) }); }}>
                         <Field label="Field" error={e.field_id}><select className="field" value={form.data.field_id} onChange={(x) => form.setData('field_id', x.target.value)}>{fields.map((f) => <option key={f.id} value={f.id}>{f.name} ({f.acres} ac)</option>)}</select></Field>
                         <Field label="Crop"><select className="field" value={form.data.crop} onChange={(x) => form.setData('crop', x.target.value)}>{Object.entries(options.crops).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -120,7 +121,7 @@ function Crops({ crops, fields, options }: Props) {
                         <Field label="Expected yield (KG fresh, all cuts)" error={e.expected_yield_kg}><input type="number" className="field" value={form.data.expected_yield_kg} onChange={(x) => form.setData('expected_yield_kg', x.target.value)} /></Field>
                         <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                     </form>
-                </Panel>
+                </Panel></Sheet>
             ) : null}
             <Panel flush title="Crops" actions={fields.length ? <Button onClick={() => setAdding(true)}>+ Sow a Crop</Button> : undefined}>
                 {crops.length ? <ul className="divide-y divide-rule">{crops.map((c) => <CropRow key={c.id} c={c} options={options} />)}</ul> : <Empty title={fields.length ? 'No crops yet' : 'Add a field first'} />}
@@ -145,7 +146,7 @@ function CropRow({ c, options }: { c: Crop; options: Props['options'] }) {
                 {c.status === 'growing' ? <span className="ml-auto flex gap-1.5"><Button variant="secondary" onClick={() => setMode(mode === 'input' ? null : 'input')}>Add Input</Button><Button onClick={() => setMode(mode === 'harvest' ? null : 'harvest')}>Harvest</Button></span> : null}
             </div>
             {c.inputs.length ? <ul className="mt-1 space-y-0.5 text-xs text-ink-soft">{c.inputs.map((i) => <li key={i.id}>{i.on} · {options.inputs[i.kind]}{i.product ? ` ${i.product}` : ''}{i.qty ? ` · ${i.qty} ${i.unit ?? ''}` : ''}{i.cost ? ` · ${money(i.cost)}` : ''}{i.safeFrom ? ` · safe from ${i.safeFrom}` : ''}</li>)}</ul> : null}
-            {mode === 'input' ? (
+            {mode === 'input' ? (<Sheet onClose={() => setMode(null)} title="Add Input">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-7" onSubmit={(ev) => { ev.preventDefault(); input.transform((d) => ({ ...d, product: nul(d.product), qty: nul(d.qty), unit: nul(d.unit), cost: nul(d.cost), phi_days: nul(d.phi_days) })); input.post(`/fodder/crops/${c.id}/inputs`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="Kind"><select className="field" value={input.data.kind} onChange={(x) => input.setData('kind', x.target.value)}>{Object.entries(options.inputs).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Date" error={ie.applied_on}><input type="date" max={today()} className="field" value={input.data.applied_on} onChange={(x) => input.setData('applied_on', x.target.value)} /></Field>
@@ -155,9 +156,9 @@ function CropRow({ c, options }: { c: Crop; options: Props['options'] }) {
                     <Field label="Cost PKR" error={ie.cost}><input type="number" className="field" value={input.data.cost} onChange={(x) => input.setData('cost', x.target.value)} /></Field>
                     {input.data.kind === 'chemical' ? <Field label="Pre-harvest days" error={ie.phi_days}><input type="number" className="field" value={input.data.phi_days} onChange={(x) => input.setData('phi_days', x.target.value)} /></Field> : null}
                     <div className="flex items-end"><Button type="submit" disabled={input.processing}>Save</Button></div>
-                </form>
+                </form></Sheet>
             ) : null}
-            {mode === 'harvest' ? (
+            {mode === 'harvest' ? (<Sheet onClose={() => setMode(null)} title="Harvest">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-5" onSubmit={(ev) => { ev.preventDefault(); harvest.post(`/fodder/crops/${c.id}/harvest`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="Harvested on" error={he.harvested_on}><input type="date" max={today()} className="field" value={harvest.data.harvested_on} onChange={(x) => harvest.setData('harvested_on', x.target.value)} /></Field>
                     <Field label="Form"><select className="field" value={harvest.data.form} onChange={(x) => harvest.setData('form', x.target.value)}>{Object.entries(options.forms).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -165,7 +166,7 @@ function CropRow({ c, options }: { c: Crop; options: Props['options'] }) {
                     <label className="flex items-end gap-2 pb-2"><input type="checkbox" checked={harvest.data.final_cut} onChange={(x) => harvest.setData('final_cut', x.target.checked)} /> Final cut</label>
                     <div className="flex items-end"><Button type="submit" disabled={harvest.processing}>Save Lot</Button></div>
                     {he.harvested_on?.startsWith('Chemical') ? <p className="text-sm text-crit-700 sm:col-span-5">{he.harvested_on}</p> : null}
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );
@@ -201,7 +202,7 @@ function LotRow({ l, options, canRelease, me }: { l: Lot; options: Props['option
             </div>
             {l.blockers.length ? <p className="mt-1 text-xs font-semibold text-crit-700">Not releasable: {l.blockers.join('; ')}</p> : null}
             {l.note ? <p className="mt-1 text-ink-soft">{l.decidedBy}: {l.note}</p> : null}
-            {mode === 'test' ? (
+            {mode === 'test' ? (<Sheet onClose={() => setMode(null)} title="Tests & DM">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); test.transform((d) => ({ ...d, aflatoxin_ppb: nul(d.aflatoxin_ppb), cp_pct: nul(d.cp_pct), test_lab: nul(d.test_lab) })); test.post(`/fodder/lots/${l.id}/test`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="Dry matter %" error={te.dm_pct}><input type="number" step="0.1" className="field" value={test.data.dm_pct} onChange={(x) => test.setData('dm_pct', x.target.value)} /></Field>
                     <Field label="Measured by" error={te.dm_method}><select className="field" value={test.data.dm_method} onChange={(x) => test.setData('dm_method', x.target.value)}>{Object.entries(options.dmMethods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -212,12 +213,12 @@ function LotRow({ l, options, canRelease, me }: { l: Lot; options: Props['option
                     <label className="flex items-end gap-2 pb-2"><input type="checkbox" checked={test.data.mould} onChange={(x) => test.setData('mould', x.target.checked)} /> Mould found</label>
                     <label className="flex items-end gap-2 pb-2"><input type="checkbox" checked={test.data.smell_ok} onChange={(x) => test.setData('smell_ok', x.target.checked)} /> Smell good</label>
                     <div className="sm:col-span-4"><Button type="submit" disabled={test.processing}>Save Tests</Button></div>
-                </form>
+                </form></Sheet>
             ) : null}
-            {mode === 'reject' ? (
+            {mode === 'reject' ? (<Sheet onClose={() => setMode(null)} title="Reject">
                 <form className="mt-2 flex gap-2" onSubmit={(ev) => { ev.preventDefault(); decide.transform(() => ({ decision: 'reject', note: decide.data.note })); decide.post(`/fodder/lots/${l.id}/decide`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <input className="field flex-1" placeholder="Why rejected" value={decide.data.note} onChange={(x) => decide.setData('note', x.target.value)} required /><Button type="submit">Reject Lot</Button>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );

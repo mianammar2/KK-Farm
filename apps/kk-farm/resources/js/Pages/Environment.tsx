@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
@@ -76,7 +77,7 @@ function ShedCard({ s, options, threshold }: { s: ShedRow } & Props) {
     return (
         <Panel title={s.name} description={s.last ? `Last round ${s.last.at}${s.last.thi !== null ? ` · THI ${s.last.thi}` : ''}` : 'No round yet'}
             actions={<span className="flex items-center gap-1.5">{s.openIssues ? <Chip className="bg-crit-100 text-crit-700">{s.openIssues} open</Chip> : null}{s.last ? <Chip className={s.last.water && !s.last.risk && s.last.waste ? 'bg-ok-100 text-ok-700' : 'bg-watch-100 text-watch-700'}>{s.last.water && !s.last.risk && s.last.waste ? 'Normal' : 'Attention'}</Chip> : null}<Button onClick={() => setOpen(!open)}>{open ? 'Close' : 'Start Round'}</Button></span>}>
-            {open ? (
+            {open ? (<Sheet onClose={() => setOpen(false)} title="Water & Climate Round">
                 <form className="space-y-4 p-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((x) => ({ ...x, water: x.water.map((w) => ({ ...w, tds_ppm: w.tds_ppm === '' ? null : w.tds_ppm })), temperature_c: x.temperature_c || null, humidity_pct: x.humidity_pct || null, utility_kind: x.utility_kind || null, utility_cost: x.utility_cost || null, waste_notes: x.waste_notes || null })); form.post('/environment/rounds', { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <Step n={1} title="Check water points and tanks" ok={waterOk} bad="Not available / not acceptable: emergency supply and repair task">
                         {d.water.length ? d.water.map((w, i) => (
@@ -117,7 +118,7 @@ function ShedCard({ s, options, threshold }: { s: ShedRow } & Props) {
                         <select className="field !w-44" value={d.trigger} onChange={(x) => form.setData('trigger', x.target.value)}><option value="scheduled">Scheduled reading</option><option value="sensor_alarm">Sensor alarm</option><option value="report">Report / complaint</option></select>
                         <Button type="submit" disabled={form.processing}><LibIcon name="ic-active" size={18} /> Save Round</Button>
                     </div>
-                </form>
+                </form></Sheet>
             ) : null}
         </Panel>
     );
@@ -252,19 +253,19 @@ function WaterTimeline({ i, w, options, canApprove, isVet }: { i: Issue; w: Wate
                 {open && w.supply && !w.supply.approvedBy && canApprove ? <Button onClick={() => approve.post(`/environment/issues/${i.id}/approve-supply`, { preserveScroll: true })}>Approve Supply as Safe</Button> : null}
                 {i.status !== 'verified' && isVet && !w.checkedBy ? <Button variant="secondary" onClick={() => setMode(mode === 'health' ? null : 'health')}>Vet Health Check</Button> : null}
             </div>
-            {mode === 'supply' ? (
+            {mode === 'supply' ? (<Sheet onClose={() => setMode(null)} title="Record Emergency Supply">
                 <form className="mt-2 flex flex-wrap items-end gap-2" onSubmit={(ev) => { ev.preventDefault(); supply.transform((x) => ({ ...x, cost: x.cost || null })); supply.post(`/environment/issues/${i.id}/supply`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="Source"><select className="field" value={supply.data.source} onChange={(x) => supply.setData('source', x.target.value)}>{Object.entries(options.sources).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Cost PKR" error={supply.errors.cost}><input type="number" min={0} className="field w-32" value={supply.data.cost} onChange={(x) => supply.setData('cost', x.target.value)} /></Field>
                     <Button type="submit" disabled={supply.processing}>Save</Button>
-                </form>
+                </form></Sheet>
             ) : null}
-            {mode === 'health' ? (
+            {mode === 'health' ? (<Sheet onClose={() => setMode(null)} title="Vet Health Check">
                 <form className="mt-2 flex flex-wrap items-end gap-2" onSubmit={(ev) => { ev.preventDefault(); health.post(`/environment/issues/${i.id}/health-check`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="Goats ill" error={health.errors.goats_ill}><input type="number" min={0} className="field w-24" value={health.data.goats_ill} onChange={(x) => health.setData('goats_ill', x.target.value)} /></Field>
                     <Field label="Findings and action" error={health.errors.outcome}><input className="field w-72" value={health.data.outcome} onChange={(x) => health.setData('outcome', x.target.value)} required /></Field>
                     <Button type="submit" disabled={health.processing}>Save</Button>
-                </form>
+                </form></Sheet>
             ) : null}
         </div>
     );
@@ -281,7 +282,7 @@ function Setup({ waterPoints, sheds, pens, assets, options, threshold }: Props) 
                     <Button type="submit" disabled={limit.processing}>Save</Button>
                 </form>
             </Panel>
-            {editing ? <PointForm p={editing === 'new' ? null : editing} sheds={sheds} pens={pens} assets={assets} kinds={options.kinds} onDone={() => setEditing(null)} /> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)}><PointForm p={editing === 'new' ? null : editing} sheds={sheds} pens={pens} assets={assets} kinds={options.kinds} onDone={() => setEditing(null)} /></Sheet> : null}
             <Panel flush title="Water Points & Tanks" actions={<Button onClick={() => setEditing('new')}>+ Water Point</Button>}>
                 {waterPoints.length ? <ul className="divide-y divide-rule">{waterPoints.map((w) => (
                     <li key={w.id} className={`flex items-center gap-2 px-4 py-2 text-sm ${w.active ? '' : 'opacity-60'}`}><strong>{w.name}</strong><span className="text-ink-soft">{options.kinds[w.kind]} · {w.shed}</span><Button variant="quiet" className="ml-auto" onClick={() => setEditing(w)}>Edit</Button><DeleteButton type="water-point" id={w.id} name={w.name} /></li>

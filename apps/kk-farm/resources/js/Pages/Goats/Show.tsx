@@ -217,7 +217,13 @@ export default function GoatShow(props: Props) {
                     </div>
                 ) : null}
                 {panel === 'temp' ? <Sheet onClose={() => setPanel(null)}><RegularCheckup goat={goat} canHeight={auth?.gates.includes('record_height') ?? false} onDone={() => setPanel(null)} /></Sheet> : null}
-                {panel && panel !== 'temp' ? <div className="border-t border-rule bg-glaze p-4"><ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} conditions={healthEntry?.conditions ?? []} /></div> : null}
+                {/* D-359: an action's fields open in a pop card, not under the buttons */}
+                {panel && panel !== 'temp' ? (
+                    <Sheet onClose={() => setPanel(null)}>
+                        <h2 className="mb-3 pe-10 text-lg text-cobalt-900">{PANEL_TITLE[panel] ?? 'Goat'} <span className="font-mono text-base font-normal text-ink-soft">{goat.number}</span></h2>
+                        <ActionPanel kind={panel} goat={goat} pens={pens} close={() => setPanel(null)} conditions={healthEntry?.conditions ?? []} />
+                    </Sheet>
+                ) : null}
                 {death?.report && death.report.status !== 'approved' ? <DeathBanner r={death.report} canDecide={!!auth?.gates.includes('approve_death')} /> : null}
             </section>
 
@@ -396,6 +402,12 @@ export default function GoatShow(props: Props) {
         </>
     );
 }
+
+/** D-359: the title of each goat action's pop card. */
+const PANEL_TITLE: Record<string, string> = {
+    weight: 'Add weight', photo: 'Add photo', move: 'Move to another PEN', concern: 'Report a concern', height: 'Add height', cull: 'Cull from breeding',
+    birth: 'Correct birth date', death: 'Report death', slaughter: 'Slaughter', exit: 'Record exit', remove: 'Remove (wrong entry)',
+};
 
 function ActionPanel({ kind, goat, pens, close, conditions = [] }: { kind: string; goat: Goat; pens: Props['pens']; close: () => void; conditions?: string[] }) {
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -589,13 +601,13 @@ function DentalFact({ dental, teeth, goatId, canEdit, options }: { dental: Denta
             {dental.code === 'UNK' ? <span className="text-ink-soft">Not known (no age, no check)</span> : dental.fromAge ? <span>{dental.code} <span className="text-sm font-normal text-ink-soft">(from age, not checked)</span></span> : <span>{teeth ?? dental.code}{dental.condition && dental.condition !== 'Normal' ? <Chip className="ml-1.5 bg-watch-100 text-watch-700">{dental.condition}</Chip> : null}</span>}
             {dental.checkedOn ? <span className="block text-sm font-normal text-ink-soft">Checked {dental.checkedOn}{dental.history.length > 1 ? ` · ${dental.history.length} checks on record` : ''}</span> : null}
             {canEdit && !open ? <button type="button" className="mt-1 block text-sm font-semibold text-cobalt-800 underline-offset-2 hover:underline" onClick={() => setOpen(true)}>Record a teeth check</button> : null}
-            {open ? (
+            {open ? (<Sheet onClose={() => setOpen(false)} title="Record a teeth check">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-2" onSubmit={(e) => { e.preventDefault(); form.post(`/goats/${goatId}/teeth`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <Field label="Teeth (dental code)" error={form.errors.teeth}><select className="field" value={form.data.teeth} onChange={(e) => form.setData('teeth', e.target.value)}><option value="">Choose</option>{Object.entries(options.codes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Condition" error={form.errors.dental_condition}><select className="field" value={form.data.dental_condition} onChange={(e) => form.setData('dental_condition', e.target.value)}>{Object.entries(options.conditions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Checked on" error={form.errors.examined_on}><input className="field" type="date" max={new Date().toISOString().slice(0, 10)} value={form.data.examined_on} onChange={(e) => form.setData('examined_on', e.target.value)} /></Field>
                     <span className="flex gap-2"><Button type="submit" disabled={form.processing || !form.data.teeth}>Save check</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></span>
-                </form>
+                </form></Sheet>
             ) : null}
             {dental.history.length > 1 ? <details className="mt-1 text-xs text-ink-soft"><summary className="cursor-pointer">Earlier checks</summary><ul className="mt-1 space-y-0.5">{dental.history.slice(1).map((h, i) => <li key={i}>{h.on}: {h.code}{h.condition ? ` · ${h.condition}` : ''}{h.by ? ` · ${h.by}` : ''}</li>)}</ul></details> : null}
         </span>
@@ -611,14 +623,14 @@ function Castration({ goatId, c, onFarm }: { goatId: string; c: { on: string | n
         <span className="block">
             <span className="text-ink-soft">Intact</span>
             {c.can && onFarm && !open ? <button type="button" className="ml-2 text-xs font-semibold text-cobalt-800 hover:underline" onClick={() => setOpen(true)}>Record castration</button> : null}
-            {open ? (
+            {open ? (<Sheet onClose={() => setOpen(false)} title="Record castration">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-2" onSubmit={(e) => { e.preventDefault(); form.post(`/goats/${goatId}/castration`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <Field label="Done on" error={form.errors.castrated_on}><input className="field" type="date" max={new Date().toISOString().slice(0, 10)} value={form.data.castrated_on} onChange={(e) => form.setData('castrated_on', e.target.value)} /></Field>
                     <Field label="Method" error={form.errors.method}><select className="field" value={form.data.method} onChange={(e) => form.setData('method', e.target.value)}>{Object.entries(c.methods).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Notes" error={form.errors.notes}><input className="field" value={form.data.notes} onChange={(e) => form.setData('notes', e.target.value)} /></Field>
                     <Note>The goat becomes a wether and can no longer be chosen as a sire. A breeding purpose is cleared. A recovery check is due in 7 days.</Note>
                     <span className="flex gap-2"><Button type="submit" disabled={form.processing}>Save castration</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></span>
-                </form>
+                </form></Sheet>
             ) : null}
         </span>
     );

@@ -1,3 +1,4 @@
+import Sheet from './Sheet';
 import { Link, useForm } from '@inertiajs/react';
 import DeleteButton from './DeleteButton';
 import { useState } from 'react';
@@ -47,7 +48,7 @@ export function Mortality({ data, causes, isVet }: { data: MortalityData; causes
                             </div>
                             <p className="mt-1 text-ink-soft">Reason at exit: {r.reason || '—'}{r.notes ? ` · ${r.notes}` : ''}</p>
                             {r.postmortem?.findings ? <p className="mt-0.5 text-ink-soft">Findings: {r.postmortem.findings} <span className="text-xs">({r.postmortem.by}, {r.postmortem.on})</span></p> : null}
-                            {pm === r.goatId ? <PostmortemForm goatId={r.goatId} causes={causes} onDone={() => setPm(null)} /> : null}
+                            {pm === r.goatId ? <Sheet onClose={() => setPm(null)}><PostmortemForm goatId={r.goatId} causes={causes} onDone={() => setPm(null)} /></Sheet> : null}
                         </li>
                     ))}
                 </ul>
@@ -88,7 +89,7 @@ export function DiseaseMaster({ diseases, categories, canEdit }: { diseases: Dis
                     ))}
                 </tbody></table></div>
             </Panel>
-            {editing ? <DiseaseForm d={editing === 'new' ? null : editing} categories={categories} onDone={() => setEditing(null)} /> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)}><DiseaseForm d={editing === 'new' ? null : editing} categories={categories} onDone={() => setEditing(null)} /></Sheet> : null}
         </div>
     );
 }
@@ -130,7 +131,7 @@ export function SymptomMaster({ symptoms, diseases, canEdit }: { symptoms: Sympt
                     ))}
                 </tbody></table></div>
             </Panel>
-            {editing ? <SymptomForm s={editing === 'new' ? null : editing} diseases={diseases} onDone={() => setEditing(null)} /> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)}><SymptomForm s={editing === 'new' ? null : editing} diseases={diseases} onDone={() => setEditing(null)} /></Sheet> : null}
         </div>
     );
 }

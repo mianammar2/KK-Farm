@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Tabs } from '../components/ui';
@@ -95,7 +96,7 @@ function Leave({ leave, employees, options }: Props) {
     return (
         <div className="space-y-3">
             {adding ? (
-                <Panel title="Leave Request">
+                <Sheet onClose={() => setAdding(false)}><Panel title="Leave Request">
                     <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.post('/hr/leave', { preserveScroll: true, onSuccess: () => setAdding(false) }); }}>
                         <Field label="Employee" error={e.employee_id}><select className="field" value={form.data.employee_id} onChange={(x) => form.setData('employee_id', x.target.value)}>{employees.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></Field>
                         <Field label="From" error={e.from_on}><input type="date" className="field" value={form.data.from_on} onChange={(x) => form.setData('from_on', x.target.value)} /></Field>
@@ -104,7 +105,7 @@ function Leave({ leave, employees, options }: Props) {
                         <Field label="Reason" error={e.reason}><input className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} /></Field>
                         <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                     </form>
-                </Panel>
+                </Panel></Sheet>
             ) : null}
             <Panel flush title="Leave Requests" description="Pending first; approved leave fills the attendance register" actions={<Button onClick={() => setAdding(true)}>+ Leave Request</Button>}>
                 {leave.length ? <ul className="divide-y divide-rule">{leave.map((l) => (

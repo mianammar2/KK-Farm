@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -69,7 +70,7 @@ function Triage(p: Props) {
                     {p.isVet ? <Button className="ml-auto" onClick={() => setOpen(open === c.id ? null : c.id)}>Triage</Button> : null}
                 </div>
                 {c.notes ? <p className="text-ink-soft">{c.notes}</p> : null}
-                {open === c.id ? <TriageForm c={c} {...p} close={() => setOpen(null)} /> : null}
+                {open === c.id ? <Sheet onClose={() => setOpen(null)}><TriageForm c={c} {...p} close={() => setOpen(null)} /></Sheet> : null}
             </li>)}</ul> : <Empty title="No reports waiting">New cases can also be opened on the Health page.</Empty>}
             {more}
         </Panel>

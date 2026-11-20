@@ -213,7 +213,7 @@ function Rations({ groups, items, can, settings }: Props) {
     return (
         <div className="space-y-3">
             <p className="text-sm text-ink-soft">Each goat is in a feeding group automatically, from its category, female status and health. A ration is KG per goat per day, split over the meals. A veterinarian approves each ration before it is used.</p>
-            {editing ? <RationForm key={editing.id} group={editing} items={items} settings={settings} onDone={() => setEditing(null)} /> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)} title="Ration"><RationForm key={editing.id} group={editing} items={items} settings={settings} onDone={() => setEditing(null)} /></Sheet> : null}
             {groups.map((g) => (
                 <Panel key={g.id} title={`${g.name} · ${g.head} goats`} description={g.criteria ?? undefined}
                     actions={can.plan && editing?.id !== g.id ? <Button type="button" variant="secondary" onClick={() => setEditing(g)}>{g.draft ? 'Edit draft' : g.current ? 'Change ration' : 'Set ration'}</Button> : null}>
@@ -516,7 +516,7 @@ function Nutrition({ standards, nutritionCategories, methods, breeds, can }: Pro
                                         <td className="px-3 text-xs">{s.reviewedOn ? <>{s.reviewedOn}{s.reviewedBy ? <span className="block text-ink-soft">{s.reviewedBy}</span> : null}</> : <span className="text-watch-700">Not reviewed</span>}</td>
                                         {can.plan ? <td className="px-3"><button type="button" className="text-cobalt-800 hover:underline" aria-label={`Edit ${s.name}`} onClick={() => setEditing(editing === s.id ? null : s.id)}><Pencil size={15} /></button><DeleteButton type="nutrition" id={s.id} name={s.name} /></td> : null}
                                     </tr>
-                                    {editing === s.id ? <tr><td colSpan={12} className="bg-glaze/60 px-4 py-3"><StandardForm standard={s} nutritionCategories={nutritionCategories} methods={methods} breeds={breeds} onDone={() => setEditing(null)} /></td></tr> : null}
+                                    {editing === s.id ? <Sheet onClose={() => setEditing(null)} title="Edit Nutrition Standard"><StandardForm standard={s} nutritionCategories={nutritionCategories} methods={methods} breeds={breeds} onDone={() => setEditing(null)} /></Sheet> : null}{/* D-359: in a pop card */}
                                 </Fragment>
                             ))}
                         </tbody>

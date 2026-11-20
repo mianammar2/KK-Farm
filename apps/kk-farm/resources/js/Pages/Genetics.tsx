@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
@@ -90,7 +91,7 @@ function CandidateRow({ c, pens, options, isLead, limit }: { c: Candidate } & Pr
                 {isLead ? <Button className="ml-auto" variant="secondary" onClick={() => setOpen(!open)}>Decide</Button> : null}
             </div>
             <ul className="mt-1 flex flex-wrap gap-1.5 text-xs">{c.checks.map((k) => <li key={k.key}><Chip className={k.info ? 'bg-glaze text-ink-soft' : k.ok ? 'bg-ok-100 text-ok-700' : 'bg-crit-100 text-crit-700'}>{k.label}</Chip></li>)}</ul>
-            {open ? (
+            {open ? (<Sheet onClose={() => setOpen(false)} title="Replacement Decision">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, planned_sire_id: d.decision === 'replacement' && d.planned_sire_id ? d.planned_sire_id : null, pen_id: d.pen_id || null, reason: d.reason || null })); form.post(`/genetics/decide/${c.id}`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <Field label="Decision"><select className="field" value={form.data.decision} onChange={(x) => form.setData('decision', x.target.value)}>{Object.entries(options.decisions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     {c.sex === 'female' && form.data.decision === 'replacement' ? (
@@ -99,7 +100,7 @@ function CandidateRow({ c, pens, options, isLead, limit }: { c: Candidate } & Pr
                     <Field label="Move to PEN (optional)"><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
                     <Field label="Reason" error={e.reason}><input className="field" placeholder="Needed if a check fails" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} /></Field>
                     <div className="flex items-end gap-2 sm:col-span-4"><Button type="submit" disabled={form.processing}>Save Decision</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></div>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );

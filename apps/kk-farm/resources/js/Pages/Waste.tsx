@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, router, useForm } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import DeleteButton from '../components/DeleteButton';
@@ -86,7 +87,7 @@ function Routes({ streams, options, isLead }: Props) {
     const [edit, setEdit] = useState<Stream | 'new' | null>(null);
     return (
         <div className="space-y-3">
-            {edit ? <RouteForm s={edit === 'new' ? null : edit} options={options} onDone={() => setEdit(null)} /> : null}
+            {edit ? <Sheet onClose={() => setEdit(null)}><RouteForm s={edit === 'new' ? null : edit} options={options} onDone={() => setEdit(null)} /></Sheet> : null}
             <Panel flush title="Waste Routes" description="The method, handling and biosecurity steps come from a qualified local adviser (livestock officer, environment consultant or vet). The system records them; it does not choose them." actions={isLead ? <Button onClick={() => setEdit('new')}>+ Route</Button> : undefined}>
                 {streams.length ? <ul className="divide-y divide-rule">{streams.map((s) => (
                     <li key={s.id} className="px-4 py-2 text-sm"><div className="flex flex-wrap items-center gap-2"><strong>{s.name}</strong><span className="text-ink-soft">{options.kinds[s.kind]} · {options.methods[s.method]}{s.contractor ? ` · ${s.contractor}` : ''}{s.licence ? ` (${s.licence})` : ''}</span>

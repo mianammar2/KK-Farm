@@ -1,3 +1,4 @@
+import Sheet from './Sheet';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import type { SharedProps } from '../types';
 import { useState } from 'react';
@@ -26,7 +27,7 @@ export function HeatDetection({ rows, options, onMate }: { rows: HeatRow[]; opti
     if (!rows.length) return <Panel><Empty title="No does to watch">Does of breeding age that are not pregnant appear here.</Empty></Panel>;
     return (
         <div className="space-y-3">
-            {recording ? <HeatForm doe={recording} options={options} onDone={() => setRecording(null)} /> : null}
+            {recording ? <Sheet onClose={() => setRecording(null)}><HeatForm doe={recording} options={options} onDone={() => setRecording(null)} /></Sheet> : null}
             <HeatList title={`Ready for Mating · ${ready.length}`} description="Heat seen in the last 2 days. Mate within 12–36 hours of the first signs." rows={ready} onRecord={setRecording} onMate={onMate} empty="No doe in heat right now." />
             <HeatList title={`Heat Due · ${due.length}`} description={`Expected within 3 days (about every ${options.cycle} days). Watch them morning and evening.`} rows={due} onRecord={setRecording} onMate={onMate} empty="No heat expected in the next 3 days." />
             <HeatList title={`Other Does · ${rest.length}`} description="Not observed yet, later heats, or mated and waiting for the pregnancy check." rows={rest} onRecord={setRecording} onMate={onMate} empty="" />

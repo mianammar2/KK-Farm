@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Check, Circle } from 'lucide-react';
 import { useState } from 'react';
@@ -31,13 +32,13 @@ export default function Intake({ goats, days, canClear, canConfigure, pens }: { 
             <Head title="Intake & Quarantine" />
             <PageHeader title="Intake & Quarantine" description={`Purchased and transferred goats stay in quarantine for ${days} days until the vet clears them: Registration → RFID → Quarantine → Veterinary Clearance.`}
                 actions={canConfigure ? <Button variant="secondary" onClick={() => setEditing(!editing)}><LibIcon name="app-settings" size={18} /> Quarantine Days</Button> : undefined} />
-            {editing ? (
+            {editing ? (<Sheet onClose={() => setEditing(false)}>
                 <Panel className="mb-4" title="Configuration" description="How long a new arrival is kept apart before clearance">
                     <form className="flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => { e.preventDefault(); settings.post('/intake/settings', { preserveScroll: true, onSuccess: () => setEditing(false) }); }}>
                         <Field label="Quarantine days" error={settings.errors.quarantine_days}><input type="number" min={1} max={90} className="field w-32" value={settings.data.quarantine_days} onChange={(e) => settings.setData('quarantine_days', e.target.value)} /></Field>
                         <Button type="submit" disabled={settings.processing}>Save</Button>
                     </form>
-                </Panel>
+                </Panel></Sheet>
             ) : null}
             <Panel flush title={`In Quarantine · ${goats.length}`} description="Sorted by arrival. A goat ready for clearance has finished its quarantine days.">
                 {goats.length ? (

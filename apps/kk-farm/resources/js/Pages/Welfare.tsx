@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
@@ -90,7 +91,7 @@ function Cases({ cases, options, isVet, goats, pens, users, empty }: Props & { e
     return (
         <div className="space-y-3">
             {adding ? (
-                <Panel title="Open a Welfare Case" description="From an inspection, an animal report, an injury or a lameness alert">
+                <Sheet onClose={() => setAdding(false)}><Panel title="Open a Welfare Case" description="From an inspection, an animal report, an injury or a lameness alert">
                     <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, animal_id: d.animal_id || null, pen_id: d.pen_id || null })); form.post('/welfare/cases', { preserveScroll: true, onSuccess: () => setAdding(false) }); }}>
                         <Field label="Goat" error={e.animal_id}><GoatSelect className="field" value={form.data.animal_id} onChange={(x) => form.setData('animal_id', x.target.value)}><option value="">—</option>{goats.map((g) => <option key={g.id} value={g.id}>{g.farm_number}</option>)}</GoatSelect></Field>
                         <Field label="Or PEN" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">—</option>{pens.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
@@ -99,7 +100,7 @@ function Cases({ cases, options, isVet, goats, pens, users, empty }: Props & { e
                         <Field label="Triage notes" error={e.triage}><input className="field" value={form.data.triage} onChange={(x) => form.setData('triage', x.target.value)} /></Field>
                         <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Open Case</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                     </form>
-                </Panel>
+                </Panel></Sheet>
             ) : null}
             <Panel flush title="Welfare Cases" actions={<Button onClick={() => setAdding(true)}>+ Open Case</Button>}>
                 {cases.length ? <ul className="divide-y divide-rule">{shown.map((c) => <CaseItem key={c.id} c={c} options={options} isVet={isVet} pens={pens} users={users} />)}</ul> : <Empty title={empty} />}

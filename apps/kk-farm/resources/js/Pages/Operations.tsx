@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import DeleteButton from '../components/DeleteButton';
@@ -88,7 +89,7 @@ function Incidents({ incidents, pens, goats, options, canResolve, incidentKpi, s
     return (
         <div className="space-y-3">
             {adding ? (
-                <Panel title="Report an Incident">
+                <Sheet onClose={() => setAdding(false)}><Panel title="Report an Incident">
                     <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, pen_id: d.pen_id || null, animal_id: d.animal_id || null, sop_id: d.sop_id || null, containment: d.containment || null })); form.post('/operations/incidents', { preserveScroll: true, onSuccess: () => { setAdding(false); form.reset(); } }); }}>
                         <Field label="What happened" error={e.kind}><select className="field" value={form.data.kind} onChange={(x) => form.setData('kind', x.target.value)}>{Object.entries(options.kinds).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                         <Field label="When" error={e.occurred_at}><input type="datetime-local" max={nowLocal()} className="field" value={form.data.occurred_at} onChange={(x) => form.setData('occurred_at', x.target.value)} /></Field>
@@ -100,7 +101,7 @@ function Incidents({ incidents, pens, goats, options, canResolve, incidentKpi, s
                         {canResolve ? <Field label="Contain now (optional)" error={e.containment} hint="Hold, isolate or recall; overrides normal work"><select className="field" value={form.data.containment} onChange={(x) => form.setData('containment', x.target.value)}><option value="">No</option><option value="hold">Hold</option><option value="isolate">Isolate</option><option value="recall">Recall</option></select></Field> : null}
                         <div className="flex gap-2 sm:col-span-3"><Button type="submit" disabled={form.processing}>Report</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                     </form>
-                </Panel>
+                </Panel></Sheet>
             ) : null}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[['CAPA closure', incidentKpi.capaClosure !== null ? `${incidentKpi.capaClosure}%` : '—'], ['Quality cases closed', `${incidentKpi.casesClosed} of ${incidentKpi.cases}`],
@@ -193,7 +194,7 @@ function Templates({ templates, options }: Props) {
                     </li>
                 ))}</ul>
             </Panel>
-            {editing ? <TemplateForm t={editing === 'new' ? null : editing} shifts={options.shifts} onDone={() => setEditing(null)} /> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)}><TemplateForm t={editing === 'new' ? null : editing} shifts={options.shifts} onDone={() => setEditing(null)} /></Sheet> : null}
         </div>
     );
 }

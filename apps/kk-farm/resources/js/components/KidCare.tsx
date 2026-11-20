@@ -1,3 +1,4 @@
+import Sheet from './Sheet';
 import { Link, useForm } from '@inertiajs/react';
 import GoatSelect from './GoatSelect';
 import { useState } from 'react';
@@ -25,7 +26,7 @@ export function KidCare({ kids, options, does }: { kids: KidRow[]; options: KidC
     const due = kids.filter((k) => k.colostrumDue).length;
     return (
         <div className="space-y-3">
-            {open ? <CareForm kid={open.kid} kind={open.kind} options={options} does={does} onDone={() => setOpen(null)} /> : null}
+            {open ? <Sheet onClose={() => setOpen(null)}><CareForm kid={open.kid} kind={open.kind} options={options} does={does} onDone={() => setOpen(null)} /></Sheet> : null}
             <Panel flush title={`Newborn Kids · ${kids.length}`} description={due ? `${due} still need colostrum recorded. Give colostrum within the first 6 hours of life.` : 'Up to 14 days old'}>
                 <ul className="divide-y divide-rule">
                     {shown.map((k) => (

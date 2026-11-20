@@ -1,3 +1,4 @@
+import Sheet from '../../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, Note, PageHeader, Panel, Stat, StatRow } from '../../components/ui';
@@ -63,12 +64,12 @@ function GoatRow({ r, canClear }: { r: Row; canClear: boolean }) {
                 {can && !open ? <Button className="ml-auto" variant={r.sale === 'market_weight' ? 'primary' : 'secondary'} onClick={() => setOpen(true)}>{r.sale === 'sale_ready' ? 'Withdraw clearance' : 'Clear for sale'}</Button> : null}
             </div>
             {r.blockers.length ? <p className="mt-1 text-sm font-semibold text-crit-700">Blocked: {r.blockers.join('; ')}</p> : null}
-            {open ? (
+            {open ? (<Sheet onClose={() => setOpen(false)} title={`${r.sale === 'sale_ready' ? 'Withdraw clearance' : 'Clear for sale'}: ${r.number}`}>
                 <form className="mt-3 grid max-w-xl gap-2 rounded-tile bg-glaze p-3" onSubmit={(e) => { e.preventDefault(); form.post(`/sales/readiness/${r.id}`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     {form.data.decision === 'cleared' && (stock || r.sale !== 'market_weight') ? <Note>{stock ? 'This is breeding stock or a cull goat: give the management reason for the sale.' : 'Not at market weight yet: give the reason for clearing it now.'}</Note> : null}
                     <Field label="Reason" error={form.errors.reason ?? form.errors.decision}><input className="field" value={form.data.reason} onChange={(e) => form.setData('reason', e.target.value)} /></Field>
                     <span className="flex gap-2"><Button type="submit" disabled={form.processing}>{form.data.decision === 'cleared' ? 'Clear for sale' : 'Withdraw'}</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></span>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );

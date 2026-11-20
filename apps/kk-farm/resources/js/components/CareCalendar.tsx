@@ -1,3 +1,4 @@
+import Sheet from './Sheet';
 import { Link, router, useForm } from '@inertiajs/react';
 import DeleteButton from './DeleteButton';
 import { useState } from 'react';
@@ -85,7 +86,7 @@ export function Protocols({ protocols, careTypes, applies, medicines, canEdit }:
                     </tbody></table></div>
                 ) : <Empty title="No protocols yet">{canEdit ? 'Add one with New Protocol, for example PPR vaccine for all goats every 365 days, or deworming every 90 days.' : 'The vet adds them.'}</Empty>}
             </Panel>
-            {editing ? <ProtocolForm p={editing === 'new' ? null : editing} careTypes={careTypes} applies={applies} medicines={medicines} onDone={() => setEditing(null)} /> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)}><ProtocolForm p={editing === 'new' ? null : editing} careTypes={careTypes} applies={applies} medicines={medicines} onDone={() => setEditing(null)} /></Sheet> : null}
         </div>
     );
 }

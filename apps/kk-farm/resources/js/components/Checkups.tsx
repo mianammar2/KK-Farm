@@ -1,3 +1,4 @@
+import Sheet from './Sheet';
 import { Link, useForm } from '@inertiajs/react';
 import GoatSelect from './GoatSelect';
 import { CalendarClock, Pencil, Plus, Stethoscope, X } from 'lucide-react';
@@ -84,18 +85,18 @@ export default function Checkups({ data }: { data: CheckupData }) {
                                         </button>
                                     ) : null}
                                 </div>
-                                {open === g.id ? <CheckupForm goat={g} date={date} data={data} onDone={() => setOpen(null)} /> : null}
+                                {open === g.id ? <Sheet onClose={() => setOpen(null)} title="Regular Checkup"><CheckupForm goat={g} date={date} data={data} onDone={() => setOpen(null)} /></Sheet> : null}
                             </li>
                         ))}
                     </ul>
                 ) : <p className="p-4 text-sm text-ink-soft">{dueOnly ? 'No goats due. Untick "Due only" to check any goat.' : 'No goats here.'}</p>}
             </Panel>
 
-            {editing ? (
+            {editing ? (<Sheet onClose={() => setEditing(null)}>
                 <Panel title={`Correct the checkup of ${editing.goat}`} description={`Done ${editing.on} by ${editing.by}. Every change is kept with your name and the reason.`}
                     actions={<button type="button" onClick={() => setEditing(null)} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-glaze"><X size={16} aria-hidden /></button>}>
                     <CheckupForm key={editing.id} existing={editing} goat={{ id: editing.goatId, number: editing.goat, name: null, sex: editing.sex, pen: null, repro: null, last: null, due: false, next: null, recheck: null, matedOn: editing.matedOn }} date={editing.dateIso} data={data} onDone={() => setEditing(null)} />
-                </Panel>
+                </Panel></Sheet>
             ) : null}
             <Panel flush title="Recent checkups">
                 {data.recent.length ? (

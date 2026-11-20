@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -81,7 +82,7 @@ function GrowthList(p: Props) {
                         {g.intervention ? <Chip className={g.intervention.overdue ? 'bg-treat-100 text-treat-700' : 'bg-cobalt-100 text-cobalt-800'}>{p.options.kinds[g.intervention.kind]} · follow-up {g.intervention.due}</Chip>
                             : g.below || g.stale ? <Button variant="secondary" className="ml-auto" onClick={() => setOpen(open === g.id ? null : g.id)}>Intervene</Button> : null}
                     </div>
-                    {open === g.id ? <IntervForm g={g} options={p.options} close={() => setOpen(null)} /> : null}
+                    {open === g.id ? <Sheet onClose={() => setOpen(null)}><IntervForm g={g} options={p.options} close={() => setOpen(null)} /></Sheet> : null}
                 </li>))}</ul> : <Empty title={only ? 'Every young goat is on target' : 'No young goats'} />}
             {more}
         </Panel>

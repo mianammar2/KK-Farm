@@ -1,7 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import { AlertTriangle, ChevronDown } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import GoatPortrait from '../components/GoatPortrait';
 import PedigreeTree, { type PedigreeNode } from '../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, Note, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -206,6 +206,8 @@ function MatingCard({ m, isVet, canClose, settings, options, outcome = false }: 
     const [open, setOpen] = useState(outcome || (m.active && m.alert !== null));
     const [mode, setMode] = useState<'none' | 'check' | 'kidding'>(outcome ? 'kidding' : 'none'); // D-299: opened from a scan or a Tag ID
     const [ask, confirmBox] = useConfirm(); // D-132
+    // D-359: a check or an outcome opens in a pop card, unless this card is already in one (opened from a scan or a Tag ID)
+    const inPop = (form: ReactNode) => (outcome ? form : <Sheet onClose={() => setMode('none')}>{form}</Sheet>);
     return (
         <section className={cx('rounded-tile border border-rule bg-tile shadow-tile', !m.active && 'opacity-75')}>
             {confirmBox}
@@ -244,8 +246,8 @@ function MatingCard({ m, isVet, canClose, settings, options, outcome = false }: 
                             {canClose ? <Button variant="quiet" onClick={async () => { if (await ask({ title: 'Close this mating?', message: 'It will be closed without a kidding.', confirm: 'Yes, close mating', danger: false })) router.post(`/breeding/matings/${m.id}/close`, {}, { preserveScroll: true }); }}>Close mating</Button> : null}
                         </div>
                     ) : null}
-                    {mode === 'check' ? <UltrasoundForm matingId={m.id} damNumber={m.dam.number} matedOn={m.matedIso} options={options} onDone={() => setMode('none')} /> : null}
-                    {mode === 'kidding' ? <PregnancyOutcomeForm matingId={m.id} damNumber={m.dam.number} matedOn={m.matedIso} options={options} onDone={() => setMode('none')} /> : null}
+                    {mode === 'check' ? inPop(<UltrasoundForm matingId={m.id} damNumber={m.dam.number} matedOn={m.matedIso} options={options} onDone={() => setMode('none')} />) : null}
+                    {mode === 'kidding' ? inPop(<PregnancyOutcomeForm matingId={m.id} damNumber={m.dam.number} matedOn={m.matedIso} options={options} onDone={() => setMode('none')} />) : null}
                     {m.status === 'open' && !isVet ? <p className="text-xs text-ink-faint">Pregnancy checks are due {settings.check} days after mating.</p> : null}
                 </div>
             ) : null}

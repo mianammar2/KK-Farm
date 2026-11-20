@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
@@ -89,7 +90,7 @@ function TripRow({ t, canFit, canCrew, canDecide, options }: { t: Trip } & Props
             {t.status === 'planned' ? <p className="mt-1 text-xs text-ink-soft">Then load by scan and dispatch on the sale order: the gate pass is issued at dispatch.</p> : null}
             {t.checks.length ? <ul className="mt-1 space-y-0.5 text-xs text-ink-soft">{t.checks.map((c, i) => <li key={i}>{c.at}{c.where ? ` · ${c.where}` : ''} · {c.dead || c.down || c.injured ? <span className="font-semibold text-crit-700">{c.dead} dead, {c.down} down, {c.injured} injured</span> : 'all fine'}{c.watered ? ' · watered' : ''}{c.temp !== null ? ` · ${c.temp} °C` : ''}{c.notes ? ` · ${c.notes}` : ''} · {c.by}</li>)}</ul> : null}
             {t.claims.map((c) => <ClaimRow key={c.id} c={c} canDecide={canDecide} options={options} />)}
-            {mode === 'check' ? (
+            {mode === 'check' ? (<Sheet onClose={() => setMode(null)} title="Welfare Check">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-7" onSubmit={(ev) => { ev.preventDefault(); check.transform((d) => ({ ...d, temp_c: nul(d.temp_c), location: nul(d.location), notes: nul(d.notes) })); check.post(`/transport/trips/${t.id}/check`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="Where"><input className="field" value={check.data.location} onChange={(x) => check.setData('location', x.target.value)} /></Field>
                     <Field label="Down"><input type="number" min={0} className="field" value={check.data.down} onChange={(x) => check.setData('down', x.target.value)} /></Field>
@@ -98,9 +99,9 @@ function TripRow({ t, canFit, canCrew, canDecide, options }: { t: Trip } & Props
                     <Field label="°C"><input type="number" className="field" value={check.data.temp_c} onChange={(x) => check.setData('temp_c', x.target.value)} /></Field>
                     <label className="flex items-end gap-2 pb-2"><input type="checkbox" checked={check.data.watered} onChange={(x) => check.setData('watered', x.target.checked)} /> Watered</label>
                     <div className="flex items-end"><Button type="submit" disabled={check.processing}>Save</Button></div>
-                </form>
+                </form></Sheet>
             ) : null}
-            {mode === 'deliver' ? (
+            {mode === 'deliver' ? (<Sheet onClose={() => setMode(null)} title="Record Delivery">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-6" onSubmit={(ev) => { ev.preventDefault(); deliver.transform((d) => ({ ...d, notes: nul(d.notes), claimed: nul(d.claimed) })); deliver.post(`/transport/trips/${t.id}/deliver`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="Goats received" error={de.head_received}><input type="number" min={0} className="field" value={deliver.data.head_received} onChange={(x) => deliver.setData('head_received', x.target.value)} /></Field>
                     <Field label="Injured on arrival"><input type="number" min={0} className="field" value={deliver.data.injured} onChange={(x) => deliver.setData('injured', x.target.value)} /></Field>
@@ -108,7 +109,7 @@ function TripRow({ t, canFit, canCrew, canDecide, options }: { t: Trip } & Props
                     <Field label="Customer claims PKR"><input type="number" min={0} className="field" value={deliver.data.claimed} onChange={(x) => deliver.setData('claimed', x.target.value)} /></Field>
                     <Field label="Notes"><input className="field" value={deliver.data.notes} onChange={(x) => deliver.setData('notes', x.target.value)} /></Field>
                     <div className="flex items-end"><Button type="submit" disabled={deliver.processing}>Save Receipt</Button></div>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );
@@ -122,12 +123,12 @@ function ClaimRow({ c, canDecide, options }: { c: Trip['claims'][number]; canDec
             <span className="font-semibold">{options.claims[c.kind]}</span> · {c.details}{c.claimed ? ` · claimed ${pkr(c.claimed / 100)}` : ''}
             <Chip className={`ml-2 ${c.status === 'open' ? 'bg-watch-100 text-watch-700' : c.status === 'accepted' ? 'bg-cobalt-100 text-cobalt-800' : 'bg-glaze text-ink-soft'}`}>{c.status}{c.credit ? ` · credit ${pkr(c.credit / 100)}` : ''}{c.by ? ` · ${c.by}` : ''}</Chip>
             {c.status === 'open' && canDecide ? <Button variant="quiet" className="ml-2" onClick={() => setOpen(!open)}>Decide</Button> : null}
-            {open ? (
+            {open ? (<Sheet onClose={() => setOpen(false)} title="Decide">
                 <form className="mt-2 flex flex-wrap items-end gap-2" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, credit: d.decision === 'accepted' ? d.credit : null, note: nul(d.note) })); form.post(`/transport/claims/${c.id}`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <select className="field !w-32" value={form.data.decision} onChange={(x) => form.setData('decision', x.target.value)}><option value="accepted">Accept</option><option value="rejected">Reject</option></select>
                     {form.data.decision === 'accepted' ? <input type="number" className="field !w-32" placeholder="Credit PKR" value={form.data.credit} onChange={(x) => form.setData('credit', x.target.value)} /> : <input className="field !w-56" placeholder="Why rejected" value={form.data.note} onChange={(x) => form.setData('note', x.target.value)} />}
                     <Button type="submit" disabled={form.processing}>Save</Button>
-                </form>
+                </form></Sheet>
             ) : null}
         </div>
     );
@@ -137,7 +138,7 @@ function Vehicles({ vehicles, options, canDecide }: Props) {
     const [edit, setEdit] = useState<Vehicle | 'new' | null>(null);
     return (
         <div className="space-y-3">
-            {edit ? <VehicleForm v={edit === 'new' ? null : edit} options={options} onDone={() => setEdit(null)} /> : null}
+            {edit ? <Sheet onClose={() => setEdit(null)}><VehicleForm v={edit === 'new' ? null : edit} options={options} onDone={() => setEdit(null)} /></Sheet> : null}
             <Panel flush title="Vehicles" description="An inspection is good for 90 days. Every point must pass for approval." actions={canDecide ? <Button onClick={() => setEdit('new')}>+ Vehicle</Button> : undefined}>
                 {vehicles.length ? <ul className="divide-y divide-rule">{vehicles.map((v) => (
                     <li key={v.id} className="flex flex-wrap items-center gap-2 px-4 py-2 text-sm"><strong className="font-mono">{v.reg}</strong><span className="text-ink-soft">{options.kinds[v.kind]} · {v.capacity} head · {v.ownership}{v.driver ? ` · ${v.driver}` : ''}</span>

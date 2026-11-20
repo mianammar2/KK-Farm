@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
@@ -154,9 +155,9 @@ function BatchView({ b, pens, rations, customers, options, canManage, isVet }: {
             <div className="grid grid-cols-2 gap-2 border-b border-rule p-3 text-sm sm:grid-cols-5">
                 {[['Head', b.headcount], ['Avg ADG', b.adg !== null ? `${b.adg} g/day` : '—'], ['At target', b.atTarget], ['Feed + health', money(b.feedCost + b.healthCost)], ['Cost / KG gain', money(b.costPerKgGain)]].map(([l, v]) => <div key={l as string} className="rounded-lg bg-glaze px-3 py-2"><div className="text-xs text-ink-soft">{l}</div><div className="font-bold text-cobalt-900">{v}</div></div>)}
             </div>
-            {mode === 'weigh' ? <WeighForm b={b} live={live} onDone={() => setMode(null)} /> : null}
-            {mode === 'plan' ? <PlanForm b={b} pens={pens} rations={rations} onDone={() => setMode(null)} /> : null}
-            {selling ? <SellForm m={selling} customers={customers} onDone={() => setSelling(null)} /> : null}
+            {mode === 'weigh' ? <Sheet onClose={() => setMode(null)} title="Weigh Batch"><WeighForm b={b} live={live} onDone={() => setMode(null)} /></Sheet> : null}
+            {mode === 'plan' ? <Sheet onClose={() => setMode(null)} title="Revise Plan"><PlanForm b={b} pens={pens} rations={rations} onDone={() => setMode(null)} /></Sheet> : null}
+            {selling ? <Sheet onClose={() => setSelling(null)} title="Scan & Dispatch"><SellForm m={selling} customers={customers} onDone={() => setSelling(null)} /></Sheet> : null}
             <div className="overflow-x-auto">
                 <table className="data-table">
                     <thead><tr><th>Goat</th><th>Flow</th><th>Entry → Now</th><th>ADG</th><th>BCS</th><th>Feed cost</th><th>Health</th><th>Total cost</th><th>Exception</th><th /></tr></thead>

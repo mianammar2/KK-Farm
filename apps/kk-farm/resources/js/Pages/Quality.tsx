@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
@@ -190,10 +191,10 @@ function CaseItem({ c, options, pick, isLead, me }: Props & { c: Case }) {
                     {isLead && (c.status === 'verified' || (!c.capas.length && c.rootCause)) ? <Button onClick={() => setMode('close')}><LibIcon name="ic-healthy" size={16} /> Close & Share Learning</Button> : null}
                 </div>
             ) : null}
-            {mode === 'hold' ? <HoldForm c={c} options={options} close={() => setMode(null)} /> : null}
-            {mode === 'investigate' ? <InvestigateForm c={c} close={() => setMode(null)} /> : null}
-            {mode === 'capa' ? <CapaForm c={c} options={options} pick={pick} close={() => setMode(null)} /> : null}
-            {mode === 'close' ? <CloseForm c={c} close={() => setMode(null)} /> : null}
+            {mode === 'hold' ? <Sheet onClose={() => setMode(null)}><HoldForm c={c} options={options} close={() => setMode(null)} /></Sheet> : null}
+            {mode === 'investigate' ? <Sheet onClose={() => setMode(null)}><InvestigateForm c={c} close={() => setMode(null)} /></Sheet> : null}
+            {mode === 'capa' ? <Sheet onClose={() => setMode(null)}><CapaForm c={c} options={options} pick={pick} close={() => setMode(null)} /></Sheet> : null}
+            {mode === 'close' ? <Sheet onClose={() => setMode(null)}><CloseForm c={c} close={() => setMode(null)} /></Sheet> : null}
         </li>
     );
 }
@@ -269,7 +270,7 @@ function CapaRow({ x, options, isLead, me, caseId, pick }: { x: Capa; options: P
                 <Field label="What was checked" error={form.errors.notes}><input className="field" value={form.data.notes} onChange={(e) => form.setData('notes', e.target.value)} /></Field>
                 <div className="flex items-end gap-2"><Button disabled={form.processing} onClick={() => post(`/quality/capas/${x.id}/verify`)}>Save</Button><Button variant="secondary" onClick={() => setMode(null)}>Cancel</Button></div>
             </Box> : null}
-            {mode === 'replan' ? <CapaForm c={{ id: caseId } as Case} options={options} pick={pick} replaces={x} close={() => setMode(null)} /> : null}
+            {mode === 'replan' ? <Sheet onClose={() => setMode(null)}><CapaForm c={{ id: caseId } as Case} options={options} pick={pick} replaces={x} close={() => setMode(null)} /></Sheet> : null}
         </li>
     );
 }
@@ -310,7 +311,7 @@ function Sops({ sops, options, isLead, me }: Props) {
     const e = form.errors as Record<string, string>;
     return (
         <div className="space-y-3">
-            {adding ? <Panel title="New SOP" description="Version 1 is in force once someone other than the writer approves it.">
+            {adding ? <Sheet onClose={() => setAdding(false)}><Panel title="New SOP" description="Version 1 is in force once someone other than the writer approves it.">
                 <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, review_on: d.review_on || null })); form.post('/quality/sops', { preserveScroll: true, onSuccess: () => { setAdding(false); form.reset(); } }); }}>
                     <Field label="Code" error={e.code}><input className="field font-mono" value={form.data.code} onChange={(x) => form.setData('code', x.target.value)} placeholder="SOP-MLK-01" /></Field>
                     <Field label="Title" error={e.title}><input className="field" value={form.data.title} onChange={(x) => form.setData('title', x.target.value)} /></Field>
@@ -319,7 +320,7 @@ function Sops({ sops, options, isLead, me }: Props) {
                     <Field label="Review by" error={e.review_on} hint="Default: one year"><input type="date" className="field" value={form.data.review_on} onChange={(x) => form.setData('review_on', x.target.value)} /></Field>
                     <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save Draft</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                 </form>
-            </Panel> : null}
+            </Panel></Sheet> : null}
             <Panel flush title="SOP Library" actions={isLead ? <Button onClick={() => setAdding(true)}>+ New SOP</Button> : undefined}>
                 {sops.length ? <ul className="divide-y divide-rule">{sops.map((s) => <SopRow key={s.id} s={s} options={options} isLead={isLead} me={me} />)}</ul> : <Empty title="No SOPs yet" />}
             </Panel>
@@ -363,7 +364,7 @@ function Register({ register, options, isLead }: Props) {
     const STATE: Record<string, [string, string]> = { expired: ['Expired', 'bg-crit-100 text-crit-700'], due: ['Renew soon', 'bg-treat-100 text-treat-700'], ok: ['Valid', 'bg-ok-100 text-ok-700'] };
     return (
         <div className="space-y-3">
-            {edit ? <RegForm item={edit === 'new' ? null : edit} options={options} close={() => setEdit(null)} /> : null}
+            {edit ? <Sheet onClose={() => setEdit(null)}><RegForm item={edit === 'new' ? null : edit} options={options} close={() => setEdit(null)} /></Sheet> : null}
             <Panel flush title="Regulatory Register" description="Licences, permits, certificates and inspections with their expiry. Anything expiring within 30 days shows on the dashboard." actions={isLead ? <Button onClick={() => setEdit('new')}>+ Add</Button> : undefined}>
                 {register.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Item</th><th>Type</th><th>Authority</th><th>Reference</th><th>Expires</th><th>Status</th><th>Owner</th><th /></tr></thead><tbody>
                     {register.map((r) => <tr key={r.id}><td className="font-semibold">{r.name}</td><td>{options.registerKinds[r.kind]}</td><td>{r.authority ?? '—'}</td><td className="font-mono">{r.reference ?? '—'}</td><td>{r.expires ?? '—'}</td><td><Chip className={STATE[r.state][1]}>{STATE[r.state][0]}</Chip></td><td>{r.owner ?? '—'}</td><td>{isLead ? <button type="button" className="text-cobalt-800 hover:underline" onClick={() => setEdit(r)}>Renew / Edit</button> : null}</td></tr>)}
@@ -403,7 +404,7 @@ function Drills({ drills, options, isLead }: Props) {
     const [shown, more] = useFive(drills);
     return (
         <div className="space-y-3">
-            {adding ? <Panel title="Record an Emergency Drill" description="A failed drill opens a quality case for the root cause and CAPA.">
+            {adding ? <Sheet onClose={() => setAdding(false)}><Panel title="Record an Emergency Drill" description="A failed drill opens a quality case for the root cause and CAPA.">
                 <form className="grid gap-3 p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v === '' ? null : v]))); form.post('/quality/drills', { preserveScroll: true, onSuccess: () => { setAdding(false); form.reset(); } }); }}>
                     <Field label="Scenario" error={e.scenario}><select className="field" value={form.data.scenario} onChange={(x) => form.setData('scenario', x.target.value)}>{opts(options.scenarios)}</select></Field>
                     <Field label="Held on" error={e.held_on}><input type="date" max={today()} className="field" value={form.data.held_on} onChange={(x) => form.setData('held_on', x.target.value)} /></Field>
@@ -414,7 +415,7 @@ function Drills({ drills, options, isLead }: Props) {
                     <Field label="Next drill" error={e.next_due_on} hint="Default: in 6 months"><input type="date" className="field" value={form.data.next_due_on} onChange={(x) => form.setData('next_due_on', x.target.value)} /></Field>
                     <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save Drill</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                 </form>
-            </Panel> : null}
+            </Panel></Sheet> : null}
             <Panel flush title="Emergency Readiness" actions={isLead ? <Button onClick={() => setAdding(true)}>+ Record Drill</Button> : undefined}>
                 {drills.length ? <ul className="divide-y divide-rule">{shown.map((d) => <li key={d.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
                     <strong>{options.scenarios[d.scenario]}</strong><span className="text-ink-soft">{d.on} · {d.participants} people{d.minutes !== null ? ` · ${d.minutes} min` : ''} · {d.by}</span>

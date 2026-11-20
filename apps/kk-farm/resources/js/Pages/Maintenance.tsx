@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, useForm } from '@inertiajs/react';
 import DeleteButton from '../components/DeleteButton';
 import { useState } from 'react';
@@ -91,7 +92,7 @@ function Jobs({ jobs, options, canManage, empty }: Props & { jobs: Job[]; empty:
                     </div>
                     <p className="mt-1">{j.problem}</p>
                     {j.work ? <p className="mt-1 text-ok-700">Done {j.doneOn} by {j.doneBy}: {j.work}{j.cost ? ` · ${pkr(j.cost)}` : ''}</p> : null}
-                    {closing === j.id ? <CloseForm id={j.id} onDone={() => setClosing(null)} /> : null}
+                    {closing === j.id ? <Sheet onClose={() => setClosing(null)}><CloseForm id={j.id} onDone={() => setClosing(null)} /></Sheet> : null}
                 </li>
             ))}</ul> : <Empty title={empty} />}
             {more}
@@ -134,7 +135,7 @@ function Assets({ assets, sheds, options, canManage }: Props) {
     const [editing, setEditing] = useState<AssetRow | 'new' | null>(null);
     return (
         <div className="space-y-3">
-            {editing ? <AssetForm a={editing === 'new' ? null : editing} sheds={sheds} options={options} onDone={() => setEditing(null)} /> : null}
+            {editing ? <Sheet onClose={() => setEditing(null)}><AssetForm a={editing === 'new' ? null : editing} sheds={sheds} options={options} onDone={() => setEditing(null)} /></Sheet> : null}
             <Panel flush title="Asset Register" actions={canManage ? <Button onClick={() => setEditing('new')}>+ New Asset</Button> : undefined}>
                 {assets.length ? <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Code</th><th>Asset</th><th>Category</th><th>Location</th><th>Status</th><th>Next service</th><th /></tr></thead><tbody>
                     {assets.map((a) => (

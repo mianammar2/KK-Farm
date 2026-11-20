@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, pkr, Stat, StatRow, Tabs } from '../components/ui';
@@ -159,7 +160,7 @@ function LotItem({ l, customers, options, canQuality, orders, maxTemp }: { l: Lo
             </div>
             {l.testedBy || l.releasedBy || l.hold ? <p className="mt-1 text-xs text-ink-soft">{l.testedBy ? `Tested by ${l.testedBy}` : ''}{l.releasedBy ? ` · released by ${l.releasedBy}` : ''}{l.hold ? ` · ${l.hold}` : ''}</p> : null}
             {l.buyers.length ? <p className="mt-1 text-xs">Sent to: {l.buyers.map((b) => `${b.to} ${b.litres} L (${b.on})`).join(', ')}</p> : null}
-            {mode === 'test' ? (
+            {mode === 'test' ? (<Sheet onClose={() => setMode(null)} title="Quality & Residue Check">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-6" onSubmit={(ev) => { ev.preventDefault(); test.transform((x) => ({ ...x, storage_temp_c: x.storage_temp_c || null })); test.post(`/dairy/lots/${l.id}/test`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <label className="flex items-center gap-1.5 pt-5"><input type="checkbox" checked={test.data.appearance_ok} onChange={(x) => test.setData('appearance_ok', x.target.checked)} /> Appearance normal</label>
                     <label className="flex items-center gap-1.5 pt-5"><input type="checkbox" checked={test.data.smell_ok} onChange={(x) => test.setData('smell_ok', x.target.checked)} /> Smell normal</label>
@@ -168,9 +169,9 @@ function LotItem({ l, customers, options, canQuality, orders, maxTemp }: { l: Lo
                     <Field label="Chilled to °C" error={e.storage_temp_c}><input type="number" step="0.1" className="field" value={test.data.storage_temp_c} onChange={(x) => test.setData('storage_temp_c', x.target.value)} /></Field>
                     <div className="flex items-end"><Button type="submit" disabled={test.processing}>Save Check</Button></div>
                     <p className="text-xs text-ink-soft sm:col-span-6">Passes only with normal appearance and smell and a negative residue test; otherwise the lot is rejected for discard.</p>
-                </form>
+                </form></Sheet>
             ) : null}
-            {mode === 'dispatch' ? (
+            {mode === 'dispatch' ? (<Sheet onClose={() => setMode(null)} title="Dispatch">
                 <form className="mt-2 grid gap-2 rounded-tile bg-turq-100/50 p-3 sm:grid-cols-6" onSubmit={(ev) => { ev.preventDefault(); send.transform((x) => ({ ...x, customer_id: x.customer_id || null, order_id: x.order_id || null, price_per_litre: x.kind === 'sale' && !x.order_id ? x.price_per_litre : null, dispatch_temp_c: x.dispatch_temp_c || null, credit_days: x.terms === 'credit' ? x.credit_days : null })); send.post(`/dairy/lots/${l.id}/dispatch`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <Field label="To"><select className="field" value={send.data.kind} onChange={(x) => send.setData('kind', x.target.value)}><option value="sale">Buyer (sale)</option><option value="processing">Processing</option></select></Field>
                     <Field label="Litres" error={e.litres}><input type="number" step="0.1" className="field" value={send.data.litres} onChange={(x) => send.setData('litres', x.target.value)} /></Field>
@@ -187,19 +188,19 @@ function LotItem({ l, customers, options, canQuality, orders, maxTemp }: { l: Lo
                         <label className="flex items-center gap-1.5 pt-5"><input type="checkbox" checked={send.data.vehicle_ok} onChange={(x) => send.setData('vehicle_ok', x.target.checked)} /> Vehicle fit</label>
                     </> : null}
                     <div className="flex items-end"><Button type="submit" disabled={send.processing}>Dispatch</Button></div>
-                </form>
+                </form></Sheet>
             ) : null}
-            {mode === 'temp' ? (
+            {mode === 'temp' ? (<Sheet onClose={() => setMode(null)} title="Log Temperature">
                 <form className="mt-2 flex items-end gap-2" onSubmit={(ev) => { ev.preventDefault(); temp.post(`/dairy/lots/${l.id}/temperature`, { preserveScroll: true, onSuccess: () => { temp.reset(); setMode(null); } }); }}>
                     <Field label={`Storage temperature °C (limit ${maxTemp} °C)`} error={(temp.errors as Record<string, string>).temp_c}><input type="number" step="0.1" className="field" value={temp.data.temp_c} onChange={(x) => temp.setData('temp_c', x.target.value)} autoFocus /></Field>
                     <Button type="submit" disabled={temp.processing}>Save</Button>
-                </form>
+                </form></Sheet>
             ) : null}
-            {mode === 'hold' || mode === 'recall' ? (
+            {mode === 'hold' || mode === 'recall' ? (<Sheet onClose={() => setMode(null)} title={mode === 'hold' ? 'Hold' : 'Recall'}>
                 <form className="mt-2 flex gap-2" onSubmit={(ev) => { ev.preventDefault(); reason.post(`/dairy/lots/${l.id}/${mode}`, { preserveScroll: true, onSuccess: () => setMode(null) }); }}>
                     <input className="field flex-1" placeholder={mode === 'hold' ? 'Why hold (retest before release)' : 'Why recall (buyers will be listed to notify)'} value={reason.data.reason} onChange={(x) => reason.setData('reason', x.target.value)} />
                     <Button type="submit" variant={mode === 'recall' ? 'danger' : 'primary'} disabled={reason.processing}>{mode === 'hold' ? 'Hold Lot' : 'Recall Lot'}</Button>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );
@@ -212,7 +213,7 @@ function Orders({ orders, customers, canQuality }: Props) {
     const e = form.errors as Record<string, string>;
     return (
         <div className="space-y-3">
-            {adding ? <Panel title="New Milk Order">
+            {adding ? <Sheet onClose={() => setAdding(false)}><Panel title="New Milk Order">
                 <form className="grid gap-2 p-4 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, customer_id: d.customer_id || null, buyer: d.buyer || null, credit_days: d.terms === 'credit' ? d.credit_days : null })); form.post('/dairy/orders', { preserveScroll: true, onSuccess: () => { setAdding(false); form.reset(); } }); }}>
                     <Field label="Customer" error={e.customer_id}><select className="field" value={form.data.customer_id} onChange={(x) => form.setData('customer_id', x.target.value)}><option value="">—</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
                     <Field label="Or buyer"><input className="field" value={form.data.buyer} onChange={(x) => form.setData('buyer', x.target.value)} /></Field>
@@ -223,7 +224,7 @@ function Orders({ orders, customers, canQuality }: Props) {
                     {form.data.terms === 'credit' ? <Field label="Credit days" error={e.credit_days}><input type="number" className="field" value={form.data.credit_days} onChange={(x) => form.setData('credit_days', x.target.value)} /></Field> : null}
                     <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save Order</Button><Button type="button" variant="secondary" onClick={() => setAdding(false)}>Cancel</Button></div>
                 </form>
-            </Panel> : null}
+            </Panel></Sheet> : null}
             <Panel flush title="Milk Orders" description="Fill an order from a Released lot (Milk Lots → Dispatch → choose the order). The lot it came from stays traceable." actions={canQuality ? <Button onClick={() => setAdding(true)}>+ Milk Order</Button> : undefined}>
                 {orders.length ? <ul className="divide-y divide-rule">{orders.map((o) => <li key={o.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
                     <strong className="font-mono text-cobalt-900">{o.no}</strong><span className="font-semibold">{o.customer}</span>
