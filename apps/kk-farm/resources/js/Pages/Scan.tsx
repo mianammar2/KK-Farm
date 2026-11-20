@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import WriteTagId from '../components/WriteTagId';
 import WriteAllTags from '../components/WriteAllTags';
+import Sheet from '../components/Sheet';
 import { useScannerDevice } from '../lib/scanner';
 import { haptic } from '../lib/native';
 import GoatPortrait from '../components/GoatPortrait';
@@ -23,6 +24,7 @@ const IN_APP = typeof navigator !== 'undefined' && navigator.userAgent.includes(
 export default function Scan({ result, samples, goats, attach = null }: Props) {
     const [code, setCode] = useState(result?.code ?? '');
     const [scanning, setScanning] = useState(false);
+    const gates = usePage<SharedProps>().props.auth?.gates ?? [];
     useEffect(() => setScanning(false), [result]);
 
     const scan = (value: string) => {
@@ -48,40 +50,42 @@ export default function Scan({ result, samples, goats, attach = null }: Props) {
     return (
         <>
             <Head title="RFID Scan" />
-            <PageHeader title="RFID scan" description={IN_APP ? "Pull the trigger at a goat's ear tag. A tag with no goat starts the goat register." : "Scan a tag to open the goat. A tag with no goat starts the goat register. This is a simulator: no real reader is connected."} />
-            <WriteAllTags canAssign={(usePage<SharedProps>().props.auth?.gates ?? []).includes('assign_tags')} />{/* D-361 */}
-            <div className="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
-                <div className="space-y-4">
-                    <Panel title={IN_APP ? 'Type a tag code' : 'Simulated reader'}>
-                        <form onSubmit={(e) => { e.preventDefault(); scan(code); }} className="space-y-2">
-                            <Field label="Tag code"><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Scan or type a tag code" className="field" autoFocus /></Field>
-                            <Button type="submit" className="w-full" disabled={scanning}><ScanLine size={17} aria-hidden /> {scanning ? 'Reading' : 'Scan tag'}</Button>
-                        </form>
-                    </Panel>
-                    {IN_APP ? null : <ReaderSetup />}
-                    {IN_APP ? null : <Panel title="Try a demo tag">
-                        <div className="space-y-3">
-                            {sample('On a goat', samples.assigned)}
-                            {sample('Released by a goat that left', samples.free)}
-                            {sample('New, never used', samples.new)}
-                            <div>
-                                <div className="mb-1 text-sm text-ink-soft">Tag the farm has never seen</div>
-                                <button type="button" onClick={() => scan(Array.from({ length: 24 }, () => '0123456789ABCDEF'[Math.floor(Math.random() * 16)]).join(''))} className="min-h-9 rounded-[4px] border border-rule bg-tile px-2 text-sm hover:border-turq-600">Scan a brand-new tag</button>
-                            </div>
+            {/* D-363: a scan opens in a centred pop card and nothing else shows behind it; closing it goes back to scanning */}
+            {result || attach ? (
+                <Sheet onClose={() => router.get('/scan', {}, { replace: true })}>
+                    {attach ? <AttachPrompt attach={attach} /> : null}
+                    {result?.state === 'assigned' && result.goat ? <Found goat={result.goat} result={result} /> : null}
+                    {result && result.state !== 'assigned' ? <Unassigned result={result} goats={goats} /> : null}
+                </Sheet>
+            ) : (
+                <>
+                    <PageHeader title="RFID scan" description={IN_APP ? "Pull the trigger at a goat's ear tag. A tag with no goat starts the goat register." : "Scan a tag to open the goat. A tag with no goat starts the goat register. This is a simulator: no real reader is connected."} />
+                    <WriteAllTags canAssign={gates.includes('assign_tags')} />{/* D-361 */}
+                    <div className="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
+                        <div className="space-y-4">
+                            <Panel title={IN_APP ? 'Type a tag code' : 'Simulated reader'}>
+                                <form onSubmit={(e) => { e.preventDefault(); scan(code); }} className="space-y-2">
+                                    <Field label="Tag code"><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Scan or type a tag code" className="field" autoFocus /></Field>
+                                    <Button type="submit" className="w-full" disabled={scanning}><ScanLine size={17} aria-hidden /> {scanning ? 'Reading' : 'Scan tag'}</Button>
+                                </form>
+                            </Panel>
+                            {IN_APP ? null : <ReaderSetup />}
+                            {IN_APP ? null : <Panel title="Try a demo tag">
+                                <div className="space-y-3">
+                                    {sample('On a goat', samples.assigned)}
+                                    {sample('Released by a goat that left', samples.free)}
+                                    {sample('New, never used', samples.new)}
+                                    <div>
+                                        <div className="mb-1 text-sm text-ink-soft">Tag the farm has never seen</div>
+                                        <button type="button" onClick={() => scan(Array.from({ length: 24 }, () => '0123456789ABCDEF'[Math.floor(Math.random() * 16)]).join(''))} className="min-h-9 rounded-[4px] border border-rule bg-tile px-2 text-sm hover:border-turq-600">Scan a brand-new tag</button>
+                                    </div>
+                                </div>
+                            </Panel>}
                         </div>
-                    </Panel>}
-                </div>
-
-                <AnimatePresence mode="wait">
-                    {/* On a phone or the gun the result comes first, above the reader panel. */}
-                    <motion.div key={result?.code ?? 'idle'} className="order-first lg:order-none" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ type: 'spring', stiffness: 360, damping: 30 }}>
-                        {attach ? <AttachPrompt attach={attach} /> : null}
-                        {!result && !attach ? <Idle scanning={scanning} /> : null}
-                        {result?.state === 'assigned' && result.goat ? <Found goat={result.goat} result={result} /> : null}
-                        {result && result.state !== 'assigned' ? <Unassigned result={result} goats={goats} /> : null}
-                    </motion.div>
-                </AnimatePresence>
-            </div>
+                        <div className="order-first lg:order-none"><Idle scanning={scanning} /></div>
+                    </div>
+                </>
+            )}
         </>
     );
 }
@@ -110,7 +114,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
     // Releasing a tag cannot be undone from here, so it takes two deliberate taps.
     const [confirmLost, setConfirmLost] = useState(false);
     return (
-        <Panel title="Goat found" description={`Tag ${result.code}, on this goat since ${result.since}`}>
+        <div>{/* D-363: no heading or factory tag number: the goat's card is the answer */}
             {/* D-300: the goat's full profile card first, then what to do */}
             <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
                 <GoatProfileCard id={goat.id} />
@@ -151,7 +155,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
                     </div>
                 </div>
             </div>
-        </Panel>
+        </div>
     );
 }
 
