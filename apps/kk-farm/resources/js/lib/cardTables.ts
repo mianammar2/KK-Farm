@@ -22,6 +22,8 @@ function label(table: HTMLTableElement): void {
         for (const td of cells) {
             const l = labels[col] ?? '';
             if (td.dataset.label !== l) td.dataset.label = l;
+            const blank = /^[—–-]?$/.test((td.textContent || '').trim()) && !td.querySelector('input, select, textarea, button, img, svg');
+            if ((td.dataset.blank === '1') !== blank) td.dataset.blank = blank ? '1' : ''; // an empty line is left out of the card
             col += td.colSpan || 1;
         }
     }

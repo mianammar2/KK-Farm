@@ -482,7 +482,7 @@ main { min-width: 0; }
     table[data-cards] td[data-label='']::before { content: none; }
     table[data-cards] td:first-child { justify-content: flex-start; padding-bottom: 6px !important; text-align: left !important; font-weight: 600; color: var(--color-cobalt-900); }
     table[data-cards] td:first-child::before { content: none; }
-    table[data-cards] td:empty { display: none; }
+    table[data-cards] td:empty, table[data-cards] td[data-blank='1']:not(:first-child) { display: none; }
     table[data-cards] tr[data-card-wide] td { display: block; text-align: left !important; }
     table[data-cards] tr[data-card-wide] td::before { content: none; }
     table[data-cards] td > * { min-width: 0; }

@@ -39,7 +39,9 @@ export default function Chart({ option, height = 240, label, onSelect }: { optio
 
     useEffect(() => {
         const animation = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        chart.current?.setOption({ ...BASE, animation, animationDuration: 400, ...option }, true);
+        // D-365: a chart's own tooltip keeps the shared look and stays inside the chart (confine), so it is never cut off on a phone
+        const tip = option.tooltip && !Array.isArray(option.tooltip) ? { tooltip: { ...BASE.tooltip, ...(option.tooltip as object) } } : {};
+        chart.current?.setOption({ ...BASE, animation, animationDuration: 400, ...option, ...tip }, true);
     }, [option]);
 
     return <div ref={element} role="img" aria-label={label} style={{ height, width: '100%', cursor: onSelect ? 'pointer' : undefined }} />;
