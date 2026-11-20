@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Download, Filter, ListFilter, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePaged } from './Pager';
+import { usePhone } from '../lib/usePhone';
 import { cx } from './ui';
 
 /**
@@ -231,12 +232,61 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
     const head = 'border border-rule bg-[#eef1ea] px-2.5 py-2 text-xs font-medium whitespace-nowrap text-ink';
     const cell = 'border border-rule px-2.5 py-2 align-middle';
     const key = (r: T, i: number) => (rowKey ? rowKey(r, i) : String(i + (at - 1) * size));
+    const phone = usePhone();
+    const show = (c: Col<T>, r: T): ReactNode => { const v = val(c, r); return c.render ? c.render(r) : v === null || v === undefined || v === '' ? null : String(v); };
+    const blank = (c: Col<T>, r: T) => { const v = val(c, r); return !c.render && (v === null || v === undefined || v === ''); };
+    // D-365: on a phone each row is a card (first column as its title, the rest as labelled lines); sorting moves into a picker
+    const cards = (
+        <div className="space-y-2 px-3 pb-2">
+            <div className="flex items-center gap-2">
+                <label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold text-ink-soft">Sort
+                    <select className="field min-w-0 flex-1 !py-1.5 text-sm" value={sort?.key ?? ''} onChange={(e) => setSort(e.target.value ? { key: e.target.value, dir: sort?.dir ?? 1 } : null)}>
+                        <option value="">As listed</option>
+                        {cols.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+                </label>
+                {sort ? <button type="button" onClick={() => setSort({ key: sort.key, dir: sort.dir === 1 ? -1 : 1 })} className="grid size-10 place-items-center rounded-md border border-rule bg-tile text-cobalt-800" aria-label={sort.dir === 1 ? 'Sorted low to high: tap for high to low' : 'Sorted high to low: tap for low to high'}>{sort.dir === 1 ? <ArrowUp size={16} aria-hidden /> : <ArrowDown size={16} aria-hidden />}</button> : null}
+            </div>
+            <ul className="space-y-2">
+                {page.map((r, i) => {
+                    const k = key(r, i);
+                    const isOpen = open === k;
+                    const [first, ...rest] = cols;
+                    return (
+                        <li key={k} className={cx('rounded-tile border border-rule bg-tile shadow-tile', isOpen && 'ring-2 ring-cobalt-600/40')}>
+                            <div className={cx('px-3 py-2.5', expand && 'cursor-pointer')} onClick={expand ? () => setOpen(isOpen ? null : k) : undefined} aria-expanded={expand ? isOpen : undefined}>
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 text-sm font-semibold break-words text-cobalt-900">{first ? (show(first, r) ?? '—') : null}</div>
+                                    <span className="flex shrink-0 items-center gap-0.5 text-xs text-ink-faint tabular-nums">{expand ? (isOpen ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />) : null}{(at - 1) * size + i + 1}</span>
+                                </div>
+                                <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                    {rest.filter((c) => !blank(c, r)).map((c) => (
+                                        <div key={c.key} className={cx('min-w-0', c.wrap && 'col-span-2')}>
+                                            <dt className="text-xs text-ink-soft">{c.label}</dt>
+                                            <dd className={cx('text-sm break-words text-ink', num(c) && 'tabular-nums')}>{show(c, r) ?? '—'}</dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            </div>
+                            {isOpen && expand ? <div className="border-t border-rule bg-glaze/40 p-3">{expand(r)}</div> : null}
+                        </li>
+                    );
+                })}
+            </ul>
+            {totals && totals.some((t) => t) ? (
+                <div className="rounded-tile border border-rule bg-[#eef1ea] px-3 py-2.5">
+                    <p className="text-xs font-semibold text-ink-soft">Σ Totals · {list.length.toLocaleString('en-PK')} rows</p>
+                    <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">{cols.map((c, i) => (totals[i] ? <div key={c.key} className="min-w-0"><dt className="text-xs text-ink-soft">{c.label}</dt><dd className="text-sm font-semibold tabular-nums">{totals[i]}</dd></div> : null))}</dl>
+                </div>
+            ) : null}
+        </div>
+    );
     return (
         <div>
             {filterable ? own.bar : null}
             {toolbar || !filterable ? <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">{toolbar ?? <span />}{exportBtn}</div> : null}
-            {!sorted.length ? <p className="px-4 py-8 text-center text-sm text-ink-soft">{empty}{filterable && (own.filters.length) ? ': no row matches these filters.' : '.'}</p> : (
-                <div className="overflow-x-auto">
+            {!sorted.length ? <p className="px-4 py-8 text-center text-sm text-ink-soft">{empty}{filterable && (own.filters.length) ? ': no row matches these filters.' : '.'}</p> : phone ? cards : (
+                <div className="overflow-x-auto" data-keep-table>
                     <table className="w-full border-collapse text-sm [&_td]:font-normal [&_td_*]:!font-normal">
                         <thead><tr>
                             <th className={cx(head, 'w-12 text-center text-ink-soft')}>#</th>

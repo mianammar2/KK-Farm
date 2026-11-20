@@ -115,7 +115,7 @@ function FeedNow(props: Props & { onTab: (t: string) => void }) {
 
     return (
         <div className="space-y-3">
-            <div className="flex gap-1.5 overflow-x-auto" role="group" aria-label="Meal">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Meal">
                 {MEALS.map((m) => (
                     <button key={m} type="button" aria-pressed={meal === m} onClick={() => router.get('/feeding', { meal: m }, { preserveScroll: true, preserveState: true, replace: true })}
                         className={cx('min-h-11 rounded-tile border px-3 text-sm font-semibold', meal === m ? 'border-cobalt-700 bg-cobalt-700 text-white' : 'border-rule bg-tile text-cobalt-900')}>
@@ -380,7 +380,7 @@ function HistoryTab({ history, meals }: Props) {
 
     return (
         <div className="space-y-4">
-            <div className="flex gap-2 overflow-x-auto pb-1">{days.map(([day, d]) => <div key={day} className="min-w-36 rounded-tile border border-rule bg-tile px-3 py-2 text-sm"><div className="font-semibold text-cobalt-900">{day}</div><div>{kg(d.kg)} given</div><div className="text-ink-soft">{kg(d.eaten)} eaten · {pkr(d.cost)}</div></div>)}</div>
+            <div className="grid grid-cols-2 gap-2 pb-1 sm:flex sm:overflow-x-auto">{days.map(([day, d]) => <div key={day} className="min-w-36 rounded-tile border border-rule bg-tile px-3 py-2 text-sm"><div className="font-semibold text-cobalt-900">{day}</div><div>{kg(d.kg)} given</div><div className="text-ink-soft">{kg(d.eaten)} eaten · {pkr(d.cost)}</div></div>)}</div>
             <Panel flush>
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[56rem] text-sm">

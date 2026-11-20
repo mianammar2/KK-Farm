@@ -221,7 +221,7 @@ export default function GoatsIndex({ goats, breeds, pens, showLabels, canEdit, c
 
             {/* D-251: goats on Watch by how they are doing, so the ones not improving come first */}
             {['attention', 'not_improving', 'no_recheck', 'improving', 'recovered'].includes(show) ? (
-                <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Goats on Watch by progress">
+                <div className="-mx-1 mb-3 flex flex-wrap gap-2 px-1 pb-1" role="group" aria-label="Goats on Watch by progress">
                     {([['not_improving', 'Not improving', 'border-crit-500 text-crit-700'], ['no_recheck', 'Waiting for a recheck', 'border-watch-400 text-watch-700'], ['improving', 'Improving', 'border-turq-600 text-turq-800'], ['recovered', 'Recovered (14 days)', 'border-ok-700 text-ok-700']] as const).map(([key, label, tone]) => {
                         const n = goats.filter((g) => (g.tags ?? []).includes(key)).length;
                         return (

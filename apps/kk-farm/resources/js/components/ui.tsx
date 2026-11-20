@@ -3,7 +3,7 @@ import { canOpen } from '../lib/apps';
 import { Link, usePage } from '@inertiajs/react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { AlertTriangle, Baby, HeartPulse, Inbox, Mars, Venus } from 'lucide-react';
+import { AlertTriangle, Baby, ChevronDown, HeartPulse, Inbox, Mars, Venus } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import GoatPortrait from './GoatPortrait';
 import { titleCase } from '../lib/titleCase';
@@ -227,8 +227,20 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; labe
             </div>
         );
     }
+    const many = tabs.length > 2;
     return (
-        <div role="tablist" className="-mx-1 mb-4 flex gap-1 overflow-x-auto border-b border-rule px-1">
+        <>
+        {/* D-365: on a phone more than two sections are a full-width picker (the phone's own list), not a strip that scrolls sideways */}
+        {many ? (
+            <label className="relative mb-4 block sm:hidden">
+                <span className="sr-only">Section</span>
+                <select className="field appearance-none !pr-10 font-semibold text-cobalt-900" value={value} onChange={(e) => onChange(e.target.value)}>
+                    {tabs.map((tab) => <option key={tab.id} value={tab.id}>{titleCase(tab.label)}{tab.count !== undefined ? ` (${tab.count})` : ''}</option>)}
+                </select>
+                <ChevronDown size={18} aria-hidden className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-cobalt-800" />
+            </label>
+        ) : null}
+        <div role="tablist" className={cx('-mx-1 mb-4 flex gap-1 overflow-x-auto border-b border-rule px-1', many && 'max-sm:hidden')}>
             {tabs.map((tab) => (
                 <button
                     key={tab.id}
@@ -248,6 +260,7 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; labe
                 </button>
             ))}
         </div>
+        </>
     );
 }
 
