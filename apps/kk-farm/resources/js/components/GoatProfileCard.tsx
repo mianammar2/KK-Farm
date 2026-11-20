@@ -38,8 +38,10 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
     return <div className="min-w-0"><dt className="text-xs text-ink-soft">{label}</dt><dd className="text-sm break-words text-ink">{children ?? '—'}</dd></div>;
 }
 
-export default function GoatProfileCard({ id, actions, data }: { id: string; actions?: ReactNode; data?: Profile & { canOpenRecord?: boolean } }) {
+export default function GoatProfileCard({ id, actions, data, compact = false }: { id: string; actions?: ReactNode; data?: Profile & { canOpenRecord?: boolean }; compact?: boolean }) {
     const [p, setP] = useState<Profile | null>(null);
+    // D-364: compact (scan pop-ups): photo beside the Tag ID, the four key numbers and any problems; the rest behind "More details"
+    const [more, setMore] = useState(false);
     const [h, setH] = useState<Health | null>(null);
     const [failed, setFailed] = useState(false);
     useEffect(() => {
@@ -66,23 +68,29 @@ export default function GoatProfileCard({ id, actions, data }: { id: string; act
 
     return (
         <article className="kk-print-card @container overflow-hidden rounded-tile border border-rule bg-tile" aria-label={`Profile of ${p.number}`}>
-            <header className="flex flex-col gap-4 border-b border-rule p-4 @xl:flex-row">
-                <div className="shrink-0 self-center @xl:self-start">{p.photo ? <img src={`/media/${p.photo}`} alt="" className="size-28 rounded-2xl object-cover" /> : <GoatPortrait number={p.number} sex={p.sex} stage={p.stage} repro={p.repro} size={112} />}</div>
+            <header className={cx('flex gap-4 border-b border-rule p-4', compact ? 'flex-row flex-wrap' : 'flex-col @xl:flex-row')}>
+                <div className={cx('shrink-0', compact ? 'self-start' : 'self-center @xl:self-start')}>{p.photo ? <img src={`/media/${p.photo}`} alt="" className={cx('rounded-2xl object-cover', compact ? 'size-20' : 'size-28')} /> : <GoatPortrait number={p.number} sex={p.sex} stage={p.stage} repro={p.repro} size={compact ? 80 : 112} />}</div>
                 <div className="min-w-0 flex-1">
-                    <h2 className="font-mono text-2xl text-cobalt-900">{p.number}</h2>
+                    <h2 className={cx('font-mono text-cobalt-900', compact ? 'text-xl' : 'text-2xl')}>{p.number}</h2>
                     <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">{p.name ? <span>{p.name} ·</span> : null}<BreedBadge breed={p.breed} withName /><span>·</span><AgeBadge stage={p.stage} code={p.ageCode} /> <span>{p.sex === 'female' ? 'Female' : p.sex === 'male' ? 'Male' : ''}</span></p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {p.status === 'active' ? <HealthChip health={p.health} /> : <span className="rounded bg-glaze px-2 py-0.5 text-xs text-ink-soft">Left the farm</span>}
                         {p.exit ? null : <ReproChip repro={p.repro} until={p.monitorUntil} />}{/* D-325: not pregnant any more once it has left */}
                         {Object.entries(p.roleLabels).map(([c, l]) => <span key={c} className="rounded-full bg-turq-100 px-2 py-0.5 text-xs text-turq-800">{l}</span>)}
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 @3xl:grid-cols-4">
+                    {compact ? null : <div className="mt-3 grid grid-cols-2 gap-2 @3xl:grid-cols-4">
                         <Big label="Age">{p.ageExact && p.ageMonths !== null ? `${p.ageMonths} months` : p.ageCode ?? p.age ?? '—'}</Big>
                         <Big label="Weight">{g.latestKg !== null ? `${g.latestKg} KG` : '—'}{g.gain ? <span className={cx('block text-xs', g.gain.kg > 0 ? 'text-ok-700' : g.gain.kg < 0 ? 'text-crit-700' : 'text-ink-soft')}>{g.gain.kg > 0 ? '▲ +' : g.gain.kg < 0 ? '▼ ' : ''}{g.gain.kg} KG in {g.gain.days} days</span> : null}</Big>
                         <Big label="Temperature">{h?.lastCheck?.temp != null ? <span className={h.lastCheck.fever ? 'text-crit-700' : ''}>{h.lastCheck.temp} °F</span> : '—'}{h?.lastCheck ? <span className="block text-xs text-ink-soft">{h.lastCheck.on}</span> : null}</Big>
                         <Big label="PEN">{p.exit ? `Left ${p.exit.on ?? ''}`.trim() : p.pen ?? 'No PEN'}{p.shed ? <span className="block text-xs text-ink-soft">{p.shed}</span> : null}</Big>
-                    </div>
+                    </div>}
                 </div>
+                {compact ? <div className="grid w-full grid-cols-2 gap-2">
+                    <Big label="Age">{p.ageExact && p.ageMonths !== null ? `${p.ageMonths} months` : p.ageCode ?? p.age ?? '—'}</Big>
+                    <Big label="Weight">{g.latestKg !== null ? `${g.latestKg} KG` : '—'}{g.gain ? <span className={cx('block text-xs', g.gain.kg > 0 ? 'text-ok-700' : g.gain.kg < 0 ? 'text-crit-700' : 'text-ink-soft')}>{g.gain.kg > 0 ? '+' : ''}{g.gain.kg} KG in {g.gain.days} days</span> : null}</Big>
+                    <Big label="Temperature">{h?.lastCheck?.temp != null ? <span className={h.lastCheck.fever ? 'text-crit-700' : ''}>{h.lastCheck.temp} °F</span> : '—'}{h?.lastCheck ? <span className="block text-xs text-ink-soft">{h.lastCheck.on}</span> : null}</Big>
+                    <Big label="PEN">{p.exit ? `Left ${p.exit.on ?? ''}`.trim() : p.pen ?? 'No PEN'}{p.shed ? <span className="block text-xs text-ink-soft">{p.shed}</span> : null}</Big>
+                </div> : null}
             </header>
             {p.exit ? ( // D-325: how it left the farm
                 <div className="space-y-1 border-b border-rule bg-crit-100/40 px-4 py-3 text-sm">
@@ -101,7 +109,8 @@ export default function GoatProfileCard({ id, actions, data }: { id: string; act
                     {problems.map((x, i) => <p key={i} className={cx('rounded-md px-2.5 py-1.5 text-sm', x.tone === 'crit' ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700')}>{x.text}</p>)}
                 </div>
             ) : p.seeHealth ? <p className="border-b border-rule bg-ok-100/50 px-4 py-2 text-sm text-ok-700">No open problems.</p> : null}
-            <div className="grid gap-x-6 gap-y-4 p-4 @md:grid-cols-2 @4xl:grid-cols-4">
+            {compact ? <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className="flex min-h-11 w-full items-center justify-between px-4 text-sm font-medium text-cobalt-800">{more ? 'Fewer details' : 'More details'}<span aria-hidden className={cx('transition-transform', more && 'rotate-180')}>⌄</span></button> : null}
+            {compact && !more ? null : <div className={cx('grid gap-x-6 gap-y-4 p-4 @md:grid-cols-2 @4xl:grid-cols-4', compact && 'border-t border-rule')}>
                 <Section title="Identity">
                     <Item label="RFID tag">{p.rfid ?? 'None'}</Item>
                     <Item label="Entry">{p.origin}{p.arrived ? ` · ${p.arrived}` : ''}</Item>
@@ -133,13 +142,13 @@ export default function GoatProfileCard({ id, actions, data }: { id: string; act
                     <Item label="Mother">{p.family.dam && !open ? p.family.dam.number : p.family.dam ? <Link href={`/goats/${p.family.dam.id}`} className="font-mono text-cobalt-800 hover:underline">{p.family.dam.number}</Link> : '—'}</Item>
                     <Item label="Father">{p.family.sire && !open ? p.family.sire.number : p.family.sire ? <Link href={`/goats/${p.family.sire.id}`} className="font-mono text-cobalt-800 hover:underline">{p.family.sire.number}</Link> : '—'}</Item>
                 </Section>
-            </div>
+            </div>}
             {p.missing.length ? <p className="border-t border-rule px-4 py-2 text-sm text-watch-700">Missing: {p.missing.join(', ')}</p> : null}
-            <footer className="flex flex-wrap items-center gap-2 border-t border-rule px-4 py-3 print:hidden">
+            {compact && !actions ? null : <footer className="flex flex-wrap items-center gap-2 border-t border-rule px-4 py-3 print:hidden">
                 {actions}
                 {open ? <Link href={`/goats/${p.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule px-3 text-sm text-cobalt-800 hover:bg-glaze"><ExternalLink size={15} aria-hidden /> Open full record</Link> : <span className="text-sm text-ink-soft">Read-only card</span>}
                 <button type="button" onClick={() => window.print()} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule px-3 text-sm text-cobalt-800 hover:bg-glaze"><Printer size={15} aria-hidden /> Print</button>
-            </footer>
+            </footer>}
         </article>
     );
 }

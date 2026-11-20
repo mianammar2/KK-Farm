@@ -65,7 +65,7 @@ export default function Scan({ result, samples, goats, attach = null }: Props) {
                         <div className="space-y-4">
                             <Panel title={IN_APP ? 'Type a tag code' : 'Simulated reader'}>
                                 <form onSubmit={(e) => { e.preventDefault(); scan(code); }} className="space-y-2">
-                                    <Field label="Tag code"><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Scan or type a tag code" className="field" autoFocus /></Field>
+                                    <Field label="Tag code"><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Scan or type a tag code" className="field" autoFocus={!IN_APP} />{/* D-364: no keyboard over the gun's scan page */}</Field>
                                     <Button type="submit" className="w-full" disabled={scanning}><ScanLine size={17} aria-hidden /> {scanning ? 'Reading' : 'Scan tag'}</Button>
                                 </form>
                             </Panel>
@@ -117,13 +117,13 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
         <div>{/* D-363: no heading or factory tag number: the goat's card is the answer */}
             {/* D-300: the goat's full profile card first, then what to do */}
             <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
-                <GoatProfileCard id={goat.id} />
+                <GoatProfileCard id={goat.id} compact />{/* D-364 */}
             </motion.div>
             <WriteTagId goatId={goat.id} number={goat.number} tag={result.code} canAssign={gates.includes('assign_tags')} />{/* D-360 */}
-            <div className="mt-4">
+            <div className="mt-3">
                 <div className="min-w-0">
                     {/* D-102: after a scan, what to do with this goat; each opens on the goat's own page. */}
-                    <p className="mt-3 text-sm font-semibold text-cobalt-900">What do you want to do?</p>
+                    <p className="text-sm font-semibold text-cobalt-900">What do you want to do?</p>
                     <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {[
                             goat.can?.check ? { href: 'checkup', label: 'Health checkup', icon: <Stethoscope size={18} aria-hidden />, primary: true } : null,
