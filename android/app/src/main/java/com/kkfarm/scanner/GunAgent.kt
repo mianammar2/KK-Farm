@@ -47,8 +47,29 @@ object GunAgent {
         if (started) return
         started = true
         GunLink.catchCrashes(app)
+        handler.postDelayed({ if (RemoteControl.instance == null) keepRemoteOn() }, 4000) // D-367: not running a few seconds after start
         handler.postDelayed(loop, 3000)
         Log.i(MainActivity.TAG, "gun agent started (${GunLink.installId(app)})")
+    }
+
+    /**
+     * D-367: Android switches an app's accessibility service off when the app is updated. With WRITE_SECURE_SETTINGS
+     * (granted once over adb, on the owner's request) the app switches its own remote control back on; without it,
+     * nothing happens. Only this app's own service is added; other services are left as they are.
+     */
+    private fun keepRemoteOn() {
+        if (app.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        runCatching {
+            val me = "${app.packageName}/${RemoteControl::class.java.name}"
+            val cr = app.contentResolver
+            val key = android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            val others = android.provider.Settings.Secure.getString(cr, key).orEmpty().split(':').filter { it.isNotBlank() && !it.equals(me, ignoreCase = true) }
+            // after an update the setting can still list it while Android has stopped it: write it again to restart it
+            android.provider.Settings.Secure.putString(cr, key, others.joinToString(":"))
+            android.provider.Settings.Secure.putString(cr, key, (others + me).joinToString(":"))
+            android.provider.Settings.Secure.putInt(cr, android.provider.Settings.Secure.ACCESSIBILITY_ENABLED, 1)
+            Log.i(MainActivity.TAG, "remote control switched back on")
+        }.onFailure { Log.w(MainActivity.TAG, "could not switch remote control on: ${it.message}") }
     }
 
     /** Report soon (after a command, or when the app comes to the front). */
