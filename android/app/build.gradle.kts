@@ -11,8 +11,8 @@ android {
         applicationId = "com.kkfarm.scanner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 32
-        versionName = "0.9.2"
+        versionCode = 33
+        versionName = "0.9.3"
     }
 
     buildTypes {

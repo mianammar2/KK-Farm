@@ -312,6 +312,7 @@ class MainActivity : Activity(), GunAgent.Host {
     override fun onResume() {
         super.onResume()
         TagNames.refresh(server) // D-362
+        Beep.setUp(this) // D-366
         isVisible = true
         visible = true
         if (!uhf.open()) handler.post(readerWatchdog) // our own reader runs the UHF module; otherwise keep InfoWedge alive
@@ -606,6 +607,6 @@ class MainActivity : Activity(), GunAgent.Host {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.9.2"
-    const val CODE = 32 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.9.3"
+    const val CODE = 33 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }
