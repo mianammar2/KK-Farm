@@ -206,7 +206,7 @@ function MatingCard({ m, isVet, canClose, settings, options, outcome = false }: 
     const [open, setOpen] = useState(outcome || (m.active && m.alert !== null));
     const [mode, setMode] = useState<'none' | 'check' | 'kidding'>(outcome ? 'kidding' : 'none'); // D-299: opened from a scan or a Tag ID
     const [ask, confirmBox] = useConfirm(); // D-132
-    // D-359: a check or an outcome opens in a pop card, unless this card is already in one (opened from a scan or a Tag ID)
+    // D-361: a check or an outcome opens in a pop card, unless this card is already in one (opened from a scan or a Tag ID)
     const inPop = (form: ReactNode) => (outcome ? form : <Sheet onClose={() => setMode('none')}>{form}</Sheet>);
     return (
         <section className={cx('rounded-tile border border-rule bg-tile shadow-tile', !m.active && 'opacity-75')}>

@@ -20,7 +20,7 @@ export default function Sheet({ children, onClose, title }: { children: ReactNod
             <div className="kk-rise relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-glaze p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
                 {/* audit: Close stays in reach while a long card scrolls */}
                 <div className="sticky top-0 z-10 flex h-0 justify-end"><button type="button" onClick={onClose} aria-label="Close" className="-me-1 -mt-1 grid size-10 place-items-center rounded-full bg-tile text-ink-soft shadow-tile hover:text-cobalt-900"><X size={18} aria-hidden /></button></div>
-                {title ? <h2 className="mb-3 pe-10 text-lg text-cobalt-900">{title}</h2> : null}{/* D-359: a heading for a form that has none of its own */}
+                {title ? <h2 className="mb-3 pe-10 text-lg text-cobalt-900">{title}</h2> : null}{/* D-361: a heading for a form that has none of its own */}
                 {children}
             </div>
         </div>,

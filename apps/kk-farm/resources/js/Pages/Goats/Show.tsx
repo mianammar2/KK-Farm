@@ -217,7 +217,7 @@ export default function GoatShow(props: Props) {
                     </div>
                 ) : null}
                 {panel === 'temp' ? <Sheet onClose={() => setPanel(null)}><RegularCheckup goat={goat} canHeight={auth?.gates.includes('record_height') ?? false} onDone={() => setPanel(null)} /></Sheet> : null}
-                {/* D-359: an action's fields open in a pop card, not under the buttons */}
+                {/* D-361: an action's fields open in a pop card, not under the buttons */}
                 {panel && panel !== 'temp' ? (
                     <Sheet onClose={() => setPanel(null)}>
                         <h2 className="mb-3 pe-10 text-lg text-cobalt-900">{PANEL_TITLE[panel] ?? 'Goat'} <span className="font-mono text-base font-normal text-ink-soft">{goat.number}</span></h2>
@@ -403,7 +403,7 @@ export default function GoatShow(props: Props) {
     );
 }
 
-/** D-359: the title of each goat action's pop card. */
+/** D-361: the title of each goat action's pop card. */
 const PANEL_TITLE: Record<string, string> = {
     weight: 'Add weight', photo: 'Add photo', move: 'Move to another PEN', concern: 'Report a concern', height: 'Add height', cull: 'Cull from breeding',
     birth: 'Correct birth date', death: 'Report death', slaughter: 'Slaughter', exit: 'Record exit', remove: 'Remove (wrong entry)',
