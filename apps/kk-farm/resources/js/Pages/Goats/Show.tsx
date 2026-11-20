@@ -18,6 +18,7 @@ import PedigreeTree, { type PedigreeNode } from '../../components/PedigreeTree';
 import { Button, Chip, cx, Empty, Field, GoatLabel, HealthChip, LibIcon, Note, Panel, pkr, ReproChip, SexIcon, Tabs } from '../../components/ui';
 import type { GoatCard, SharedProps } from '../../types';
 import { AgeBadge, BreedBadge } from '../../components/GoatBadges';
+import WriteTagId from '../../components/WriteTagId';
 import RfidLink from '../../components/RfidLink';
 
 type Dental = { code: string; fromAge?: boolean; condition: string | null; checkedOn: string | null; history: Array<{ on: string; code: string; condition: string | null; by: string | null; source: string }> };
@@ -388,6 +389,7 @@ export default function GoatShow(props: Props) {
             ) : null}
 
             {tab === 'tags' && goat.status === 'active' ? <RfidLink goatId={goat.id} number={goat.number} current={tags.find((t) => !t.to)?.code} canAssign={Boolean(props.canAssignTags)} className="mb-4" /> : null /* D-336 */}
+            {tab === 'tags' && goat.status === 'active' ? <WriteTagId goatId={goat.id} number={goat.number} tag={tags.find((t) => !t.to)?.code} canAssign={Boolean(props.canAssignTags)} /> : null /* D-360 */}
             {tab === 'tags' ? (
                 <Panel flush title="RFID assignment history" description="Tags can be reused. Identity and records stay with the goat.">
                     <div className="overflow-x-auto">

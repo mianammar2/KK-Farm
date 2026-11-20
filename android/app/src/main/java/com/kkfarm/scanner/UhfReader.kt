@@ -253,23 +253,32 @@ class UhfReader(private val context: Context) {
                 busy = true
                 try {
                     ensureAlive()
-                    setPower(WRITE_POWER)
-                    val near = burst(600).filter { it.rssi >= TOUCH_RSSI }
-                    when {
-                        near.isEmpty() -> { onDone(false, wanted, "", "No tag found. Hold the tag flat against the top of the gun and try again."); return@thread }
-                        near.size > 1 -> { onDone(false, wanted, "", "${near.size} tags are touching the gun. Keep only this goat's tag close and try again."); return@thread }
+                    val old: String
+                    if (onlyEpc != null) {
+                        // D-360: a known tag (the one just scanned): found by its EPC at reading power, no touching
+                        // needed; the write is filtered on that EPC, so no other tag nearby can be written
+                        setPower(FULL_POWER)
+                        old = onlyEpc.uppercase(Locale.ROOT)
+                        if (burst(800).none { it.epc == old }) { onDone(false, wanted, old, "The tag $old is not in reach. Hold the gun close to it and try again."); return@thread }
+                    } else {
+                        setPower(WRITE_POWER)
+                        val near = burst(600).filter { it.rssi >= TOUCH_RSSI }
+                        when {
+                            near.isEmpty() -> { onDone(false, wanted, "", "No tag found. Hold the tag flat against the top of the gun and try again."); return@thread }
+                            near.size > 1 -> { onDone(false, wanted, "", "${near.size} tags are touching the gun. Keep only this goat's tag close and try again."); return@thread }
+                        }
+                        old = near[0].epc
                     }
-                    val old = near[0].epc
-                    if (onlyEpc != null && !old.equals(onlyEpc, ignoreCase = true)) { onDone(false, wanted, old, "A different tag is touching the gun now. Touch the same tag again."); return@thread }
                     val data = encode(wanted)
                     val words = data.length / 4
                     val pc = String.format(Locale.ROOT, "%04X", words shl 11) // PC word: EPC length in words, other bits 0
-                    val ok = writeEpc(old, pc, data)
-                    val back = burst(600).filter { it.rssi >= TOUCH_RSSI }.maxByOrNull { it.rssi }
+                    var ok = false
+                    for (attempt in 1..3) { ok = writeEpc(old, pc, data); if (ok) break; Thread.sleep(150) }
+                    val back = burst(800).firstOrNull { it.code == wanted }
                     when {
+                        back != null -> onDone(true, wanted, old, null) // read back with the Tag ID: written (even if the answer was lost)
                         !ok -> onDone(false, wanted, old, "The tag refused the write. It may be locked, or too small for $wanted.")
-                        back?.code != wanted -> onDone(false, wanted, old, "The tag did not keep $wanted. Hold it still against the gun and try again.")
-                        else -> onDone(true, wanted, old, null)
+                        else -> onDone(false, wanted, old, "The tag did not keep $wanted. Hold the gun still near the tag and try again.")
                     }
                     Log.i(MainActivity.TAG, "UHF write $wanted over $old ok=$ok back=${back?.code}")
                 } catch (e: Exception) {

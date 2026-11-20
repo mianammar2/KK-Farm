@@ -3,6 +3,7 @@ import GoatSelect from '../components/GoatSelect';
 import { ClipboardPlus, FileText, MoveRight, Radio, Scale, ScanLine, Stethoscope, TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
+import WriteTagId from '../components/WriteTagId';
 import { useScannerDevice } from '../lib/scanner';
 import { haptic } from '../lib/native';
 import GoatPortrait from '../components/GoatPortrait';
@@ -112,6 +113,7 @@ function Found({ goat, result }: { goat: NonNullable<Result['goat']>; result: Re
             <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
                 <GoatProfileCard id={goat.id} />
             </motion.div>
+            <WriteTagId goatId={goat.id} number={goat.number} tag={result.code} canAssign={gates.includes('assign_tags')} />{/* D-360 */}
             <div className="mt-4">
                 <div className="min-w-0">
                     {/* D-102: after a scan, what to do with this goat; each opens on the goat's own page. */}

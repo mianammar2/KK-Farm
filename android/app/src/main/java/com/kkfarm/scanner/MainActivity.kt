@@ -598,6 +598,6 @@ class MainActivity : Activity(), GunAgent.Host {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.9"
-    const val CODE = 29 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.9.0"
+    const val CODE = 30 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }
