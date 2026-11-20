@@ -140,25 +140,25 @@ function CaseItem({ c, pens, options, isVet }: Props & { c: CaseRow }) {
                 <Button onClick={() => setMode('clear')}><LibIcon name="ic-healthy" size={16} /> Recovered: Clear</Button>
                 <Link href={`/goats/${c.goatId}`} className="self-center text-xs text-ink-soft hover:underline">Died? Record the exit on the goat page</Link>
             </div> : null}
-            {mode === 'lab' ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
+            {mode === 'lab' ? <Sheet onClose={() => setMode(null)} title="Lab Investigation"><div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                 <Field label="Test" error={lab.errors.lab_test}><input className="field" value={lab.data.lab_test} onChange={(x) => lab.setData('lab_test', x.target.value)} placeholder="e.g. Faecal egg count, PPR PCR" /></Field>
                 <Field label="Sampled on" error={lab.errors.lab_sampled_on}><input type="date" max={today()} className="field" value={lab.data.lab_sampled_on} onChange={(x) => lab.setData('lab_sampled_on', x.target.value)} /></Field>
                 <Field label="Lab fee (PKR)" error={lab.errors.lab_cost} hint="Posted once to Veterinary services"><input type="number" className="field" value={lab.data.lab_cost} onChange={(x) => lab.setData('lab_cost', x.target.value)} /></Field>
                 <Field label="Result" error={lab.errors.lab_result}><input className="field" value={lab.data.lab_result} onChange={(x) => lab.setData('lab_result', x.target.value)} /></Field>
                 <Field label="Contagion" error={lab.errors.contagion}><select className="field" value={lab.data.contagion} onChange={(x) => lab.setData('contagion', x.target.value)}>{Object.entries(options.contagion).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <div className="flex items-end gap-2"><Button disabled={lab.processing} onClick={() => { lab.transform((d) => ({ ...d, lab_cost: d.lab_cost || null, lab_result: d.lab_result || null })); lab.post(`/disease/cases/${c.id}/lab`, { preserveScroll: true, onSuccess: done }); }}>Save</Button><Button variant="secondary" onClick={done}>Cancel</Button></div>
-            </div> : null}
-            {mode === 'extend' ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
+            </div></Sheet> : null}
+            {mode === 'extend' ? <Sheet onClose={() => setMode(null)} title="Not Recovered: Extend"><div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                 <Field label="Reassess on" error={ext.errors.review_on}><input type="date" className="field" value={ext.data.review_on} onChange={(x) => ext.setData('review_on', x.target.value)} /></Field>
                 <Field label="What changes" error={ext.errors.notes}><input className="field" value={ext.data.notes} onChange={(x) => ext.setData('notes', x.target.value)} placeholder="Treatment, dose, protocol" /></Field>
                 <div className="flex items-end gap-2"><Button disabled={ext.processing} onClick={() => ext.post(`/disease/cases/${c.id}/extend`, { preserveScroll: true, onSuccess: done })}>Save</Button><Button variant="secondary" onClick={done}>Cancel</Button></div>
-            </div> : null}
-            {mode === 'clear' ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4">
+            </div></Sheet> : null}
+            {mode === 'clear' ? <Sheet onClose={() => setMode(null)} title="Recovered: Clear"><div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4">
                 <Field label="Move to suitable housing" error={clr.errors.to_pen_id ?? (clr.errors as Record<string, string>).to_pen_id}><select className="field" value={clr.data.to_pen_id} onChange={(x) => clr.setData('to_pen_id', x.target.value)}><option value="">Stay in {c.pen ?? 'current PEN'}</option>{pens.filter((pn) => !pn.isolation).map((pn) => <option key={pn.id} value={pn.id}>{pn.name}</option>)}</select></Field>
                 <Field label="Labour hours on the case" error={clr.errors.labour_hours}><input type="number" step="0.5" className="field" value={clr.data.labour_hours} onChange={(x) => clr.setData('labour_hours', x.target.value)} /></Field>
                 <Field label="Notes" error={clr.errors.notes}><input className="field" value={clr.data.notes} onChange={(x) => clr.setData('notes', x.target.value)} /></Field>
                 <div className="flex items-end gap-2"><Button disabled={clr.processing} onClick={() => { clr.transform((d) => ({ ...d, to_pen_id: d.to_pen_id || null, labour_hours: d.labour_hours || null })); clr.post(`/disease/cases/${c.id}/clear`, { preserveScroll: true, onSuccess: done }); }}>Clear</Button><Button variant="secondary" onClick={done}>Cancel</Button></div>
-            </div> : null}
+            </div></Sheet> : null}
         </li>
     );
 }
@@ -220,10 +220,10 @@ function OutbreakItem({ o, isVet }: { o: OutbreakRow; isVet: boolean }) {
             </div>
             <p className="mt-1 text-xs text-ink-soft">Goats: {o.goats.join(', ') || '—'}</p>
             {o.report ? <p className="mt-1 whitespace-pre-wrap">{o.report}</p> : null}
-            {open ? <div className="mt-2 space-y-2 rounded-tile bg-glaze p-3">
+            {open ? <Sheet onClose={() => setOpen(false)} title="Close with Report"><div className="mt-2 space-y-2 rounded-tile bg-glaze p-3">
                 <Field label="Outbreak report" error={form.errors.report} hint="Source, spread, control measures, losses and lessons"><textarea className="field" rows={4} value={form.data.report} onChange={(x) => form.setData('report', x.target.value)} /></Field>
                 <Button disabled={form.processing} onClick={() => form.post(`/disease/outbreaks/${o.id}/close`, { preserveScroll: true, onSuccess: () => setOpen(false) })}>Close Outbreak</Button>
-            </div> : null}
+            </div></Sheet> : null}
         </li>
     );
 }

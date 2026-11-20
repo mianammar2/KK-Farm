@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GoatSelect from '../components/GoatSelect';
 import { useState } from 'react';
@@ -105,7 +106,7 @@ function SampleRow({ s, goats, dewormers, options, isVet }: { s: Sample } & Prop
                 </span>
             </div>
             {s.decisionNote ? <p className="mt-1 text-ink-soft">{s.decisionNote}</p> : null}
-            {open && !s.decision ? (
+            {open && !s.decision ? (<Sheet onClose={() => setOpen(false)} title="Parasite Decision">
                 <form className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-4" onSubmit={(ev) => { ev.preventDefault(); form.transform((d) => ({ ...d, meat_clear_on: nul(d.meat_clear_on), milk_clear_on: nul(d.milk_clear_on), ...(d.decision === 'treat' ? {} : { animal_ids: null, medicine_id: null, qty_per_goat: null, route: null, retest_due_on: null }) })); form.post(`/parasites/samples/${s.id}/decide`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>
                     <Field label="Decision"><select className="field" value={form.data.decision} onChange={(x) => form.setData('decision', x.target.value)}>{Object.entries(options.decisions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     {form.data.decision === 'treat' ? (
@@ -122,7 +123,7 @@ function SampleRow({ s, goats, dewormers, options, isVet }: { s: Sample } & Prop
                     ) : null}
                     <Field label="Note"><input className="field" value={form.data.note} onChange={(x) => form.setData('note', x.target.value)} /></Field>
                     <div className="flex items-end gap-2"><Button type="submit" disabled={form.processing}>Save Decision</Button><Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button></div>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );

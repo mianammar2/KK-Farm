@@ -413,14 +413,14 @@ function MedicineStore({ medicines, medicineMoves, medicineCategories, medicineU
                                 {m.spec || m.useCase ? <p className="text-sm text-ink-soft">{[m.spec, m.useCase].filter(Boolean).join(' · ')}</p> : null}
                                 {m.check && m.check !== 'confirmed' ? <p className="flex flex-wrap items-center gap-2 text-sm text-watch-700">{medicineChecks[m.check] ?? m.check}{m.checkNote ? `: ${m.checkNote}` : ''}{canMedicine ? <button type="button" onClick={() => { if (window.confirm(`Confirm ${m.name}? It can then be given to goats.`)) router.post(`/inventory/medicines/${m.id}/confirm`, {}, { preserveScroll: true }); }} className="inline-flex min-h-9 items-center rounded-md bg-ok-700 px-2.5 text-sm text-white hover:opacity-90">Confirm</button> : null}</p> : null}
                                 <p className="text-xs text-ink-soft">Reorder at {m.reorder} {m.unit}{m.packUnit && m.packSize ? ` · ${medicinePacks[m.packUnit] ?? m.packUnit} of ${m.packSize} ${m.unit}` : ''} · PKR {m.costPerUnit}/{m.unit} · worth PKR {m.value.toLocaleString('en-PK')}{m.storage ? ` · ${m.storage}` : ''}{m.supplier ? ` · ${m.supplier}` : ''}</p>
-                                {open === m.id ? (
+                                {open === m.id ? (<Sheet onClose={() => setOpen(null)} title={m.name}>
                                     <div className="mt-2 rounded-tile bg-glaze p-2 text-sm">
                                         {m.batches.length ? (
                                             <table className="w-full"><thead className="text-left text-ink-soft"><tr><th className="py-1 font-semibold">Batch / Lot</th><th className="font-semibold">Expiry</th><th className="text-right font-semibold">In Stock</th></tr></thead>
                                                 <tbody>{m.batches.map((b) => <tr key={b.batch}><td className="py-1 font-mono">{b.batch}</td><td className={b.expired ? 'font-semibold text-crit-700' : ''}>{b.expiry ?? '—'}{b.expired ? ' (expired)' : ''}</td><td className="text-right">{b.qty} {m.unit}</td></tr>)}</tbody></table>
                                         ) : <p className="text-ink-soft">No batch numbers recorded.</p>}
                                         {canMedicine ? <MedicineEdit m={m} categories={medicineCategories} units={medicineUnits} packs={medicinePacks} checks={medicineChecks} diseases={suggest.diseases} /> : null}
-                                    </div>
+                                    </div></Sheet>
                                 ) : null}
                             </li>
                         ))}

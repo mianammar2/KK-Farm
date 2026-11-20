@@ -272,7 +272,7 @@ function WeaningRow({ w, pens, options }: { w: Due } & Props) {
                 <Button onClick={() => setMode(mode === 'wean' ? 'none' : 'wean')}>Wean</Button>
                 <Button variant="quiet" onClick={() => setMode(mode === 'postpone' ? 'none' : 'postpone')}>Postpone</Button>
             </div>
-            {mode === 'wean' ? (
+            {mode === 'wean' ? (<Sheet onClose={() => setMode('none')} title="Wean">
                 <div className="mt-2 grid gap-3 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                     <Field label="Weaning date" error={e.weaned_on}><input type="date" max={today()} className="field" value={form.data.weaned_on} onChange={(x) => form.setData('weaned_on', x.target.value)} /></Field>
                     <Field label="Weight KG" error={e.weight_kg} hint="Saved to the weight log"><input type="number" step="0.1" min={1} className="field" value={form.data.weight_kg} onChange={(x) => form.setData('weight_kg', x.target.value)} /></Field>
@@ -280,14 +280,14 @@ function WeaningRow({ w, pens, options }: { w: Due } & Props) {
                     <Field label="Move to PEN (optional)" error={e.pen_id}><select className="field" value={form.data.pen_id} onChange={(x) => form.setData('pen_id', x.target.value)}><option value="">Stay in current PEN</option>{pens.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
                     <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
                     <div className="flex items-end"><Button disabled={form.processing} onClick={() => submit('completed')}>Save weaning</Button></div>
-                </div>
+                </div></Sheet>
             ) : null}
-            {mode === 'postpone' ? (
+            {mode === 'postpone' ? (<Sheet onClose={() => setMode('none')} title="Postpone Weaning">
                 <div className="mt-2 flex flex-wrap items-end gap-2 rounded-tile bg-glaze p-3">
                     <div className="w-44"><Field label="New date" error={e.postponed_to}><input type="date" className="field" value={form.data.postponed_to} onChange={(x) => form.setData('postponed_to', x.target.value)} /></Field></div>
                     <div className="min-w-48 flex-1"><Field label="Reason" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} placeholder="e.g. underweight, unwell" /></Field></div>
                     <Button disabled={form.processing} onClick={() => submit('postponed')}>Postpone</Button>
-                </div>
+                </div></Sheet>
             ) : null}
         </li>
     );

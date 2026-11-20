@@ -126,11 +126,11 @@ function IntervRow({ i, options }: { i: Interv; options: Props['options'] }) {
                 {i.status === 'open' ? <Button variant="secondary" className="ml-auto" onClick={() => setOpen(!open)}>Record Follow-up</Button> : null}
             </div>
             {i.action ? <p className="text-xs text-ink-soft">Action: {i.action}</p> : null}
-            {open ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
+            {open ? <Sheet onClose={() => setOpen(false)} title="Record Follow-up"><div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                 <Field label="Weight now (KG)" error={form.errors.weight_kg}><input type="number" step="0.1" className="field" value={form.data.weight_kg} onChange={(x) => form.setData('weight_kg', x.target.value)} /></Field>
                 <Field label="Body condition (1–5)" error={form.errors.body_score}><select className="field" value={form.data.body_score} onChange={(x) => form.setData('body_score', x.target.value)}><option value="">Not scored</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
                 <div className="flex items-end gap-2"><Button disabled={form.processing} onClick={() => { form.transform((d) => ({ ...d, body_score: d.body_score || null })); form.post(`/growth/interventions/${i.id}/follow-up`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }}>Save</Button></div>
-            </div> : null}
+            </div></Sheet> : null}
         </li>
     );
 }
@@ -157,11 +157,11 @@ function CandRow({ c, options, isLead }: Props & { c: Cand }) {
                 {isLead ? <Button variant="secondary" className="ml-auto" onClick={() => setOpen(!open)}>Decide</Button> : null}
             </div>
             <div className="mt-1 flex flex-wrap gap-1.5 text-xs">{Object.entries(c.checks).map(([k, x]) => <span key={k} className={`rounded-full px-2 py-0.5 ${x.ok ? 'bg-ok-100 text-ok-700' : 'bg-crit-100 text-crit-700'}`}>{CHECKS[k]}: {x.label}</span>)}</div>
-            {open ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
+            {open ? <Sheet onClose={() => setOpen(false)} title="Decide"><div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                 <Field label="Decision" error={form.errors.decision}><select className="field" value={form.data.decision} onChange={(x) => form.setData('decision', x.target.value)}>{Object.entries(options.decisions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                 <Field label="Reason" error={form.errors.reason} hint={!c.eligible && form.data.decision === 'replacement' ? 'Required: not all checks pass' : undefined}><input className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} /></Field>
                 <div className="flex items-end gap-2"><Button disabled={form.processing} onClick={() => form.post(`/growth/${c.id}/select`, { preserveScroll: true, onSuccess: () => setOpen(false) })}><LibIcon name="app-breeding" size={16} /> Save</Button></div>
-            </div> : null}
+            </div></Sheet> : null}
         </li>
     );
 }

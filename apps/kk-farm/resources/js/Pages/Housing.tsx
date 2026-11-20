@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -73,21 +74,21 @@ function PenItem({ pen, options, canSupervise }: Props & { pen: PenRow }) {
             </div>
             {bar !== null ? <div className="mt-1.5 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-glaze"><div className={pen.over ? 'h-full bg-crit-500' : pen.pct! >= 100 ? 'h-full bg-watch-400' : 'h-full bg-leaf-500'} style={{ width: `${bar}%` }} /></div> : null}
             {pen.reason ? <p className="mt-1 text-ink-soft">{pen.reason}{pen.statusBy ? ` · ${pen.statusBy}` : ''}</p> : null}
-            {mode === 'status' ? (
+            {mode === 'status' ? (<Sheet onClose={() => setMode(null)} title="PEN Status">
                 <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-[180px_1fr_auto] sm:items-end">
                     <Field label="Status" error={e.status}><select className="field" value={st.data.status} onChange={(x) => st.setData('status', x.target.value)}>{Object.entries(options.status).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Reason" error={e.reason}><input className="field" value={st.data.reason} onChange={(x) => st.setData('reason', x.target.value)} placeholder={st.data.status === 'active' ? 'Not needed' : 'e.g. broken feeder, roof repair'} /></Field>
                     <Button disabled={st.processing} onClick={() => st.post(`/housing/pens/${pen.id}/status`, { preserveScroll: true, onSuccess: () => setMode(null) })}>Save</Button>
-                </div>
+                </div></Sheet>
             ) : null}
-            {mode === 'clean' ? (
+            {mode === 'clean' ? (<Sheet onClose={() => setMode(null)} title="Record Cleaning">
                 <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-[220px_1fr_1fr_auto] sm:items-end">
                     <Field label="Cleaning" error={e.kind}><select className="field" value={cl.data.kind} onChange={(x) => cl.setData('kind', x.target.value)}>{Object.entries(options.kinds).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="Disinfectant" error={e.disinfectant}><input className="field" value={cl.data.disinfectant} onChange={(x) => cl.setData('disinfectant', x.target.value)} /></Field>
                     <Field label="Notes" error={e.notes}><input className="field" value={cl.data.notes} onChange={(x) => cl.setData('notes', x.target.value)} /></Field>
                     <Button disabled={cl.processing} onClick={() => cl.post(`/housing/pens/${pen.id}/clean`, { preserveScroll: true, onSuccess: () => { cl.reset(); setMode(null); } })}>{cl.data.kind === 'routine' ? 'Record' : 'Close PEN & start'}</Button>
                     {cl.data.kind !== 'routine' ? <p className="text-xs text-ink-soft sm:col-span-4">The PEN must be empty. It stays closed until the cleaning is finished and verified by someone else.</p> : null}
-                </div>
+                </div></Sheet>
             ) : null}
         </li>
     );

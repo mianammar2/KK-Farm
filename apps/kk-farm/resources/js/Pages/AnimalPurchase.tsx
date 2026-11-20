@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, LibIcon, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -112,16 +113,16 @@ function LotItem({ l, options, canApprove, canReceive, ...p }: Props & { l: Lot 
                 {l.status === 'received' && accepted.some((i) => i.goat?.inQuarantine) ? <Link href="/intake" className="self-center text-xs font-semibold text-cobalt-800 hover:underline">Quarantine & vet clearance →</Link> : null}
                 {l.discrepancy && !l.reconciledBy && canApprove ? <Button variant="secondary" onClick={() => setMode('reconcile')}>Reconcile</Button> : null}
             </div>
-            {mode === 'decide' ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
+            {mode === 'decide' ? <Sheet onClose={() => setMode(null)} title="Approve / Reject"><div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                 <Field label="Decision"><select className="field" value={decide.data.approve ? 'yes' : 'no'} onChange={(x) => decide.setData('approve', x.target.value === 'yes')}><option value="yes">Approve</option><option value="no">Reject</option></select></Field>
                 <Field label="Note" error={decide.errors.note}><input className="field" value={decide.data.note} onChange={(x) => decide.setData('note', x.target.value)} /></Field>
                 <div className="flex items-end gap-2"><Button disabled={decide.processing} onClick={() => decide.post(`/purchase/animals/${l.id}/decide`, { preserveScroll: true, onSuccess: () => setMode(null) })}>Save</Button><Button variant="secondary" onClick={() => setMode(null)}>Cancel</Button></div>
-            </div> : null}
-            {mode === 'reconcile' ? <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
+            </div></Sheet> : null}
+            {mode === 'reconcile' ? <Sheet onClose={() => setMode(null)} title="Reconcile"><div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                 <div className="sm:col-span-2"><Field label="How it was settled" error={rec.errors.reconciliation}><input className="field" value={rec.data.reconciliation} onChange={(x) => rec.setData('reconciliation', x.target.value)} placeholder="Refund received, replacement goat, papers collected…" /></Field></div>
                 <div className="flex items-end gap-2"><Button disabled={rec.processing} onClick={() => rec.post(`/purchase/animals/${l.id}/reconcile`, { preserveScroll: true, onSuccess: () => setMode(null) })}>Save</Button><Button variant="secondary" onClick={() => setMode(null)}>Cancel</Button></div>
-            </div> : null}
-            {mode === 'receive' ? <Receive l={l} {...p} options={options} canApprove={canApprove} canReceive={canReceive} close={() => setMode(null)} /> : null}
+            </div></Sheet> : null}
+            {mode === 'receive' ? <Sheet onClose={() => setMode(null)} title="Receive, Count & Inspect"><Receive l={l} {...p} options={options} canApprove={canApprove} canReceive={canReceive} close={() => setMode(null)} /></Sheet> : null}
         </li>
     );
 }

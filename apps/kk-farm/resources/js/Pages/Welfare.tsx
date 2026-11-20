@@ -152,7 +152,7 @@ function CaseItem({ c, options, isVet, pens, users }: { c: Case; options: Props[
                     {c.canClose ? <Button onClick={() => setMode('close')}><LibIcon name="ic-healthy" size={16} /> Close with Evidence</Button> : null}
                 </div>
             ) : null}
-            {mode ? (
+            {mode ? (<Sheet onClose={() => setMode(null)} title={({ vet_referral: 'Urgent Vet Referral', action: 'Hoof / Handling / Habitat Action', follow_up: 'Follow-up: Improved?', housing: 'Move to Care Housing', handling_ok: 'Clear Routine Handling', close: 'Close with Evidence' } as Record<string, string>)[mode] ?? 'Welfare Case'}>
                 <div className="mt-2 grid gap-2 rounded-tile bg-glaze p-3 sm:grid-cols-3">
                     {mode === 'action' ? <Field label="Action"><select className="field" value={form.data.kind} onChange={(x) => form.setData('kind', x.target.value)}><option value="">Choose…</option>{['hoof', 'handling', 'habitat'].map((k) => <option key={k} value={k}>{options.actions[k]}</option>)}</select></Field> : null}
                     {mode === 'action' ? <Field label="Assign to (optional)" hint="Creates a task for them"><select className="field" value={form.data.assigned_user_id} onChange={(x) => form.setData('assigned_user_id', x.target.value)}><option value="">Done now</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field> : null}
@@ -166,7 +166,7 @@ function CaseItem({ c, options, isVet, pens, users }: { c: Case; options: Props[
                         <Button disabled={form.processing || (mode === 'action' && !form.data.kind) || (mode === 'housing' && !form.data.pen_id)} onClick={() => go(mode === 'action' ? form.data.kind : mode)}>Save</Button>
                         <Button variant="secondary" onClick={() => setMode(null)}>Cancel</Button>
                     </div>
-                </div>
+                </div></Sheet>
             ) : null}
         </li>
     );

@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button, Chip, Empty, Field, PageHeader, Panel, Stat, StatRow, Tabs } from '../components/ui';
@@ -63,7 +64,7 @@ function LotItem({ l, limits, canDecide, canManage }: Props & { l: Lot }) {
             </div>
             {l.tested ? <p className={over ? 'font-semibold text-crit-700' : 'text-ink-soft'}>Moisture {l.moisture}%{l.aflatoxin !== null ? ` · aflatoxin ${l.aflatoxin} ppb` : ''}{l.appearance ? ` · ${l.appearance}` : ''}{l.sample ? ` · sample ${l.sample}` : ''} · tested by {l.testedBy}{over ? ' · over the limit' : ''}</p> : null}
             {l.decidedBy ? <p className="text-ink-soft">{LABEL[l.status]} by {l.decidedBy}{l.note ? `: ${l.note}` : ''}</p> : null}
-            {open && l.status === 'quarantined' ? (
+            {open && l.status === 'quarantined' ? (<Sheet onClose={() => setOpen(false)} title="Feed Lot Decision">
                 <div className="mt-2 space-y-2 rounded-tile bg-glaze p-3">
                     <div className="grid gap-2 sm:grid-cols-[120px_120px_1fr_140px_auto] sm:items-end">
                         <Field label="Moisture %" error={e.moisture_pct}><input type="number" step="0.1" className="field" value={test.data.moisture_pct} onChange={(x) => test.setData('moisture_pct', x.target.value)} /></Field>
@@ -79,7 +80,7 @@ function LotItem({ l, limits, canDecide, canManage }: Props & { l: Lot }) {
                             <Button variant="secondary" disabled={dec.processing} onClick={() => decide('rejected')}>Reject & write off</Button>
                         </div>
                     ) : <p className="text-xs text-ink-soft">The owner, manager or vet releases or rejects the lot.</p>}
-                </div>
+                </div></Sheet>
             ) : null}
         </li>
     );

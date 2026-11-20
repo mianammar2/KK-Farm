@@ -1,3 +1,4 @@
+import Sheet from '../components/Sheet';
 import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
 import { LIVE_MS } from '../lib/live';
 import { useState } from 'react';
@@ -98,7 +99,7 @@ function DeviceRow({ d, types, canManage, onEdit }: { d: Device; types: TypeDef[
                 </span>
             </div>
             <p className="text-sm text-ink-soft">{d.typeLabel} · {d.place}{d.vendor ? ` · ${d.vendor}${d.model ? ` ${d.model}` : ''}` : ''} · {d.lastSeen ? `last seen ${d.lastSeen} ago` : 'never connected'}{d.keyHint ? ` · key …${d.keyHint}` : ''}</p>
-            {testing ? (
+            {testing ? (<Sheet onClose={() => setTesting(false)} title="Test reading">
                 <form className="mt-2 flex flex-wrap items-end gap-2 rounded-tile bg-glaze p-2" onSubmit={(e) => { e.preventDefault(); form.post(`/sensors/devices/${d.id}/test`, { preserveScroll: true, onSuccess: () => form.reset('value', 'rfid') }); }}>
                     <Field label="Reading">
                         {metrics.length ? <select className="field w-auto" value={form.data.metric} onChange={(e) => form.setData('metric', e.target.value)}>{metrics.map((m) => <option key={m.key} value={m.key}>{m.label}{m.unit ? ` (${m.unit})` : ''}</option>)}</select>
@@ -108,7 +109,7 @@ function DeviceRow({ d, types, canManage, onEdit }: { d: Device; types: TypeDef[
                     {['weighing_scale', 'rfid_gate'].includes(d.type) ? <Field label="RFID tag"><input className="field w-48 font-mono" value={form.data.rfid} onChange={(e) => form.setData('rfid', e.target.value)} placeholder="E280…" /></Field> : null}
                     <Button type="submit" disabled={form.processing}>Send</Button>
                     <p className="w-full text-xs text-ink-soft">Goes through the same rules as the real device, so you can try the setup before the hardware arrives.</p>
-                </form>
+                </form></Sheet>
             ) : null}
         </li>
     );
