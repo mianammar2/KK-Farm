@@ -88,7 +88,7 @@ export default function Sales({ sales, kpis, monthly, customers, types, can }: P
             {tab === 'monthly' ? (
                 <Panel title="Net Sales by Month" description="Last 12 months">
                     {/* audit: 12 month labels do not fit a phone; the chart scrolls sideways inside its panel instead of widening the page */}
-                    <div className="-mx-1 overflow-x-auto px-1"><div className="flex h-48 min-w-[40rem] items-end gap-1.5">
+                    <div className="-mx-1 overflow-x-auto px-1 max-sm:hidden"><div className="flex h-48 min-w-[40rem] items-end gap-1.5">
                         {monthly.map((m) => (
                             <div key={m.month} className="flex flex-1 flex-col items-center gap-1">
                                 <span className="text-xs font-semibold tabular-nums text-ink-soft">{m.net ? `${Math.round(m.net / 1000)}k` : ''}</span>
@@ -97,6 +97,12 @@ export default function Sales({ sales, kpis, monthly, customers, types, can }: P
                             </div>
                         ))}
                     </div></div>
+                    {/* D-367: on a phone the months are a list of bars, one per line, instead of a chart that scrolls sideways */}
+                    <ul className="space-y-1.5 sm:hidden">{monthly.map((m) => (
+                        <li key={m.month} className="flex items-center gap-2 text-sm"><span className="w-16 shrink-0 text-xs text-ink-soft tabular-nums">{monthLabel(m.month)}</span>
+                            <span className="h-3 flex-1 overflow-hidden rounded-full bg-rule/60"><span className="block h-full rounded-full bg-gradient-to-r from-[#1f7a3a] to-[#2e9e4f]" style={{ width: `${(m.net / max) * 100}%` }} /></span>
+                            <span className="w-12 shrink-0 text-end text-xs font-semibold tabular-nums">{m.net ? `${Math.round(m.net / 1000)}k` : '—'}</span></li>
+                    ))}</ul>
                     <div className="-mx-3 mt-4 border-t border-rule sm:-mx-4"><DataGrid id="sales-monthly" name="Net sales by month" rows={monthly} rowKey={(m) => m.month} cols={[
                         { key: 'month', label: 'Month', type: 'text', render: (m) => <b>{monthLabel(m.month)}</b> },
                         { key: 'net', label: 'Net sales (PKR)', type: 'number', total: 'sum', render: (m) => pkr(m.net) },

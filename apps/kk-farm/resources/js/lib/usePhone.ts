@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-/** D-365: true on a phone-width screen (under Tailwind's sm, 640px), kept up to date when the window turns or resizes. */
+/** D-367: true on a phone-width screen (under Tailwind's sm, 640px), kept up to date when the window turns or resizes. */
 const QUERY = '(max-width: 639px)';
 
 export function usePhone(): boolean {

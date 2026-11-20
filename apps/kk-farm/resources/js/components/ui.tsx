@@ -230,7 +230,7 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ id: string; labe
     const many = tabs.length > 2;
     return (
         <>
-        {/* D-365: on a phone more than two sections are a full-width picker (the phone's own list), not a strip that scrolls sideways */}
+        {/* D-367: on a phone more than two sections are a full-width picker (the phone's own list), not a strip that scrolls sideways */}
         {many ? (
             <label className="relative mb-4 block sm:hidden">
                 <span className="sr-only">Section</span>

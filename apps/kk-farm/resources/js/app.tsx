@@ -33,7 +33,7 @@ if (LITE) {
 }
 
 startOffline(); // D-359: pages, scans and saves keep working without internet
-startCardTables(); // D-365: wide tables read as cards on a phone
+startCardTables(); // D-367: wide tables read as cards on a phone
 
 type PageModule = { default: ComponentType & { layout?: unknown } };
 

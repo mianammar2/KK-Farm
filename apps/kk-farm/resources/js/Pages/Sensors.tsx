@@ -210,7 +210,7 @@ function ConnectTab({ endpoint, types }: { endpoint: string; types: TypeDef[] })
                     <li>Each reading has its own id (a UUID made by the device). Sending the same reading again is safe: it is stored once. Readings can be sent late when the internet comes back.</li>
                     <li>Check the connection with <code className="rounded bg-glaze px-1 font-mono">GET /api/v1/ping</code>.</li>
                 </ol>
-                <pre className="mt-3 overflow-x-auto rounded-tile bg-cobalt-950 p-3 text-xs text-white">{example}</pre>
+                <pre className="mt-3 overflow-x-auto rounded-tile bg-cobalt-950 p-3 text-xs text-white max-sm:break-all max-sm:whitespace-pre-wrap">{example}</pre>
             </Panel>
             <Panel title="Readings each device type sends">
                 <ul className="space-y-2 text-sm">{types.filter((t) => t.metrics.length).map((t) => (

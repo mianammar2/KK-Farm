@@ -46,10 +46,13 @@ function Branch({ node, parent, depth, root }: { node: PedigreeNode | null | und
 
 export default function PedigreeTree({ tree }: { tree: PedigreeNode }) {
     return (
+        <>
+        <p className="mb-1 text-xs text-ink-soft sm:hidden">Swipe sideways to see every generation.</p>{/* D-367 */}
         <div className="overflow-x-auto pb-2">
             <div className="w-max">
                 <Branch node={tree} parent={null} depth={3} root />
             </div>
         </div>
+        </>
     );
 }

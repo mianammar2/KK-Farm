@@ -469,7 +469,7 @@ main { min-width: 0; }
     .kk-print-list { display: block !important; }
 }
 
-/* D-365: on a phone a table with three or more columns reads as cards: each row a card, each cell a labelled line
+/* D-367: on a phone a table with three or more columns reads as cards: each row a card, each cell a labelled line
    (the heading comes from lib/cardTables.ts), the first cell as the card's title. Wider screens keep the table. */
 @media (max-width: 639px) {
     table[data-cards] { display: block; width: 100%; min-width: 0 !important; border: 0; }

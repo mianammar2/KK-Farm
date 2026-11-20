@@ -1,5 +1,5 @@
 /**
- * D-365: on a phone a wide table is hard to use (it scrolls sideways and the headings leave the screen). Every plain
+ * D-367: on a phone a wide table is hard to use (it scrolls sideways and the headings leave the screen). Every plain
  * table with three or more columns is marked here and each cell is given its column heading; the stylesheet then shows
  * each row as a card of labelled lines below 640px. Data sheets draw their own cards (data-keep-table); a table can opt
  * out with data-keep-table. Runs once for the whole app and follows pages and pop cards as they change.
