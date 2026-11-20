@@ -82,7 +82,7 @@ function FilterBar<T>({ cols, rows, filters, setFilters, q, setQ, shown, total, 
             <div className="flex flex-wrap items-center gap-2">
                 <label className="relative min-w-52 flex-1 sm:max-w-xs"><Search size={15} aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft" />
                     <input className={cx(field, 'w-full ps-8')} placeholder="Search every column" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" /></label>
-                <span className="inline-flex items-center gap-1.5 text-sm text-ink-soft"><ListFilter size={15} aria-hidden className="text-cobalt-800" /> Filter: click <ListFilter size={13} aria-hidden /> in any column heading</span>
+                <span className="inline-flex items-center gap-1.5 text-sm text-ink-soft max-sm:hidden"><ListFilter size={15} aria-hidden className="text-cobalt-800" /> Filter: click <ListFilter size={13} aria-hidden /> in any column heading</span>
                 <button type="button" onClick={add} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rule bg-tile px-3 text-sm text-cobalt-800 hover:bg-glaze"><SlidersHorizontal size={15} aria-hidden /> Advanced filter</button>
                 {filters.length || q ? <button type="button" onClick={() => { setFilters([]); setQ(''); }} className="h-9 px-2 text-sm font-semibold text-ink-soft hover:text-crit-700">Clear all</button> : null}
                 <span className="ms-auto text-sm text-ink-soft"><b className="text-ink tabular-nums">{shown.toLocaleString('en-PK')}</b> of {total.toLocaleString('en-PK')} rows{active ? ` · ${active} ${active === 1 ? 'filter' : 'filters'}` : ''}</span>
@@ -251,7 +251,10 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
                 {page.map((r, i) => {
                     const k = key(r, i);
                     const isOpen = open === k;
-                    const [first, ...rest] = cols;
+                    // a column that only draws a control (a value of '' with a render, e.g. Correct, Open) goes to the card's action row
+                    const isAction = (c: Col<T>) => !!c.render && !!c.value && c.value(r) === '';
+                    const actions = cols.filter(isAction);
+                    const [first, ...rest] = cols.filter((c) => !isAction(c));
                     return (
                         <li key={k} className={cx('rounded-tile border border-rule bg-tile shadow-tile', isOpen && 'ring-2 ring-cobalt-600/40')}>
                             <div className={cx('px-3 py-2.5', expand && 'cursor-pointer')} onClick={expand ? () => setOpen(isOpen ? null : k) : undefined} aria-expanded={expand ? isOpen : undefined}>
@@ -267,6 +270,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
                                         </div>
                                     ))}
                                 </dl>
+                                {actions.length ? <div className="mt-2 flex flex-wrap items-center justify-end gap-2 border-t border-rule pt-2" onClick={(e) => e.stopPropagation()}>{actions.map((c) => <span key={c.key}>{show(c, r)}</span>)}</div> : null}
                             </div>
                             {isOpen && expand ? <div className="border-t border-rule bg-glaze/40 p-3">{expand(r)}</div> : null}
                         </li>
