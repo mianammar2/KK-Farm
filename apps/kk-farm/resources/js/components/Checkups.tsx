@@ -56,7 +56,7 @@ export default function Checkups({ data }: { data: CheckupData }) {
         <div className="space-y-3">
             <Panel>
                 <div className="flex flex-wrap items-end gap-2">
-                    <Field label="Checkup date" hint="Can be an earlier day, e.g. 21 Oct"><input type="date" className="field w-auto" max={TODAY} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+                    <Field label="Checkup date" hint="Can be an earlier day, e.g. 21/10"><input type="date" className="field w-auto" max={TODAY} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
                     <Field label="PEN"><select className="field w-auto" value={pen} onChange={(e) => setPen(e.target.value)}><option value="">All PENs</option>{pens.map((p) => <option key={p}>{p}</option>)}</select></Field>
                     <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-cobalt-900"><input type="checkbox" className="size-5" checked={dueOnly} onChange={(e) => setDueOnly(e.target.checked)} /> Due only</label>
                     <p className="ml-auto text-sm text-ink-soft"><strong className="text-cobalt-900">{due}</strong> of {data.goats.length} due · every {data.interval} days</p>

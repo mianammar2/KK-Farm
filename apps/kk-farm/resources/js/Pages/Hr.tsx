@@ -52,7 +52,7 @@ function Register({ day, dayLabel, register, options }: Props) {
     return (
         <Panel flush title={dayLabel} description="Tap a status for each employee, or mark everyone present at the start of the shift."
             actions={<span className="flex items-center gap-2">
-                <input type="date" max={today()} className="field !w-40 !py-1.5" value={day} onChange={(e) => router.get('/hr', { tab: 'attendance', day: e.target.value }, { preserveScroll: true })} />
+                <input aria-label="Attendance day" type="date" max={today()} className="field !w-40 !py-1.5" value={day} onChange={(e) => router.get('/hr', { tab: 'attendance', day: e.target.value }, { preserveScroll: true })} />
                 <Button onClick={() => router.post('/hr/attendance/all-present', { work_on: day }, { preserveScroll: true })}><LibIcon name="ic-active" size={16} /> All Present</Button>
             </span>}>
             {register.length ? <ul className="divide-y divide-rule">{register.map((r) => (

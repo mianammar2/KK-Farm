@@ -66,7 +66,7 @@ export default function Movements({ kind = 'transfer', movements, goats, pens, t
                 </>}
             </StatRow>
             <Panel flush title="History">
-                <DataGrid<Move> id={`movements-${kind}`} name={isExit ? 'Animal exits' : 'Pen movements'} cols={cols} rows={movements} rowKey={(m) => String(m.id)} empty={isExit ? 'No goat has left the farm yet' : 'No PEN moves yet'} />
+                <DataGrid<Move> id={`movements-${kind}`} name={isExit ? 'Animal exits' : 'PEN movements'} cols={cols} rows={movements} rowKey={(m) => String(m.id)} empty={isExit ? 'No goat has left the farm yet' : 'No PEN moves yet'} />
             </Panel>
         </>
     );

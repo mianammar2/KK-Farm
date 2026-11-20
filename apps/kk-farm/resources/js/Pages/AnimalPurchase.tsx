@@ -149,14 +149,14 @@ function Receive({ l, pens, breeds, options, canTag, close }: Props & { l: Lot; 
             <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>#</th><th>Origin ID</th><th>Sex</th><th>Breed</th><th>Weight KG</th><th>Inspection</th><th>Notes</th><th>Tag ID</th>{canTag ? <th>RFID EPC</th> : null}<th /></tr></thead><tbody>
                 {form.data.items.map((r, i) => <tr key={i}>
                     <td>{i + 1}</td>
-                    <td><input className="field w-28 font-mono" value={r.origin_ref} onChange={(x) => set(i, 'origin_ref', x.target.value)} /></td>
-                    <td><select className="field w-24" value={r.sex} onChange={(x) => set(i, 'sex', x.target.value)}><option value="male">Male</option><option value="female">Female</option></select></td>
-                    <td><select className="field w-32" value={r.breed_id} onChange={(x) => set(i, 'breed_id', x.target.value)}>{breeds.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td>
-                    <td><input type="number" step="0.1" className="field w-20" value={r.weight_kg} onChange={(x) => set(i, 'weight_kg', x.target.value)} /></td>
-                    <td><select className="field w-44" value={r.screening} onChange={(x) => set(i, 'screening', x.target.value)}>{Object.entries(options.screening).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
-                    <td><input className={`field w-40 ${e[`items.${i}.notes`] ? 'ring-2 ring-crit-500' : ''}`} value={r.notes} onChange={(x) => set(i, 'notes', x.target.value)} /></td>
-                    <td><input className="field w-28 font-mono" placeholder="Auto" value={r.tag_id} onChange={(x) => set(i, 'tag_id', x.target.value)} /></td>
-                    {canTag ? <td><input className="field w-36 font-mono" value={r.rfid_epc} onChange={(x) => set(i, 'rfid_epc', x.target.value)} /></td> : null}
+                    <td><input aria-label="Origin reference" className="field w-28 font-mono" value={r.origin_ref} onChange={(x) => set(i, 'origin_ref', x.target.value)} /></td>
+                    <td><select aria-label="Sex" className="field w-24" value={r.sex} onChange={(x) => set(i, 'sex', x.target.value)}><option value="male">Male</option><option value="female">Female</option></select></td>
+                    <td><select aria-label="Breed" className="field w-32" value={r.breed_id} onChange={(x) => set(i, 'breed_id', x.target.value)}>{breeds.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td>
+                    <td><input aria-label="Weight KG" type="number" step="0.1" className="field w-20" value={r.weight_kg} onChange={(x) => set(i, 'weight_kg', x.target.value)} /></td>
+                    <td><select aria-label="Screening" className="field w-44" value={r.screening} onChange={(x) => set(i, 'screening', x.target.value)}>{Object.entries(options.screening).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
+                    <td><input aria-label="Notes" className={`field w-40 ${e[`items.${i}.notes`] ? 'ring-2 ring-crit-500' : ''}`} value={r.notes} onChange={(x) => set(i, 'notes', x.target.value)} /></td>
+                    <td><input aria-label="Tag ID" className="field w-28 font-mono" placeholder="Auto" value={r.tag_id} onChange={(x) => set(i, 'tag_id', x.target.value)} /></td>
+                    {canTag ? <td><input aria-label="RFID" className="field w-36 font-mono" value={r.rfid_epc} onChange={(x) => set(i, 'rfid_epc', x.target.value)} /></td> : null}
                     <td><button type="button" className="text-crit-700" onClick={() => form.setData('items', form.data.items.filter((_, j) => j !== i))} aria-label="Remove">×</button></td>
                 </tr>)}
             </tbody></table></div>

@@ -20,7 +20,7 @@ export default function ReproKpiTiles({ k }: { k: ReproKpis }) {
     ].filter((t) => t.value);
     if (!tiles.length) return null;
     return (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-2.5">{/* audit: tiles size to the panel, so a half-width panel never crushes them */}
             {tiles.map((t) => (
                 <div key={t.label} className="kk-sign kk-rise">
                     <span className="kk-icon-tile" aria-hidden><LibIcon name={t.art} size={36} className="bg-transparent" /></span>

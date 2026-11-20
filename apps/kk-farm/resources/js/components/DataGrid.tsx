@@ -245,7 +245,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
                                 return (
                                     <th key={c.key} className={cx(head, num(c) ? 'text-end' : 'text-start')} style={c.width ? { width: c.width } : undefined} aria-sort={on ? (sort!.dir === 1 ? 'ascending' : 'descending') : 'none'}>
                                         <span className={cx('inline-flex items-center gap-1', num(c) && 'flex-row-reverse')}>
-                                            <button type="button" className={cx('inline-flex items-center gap-1 hover:text-cobalt-800', num(c) && 'flex-row-reverse')} onClick={() => setSort(on && sort!.dir === -1 ? null : { key: c.key, dir: on ? -1 : 1 })}>
+                                            <button type="button" className={cx('-my-2 inline-flex min-h-8 items-center gap-1 hover:text-cobalt-800', num(c) && 'flex-row-reverse')} onClick={() => setSort(on && sort!.dir === -1 ? null : { key: c.key, dir: on ? -1 : 1 })}>
                                                 {c.label}{on ? (sort!.dir === 1 ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />) : <ArrowUpDown size={13} aria-hidden className="text-ink-faint" />}
                                             </button>
                                             {api ? (() => {

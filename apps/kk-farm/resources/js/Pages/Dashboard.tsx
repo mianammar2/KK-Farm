@@ -369,7 +369,7 @@ type PensSummary = {
 /** D-120: sheds, then their pens with how many goats; a pen opens its goats. Moving goats is on the Sheds page. */
 function PensAtAGlance({ data }: { data: PensSummary }) {
     return (
-        <Panel title="Sheds and PENs" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'pen', 'pens')}${data.noPen ? ` · ${data.noPen} not in a PEN` : ''}`} className="mt-4" flush
+        <Panel title="Sheds and PENs" description={`${plural(data.sheds.reduce((n, s) => n + s.goats, 0), 'goat', 'goats')} in ${plural(data.sheds.reduce((n, s) => n + s.pens.length, 0), 'PEN', 'PENs')}${data.noPen ? ` · ${data.noPen} not in a PEN` : ''}`} className="mt-4" flush
             actions={<Link href="/movements?kind=transfer" className="text-sm font-semibold text-turq-800 hover:underline">Move Goats</Link>}>
             <FarmScene sheds={data.sheds} meals={data.meals} clock={data.clock} /> {/* D-133: drawn like the real farm */}
             {data.noPen ? <Link href="/goats?show=no_pen" className="block border-t border-rule px-4 py-2.5 text-sm font-semibold text-crit-700 hover:bg-glaze">{plural(data.noPen, 'goat', 'goats')} not in a PEN →</Link> : null}
@@ -388,7 +388,7 @@ function FeedAtAGlance({ req }: { req: FeedSummary }) {
     const s = req.supply;
     const pens = req.sheds.reduce((n, x) => n + x.pens.length, 0);
     return (
-        <Panel className="mt-4" flush title="Feed Requirement Today" description={`${plural(req.planned, 'goat', 'goats')} in ${plural(pens, 'pen', 'pens')}${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
+        <Panel className="mt-4" flush title="Feed Requirement Today" description={`${plural(req.planned, 'goat', 'goats')} in ${plural(pens, 'PEN', 'PENs')}${req.milk ? ` · ${req.milk} kids on milk` : ''}${req.missing ? ` · ${req.missing} not planned` : ''}`}
             actions={<Link href="/feeding?tab=requirement" className="text-sm font-semibold text-turq-800 hover:underline">Each Goat</Link>}>
             {/* D-134: drawn like the farm's feed store */}
             <FeedScene tracking={req.tracking} sheds={req.sheds} sacks={[

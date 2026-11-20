@@ -93,6 +93,14 @@ class DeathFlowTest extends TestCase
                 && collect($rows)->contains(fn ($r) => $r['number'] === 'D-2' && $r['kind'] === 'Slaughter' && $r['reason'] === 'Injury or accident' && $r['reportedBy'] === 'Test vet')));
     }
 
+    /** Audit: a goat marked died with no exit row still counts in Veterinary → Mortality, as on the dashboard and Farm Reports. */
+    public function test_a_death_without_an_exit_row_counts_in_the_mortality_register(): void
+    {
+        $this->goat->forceFill(['status' => 'deceased', 'exit_reason' => 'died', 'exit_date' => now()->subDays(3)->toDateString()])->save();
+        $this->actingAs($this->user('vet'))->get('/health?tab=mortality')->assertInertia(fn ($p) => $p->has('mortality.rows', 1)->where('mortality.rows.0.number', 'D-1'));
+        $this->actingAs($this->user('ceo'))->get('/')->assertInertia(fn ($p) => $p->where('mortality.deaths', 1));
+    }
+
     public function test_the_administrator_can_send_a_report_back_with_a_note(): void
     {
         $this->report();

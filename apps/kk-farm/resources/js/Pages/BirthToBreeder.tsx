@@ -200,8 +200,8 @@ function Plan({ plan, breeds, settings, isLead }: Props) {
                     <Field label="For"><select className="field" value={breed} onChange={(x) => pick(x.target.value)}><option value="">Every breed (farm plan)</option>{breeds.map((b) => <option key={b.id} value={b.id}>{b.name}{plan.breeds[b.id] ? ' · own plan' : ''}</option>)}</select></Field>
                     <table className="data-table"><thead><tr><th>Age (days)</th><th>Target KG</th><th /></tr></thead><tbody>
                         {form.data.points.map((pt, i) => <tr key={i}>
-                            <td><input type="number" className="field w-24" disabled={!isLead} value={pt.age_days} onChange={(x) => form.setData('points', form.data.points.map((q, j) => (j === i ? { ...q, age_days: x.target.value } : q)))} /></td>
-                            <td><input type="number" step="0.1" className="field w-24" disabled={!isLead} value={pt.target_kg} onChange={(x) => form.setData('points', form.data.points.map((q, j) => (j === i ? { ...q, target_kg: x.target.value } : q)))} /></td>
+                            <td><input aria-label="Age in days" type="number" className="field w-24" disabled={!isLead} value={pt.age_days} onChange={(x) => form.setData('points', form.data.points.map((q, j) => (j === i ? { ...q, age_days: x.target.value } : q)))} /></td>
+                            <td><input aria-label="Target KG" type="number" step="0.1" className="field w-24" disabled={!isLead} value={pt.target_kg} onChange={(x) => form.setData('points', form.data.points.map((q, j) => (j === i ? { ...q, target_kg: x.target.value } : q)))} /></td>
                             <td>{isLead ? <button type="button" className="text-crit-700" onClick={() => form.setData('points', form.data.points.filter((_, j) => j !== i))} aria-label="Remove">×</button> : null}</td>
                         </tr>)}
                     </tbody></table>

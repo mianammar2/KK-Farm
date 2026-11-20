@@ -6,7 +6,7 @@ import { Button, Chip, Empty, Field, LibIcon, Panel } from './ui';
 import { useFive } from '../lib/useFive';
 
 export type MortalityData = {
-    rows: Array<{ id: number; goatId: string; number: string | null; sex: string | null; breed: string | null; age: number | null; on: string; pen: string | null; reason: string | null; notes: string | null;
+    rows: Array<{ id: number | string; goatId: string; number: string | null; sex: string | null; breed: string | null; age: number | null; on: string; pen: string | null; reason: string | null; notes: string | null;
         postmortem: { cause: string; findings: string | null; by: string; on: string } | null }>;
     byCause: Record<string, number>;
 };

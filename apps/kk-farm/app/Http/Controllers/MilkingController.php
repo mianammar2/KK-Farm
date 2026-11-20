@@ -42,7 +42,7 @@ class MilkingController extends Controller
             'stats' => [
                 'inMilk' => $open->count(), 'today' => round($todayRows->where('discarded', false)->sum('litres'), 1), 'todayDiscarded' => round($todayRows->where('discarded', true)->sum('litres'), 1),
                 'weekAvg' => round($records->filter(fn ($r) => $r->milked_on->gte($today->copy()->subDays(6)))->where('discarded', false)->sum('litres') / 7, 1),
-                'month' => round($month->where('discarded', false)->sum('litres'), 1), 'monthDiscarded' => round($month->where('discarded', true)->sum('litres'), 1), 'monthName' => $today->format('F'),
+                'month' => round($month->where('discarded', false)->sum('litres'), 1), 'monthDiscarded' => round($month->where('discarded', true)->sum('litres'), 1), 'monthName' => $today->format('m/Y'),
                 'high' => $open->filter(fn ($l) => Milking::isHighYield($l->animal))->count(),
             ],
             'chart' => $days->map(fn ($d) => ['day' => $d->format('d/m'), 'kept' => round(($byDay[$d->toDateString()] ?? collect())->where('discarded', false)->sum('litres'), 1),

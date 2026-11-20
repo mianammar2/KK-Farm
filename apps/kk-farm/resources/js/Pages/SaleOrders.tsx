@@ -73,9 +73,9 @@ function Quote({ candidates, customers, canSell, done }: Props & { done: () => v
                 {shown.map((c) => {
                     const on = c.id in picked;
                     return <tr key={c.id} className={c.blockers.length ? 'opacity-60' : ''}>
-                        <td><input type="checkbox" disabled={!!c.blockers.length} checked={on} onChange={(x) => setPicked((pk) => { const n = { ...pk }; if (x.target.checked) n[c.id] = c.market ? String(c.market) : ''; else delete n[c.id]; return n; })} /></td>
+                        <td><input aria-label={`Choose ${c.number}`} type="checkbox" disabled={!!c.blockers.length} checked={on} onChange={(x) => setPicked((pk) => { const n = { ...pk }; if (x.target.checked) n[c.id] = c.market ? String(c.market) : ''; else delete n[c.id]; return n; })} /></td>
                         <td className="font-mono font-semibold">{c.number}</td><td>{c.breed} · {c.sex}</td><td>{c.purpose ?? '—'}</td><td>{c.weight ?? '—'}</td><td>{pkr(c.market)}</td>
-                        <td>{form.data.basis === 'per_head' ? <input type="number" disabled={!on} className="field w-28" value={picked[c.id] ?? ''} onChange={(x) => setPicked((pk) => ({ ...pk, [c.id]: x.target.value }))} /> : on && c.weight ? pkr(c.weight * Number(form.data.rate_per_kg || 0)) : '—'}</td>
+                        <td>{form.data.basis === 'per_head' ? <input aria-label={`Price for ${c.number} (PKR)`} type="number" disabled={!on} className="field w-28" value={picked[c.id] ?? ''} onChange={(x) => setPicked((pk) => ({ ...pk, [c.id]: x.target.value }))} /> : on && c.weight ? pkr(c.weight * Number(form.data.rate_per_kg || 0)) : '—'}</td>
                         <td>{c.blockers.length ? <span className="text-xs text-crit-700">{c.blockers.join(' · ')}</span> : <Chip className="bg-ok-100 text-ok-700">Clear</Chip>}</td>
                     </tr>;
                 })}

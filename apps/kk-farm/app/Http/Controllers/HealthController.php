@@ -238,13 +238,23 @@ class HealthController extends Controller
     private function mortality(): array
     {
         $deaths = \App\Models\AnimalMovement::with(['animal.breed', 'fromPen.shed'])->where('type', 'death')->where('moved_on', '>=', now()->subYear())->orderByDesc('moved_on')->get();
-        $pm = HealthRecord::where('kind', 'postmortem')->whereIn('animal_id', $deaths->pluck('animal_id'))->orderByDesc('occurred_on')->get()->unique('animal_id')->keyBy('animal_id');
+        $bareIds = \App\Models\Animal::where('exit_reason', 'died')->where('status', '!=', 'active')->whereNotIn('id', $deaths->pluck('animal_id'))->pluck('id');
+        $pm = HealthRecord::where('kind', 'postmortem')->whereIn('animal_id', $deaths->pluck('animal_id')->concat($bareIds))->orderByDesc('occurred_on')->get()->unique('animal_id')->keyBy('animal_id');
         $rows = $deaths->map(fn ($m) => [
             'id' => $m->id, 'goatId' => $m->animal_id, 'number' => $m->animal?->farm_number, 'sex' => $m->animal?->sex, 'breed' => $m->animal?->breed?->name,
             'age' => $m->animal?->birth_date ? (int) $m->animal->birth_date->diffInMonths($m->moved_on) : null, 'on' => $m->moved_on->format('d/m/Y'),
             'pen' => $m->fromPen?->fullName(), 'reason' => $m->reason, 'notes' => $m->notes,
             'postmortem' => isset($pm[$m->animal_id]) ? ['cause' => $pm[$m->animal_id]->title, 'findings' => $pm[$m->animal_id]->notes, 'by' => $pm[$m->animal_id]->recorded_by, 'on' => $pm[$m->animal_id]->occurred_on->format('d/m/Y')] : null,
         ])->values();
+        // audit: goats marked died with no exit row (older or imported records) count here too, as on the dashboard and Farm Reports
+        $bare = \App\Models\Animal::with(['breed', 'pen.shed'])->whereIn('id', $bareIds)
+            ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', now()->subYear()))->get()->map(fn ($a) => [
+                'id' => 'a'.$a->id, 'goatId' => $a->id, 'number' => $a->farm_number, 'sex' => $a->sex, 'breed' => $a->breed?->name,
+                'age' => $a->birth_date && $a->exit_date ? (int) $a->birth_date->diffInMonths($a->exit_date) : null, 'on' => $a->exit_date?->format('d/m/Y') ?? '—',
+                'pen' => $a->pen?->fullName(), 'reason' => null, 'notes' => null,
+                'postmortem' => isset($pm[$a->id]) ? ['cause' => $pm[$a->id]->title, 'findings' => $pm[$a->id]->notes, 'by' => $pm[$a->id]->recorded_by, 'on' => $pm[$a->id]->occurred_on->format('d/m/Y')] : null,
+            ]);
+        $rows = $rows->concat($bare)->values();
 
         return [
             'rows' => $rows,

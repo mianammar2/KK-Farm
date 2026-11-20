@@ -21,7 +21,7 @@ import { useTabParam } from '../lib/useTabParam';
 type Check = { id: number; on: string; method: string; result: string; fetuses: number | null; next: string | null; by: string; notes: string | null; status: string | null; day: number | null; fetal: string; viability: string | null; action: string | null };
 type MatingRow = {
     id: number; status: string; outcome: string; method: string; heat: string | null; cycle: number | null; handler: string | null; notes: string | null;
-    alert: 'check_overdue' | 'recheck_overdue' | 'recheck_due' | 'edd_passed' | 'kidding_soon' | null;
+    alert: 'check_overdue' | 'recheck_overdue' | 'recheck_due' | 'edd_passed' | 'kidding_imminent' | 'kidding_soon' | null;
     dam: { id: string; number: string; name: string | null; coat: string }; sire: { id: string; number: string; name: string | null } | null;
     mated: string; matedIso: string; pregnancy: string | null; scan: string; day: number; scanWindow: string; expected: string | null; checkDue: string | null; days: number | null; progress: number; active: boolean; checks: Check[];
 };
@@ -62,6 +62,7 @@ const ALERT: Record<NonNullable<MatingRow['alert']>, { label: string; className:
     recheck_overdue: { label: 'Recheck overdue', className: 'bg-crit-100 text-crit-700' },
     recheck_due: { label: 'Recheck due', className: 'bg-watch-100 text-watch-700' },
     edd_passed: { label: 'Due date passed', className: 'bg-crit-100 text-crit-700' },
+    kidding_imminent: { label: 'Kidding in 3 days', className: 'bg-crit-100 text-crit-700' }, // audit: the server sends it in the last 3 days (D-103)
     kidding_soon: { label: 'Kidding soon', className: 'bg-watch-100 text-watch-700' },
 };
 const OUTCOME_CLASS: Record<string, string> = { open: 'bg-cobalt-100 text-cobalt-800', pregnant: 'bg-manganese-100 text-manganese-600', inconclusive: 'bg-watch-100 text-watch-700', kidded: 'bg-ok-100 text-ok-700', not_pregnant: 'bg-glaze text-ink-soft', aborted: 'bg-crit-100 text-crit-700', closed: 'bg-glaze text-ink-soft' };
@@ -218,7 +219,7 @@ function MatingCard({ m, isVet, canClose, settings, options, outcome = false }: 
                 {m.status === 'pregnant' && m.expected ? <div className="text-right text-sm"><div className="font-semibold text-cobalt-900">{m.expected}</div><div className="text-ink-soft">{(m.days ?? 0) < 0 ? `${-(m.days ?? 0)} days over` : `in ${m.days} days`}</div></div> : null}
                 <div className="flex items-center gap-1.5">
                     {m.active ? <Chip className={m.scan === 'NSC' ? 'bg-glaze text-ink-soft' : ['PCF', 'VPG', 'MPG'].includes(m.scan) ? 'bg-ok-100 text-ok-700' : ['CPL', 'SFL', 'HYD', 'ABN'].includes(m.scan) ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'} ><LibIcon name="app-reports" size={14} />{m.scan === 'NSC' ? 'Not Scanned' : options.ultrasound[m.scan]}</Chip> : null}
-                    {m.alert ? <Chip className={ALERT[m.alert].className}><AlertTriangle size={12} aria-hidden />{ALERT[m.alert].label}</Chip> : null}
+                    {m.alert && ALERT[m.alert] ? <Chip className={ALERT[m.alert].className}><AlertTriangle size={12} aria-hidden />{ALERT[m.alert].label}</Chip> : null}
                     {m.pregnancy ? <Chip className={PREG_CLASS[m.pregnancy] ?? 'bg-glaze text-ink-soft'}><LibIcon name={m.pregnancy === 'PLS' ? 'ic-sick' : m.pregnancy === 'PCM' ? 'ic-kidding' : 'ic-pregnant'} size={14} />{options.pregnancy[m.pregnancy]} <span className="opacity-60">{m.pregnancy}</span></Chip>
                         : <Chip className={OUTCOME_CLASS[m.status] ?? 'bg-glaze text-ink-soft'}>{m.outcome}</Chip>}
                     <ChevronDown size={16} className={cx('text-ink-faint transition-transform', open && 'rotate-180')} aria-hidden />

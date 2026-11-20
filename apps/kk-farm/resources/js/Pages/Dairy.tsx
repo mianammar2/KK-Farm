@@ -46,7 +46,7 @@ export default function Dairy(p: Props) {
             <Tabs value={tab} onChange={setTab} tabs={[{ id: 'sessions', label: 'Close Sessions' }, { id: 'lots', label: 'Milk Lots & QA', count: waiting || undefined }, { id: 'orders', label: 'Milk Orders', count: p.orders.filter((o) => o.status === 'open').length || undefined }, { id: 'trace', label: 'Dispatch & Trace' }, { id: 'money', label: 'Invoices & Milk Profit', count: p.invoices.filter((i) => !i.collected).length || undefined }]} />
             {tab === 'sessions' ? (
                 <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm"><span className="font-semibold">Day</span><input type="date" max={today()} className="field !w-44 !py-1.5" value={p.day} onChange={(e) => router.get('/dairy', { tab: 'sessions', day: e.target.value }, { preserveScroll: true })} /></div>
+                    <div className="flex items-center gap-2 text-sm"><span className="font-semibold">Day</span><input aria-label="Day" type="date" max={today()} className="field !w-44 !py-1.5" value={p.day} onChange={(e) => router.get('/dairy', { tab: 'sessions', day: e.target.value }, { preserveScroll: true })} /></div>
                     <div className="grid gap-3 lg:grid-cols-2">{p.sessions.map((s) => <SessionCard key={s.session} s={s} day={p.day} />)}</div>
                 </div>
             ) : null}

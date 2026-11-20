@@ -61,7 +61,7 @@ function Pens({ pens, canReview, totals }: Props) {
     const review = (pen: PenRow) => router.post(`/feed-cost/pens/${pen.id}/review`, { issues: pen.issues.join('; ') }, { preserveScroll: true });
     return (
         <Panel flush title="PENs" description={`Poor response (feed conversion above ${totals.fcrAlert}, no gain, over 10% refused or sick goats) needs a review of intake, ration and illness.`}>
-            {pens.length ? <DataGrid id="feedcost-pens" name="Feed cost by pen" rows={pens} rowKey={(x) => String(x.id)} cols={[
+            {pens.length ? <DataGrid id="feedcost-pens" name="Feed cost by PEN" rows={pens} rowKey={(x) => String(x.id)} cols={[
                 { key: 'name', label: 'PEN', type: 'enum', total: 'count', render: (x) => <b>{x.name}</b> },
                 { key: 'goats', label: 'Goats', type: 'number', total: 'sum', render: (x) => <>{x.goats}{x.weighed < x.goats ? <span className="text-ink-soft"> ({x.weighed} weighed)</span> : null}</> },
                 { key: 'cost', label: 'Feed cost (PKR)', type: 'number', total: 'sum', render: (x) => money(x.cost) },
@@ -124,7 +124,7 @@ function Stock(p: Props) {
                     <div className="grid gap-2 sm:grid-cols-3"><Field label="Counted on"><input type="date" max={today()} className="field" value={count.data.counted_on} onChange={(x) => count.setData('counted_on', x.target.value)} /></Field><Field label="Notes"><input className="field" value={count.data.notes} onChange={(x) => count.setData('notes', x.target.value)} /></Field></div>
                     <table className="data-table"><thead><tr><th>Feed</th><th>Book KG</th><th>Counted KG</th><th>Difference</th></tr></thead><tbody>
                         {p.items.map((it, i) => { const c = count.data.counts[i]; const d = c.counted_kg === '' ? null : Math.round((Number(c.counted_kg) - it.book) * 10) / 10; return <tr key={it.id}><td>{it.name}</td><td>{it.book}</td>
-                            <td><input type="number" step="0.1" className="field w-28" value={c.counted_kg} onChange={(x) => count.setData('counts', count.data.counts.map((q, j) => (j === i ? { ...q, counted_kg: x.target.value } : q)))} /></td>
+                            <td><input aria-label="Counted KG" type="number" step="0.1" className="field w-28" value={c.counted_kg} onChange={(x) => count.setData('counts', count.data.counts.map((q, j) => (j === i ? { ...q, counted_kg: x.target.value } : q)))} /></td>
                             <td className={d !== null && d < 0 ? 'text-crit-700' : ''}>{d ?? '—'}</td></tr>; })}
                     </tbody></table>
                     {Object.keys(count.errors).length ? <p className="text-sm text-crit-700">{Object.values(count.errors)[0]}</p> : null}
