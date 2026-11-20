@@ -176,19 +176,23 @@ function RoleSwitcher({ auth, roles, compact }: { auth: NonNullable<SharedProps[
                 setOpen(false);
             }
         };
+        const esc = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
         document.addEventListener('mousedown', close);
-        return () => document.removeEventListener('mousedown', close);
+        document.addEventListener('keydown', esc);
+        return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
     }, []);
+    // audit: the same initials (from the name) on the phone and the desktop badge
+    const initials = (auth.name.match(/[A-Za-z]+/g) ?? ['K']).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
     return (
         <div className="relative" ref={root}>
             {compact ? (
                 <button type="button" aria-label="Account" aria-expanded={open} onClick={() => setOpen(!open)} className="grid size-11 place-items-center rounded-full active:bg-white/15">
-                    <span className="grid size-8 place-items-center rounded-full bg-turq-400 text-xs font-bold text-cobalt-950">{(auth.name.match(/[A-Za-z]+/g) ?? ['K']).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>
+                    <span className="grid size-8 place-items-center rounded-full bg-turq-400 text-xs font-bold text-cobalt-950">{initials}</span>
                 </button>
             ) : (
             <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-11 items-center gap-2 rounded-tile border border-rule-strong bg-tile px-2.5 text-left hover:bg-cobalt-100">
-                <span className="grid size-7 place-items-center rounded-[4px] bg-cobalt-800 text-xs font-bold text-white">{auth.roleLabel.slice(0, 2).toUpperCase()}</span>
+                <span className="grid size-7 place-items-center rounded-[4px] bg-cobalt-800 text-xs font-bold text-white">{initials}</span>
                 <span className="hidden leading-tight sm:block">
                     <span className="block text-sm font-semibold">{auth.name}</span>
                     <span className="block text-xs text-ink-soft">{auth.roleLabel}</span>
@@ -198,6 +202,10 @@ function RoleSwitcher({ auth, roles, compact }: { auth: NonNullable<SharedProps[
             )}
             {open ? (
                 <div className="absolute right-0 z-40 mt-1.5 w-60 rounded-tile border border-rule bg-tile p-1 text-ink shadow-float">
+                    <div className="border-b border-rule px-2.5 pt-1.5 pb-2 leading-tight">{/* audit: who is signed in, also on phones */}
+                        <span className="block truncate text-sm font-semibold text-cobalt-900">{auth.name}</span>
+                        <span className="block text-xs text-ink-soft">{auth.roleLabel}</span>
+                    </div>
                     <Link href="/account/password" onClick={() => setOpen(false)} className="flex min-h-10 w-full items-center rounded-[4px] px-2.5 text-left text-sm hover:bg-cobalt-100">Change password</Link>
                     <Link href="/account/app" onClick={() => setOpen(false)} className="flex min-h-10 w-full items-center rounded-[4px] px-2.5 text-left text-sm hover:bg-cobalt-100">App and updates</Link>
                     {demoLogin ? <div className="px-2.5 py-1.5 text-sm text-ink-soft">Local testing: view the app as</div> : null}

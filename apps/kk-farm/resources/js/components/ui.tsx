@@ -96,6 +96,7 @@ export function Panel({ title, description, actions, children, className, flush,
 
 /** A figure tile; with onClick or href it is a button / link (D-319), and `active` marks the one picked. */
 export function Stat({ label, value, note, tone, onClick, href, active }: { label: string; value: ReactNode; note?: string; tone?: 'alert' | 'good'; onClick?: () => void; href?: string; active?: boolean }) {
+    if (value === 0 && !active) return null; // audit: a number that is zero is not shown (owner's rule); the active filter tile stays
     const box = cx('min-w-0 px-3 py-2.5 text-start sm:px-4 sm:py-3', (onClick || href) && 'cursor-pointer transition-colors hover:bg-glaze focus-visible:outline-2 focus-visible:outline-cobalt-600', active && 'bg-cobalt-100 ring-2 ring-inset ring-cobalt-800');
     const body = <StatBody label={label} value={value} note={note} tone={tone} />;
     if (href) return <Link href={href} className={cx(box, 'block')}>{body}</Link>;
@@ -116,7 +117,7 @@ function StatBody({ label, value, note, tone }: { label: string; value: ReactNod
 export function StatRow({ children }: { children: ReactNode }) {
     useHideAppStrip(); // D-258: a page with its own numbers does not show the app strip as well
     // Phones: a compact two-column grid with hairline gaps (an odd last tile spans both); wider: one row.
-    return <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-tile border border-rule bg-rule shadow-tile sm:flex sm:gap-0 sm:divide-x sm:divide-rule sm:bg-tile [&>*]:bg-tile [&>*]:sm:flex-1 [&>*:last-child:nth-child(odd)]:col-span-2">{children}</div>;
+    return <div className="mb-4 grid grid-cols-2 gap-px empty:hidden overflow-hidden rounded-tile border border-rule bg-rule shadow-tile sm:flex sm:gap-0 sm:divide-x sm:divide-rule sm:bg-tile [&>*]:bg-tile [&>*]:sm:flex-1 [&>*:last-child:nth-child(odd)]:col-span-2">{children}</div>;
 }
 
 export function Chip({ className, children }: { className?: string; children: ReactNode }) {

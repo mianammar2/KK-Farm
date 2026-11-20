@@ -49,7 +49,7 @@ export default function NotificationBell({ path, onDark = false }: { path: strin
                 {count ? <span key={count} className={`kk-pop absolute top-1 right-1 grid min-w-5 place-items-center rounded-full px-1 text-xs font-bold leading-5 text-white ${urgent ? 'bg-crit-700' : 'bg-watch-700'}`}>{count}</span> : null}
             </button>
             {open ? (
-                <div className="kk-drop absolute right-0 z-40 mt-1 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-tile border border-rule bg-tile shadow-tile" role="dialog" aria-label="Notifications">
+                <div className="kk-drop fixed inset-x-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-40 overflow-hidden sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-1 sm:w-[22rem] rounded-tile border border-rule bg-tile shadow-tile" role="dialog" aria-label="Notifications">
                     <div className="border-b border-rule px-4 py-2.5 text-sm font-semibold text-cobalt-900">{count ? `${count} Thing${count === 1 ? '' : 's'} Need Action` : 'Nothing Needs Action'}</div>
                     {notes === null ? <p className="px-4 py-3 text-sm text-ink-soft">Loading…</p> : count ? (
                         <ul className="max-h-[60vh] divide-y divide-rule overflow-y-auto">

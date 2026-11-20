@@ -64,7 +64,7 @@ export function AppBar({ path, items, right }: { path: string; items: NavItem[];
                         onSubmit={(e) => { e.preventDefault(); setSearching(false); router.get('/goats', q ? { q } : {}); }}
                         className="absolute inset-x-0 top-0 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end gap-1 bg-cobalt-900 px-2 pb-1.5"
                     >
-                        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tag, name or breed" className="h-11 min-w-0 flex-1 rounded-full bg-white/12 px-4 text-white placeholder:text-cobalt-200 focus:bg-white/20 focus:outline-none" />
+                        <input autoFocus type="search" enterKeyHint="search" aria-label="Search goats" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tag, name or breed" className="h-11 min-w-0 flex-1 rounded-full bg-white/12 px-4 text-white placeholder:text-cobalt-200 focus:bg-white/20 focus:outline-none" />
                         <button type="button" aria-label="Close search" onClick={() => setSearching(false)} className="grid size-11 place-items-center rounded-full active:bg-white/15"><X size={21} /></button>
                     </motion.form>
                 ) : null}
