@@ -137,6 +137,7 @@ export default function AppScan({ listen = true, variant = 'bar' }: { listen?: b
                                         ))}
                                     </div>
                                 ) : null}
+                                {found.offline ? <p className="rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">No internet: the goat as kept on this device on {found.offline}. Weights, health and history open when the internet is back.</p> : null}
                                 <GoatProfileCard id={found.id} data={found} />
                             </>
                         ) : null}

@@ -244,7 +244,7 @@ class UhfReader(private val context: Context) {
 
     // ---------- write ----------
     /** Writes [code] into the one tag held against the gun. Calls back on a worker thread. */
-    fun write(code: String, onDone: (ok: Boolean, code: String, oldEpc: String, error: String?) -> Unit) {
+    fun write(code: String, onlyEpc: String?, onDone: (ok: Boolean, code: String, oldEpc: String, error: String?) -> Unit) {
         val wanted = code.trim().uppercase(Locale.ROOT)
         if (reader == null) { onDone(false, wanted, "", "This gun app has no UHF writer yet."); return }
         stopTouch() // the page starts touch mode again when it wants it
@@ -260,6 +260,7 @@ class UhfReader(private val context: Context) {
                         near.size > 1 -> { onDone(false, wanted, "", "${near.size} tags are touching the gun. Keep only this goat's tag close and try again."); return@thread }
                     }
                     val old = near[0].epc
+                    if (onlyEpc != null && !old.equals(onlyEpc, ignoreCase = true)) { onDone(false, wanted, old, "A different tag is touching the gun now. Touch the same tag again."); return@thread }
                     val data = encode(wanted)
                     val words = data.length / 4
                     val pc = String.format(Locale.ROOT, "%04X", words shl 11) // PC word: EPC length in words, other bits 0
@@ -300,19 +301,45 @@ class UhfReader(private val context: Context) {
         private const val BANK_EPC = 1
         private val CODE = Regex("^[A-Z0-9._:-]{4,64}$")
 
-        /** Tag ID → EPC hex: ASCII bytes, zero-padded to whole 16-bit words. */
+        /**
+         * D-359: Tag ID → EPC hex. Up to 14 characters are packed into 96 bits, the size of most UHF tags (e.g. a
+         * 13-character Tag ID would need 112 bits as ASCII): header byte C6, 4-bit length, 6 bits per character from
+         * [PACK], zero bits to the end. Longer Tag IDs are written as ASCII, which needs a tag with a bigger EPC.
+         */
         fun encode(code: String): String {
+            if (code.length <= 14 && code.all { it in PACK }) {
+                val bits = StringBuilder("11000110").append(Integer.toBinaryString(code.length).padStart(4, '0'))
+                code.forEach { bits.append(Integer.toBinaryString(PACK.indexOf(it)).padStart(6, '0')) }
+                while (bits.length < 96) bits.append('0')
+                return bits.chunked(4).joinToString("") { Integer.toHexString(it.toInt(2)).uppercase(Locale.ROOT) }
+            }
             val bytes = code.toByteArray(Charsets.US_ASCII)
             val padded = if (bytes.size % 2 == 0) bytes else bytes + 0
             return padded.joinToString("") { String.format(Locale.ROOT, "%02X", it) }
         }
 
-        /** EPC hex → the Tag ID written by KK Farm, or the hex itself for any other tag. */
+        /** EPC hex → the Tag ID written by KK Farm (packed or ASCII), or the hex itself for any other tag. */
         fun decode(epc: String): String {
             if (epc.length % 2 != 0 || epc.isEmpty()) return epc
+            unpack(epc)?.let { return it }
             val bytes = runCatching { ByteArray(epc.length / 2) { i -> epc.substring(i * 2, i * 2 + 2).toInt(16).toByte() } }.getOrNull() ?: return epc
             val text = String(bytes.dropLastWhile { it == 0.toByte() }.toByteArray(), Charsets.US_ASCII)
-            return if (CODE.matches(text) && text.any { it.isLetter() } && text.contains('-')) text else epc
+            return if (looksLikeTagId(text)) text else epc
         }
+
+        private fun unpack(epc: String): String? {
+            if (epc.length != 24 || !epc.startsWith("C6", ignoreCase = true)) return null
+            val bits = runCatching { epc.map { Integer.toBinaryString(it.toString().toInt(16)).padStart(4, '0') }.joinToString("") }.getOrNull() ?: return null
+            val n = bits.substring(8, 12).toInt(2)
+            if (n < 4 || n > 14) return null
+            val text = (0 until n).map { i -> bits.substring(12 + i * 6, 18 + i * 6).toInt(2) }.map { if (it < PACK.length) PACK[it] else return null }.joinToString("")
+            if (bits.substring(12 + n * 6).any { it != '0' }) return null
+            return text.takeIf { looksLikeTagId(it) }
+        }
+
+        private fun looksLikeTagId(text: String) = CODE.matches(text) && text.any { it.isLetter() } && text.contains('-')
+
+        /** The characters a packed Tag ID can hold, in order (6 bits each). */
+        const val PACK = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-._:"
     }
 }

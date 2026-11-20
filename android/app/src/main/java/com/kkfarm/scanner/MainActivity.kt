@@ -556,7 +556,9 @@ class MainActivity : Activity(), GunAgent.Host {
             if (!on) { uhf.stopTouch(); return }
             uhf.startTouch { t -> vibrate(40); sendEvent("kk:uhf-touch", JSONObject().put("code", t.code).put("epc", t.epc)) }
         }
-        @JavascriptInterface fun writeUhf(code: String) = uhf.write(code) { ok, written, old, error ->
+        @JavascriptInterface fun writeUhf(code: String) = writeUhfTag(code, "")
+        /** D-359: write only the tag whose EPC the page checked (it is not another goat's); "" = the one touching tag. */
+        @JavascriptInterface fun writeUhfTag(code: String, epc: String) = uhf.write(code, epc.ifBlank { null }) { ok, written, old, error ->
             vibrate(if (ok) 120 else 400)
             sendEvent("kk:uhf-written", JSONObject().put("ok", ok).put("code", written).put("chip", old).put("error", error ?: JSONObject.NULL))
         }
@@ -596,6 +598,6 @@ class MainActivity : Activity(), GunAgent.Host {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.8.8"
-    const val CODE = 28 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.8.9"
+    const val CODE = 29 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

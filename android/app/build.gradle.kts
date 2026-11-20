@@ -11,8 +11,8 @@ android {
         applicationId = "com.kkfarm.scanner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 28
-        versionName = "0.8.8"
+        versionCode = 29
+        versionName = "0.8.9"
     }
 
     buildTypes {
@@ -32,4 +32,5 @@ dependencies {
     // D-339: Chainway DeviceAPI SDK, vendor-supplied and kept out of git. Drop the .aar in app/libs/ and rebuild;
     // without it the app still builds and InfoWedge stays the reader.
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+    testImplementation("junit:junit:4.13.2") // D-359: the Tag ID ↔ EPC packing
 }

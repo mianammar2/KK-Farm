@@ -62,4 +62,11 @@ class GoatRfidLinkTest extends TestCase
         $this->assertSame('E20000166515015616107331', \App\Support\GoatRegistration::normaliseCode('e20000166515015616107331'));
         $this->assertSame('300833B2DDD9014000000000', \App\Support\GoatRegistration::normaliseCode('300833B2DDD9014000000000'));
     }
+
+    public function test_a_tag_id_packed_into_96_bits_reads_as_that_tag_id(): void // D-359
+    {
+        $this->assertSame('MC-071126P-01', \App\Support\GoatRegistration::normaliseCode('C6D58C9001C1042199900040'));
+        $this->assertSame('TD-141026P-25', \App\Support\GoatRegistration::normaliseCode('c6d74d901101002199902140'));
+        $this->assertSame('C6D58C9001C1042199900041', \App\Support\GoatRegistration::normaliseCode('C6D58C9001C1042199900041')); // stray bits: not ours
+    }
 }

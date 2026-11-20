@@ -31,9 +31,25 @@ final class GoatRegistration
     /** Workbook lifecycle status to the app's exit model. */
     private const LIFECYCLE = ['sold' => ['left_farm', 'sold'], 'dead' => ['deceased', 'died'], 'culled' => ['left_farm', 'culled'], 'transferred' => ['left_farm', 'transferred']];
 
+    /** D-359: the characters of a packed Tag ID, in order (same as the gun app's UhfReader.PACK). */
+    public const PACK = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-._:';
+
     public static function normaliseCode(?string $code): string
     {
         $code = strtoupper(trim((string) $code));
+        // D-359: a Tag ID packed into a 96-bit EPC by the gun (header C6, 4-bit length, 6 bits per character)
+        if (strlen($code) === 24 && str_starts_with($code, 'C6') && ctype_xdigit($code)) {
+            $bits = implode('', array_map(fn ($h) => str_pad(base_convert($h, 16, 2), 4, '0', STR_PAD_LEFT), str_split($code)));
+            $n = bindec(substr($bits, 8, 4));
+            $text = '';
+            for ($i = 0; $i < $n; $i++) {
+                $v = bindec(substr($bits, 12 + $i * 6, 6));
+                $text .= $v < strlen(self::PACK) ? self::PACK[$v] : '?';
+            }
+            if ($n >= 4 && $n <= 14 && ! str_contains(substr($bits, 12 + $n * 6), '1') && preg_match('/^[A-Z0-9._:-]{4,64}$/', $text) && preg_match('/[A-Z]/', $text) && str_contains($text, '-')) {
+                return $text;
+            }
+        }
         // D-339: a UHF tag written by the gun carries the Tag ID as ASCII in its EPC; read raw (hex), it is that Tag ID
         if ($code !== '' && strlen($code) % 2 === 0 && ctype_xdigit($code)) {
             $text = rtrim((string) hex2bin($code), "\0");

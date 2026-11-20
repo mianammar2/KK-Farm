@@ -710,6 +710,31 @@ class GoatController extends Controller
         return response()->json($data + ['canOpenRecord' => \App\Support\Pages::allows($request->user(), "/goats/{$goat->id}")]);
     }
 
+    /**
+     * D-359: the goats on the farm as the gun keeps them for working without internet: each goat's codes (Tag ID and
+     * linked RFID tag) and a short profile for the scan card. Refreshed by the app every few minutes while online.
+     */
+    public function offlineGoats(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()->passes('scan_goats'), 403);
+        $goats = Animal::with(['breed', 'pen.shed', 'photos', 'latestWeight', 'openAssignment.tag'])->where('status', 'active')->whereNull('voided_at')->get();
+        $none = ['latestKg' => null, 'latestOn' => null, 'gain' => null, 'weighings' => 0, 'totalGain' => null, 'adg' => null, 'bcs' => null, 'heightIn' => null];
+
+        return response()->json([
+            'at' => now()->format('d/m/Y H:i'),
+            'goats' => $goats->map(fn (Animal $a) => [
+                'codes' => array_values(array_filter([strtoupper($a->farm_number), strtoupper((string) $a->openAssignment?->tag?->tag_code)])),
+                'profile' => $a->card() + [
+                    'rfid' => $a->openAssignment?->tag?->tag_code, 'shed' => $a->pen?->shed?->name, 'origin' => null, 'arrived' => null, 'born' => $a->birth_date?->format('d/m/Y'),
+                    'bornEstimated' => (bool) $a->birth_date_is_estimate, 'from' => null, 'purpose' => null, 'roleLabels' => [],
+                    'growth' => ['latestKg' => $a->latestWeight ? (float) $a->latestWeight->weight_kg : null, 'latestOn' => $a->latestWeight?->measured_on?->format('d/m/Y')] + $none,
+                    'breeding' => ['repro' => null, 'pregnancyDay' => null, 'lastMating' => null, 'kids' => 0, 'kiddings' => null],
+                    'family' => ['dam' => null, 'sire' => null], 'missing' => [], 'seeHealth' => false, 'healthDetail' => null, 'canOpenRecord' => false,
+                ],
+            ])->values(),
+        ]);
+    }
+
     /** D-293: the goat for a typed Tag ID or a scanned RFID chip, for the goat fields of every form. */
     public function find(Request $request): \Illuminate\Http\JsonResponse
     {

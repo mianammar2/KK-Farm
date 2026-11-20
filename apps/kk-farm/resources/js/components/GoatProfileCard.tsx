@@ -21,6 +21,7 @@ export type Profile = {
     missing: string[]; seeHealth: boolean; healthDetail: Health | null;
     exit?: { type: string; label: string; on: string | null; reason: string | null; destination: string | null; notes: string | null; disease: string | null; by: string | null;
         report: { kind: string; cause: string; reportedBy: string; decidedBy: string | null; seen: string | null; postmortem: string | null } | null } | null; // D-325
+    offline?: string; // D-359: from the goats kept on the device (no internet); when they were kept
 };
 type Health = {
     cases: Array<{ label: string; condition: string; disease: string | null; code: string | null; severity: string; since: string | null; isolated: boolean; symptoms: string[] }>;

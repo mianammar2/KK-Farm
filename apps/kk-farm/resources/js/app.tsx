@@ -4,6 +4,7 @@ import type { ComponentType, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import AppShell from './components/AppShell';
 import { inScannerApp } from './lib/native';
+import { startOffline } from './lib/offline';
 
 // Lite mode on the RFID gun (D-050): its graphics chip is modest, so no blur, light shadows, and framer-motion
 // animations reduced to quick fades. Phones and desktop keep the full effects.
@@ -29,6 +30,8 @@ if (LITE) {
         }, 0);
     });
 }
+
+startOffline(); // D-359: pages, scans and saves keep working without internet
 
 type PageModule = { default: ComponentType & { layout?: unknown } };
 

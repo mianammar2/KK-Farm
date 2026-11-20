@@ -32,28 +32,45 @@ export default function RfidLink({ goatId, number, current, canAssign, className
         window.addEventListener('kk:uhf-written', on);
         return () => { window.removeEventListener('kk:nfc-written', on); window.removeEventListener('kk:uhf-written', on); native()?.cancelNfcWrite?.(); };
     }, [goatId]);
-    // D-339: a UHF tag touched to the gun: already carrying this goat's Tag ID, it is linked; otherwise the Tag ID is written into it first
+    // D-339 / D-359: a UHF tag touched to the gun. Already carrying this goat's Tag ID: linked. Another goat's tag: never
+    // written. This goat's own factory tag, or "Write tag by touch" pressed: written with no question. Any other tag:
+    // written after a yes. Only the tag that was checked is written (the gun compares its EPC).
+    const [armed, setArmed] = useState(false);
+    const [checking, setChecking] = useState(false);
     useEffect(() => {
-        if (!uhf || !canAssign || writing) return;
+        if (!uhf || !canAssign || writing || checking) return;
         const onTouch = (e: Event) => {
             const { code, epc } = (e as CustomEvent<{ code: string; epc: string }>).detail;
             if (code === current && code === number) return;
-            // the goat's own tag still carrying its factory number: write the Tag ID with no question
-            if (current && current !== code && current !== epc && !window.confirm(`Replace tag ${current} on ${number}? The old tag is closed in the history.`)) return;
             if (code === number) { router.post(`/goats/${goatId}/tag`, { tag: number }, { preserveScroll: true, onSuccess: () => setOpen(false) }); return; }
+            setChecking(true);
             setNfcError(null);
-            setWriting(true);
-            native()?.writeUhf?.(number);
+            fetch(`/goats/find?code=${encodeURIComponent(code)}`, { headers: { Accept: 'application/json' } })
+                .then((r) => (r.ok ? r.json() : r.status === 404 ? null : Promise.reject(r.status)))
+                .then((owner: { id: string; number: string } | null) => {
+                    if (owner && owner.id !== goatId) { setNfcError(`This tag is ${owner.number}'s tag. It was not written. Touch a new tag, or ${number}'s own tag.`); return; }
+                    const own = current !== null && current !== undefined && (current === code || current === epc);
+                    if (!own && !armed) {
+                        const replacing = current ? ` ${number} has tag ${current} now; it is closed in the history.` : '';
+                        if (!window.confirm(`Write ${number} into this tag (${epc})? Its old number is replaced.${replacing}`)) return;
+                    }
+                    setWriting(true);
+                    const n = native();
+                    if (n?.writeUhfTag) n.writeUhfTag(number, epc); else n?.writeUhf?.(number);
+                })
+                .catch(() => setNfcError('Could not check the tag with the server. Check the internet and touch the tag again.'))
+                .finally(() => { setChecking(false); setArmed(false); });
         };
         window.addEventListener('kk:uhf-touch', onTouch);
         native()?.uhfTouch?.(true);
         return () => { window.removeEventListener('kk:uhf-touch', onTouch); native()?.uhfTouch?.(false); };
-    }, [uhf, canAssign, writing, current, number, goatId]);
+    }, [uhf, canAssign, writing, checking, armed, current, number, goatId]);
     const writeByTouch = () => {
         if (current && current !== number && !window.confirm(`Replace tag ${current} on ${number}? The old tag is closed in the history.`)) return;
         setNfcError(null);
+        if (uhf) { setArmed(true); return; } // the next touched tag is checked, then written
         setWriting(true);
-        if (uhf) native()?.writeUhf?.(number); else native()?.writeNfc?.(number);
+        native()?.writeNfc?.(number);
     };
     const link = () => {
         if (!form.data.tag.trim()) return;
@@ -86,10 +103,10 @@ export default function RfidLink({ goatId, number, current, canAssign, className
                 <div className="mt-3 rounded-tile border border-rule bg-glaze px-3 py-3">
                     {touch === 'off' ? (
                         <p className="text-sm">The gun's NFC is switched off. <button type="button" className="text-cobalt-800 underline" onClick={() => native()?.openNfcSettings?.()}>Turn it on</button>, then come back.</p>
-                    ) : writing ? (
+                    ) : writing || armed || checking ? (
                         <div className="flex flex-wrap items-center gap-3">
-                            <p className="text-sm font-medium">Touch the tag to the {uhf ? 'top' : 'back'} of the gun and hold it still. It will be written with {number}.</p>
-                            <Button type="button" variant="secondary" onClick={() => { native()?.cancelNfcWrite?.(); setWriting(false); }}>Cancel</Button>
+                            <p className="text-sm font-medium">{checking ? 'Checking the tag…' : `Touch the tag to the ${uhf ? 'top' : 'back'} of the gun and hold it still. It will be written with ${number}.`}</p>
+                            <Button type="button" variant="secondary" onClick={() => { native()?.cancelNfcWrite?.(); setWriting(false); setArmed(false); }}>Cancel</Button>
                         </div>
                     ) : (
                         <div className="flex flex-wrap items-center gap-3">
