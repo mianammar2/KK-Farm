@@ -1,4 +1,4 @@
-# D-360: UI, UX and front-end data audit (20/11/2026)
+# D-363: UI, UX and front-end data audit (20/11/2026)
 
 ## How it was audited
 - **Every page in the page registry** (about 200 pages and tabs), plus goat profile, goat edit, users and settings pages, loaded in frames at **phone (375/390 px), tablet (768 px) and desktop (1280 px)** widths as the Administrator. On each page the auditor checked:

@@ -516,7 +516,7 @@ function Nutrition({ standards, nutritionCategories, methods, breeds, can }: Pro
                                         <td className="px-3 text-xs">{s.reviewedOn ? <>{s.reviewedOn}{s.reviewedBy ? <span className="block text-ink-soft">{s.reviewedBy}</span> : null}</> : <span className="text-watch-700">Not reviewed</span>}</td>
                                         {can.plan ? <td className="px-3"><button type="button" className="text-cobalt-800 hover:underline" aria-label={`Edit ${s.name}`} onClick={() => setEditing(editing === s.id ? null : s.id)}><Pencil size={15} /></button><DeleteButton type="nutrition" id={s.id} name={s.name} /></td> : null}
                                     </tr>
-                                    {editing === s.id ? <Sheet onClose={() => setEditing(null)} title="Edit Nutrition Standard"><StandardForm standard={s} nutritionCategories={nutritionCategories} methods={methods} breeds={breeds} onDone={() => setEditing(null)} /></Sheet> : null}{/* D-361: in a pop card */}
+                                    {editing === s.id ? <Sheet onClose={() => setEditing(null)} title="Edit Nutrition Standard"><StandardForm standard={s} nutritionCategories={nutritionCategories} methods={methods} breeds={breeds} onDone={() => setEditing(null)} /></Sheet> : null}{/* D-364: in a pop card */}
                                 </Fragment>
                             ))}
                         </tbody>
