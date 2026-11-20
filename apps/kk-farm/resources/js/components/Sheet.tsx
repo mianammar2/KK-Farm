@@ -18,7 +18,8 @@ export default function Sheet({ children, onClose }: { children: ReactNode; onCl
     return createPortal(
         <div className="fixed inset-0 z-50 grid place-items-center bg-cobalt-950/45 p-3 sm:p-6" onClick={onClose} role="dialog" aria-modal="true">
             <div className="kk-rise relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-glaze p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
-                <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 grid size-10 place-items-center rounded-full bg-tile text-ink-soft shadow-tile hover:text-cobalt-900"><X size={18} aria-hidden /></button>
+                {/* audit: Close stays in reach while a long card scrolls */}
+                <div className="sticky top-0 z-10 flex h-0 justify-end"><button type="button" onClick={onClose} aria-label="Close" className="-me-1 -mt-1 grid size-10 place-items-center rounded-full bg-tile text-ink-soft shadow-tile hover:text-cobalt-900"><X size={18} aria-hidden /></button></div>
                 {children}
             </div>
         </div>,

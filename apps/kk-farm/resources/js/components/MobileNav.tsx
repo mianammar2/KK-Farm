@@ -2,7 +2,7 @@ import BrandMark from './BrandMark';
 import { Link, router } from '@inertiajs/react';
 import { ChevronLeft, Smartphone, ClipboardList, HeartPulse, KeyRound, LayoutGrid, LogOut, MoreHorizontal, ScanLine, Search, X, CalendarCheck } from 'lucide-react';
 import { NavIcon } from './ArtIcon';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { cx } from './ui';
 import { titleCase } from '../lib/titleCase';
@@ -75,6 +75,7 @@ export function AppBar({ path, items, right }: { path: string; items: NavItem[];
 
 export function TabBar({ path, modules, items, onLogout }: { path: string; modules: string[]; items: NavItem[]; onLogout: () => void }) {
     const [more, setMore] = useState(false);
+    const drag = useDragControls(); // audit: dragging down closes the sheet from its handle only, so the list itself scrolls
     const can = (m: string) => modules.includes(m);
     const tabs = [
         { href: '/apps', label: 'Apps', icon: LayoutGrid }, // D-168: the app launcher
@@ -117,10 +118,16 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
                         <motion.div
                             role="dialog" aria-label="More"
                             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 420, damping: 40 }}
-                            drag="y" dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.6 }} onDragEnd={(_, info) => info.offset.y > 90 && setMore(false)}
-                            className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-tile px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-float"
+                            drag="y" dragControls={drag} dragListener={false} dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.6 }} onDragEnd={(_, info) => info.offset.y > 90 && setMore(false)}
+                            className="absolute inset-x-0 bottom-0 flex max-h-[88dvh] flex-col rounded-t-3xl bg-tile px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-float"
                         >
-                            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-rule-strong" />
+                            {/* audit: with many apps the sheet was taller than the phone (top row cut off, no way to scroll or close); now it scrolls, with a handle and Close */}
+                            <div className="flex shrink-0 touch-none items-center justify-between pb-2" onPointerDown={(e) => drag.start(e)}>
+                                <span className="w-10" />
+                                <span className="h-1.5 w-10 rounded-full bg-rule-strong" aria-hidden />
+                                <button type="button" onClick={() => setMore(false)} aria-label="Close" className="grid size-10 place-items-center rounded-full text-ink-soft hover:bg-glaze"><X size={20} aria-hidden /></button>
+                            </div>
+                            <div className="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1">
                             <div className="grid grid-cols-3 gap-2">
                                 {items.filter((i) => can(i.module)).map((i, n) => (
                                     <motion.div key={i.href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 * n, duration: 0.2 }}>
@@ -135,6 +142,7 @@ export function TabBar({ path, modules, items, onLogout }: { path: string; modul
                                 <Link href="/account/app" onClick={() => setMore(false)} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-glaze text-sm font-semibold active:scale-95"><Smartphone size={17} aria-hidden /> App</Link>
                                 <Link href="/account/password" onClick={() => setMore(false)} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-glaze text-sm font-semibold active:scale-95"><KeyRound size={17} aria-hidden /> Password</Link>
                                 <button type="button" onClick={onLogout} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-crit-100 text-sm font-semibold text-crit-700 active:scale-95"><LogOut size={17} aria-hidden /> Sign out</button>
+                            </div>
                             </div>
                         </motion.div>
                     </motion.div>

@@ -211,13 +211,13 @@ function MatingCard({ m, isVet, canClose, settings, options, outcome = false }: 
             {confirmBox}
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left">
                 <GoatPortrait number={m.dam.number} coat={m.dam.coat} sex="female" size={38} />
-                <div className="min-w-44 flex-1">
+                <div className="min-w-0 flex-1 basis-44">
                     <p className="font-semibold text-cobalt-900">{m.dam.name ?? m.dam.number}{m.sire ? <span className="font-normal text-ink-soft"> × {m.sire.number}</span> : null}</p>
                     <p className="text-sm text-ink-soft">Mated {m.mated} · {m.method}{m.cycle ? ` · service ${m.cycle}` : ''}{m.status === 'open' && m.checkDue ? ` · check due ${m.checkDue}` : ''}</p>
                     {m.status === 'pregnant' ? <div className="mt-1 h-1.5 overflow-hidden rounded-sm bg-cobalt-100" role="progressbar" aria-valuenow={m.progress} aria-valuemin={0} aria-valuemax={100} aria-label="Gestation progress"><div className="h-full bg-manganese-600" style={{ width: `${m.progress}%` }} /></div> : null}
                 </div>
                 {m.status === 'pregnant' && m.expected ? <div className="text-right text-sm"><div className="font-semibold text-cobalt-900">{m.expected}</div><div className="text-ink-soft">{(m.days ?? 0) < 0 ? `${-(m.days ?? 0)} days over` : `in ${m.days} days`}</div></div> : null}
-                <div className="flex items-center gap-1.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">{/* audit: chips wrap on a phone instead of running off the screen */}
                     {m.active ? <Chip className={m.scan === 'NSC' ? 'bg-glaze text-ink-soft' : ['PCF', 'VPG', 'MPG'].includes(m.scan) ? 'bg-ok-100 text-ok-700' : ['CPL', 'SFL', 'HYD', 'ABN'].includes(m.scan) ? 'bg-crit-100 text-crit-700' : 'bg-watch-100 text-watch-700'} ><LibIcon name="app-reports" size={14} />{m.scan === 'NSC' ? 'Not Scanned' : options.ultrasound[m.scan]}</Chip> : null}
                     {m.alert && ALERT[m.alert] ? <Chip className={ALERT[m.alert].className}><AlertTriangle size={12} aria-hidden />{ALERT[m.alert].label}</Chip> : null}
                     {m.pregnancy ? <Chip className={PREG_CLASS[m.pregnancy] ?? 'bg-glaze text-ink-soft'}><LibIcon name={m.pregnancy === 'PLS' ? 'ic-sick' : m.pregnancy === 'PCM' ? 'ic-kidding' : 'ic-pregnant'} size={14} />{options.pregnancy[m.pregnancy]} <span className="opacity-60">{m.pregnancy}</span></Chip>

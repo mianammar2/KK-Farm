@@ -112,8 +112,8 @@ function MatingCheck({ bucks, does, pairing, limit, isLead }: Props) {
         <div className="space-y-3">
             <Panel title="Inbreeding Check" description="Coefficient of inbreeding of the kid, from the farm's pedigree. Unknown parents count as unrelated, so a thin pedigree can hide relatedness.">
                 <div className="flex flex-wrap items-end gap-3 p-4">
-                    <Field label="Doe"><GoatSelect className="field" value={pair.dam} onChange={(x) => setPair({ ...pair, dam: x.target.value })}>{does.map((d) => <option key={d.id} value={d.id}>{d.number}</option>)}</GoatSelect></Field>
-                    <Field label="Buck"><GoatSelect className="field" value={pair.sire} onChange={(x) => setPair({ ...pair, sire: x.target.value })}>{bucks.map((d) => <option key={d.id} value={d.id}>{d.number}</option>)}</GoatSelect></Field>
+                    <Field label="Doe"><GoatSelect className="field" value={pair.dam} onChange={(x) => setPair({ ...pair, dam: x.target.value })}>{does.length ? does.map((d) => <option key={d.id} value={d.id}>{d.number}</option>) : <option value="">No doe to choose</option>}</GoatSelect></Field>
+                    <Field label="Buck"><GoatSelect className="field" value={pair.sire} onChange={(x) => setPair({ ...pair, sire: x.target.value })}>{bucks.length ? bucks.map((d) => <option key={d.id} value={d.id}>{d.number}</option>) : <option value="">No breeding buck to choose</option>}</GoatSelect></Field>
                     <Button onClick={() => router.get('/genetics', { tab: 'mating', ...pair }, { preserveState: true, preserveScroll: true, only: ['pairing'] })}>Check</Button>
                     {pairing ? <p className={`text-lg font-bold ${pairing.coi > limit ? 'text-crit-700' : 'text-ok-700'}`}>{pairing.coi}% {pairing.coi > limit ? `(above ${limit}%)` : '(within limit)'}</p> : null}
                 </div>
