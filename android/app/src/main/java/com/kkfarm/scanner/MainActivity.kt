@@ -180,9 +180,12 @@ class MainActivity : Activity(), GunAgent.Host {
             return
         }
         Log.i(TAG, "multiple tags ${codes.joinToString()}")
+        // D-362: goats by their Tag ID first, then tags not linked to a goat
+        val sorted = codes.sortedWith(compareBy({ TagNames.goat(it) == null }, { TagNames.goat(it) ?: it }))
+        val labels = sorted.map { c -> TagNames.goat(c)?.let { n -> if (n.equals(c, true)) n else "$n   (tag ${c.takeLast(6)})" } ?: "New tag  $c" }
         AlertDialog.Builder(this)
             .setTitle("${codes.size} tags read. Which goat?")
-            .setItems(codes.toTypedArray()) { _, i -> onScan(codes[i], "broadcast-choice") }
+            .setItems(labels.toTypedArray()) { _, i -> onScan(sorted[i], "broadcast-choice") }
             .setNegativeButton("Cancel", null)
             .show()
     }
@@ -306,6 +309,7 @@ class MainActivity : Activity(), GunAgent.Host {
 
     override fun onResume() {
         super.onResume()
+        TagNames.refresh(server) // D-362
         isVisible = true
         visible = true
         if (!uhf.open()) handler.post(readerWatchdog) // our own reader runs the UHF module; otherwise keep InfoWedge alive
@@ -560,6 +564,7 @@ class MainActivity : Activity(), GunAgent.Host {
         /** D-359: write only the tag whose EPC the page checked (it is not another goat's); "" = the one touching tag. */
         @JavascriptInterface fun writeUhfTag(code: String, epc: String) = uhf.write(code, epc.ifBlank { null }) { ok, written, old, error ->
             vibrate(if (ok) 120 else 400)
+            if (ok) handler.postDelayed({ TagNames.refresh(server, force = true) }, 3000) // the tag now reads as the Tag ID
             sendEvent("kk:uhf-written", JSONObject().put("ok", ok).put("code", written).put("chip", old).put("error", error ?: JSONObject.NULL))
         }
         @JavascriptInterface fun openNfcSettings() = runOnUiThread { runCatching { startActivity(Intent(android.provider.Settings.ACTION_NFC_SETTINGS)) } }
@@ -598,6 +603,6 @@ class MainActivity : Activity(), GunAgent.Host {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.9.0"
-    const val CODE = 30 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.9.1"
+    const val CODE = 31 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }
