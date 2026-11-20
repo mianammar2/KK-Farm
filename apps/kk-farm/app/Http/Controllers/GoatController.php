@@ -735,6 +735,16 @@ class GoatController extends Controller
         ]);
     }
 
+    /** D-361: goats on the farm whose linked RFID tag still carries its factory number (not the goat's Tag ID). */
+    public function factoryTags(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless($request->user()->passes('assign_tags'), 403);
+        $goats = Animal::with('openAssignment.tag')->where('status', 'active')->whereNull('voided_at')->whereHas('openAssignment')->orderBy('farm_number')->get()
+            ->filter(fn (Animal $a) => $a->openAssignment?->tag && strtoupper($a->openAssignment->tag->tag_code) !== strtoupper($a->farm_number));
+
+        return response()->json($goats->map(fn (Animal $a) => ['id' => $a->id, 'number' => $a->farm_number, 'tag' => $a->openAssignment->tag->tag_code])->values());
+    }
+
     /** D-293: the goat for a typed Tag ID or a scanned RFID chip, for the goat fields of every form. */
     public function find(Request $request): \Illuminate\Http\JsonResponse
     {

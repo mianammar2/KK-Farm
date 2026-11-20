@@ -55,6 +55,30 @@ class GoatRfidLinkTest extends TestCase
         $this->actingAs($ceo)->post("/goats/{$goat->id}/tag", ['tag' => 'MC-071126P-01', 'chip' => 'not hex'])->assertSessionHasErrors('chip');
     }
 
+    public function test_goats_whose_tags_still_carry_factory_numbers_are_listed_for_writing(): void // D-361
+    {
+        $org = Organization::create(['name' => 'Write Farm', 'slug' => 'write-farm']);
+        Tenant::set($org->id);
+        $shed = Shed::create(['code' => 'S1', 'name' => 'S1']);
+        $pen = Pen::create(['shed_id' => $shed->id, 'name' => 'P01', 'purpose' => 'Does']);
+        $breed = Breed::create(['name' => 'Makhi Cheeni']);
+        $old = Animal::create(['farm_number' => 'MC-101026P-05', 'sex' => 'female', 'breed_id' => $breed->id, 'birth_date' => now()->subYear(), 'origin' => 'purchased', 'pen_id' => $pen->id])->fresh();
+        $done = Animal::create(['farm_number' => 'MC-101026P-06', 'sex' => 'female', 'breed_id' => $breed->id, 'birth_date' => now()->subYear(), 'origin' => 'purchased', 'pen_id' => $pen->id])->fresh();
+        $ceo = User::create(['name' => 'Boss', 'email' => 'b@write.test', 'password' => 'x', 'role' => 'ceo', 'org_id' => $org->id, 'active' => true]);
+        $feeder = User::create(['name' => 'Feeder', 'email' => 'f@write.test', 'password' => 'x', 'role' => 'feeding', 'org_id' => $org->id, 'active' => true]);
+        $this->actingAs($ceo)->post("/goats/{$old->id}/tag", ['tag' => 'E2000016651501581200A119'])->assertSessionHasNoErrors();
+        $this->actingAs($ceo)->post("/goats/{$done->id}/tag", ['tag' => 'MC-101026P-06'])->assertSessionHasNoErrors();
+
+        $this->actingAs($feeder)->getJson('/goats/factory-tags')->assertForbidden();
+        $this->actingAs($ceo)->getJson('/goats/factory-tags')->assertOk()->assertExactJson([['id' => $old->id, 'number' => 'MC-101026P-05', 'tag' => 'E2000016651501581200A119']]);
+
+        // written on the gun: the link moves to the Tag ID and the goat leaves the list
+        $this->actingAs($ceo)->post("/goats/{$old->id}/tag", ['tag' => 'MC-101026P-05', 'chip' => 'E2000016651501581200A119'])->assertSessionHasNoErrors();
+        $this->actingAs($ceo)->getJson('/goats/factory-tags')->assertOk()->assertExactJson([]);
+        $this->actingAs($ceo)->getJson('/lookup/goat?code=C6D58C9001C1042199900040')->assertNotFound(); // another goat's packed ID
+        $this->actingAs($ceo)->getJson('/goats/find?code=MC-101026P-05')->assertOk()->assertJson(['number' => 'MC-101026P-05']);
+    }
+
     public function test_a_uhf_tag_written_with_the_tag_id_reads_as_that_tag_id(): void
     {
         $this->assertSame('MC-181026P-17', \App\Support\GoatRegistration::normaliseCode(bin2hex('MC-181026P-17')."00"));

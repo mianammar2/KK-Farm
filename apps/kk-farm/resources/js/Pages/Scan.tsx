@@ -4,6 +4,7 @@ import { ClipboardPlus, FileText, MoveRight, Radio, Scale, ScanLine, Stethoscope
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import WriteTagId from '../components/WriteTagId';
+import WriteAllTags from '../components/WriteAllTags';
 import { useScannerDevice } from '../lib/scanner';
 import { haptic } from '../lib/native';
 import GoatPortrait from '../components/GoatPortrait';
@@ -48,6 +49,7 @@ export default function Scan({ result, samples, goats, attach = null }: Props) {
         <>
             <Head title="RFID Scan" />
             <PageHeader title="RFID scan" description={IN_APP ? "Pull the trigger at a goat's ear tag. A tag with no goat starts the goat register." : "Scan a tag to open the goat. A tag with no goat starts the goat register. This is a simulator: no real reader is connected."} />
+            <WriteAllTags canAssign={(usePage<SharedProps>().props.auth?.gates ?? []).includes('assign_tags')} />{/* D-361 */}
             <div className="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
                 <div className="space-y-4">
                     <Panel title={IN_APP ? 'Type a tag code' : 'Simulated reader'}>

@@ -277,6 +277,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/media/{photo}', [GoatController::class, 'media']);
     });
     Route::middleware('module:goats,health')->group(function (): void { // D-348
+        Route::get('/goats/factory-tags', [GoatController::class, 'factoryTags']); // D-361: tags still on their factory number, to write the Tag IDs in one go
         Route::get('/goats/find', [GoatController::class, 'find']); // D-293: typed Tag ID or scanned RFID → the goat
         Route::get('/goats/{animal}', [GoatController::class, 'show']);
         Route::get('/goats/{animal}/peek', [GoatController::class, 'peek']); // D-248: the card when a goat is tapped in the 3D shed
