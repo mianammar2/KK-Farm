@@ -52,7 +52,7 @@ export default function Scan({ result, samples, goats, attach = null }: Props) {
             <Head title="RFID Scan" />
             {/* D-363: a scan opens in a centred pop card and nothing else shows behind it; closing it goes back to scanning */}
             {result || attach ? (
-                <Sheet onClose={() => router.get('/scan', {}, { replace: true })}>
+                <Sheet large onClose={() => router.get('/scan', {}, { replace: true })}>
                     {attach ? <AttachPrompt attach={attach} /> : null}
                     {result?.state === 'assigned' && result.goat ? <Found goat={result.goat} result={result} /> : null}
                     {result && result.state !== 'assigned' ? <Unassigned result={result} goats={goats} /> : null}

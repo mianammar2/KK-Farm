@@ -89,6 +89,7 @@ class MainActivity : Activity(), GunAgent.Host {
     private fun beginHold() {
         if (holdingTrigger) return
         holdingTrigger = true
+        Beep.reading() // D-365: the trigger is reading
         held.clear(); heldNew.clear(); heldStreamed = false
         uhf.startHold { t -> runOnUiThread { if (held.put(t.code, t) == null) { heldNew.add(t.code); vibrate(15) } } }
         handler.postDelayed(flushHeld, 250)
@@ -149,10 +150,10 @@ class MainActivity : Activity(), GunAgent.Host {
         handler.postDelayed({
             flushHeld.run()
             handler.postDelayed({
-                if (heldStreamed) { vibrate(60); Log.i(TAG, "count took ${held.size} tags"); return@postDelayed }
+                if (heldStreamed) { vibrate(60); Beep.found(); Log.i(TAG, "count took ${held.size} tags"); return@postDelayed }
                 val reads = held.values.sortedByDescending { it.rssi }
                 when {
-                    reads.isEmpty() -> Log.i(TAG, "trigger released, no tags (reader ${uhf.state()})")
+                    reads.isEmpty() -> { Beep.nothing(); Log.i(TAG, "trigger released, no tags (reader ${uhf.state()})") }
                     reads.size == 1 || reads[0].rssi - reads[1].rssi >= 6 -> onScan(reads[0].code, "uhf")
                     else -> chooseTag(reads.map { it.code })
                 }
@@ -180,6 +181,7 @@ class MainActivity : Activity(), GunAgent.Host {
             return
         }
         Log.i(TAG, "multiple tags ${codes.joinToString()}")
+        Beep.found()
         // D-362: goats by their Tag ID first, then tags not linked to a goat
         val sorted = codes.sortedWith(compareBy({ TagNames.goat(it) == null }, { TagNames.goat(it) ?: it }))
         val labels = sorted.map { c -> TagNames.goat(c)?.let { n -> if (n.equals(c, true)) n else "$n   (tag ${c.takeLast(6)})" } ?: "New tag  $c" }
@@ -439,6 +441,7 @@ class MainActivity : Activity(), GunAgent.Host {
         Log.i(TAG, "scan $code via $via")
         GunLink.lastScan = "${GunLink.now()} $code via $via"
         vibrate(40)
+        if (via != "broadcast-choice") Beep.found() // D-365 (a pick from the list already beeped when it opened)
         val url = "$server/scan?tag=" + URLEncoder.encode(code, "UTF-8")
         if (isVisible) {
             // D-293: a form with a goat field on screen takes the scan itself (window.kkScan); otherwise the Scan page opens
@@ -603,6 +606,6 @@ class MainActivity : Activity(), GunAgent.Host {
 
 /** Kept separate so the web user agent and the bridge report the same version. */
 object BuildConfigVersion {
-    const val NAME = "0.9.1"
-    const val CODE = 31 // must match versionCode in build.gradle.kts; the updater compares it with the server's
+    const val NAME = "0.9.2"
+    const val CODE = 32 // must match versionCode in build.gradle.kts; the updater compares it with the server's
 }

@@ -152,8 +152,8 @@ export default function AppScan({ listen = true, variant = 'bar' }: { listen?: b
 function PopCard({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
     useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
     return (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-cobalt-950/45 p-3 sm:p-6" onClick={onClose} role="dialog" aria-modal="true">
-            <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-tile shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-cobalt-950/45 p-1.5 sm:p-6" onClick={onClose} role="dialog" aria-modal="true">{/* D-365: nearly the whole screen on a phone or the gun */}
+            <div className="relative max-h-[97dvh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-tile shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 grid size-9 place-items-center rounded-full bg-glaze text-ink-soft hover:text-ink"><X size={18} /></button>
                 {children}
             </div>
