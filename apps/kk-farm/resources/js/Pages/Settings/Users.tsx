@@ -180,7 +180,7 @@ export default function Users(p: Props) {
             {tab === 'people' ? (
                 <>
                     {/* Summary: each number is also a filter */}
-                    <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0">{summary.map(([status, n, label]) => {
+                    <div className="-mx-3 mb-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0">{summary.map(([status, n, label]) => {
                         const on = p.filters.status === status && (status !== '' || !filtersOn);
                         return (
                             <button key={label} type="button" aria-pressed={on} onClick={() => apply({ status })}
