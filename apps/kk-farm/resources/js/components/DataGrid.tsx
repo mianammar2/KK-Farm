@@ -235,7 +235,7 @@ export default function DataGrid<T>({ id, cols, rows, name, filterable = true, e
     const phone = usePhone();
     const show = (c: Col<T>, r: T): ReactNode => { const v = val(c, r); return c.render ? c.render(r) : v === null || v === undefined || v === '' ? null : String(v); };
     const blank = (c: Col<T>, r: T) => { const v = val(c, r); return !c.render && (v === null || v === undefined || v === ''); };
-    // D-367: on a phone each row is a card (first column as its title, the rest as labelled lines); sorting moves into a picker
+    // D-368: on a phone each row is a card (first column as its title, the rest as labelled lines); sorting moves into a picker
     const cards = (
         <div className="space-y-2 px-3 pb-2">
             <div className="flex items-center gap-2">

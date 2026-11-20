@@ -97,7 +97,7 @@ export default function Sales({ sales, kpis, monthly, customers, types, can }: P
                             </div>
                         ))}
                     </div></div>
-                    {/* D-367: on a phone the months are a list of bars, one per line, instead of a chart that scrolls sideways */}
+                    {/* D-368: on a phone the months are a list of bars, one per line, instead of a chart that scrolls sideways */}
                     <ul className="space-y-1.5 sm:hidden">{monthly.map((m) => (
                         <li key={m.month} className="flex items-center gap-2 text-sm"><span className="w-16 shrink-0 text-xs text-ink-soft tabular-nums">{monthLabel(m.month)}</span>
                             <span className="h-3 flex-1 overflow-hidden rounded-full bg-rule/60"><span className="block h-full rounded-full bg-gradient-to-r from-[#1f7a3a] to-[#2e9e4f]" style={{ width: `${(m.net / max) * 100}%` }} /></span>
