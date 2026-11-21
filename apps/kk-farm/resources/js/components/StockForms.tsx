@@ -21,7 +21,7 @@ export function doseFill(m: { unit: string; dose?: StandardDose } | undefined, g
     if (!d) return {};
     const add = (days: number) => { const x = new Date(`${givenOn}T00:00:00`); x.setDate(x.getDate() + days); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
     const out: Record<string, string | boolean> = {};
-    if (d.qty != null) { out.qty_used = String(d.qty); out.dose = `${d.qty} ${m!.unit}`; }
+    if (d.qty != null) { out.qty_used = String(d.qty); out.dose = `${d.qty} ${doseUnit(m!.unit)}`; }
     if (d.route) out.route = d.route;
     if (d.frequency) { out.frequency = d.frequency; out.days_prescribed = d.frequency !== 'once' && d.days ? String(d.days) : ''; }
     if (d.meatDays != null || d.milkDays != null) {
@@ -32,6 +32,8 @@ export function doseFill(m: { unit: string; dose?: StandardDose } | undefined, g
     }
     return out;
 }
+/** D-374: the store counts ml; a dose given is written in CC (1 CC = 1 ml). Other units stay as they are. */
+export const doseUnit = (unit: string | undefined) => (unit === 'ml' ? 'CC' : unit ?? '');
 export const hasDose = (m?: { dose?: StandardDose }) => !!m?.dose && Object.values(m.dose).some((v) => v !== null && v !== undefined);
 export const ROUTES: Record<string, string> = { oral: 'Oral', injectable: 'Injectable', topical: 'Topical', other: 'Other' };
 export const FREQUENCIES: Record<string, string> = { once: 'Once (single dose)', sid: 'Once a day', bid: 'Twice a day', tid: 'Three times a day', q48h: 'Every 2 days', q72h: 'Every 3 days', weekly: 'Once a week' };
@@ -179,7 +181,7 @@ function MedicineDetails({ data, set, setDiseases, diseases, e, unit, packs = PA
                 <p className="mb-2 text-sm font-semibold text-cobalt-900">Standard dose (from the label, set by the vet)</p>
                 <p className="mb-2 text-xs text-ink-soft">Filled in when this medicine is given; the vet checks and can change each field.</p>
                 <div className="grid grid-cols-2 gap-3">
-                    <Field label={`Amount per goat (${unit})`} error={e.dose_qty}><input type="number" min={0} step="0.01" className="field" value={data.dose_qty} onChange={(x) => set('dose_qty', x.target.value)} /></Field>
+                    <Field label={`Amount per goat (${doseUnit(unit)})`} error={e.dose_qty}><input type="number" min={0} step="0.01" className="field" value={data.dose_qty} onChange={(x) => set('dose_qty', x.target.value)} /></Field>
                     <Field label="Route" error={e.dose_route}><select className="field" value={data.dose_route} onChange={(x) => set('dose_route', x.target.value)}><option value="">—</option>{Object.entries(ROUTES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     <Field label="How often" error={e.dose_frequency}><select className="field" value={data.dose_frequency} onChange={(x) => set('dose_frequency', x.target.value)}><option value="">—</option>{Object.entries(FREQUENCIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
                     {data.dose_frequency && data.dose_frequency !== 'once' ? <Field label="For how many days" error={e.dose_days}><input type="number" min={1} className="field" value={data.dose_days} onChange={(x) => set('dose_days', x.target.value)} /></Field> : null}
@@ -200,7 +202,7 @@ function MedicineDetails({ data, set, setDiseases, diseases, e, unit, packs = PA
 }
 
 export function MedicineAdd({ categories, units, packs, checks, diseases, onDone, via = 'app' }: { categories: Record<string, string>; units: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; diseases?: Array<{ id: number; name: string }>; onDone?: () => void; via?: Via }) {
-    const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'CC', reorder_level: '', cost_per_unit: '', opening_qty: '', batch: '', expiry_on: '', ...medFields() });
+    const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'ml', reorder_level: '', cost_per_unit: '', opening_qty: '', batch: '', expiry_on: '', ...medFields() });
     const e = form.errors as Record<string, string>;
     return (
         <Panel title="Add a medicine or vet supply">

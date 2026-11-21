@@ -21,7 +21,7 @@ class Medicine extends Model
         'other' => 'Other',
     ];
 
-    public const UNITS = ['CC' => 'CC', // D-371: millilitres, as the vets say them
+    public const UNITS = ['ml' => 'ml', // D-374: the store counts ml; doses are written in CC (1 CC = 1 ml)
          'tablet' => 'tablet', 'bolus' => 'bolus', 'dose' => 'dose', 'vial' => 'vial', 'g' => 'g', 'sachet' => 'sachet', 'piece' => 'piece', 'tube' => 'tube'];
 
     /** D-332: how the product is bought; one pack holds pack_size stock units (a vial of 100 ml). */

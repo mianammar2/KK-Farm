@@ -83,7 +83,7 @@ class MedicationTest extends TestCase
     public function test_a_medicine_keeps_its_standard_dose_and_a_treatment_keeps_its_dose_time(): void // D-369
     {
         $vet = $this->user('vet');
-        $this->actingAs($vet)->post('/health/medicines', ['code' => 'OXY', 'name' => 'Oxytetracycline LA', 'category' => 'antibiotic', 'unit' => 'CC', 'opening_qty' => 100,
+        $this->actingAs($vet)->post('/health/medicines', ['code' => 'OXY', 'name' => 'Oxytetracycline LA', 'category' => 'antibiotic', 'unit' => 'ml', 'opening_qty' => 100,
             'dose_qty' => 5, 'dose_route' => 'injectable', 'dose_frequency' => 'q72h', 'dose_days' => 6, 'meat_withdrawal_days' => 28, 'milk_withdrawal_days' => 7])->assertSessionHasNoErrors();
         $this->actingAs($vet)->get('/health')->assertInertia(fn ($p) => $p->where('medicines.0.dose', ['qty' => 5, 'route' => 'injectable', 'frequency' => 'q72h', 'days' => 6, 'meatDays' => 28, 'milkDays' => 7])->etc());
 

@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { Check, Plus, ScanLine, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { type Profile } from './GoatProfileCard';
-import { doseFill, MedicinePicker, rankMedicines, type PickMedicine, type Suggest } from './StockForms';
+import { doseFill, doseUnit, MedicinePicker, rankMedicines, type PickMedicine, type Suggest } from './StockForms';
 import { Button, cx, Field } from './ui';
 
 /*
@@ -26,7 +26,7 @@ const blank = (): Item => ({ medicine_id: '', qty_used: '', product: '', dose: '
 /** D-372: the route from what the medicine is: an injection (CC, or "inj" in the name), by mouth, or on the skin. */
 function guessRoute(name: string, unit: string): string | null {
     const n = name.toLowerCase();
-    if (/inj|vial|\bla\b/.test(n) || unit === 'CC' || unit === 'vial') return 'injectable';
+    if (/inj|vial|\bla\b/.test(n) || unit === 'ml' || unit === 'vial') return 'injectable';
     if (/tab|bolus|oral|drench|powder|sachet|syrup/.test(n) || ['tablet', 'bolus', 'sachet'].includes(unit)) return 'oral';
     if (/oil|spray|cream|ointment|wound|lotion|gel/.test(n) || unit === 'tube') return 'topical';
     return null;
@@ -86,7 +86,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
     const pick = (i: number, id: string) => {
         const m = medicines.find((x) => String(x.id) === id);
         const fill = doseFill(m, date) as Partial<Item>;
-        set(i, { medicine_id: id, route: guessRoute(m?.name ?? '', m?.unit ?? '') ?? 'injectable', ...fill, ...(fill.qty_used ? { dose: `${fill.qty_used} ${m?.unit ?? ''}`.trim() } : {}) });
+        set(i, { medicine_id: id, route: guessRoute(m?.name ?? '', m?.unit ?? '') ?? 'injectable', ...fill, ...(fill.qty_used ? { dose: `${fill.qty_used} ${doseUnit(m?.unit)}`.trim() } : {}) });
     };
     const suggested = rankMedicines(medicines, suggest, { diseaseId }).suggested.filter(({ m }) => m.qty > 0).slice(0, 4);
     const addSuggested = (id: number) => {
@@ -212,8 +212,8 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
                                         <MedicinePicker medicines={medicines} suggest={suggest} diseaseId={diseaseId} value={it.medicine_id} onChange={(id) => pick(i, id)} />
                                     </Field>
                                     {it.medicine_id ? (
-                                        <Field label={`Quantity (${med?.unit ?? ''})`} error={e('qty_used') ?? e('dose')} hint="Taken from the store">
-                                            <input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={it.qty_used} onChange={(x) => set(i, { qty_used: x.target.value, dose: x.target.value ? `${x.target.value} ${med?.unit ?? ''}`.trim() : '' })} />
+                                        <Field label={`Quantity (${doseUnit(med?.unit)})`} error={e('qty_used') ?? e('dose')} hint="Taken from the store">
+                                            <input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={it.qty_used} onChange={(x) => set(i, { qty_used: x.target.value, dose: x.target.value ? `${x.target.value} ${doseUnit(med?.unit)}`.trim() : '' })} />
                                         </Field>
                                     ) : (
                                         <>
@@ -238,7 +238,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
                     </dl>
                     {items.map((it, i) => (
                         <div key={i} className="rounded-tile border border-rule p-3">
-                            <p className="font-semibold text-cobalt-900">{i + 1}. {nameOf(it)}{it.medicine_id ? ` · ${it.qty_used} ${medOf(it)?.unit ?? ''} from the store` : ''}</p>
+                            <p className="font-semibold text-cobalt-900">{i + 1}. {nameOf(it)}{it.medicine_id ? ` · ${it.qty_used} ${doseUnit(medOf(it)?.unit)} (${it.qty_used} ${medOf(it)?.unit ?? ''} from the store)` : ''}</p>
                             <p>{it.dose} · {routes[it.route] ?? it.route} · {frequencies[it.frequency] ?? it.frequency}{it.frequency !== 'once' ? ` for ${it.days_prescribed} days` : ''}</p>
                             {it.meat_clear_on || it.milk_clear_on ? <p className="text-watch-700">Meat clear {dmy(it.meat_clear_on)} · milk clear {dmy(it.milk_clear_on)} (from the label days set on the medicine)</p> : null}
                             {it.review_on || it.notes ? <p className="text-ink-soft">{[it.review_on ? `review ${dmy(it.review_on)}` : '', it.notes].filter(Boolean).join(' · ')}</p> : null}

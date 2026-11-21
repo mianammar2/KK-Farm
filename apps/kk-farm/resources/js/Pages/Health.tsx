@@ -9,7 +9,7 @@ import Checkups, { type CheckupData } from '../components/Checkups';
 import HealthEntry from '../components/HealthEntry';
 import Sheet from '../components/Sheet';
 import MedicationForm from '../components/MedicationForm';
-import { doseFill, hasDose, MedicineAdd, MedicineEdit, MedicineMoveForm, MedicinePicker, type StandardDose, type Suggest } from '../components/StockForms';
+import { doseFill, doseUnit, hasDose, MedicineAdd, MedicineEdit, MedicineMoveForm, MedicinePicker, type StandardDose, type Suggest } from '../components/StockForms';
 import { titleCase } from '../lib/titleCase';
 import AddButton from '../components/AddButton';
 import { useTabParam } from '../lib/useTabParam';
@@ -286,7 +286,7 @@ function DoseForm({ c, routes, medicines, suggest, onDone }: { c: Case; routes: 
             </Field>
             {chosen && hasDose(chosen) ? <p className="rounded-md bg-glaze px-2.5 py-1.5 text-xs text-ink-soft sm:col-span-2">Filled from the standard dose set for {chosen.name}. Check each field against the label.</p> : null}
             {form.data.medicine_id ? (
-                <Field label={`Quantity used (${medicines.find((m) => String(m.id) === form.data.medicine_id)?.unit ?? ''})`} error={e.qty_used}><input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={form.data.qty_used} onChange={(x) => form.setData('qty_used', x.target.value)} /></Field>
+                <Field label={`Quantity used (${doseUnit(medicines.find((m) => String(m.id) === form.data.medicine_id)?.unit)})`} error={e.qty_used}><input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={form.data.qty_used} onChange={(x) => form.setData('qty_used', x.target.value)} /></Field>
             ) : (
                 <Field label="Medicine / product" error={e.product}><input className="field" value={form.data.product} onChange={(x) => form.setData('product', x.target.value)} /></Field>
             )}

@@ -39,7 +39,7 @@ class ParasiteControlTest extends TestCase
         }
         $u = fn (string $role) => User::firstOrCreate(['email' => "$role@worm.test"], ['name' => "Test $role", 'password' => 'x', 'role' => $role, 'org_id' => Tenant::current()]);
         [$care, $vet] = [$u('caretaker'), $u('vet')];
-        $med = Medicine::create(['code' => 'ALB', 'name' => 'Albendazole', 'category' => 'dewormer', 'unit' => 'CC', 'cost_per_unit_minor' => 2000]);
+        $med = Medicine::create(['code' => 'ALB', 'name' => 'Albendazole', 'category' => 'dewormer', 'unit' => 'ml', 'cost_per_unit_minor' => 2000]);
         MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now(), 'type' => 'opening', 'qty' => 100, 'batch' => 'A1', 'expiry_on' => now()->addYear(), 'recorded_by' => 'x']);
 
         // The vet's guide only highlights.

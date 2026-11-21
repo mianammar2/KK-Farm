@@ -75,7 +75,7 @@ class ActionCenterTest extends TestCase
         $this->goat('KID-1', ['origin' => 'born_on_farm', 'birth_date' => now()->subDays(90)]);
         $this->goat('LOOSE-1', ['pen_id' => null]);
 
-        $med = Medicine::create(['code' => 'OLD', 'name' => 'Old vial', 'category' => 'other', 'unit' => 'CC', 'reorder_level' => 0]);
+        $med = Medicine::create(['code' => 'OLD', 'name' => 'Old vial', 'category' => 'other', 'unit' => 'ml', 'reorder_level' => 0]);
         MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now()->subYear(), 'type' => 'purchase', 'qty' => 10, 'batch' => 'B1', 'expiry_on' => now()->subMonth(), 'recorded_by' => 'x']);
         FeedItem::create(['code' => 'WS', 'name' => 'Straw', 'category' => 'roughage', 'reorder_level_kg' => 50]);
         Task::create(['title' => 'Fix the gate', 'type' => 'other', 'due_on' => now()->subDays(2), 'priority' => 'medium', 'status' => 'open']);

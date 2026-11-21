@@ -40,7 +40,7 @@ class InventoryImsTest extends TestCase
     {
         $ceo = $this->user('ceo');
         $this->actingAs($ceo)->post('/inventory/feed-items', ['code' => 'conc', 'name' => 'Concentrate', 'category' => 'concentrate', 'cost_per_kg' => 120, 'opening_kg' => 50])->assertSessionHasNoErrors();
-        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => 'oxy', 'name' => 'Oxytetracycline', 'category' => 'antibiotic', 'unit' => 'CC', 'opening_qty' => 100, 'batch' => 'B1', 'expiry_on' => now()->addDays(10)->toDateString()])->assertSessionHasNoErrors();
+        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => 'oxy', 'name' => 'Oxytetracycline', 'category' => 'antibiotic', 'unit' => 'ml', 'opening_qty' => 100, 'batch' => 'B1', 'expiry_on' => now()->addDays(10)->toDateString()])->assertSessionHasNoErrors();
         $feed = FeedItem::firstOrFail();
         $med = Medicine::firstOrFail();
         $this->assertSame(50.0, (float) Feed::stock(true)[$feed->id]);
@@ -67,8 +67,8 @@ class InventoryImsTest extends TestCase
     public function test_each_role_works_only_in_its_own_store(): void
     {
         $this->actingAs($this->user('vet'))->post('/inventory/feed-items', ['code' => 'x', 'name' => 'X', 'category' => 'concentrate', 'cost_per_kg' => 1])->assertForbidden();
-        $this->actingAs($this->user('feeding'))->post('/inventory/medicines', ['code' => 'y', 'name' => 'Y', 'category' => 'antibiotic', 'unit' => 'CC'])->assertForbidden();
-        $med = Medicine::create(['code' => 'M', 'name' => 'M', 'category' => 'antibiotic', 'unit' => 'CC']);
+        $this->actingAs($this->user('feeding'))->post('/inventory/medicines', ['code' => 'y', 'name' => 'Y', 'category' => 'antibiotic', 'unit' => 'ml'])->assertForbidden();
+        $med = Medicine::create(['code' => 'M', 'name' => 'M', 'category' => 'antibiotic', 'unit' => 'ml']);
         $this->actingAs($this->user('feeding'))->getJson("/inventory/card?kind=medicine&id={$med->id}")->assertForbidden();
         $this->actingAs($this->user('feeding'))->post('/inventory/count', ['kind' => 'medicine', 'counted_on' => now()->toDateString(), 'counts' => [['id' => $med->id, 'counted' => 1]]])->assertForbidden();
     }
@@ -78,7 +78,7 @@ class InventoryImsTest extends TestCase
         $ceo = $this->user('ceo');
         $feed = FeedItem::create(['code' => 'F', 'name' => 'Straw', 'category' => 'roughage', 'cost_per_kg_minor' => 3000]);
         FeedStockMovement::create(['feed_item_id' => $feed->id, 'moved_on' => now()->toDateString(), 'type' => 'opening', 'qty_kg' => 100, 'recorded_by' => 't']);
-        $med = Medicine::create(['code' => 'M', 'name' => 'Ivermectin', 'category' => 'dewormer', 'unit' => 'CC', 'cost_per_unit_minor' => 1000]);
+        $med = Medicine::create(['code' => 'M', 'name' => 'Ivermectin', 'category' => 'dewormer', 'unit' => 'ml', 'cost_per_unit_minor' => 1000]);
         MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now()->toDateString(), 'type' => 'opening', 'qty' => 50, 'recorded_by' => 't']);
         $gen = StoreItem::create(['code' => 'G', 'name' => 'Lime', 'category' => 'cleaning', 'unit' => 'bag', 'cost_per_unit_minor' => 50000]);
         StoreMove::create(['store_item_id' => $gen->id, 'moved_on' => now()->toDateString(), 'type' => 'opening', 'qty' => 10, 'recorded_by' => 't']);
@@ -99,7 +99,7 @@ class InventoryImsTest extends TestCase
     public function test_a_medicine_keeps_its_label_pack_and_vet_check_and_a_held_one_cannot_be_given(): void
     {
         $vet = $this->user('vet');
-        $this->actingAs($vet)->post('/inventory/medicines', ['code' => 'dexafer', 'name' => 'Dexafer Injection', 'category' => 'steroid', 'unit' => 'CC', 'pack_unit' => 'vial', 'pack_size' => 50,
+        $this->actingAs($vet)->post('/inventory/medicines', ['code' => 'dexafer', 'name' => 'Dexafer Injection', 'category' => 'steroid', 'unit' => 'ml', 'pack_unit' => 'vial', 'pack_size' => 50,
             'spec' => 'Possibly dexamethasone 2 mg/mL', 'use_case' => 'Potential steroid use', 'check_status' => 'hold', 'check_note' => 'Identity not established', 'opening_qty' => 100])->assertSessionHasNoErrors();
         $m = Medicine::firstOrFail();
         $this->assertSame(['vial', 50.0, 'hold', 'Possibly dexamethasone 2 mg/mL'], [$m->pack_unit, $m->pack_size, $m->check_status, $m->spec]);
@@ -124,9 +124,9 @@ class InventoryImsTest extends TestCase
     {
         $vet = $this->user('vet');
         $pneu = \App\Models\Disease::create(['name' => 'Pneumonia', 'category' => 'respiratory']);
-        $abx = Medicine::create(['code' => 'A', 'name' => 'Tygent', 'category' => 'antibiotic', 'unit' => 'CC']);
-        $vit = Medicine::create(['code' => 'V', 'name' => 'Cyanocob', 'category' => 'vitamin', 'unit' => 'CC']);
-        $worm = Medicine::create(['code' => 'W', 'name' => 'Fenzole', 'category' => 'dewormer', 'unit' => 'CC']);
+        $abx = Medicine::create(['code' => 'A', 'name' => 'Tygent', 'category' => 'antibiotic', 'unit' => 'ml']);
+        $vit = Medicine::create(['code' => 'V', 'name' => 'Cyanocob', 'category' => 'vitamin', 'unit' => 'ml']);
+        $worm = Medicine::create(['code' => 'W', 'name' => 'Fenzole', 'category' => 'dewormer', 'unit' => 'ml']);
         MedicineMovement::create(['medicine_id' => $worm->id, 'moved_on' => now()->toDateString(), 'type' => 'opening', 'qty' => 100, 'recorded_by' => 't']);
 
         // the vet sets the medicines used for a disease on the medicine; an edit without the field keeps the links
@@ -151,7 +151,7 @@ class InventoryImsTest extends TestCase
 
     public function test_a_vet_confirms_a_held_product_with_one_click_and_it_can_then_be_given(): void
     {
-        $m = Medicine::create(['code' => 'T', 'name' => 'Trioxyl LA', 'category' => 'antibiotic', 'unit' => 'CC', 'check_status' => 'hold', 'check_note' => 'Product identity to confirm']);
+        $m = Medicine::create(['code' => 'T', 'name' => 'Trioxyl LA', 'category' => 'antibiotic', 'unit' => 'ml', 'check_status' => 'hold', 'check_note' => 'Product identity to confirm']);
         $this->actingAs($this->user('feeding'))->post("/inventory/medicines/{$m->id}/confirm")->assertForbidden();
         $this->actingAs($this->user('vet'))->post("/inventory/medicines/{$m->id}/confirm")->assertSessionHasNoErrors();
         $m->refresh();
@@ -164,13 +164,13 @@ class InventoryImsTest extends TestCase
         $ceo = $this->user('ceo');
         $this->assertSame('ALMOX-LA', \App\Support\ItemCode::fromName('Almox LA Injection'));
         $this->assertSame('ACTIBOL', \App\Support\ItemCode::fromName('Actibol Injection'));
-        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => '', 'name' => 'Actibol Injection', 'category' => 'vitamin', 'unit' => 'CC'])->assertSessionHasNoErrors();
-        $this->actingAs($ceo)->post('/inventory/medicines', ['name' => 'Actibol Injection', 'category' => 'vitamin', 'unit' => 'CC'])->assertSessionHasNoErrors();
+        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => '', 'name' => 'Actibol Injection', 'category' => 'vitamin', 'unit' => 'ml'])->assertSessionHasNoErrors();
+        $this->actingAs($ceo)->post('/inventory/medicines', ['name' => 'Actibol Injection', 'category' => 'vitamin', 'unit' => 'ml'])->assertSessionHasNoErrors();
         $this->assertSame(['ACTIBOL', 'ACTIBOL-2'], \App\Models\Medicine::orderBy('id')->pluck('code')->all());
         $this->actingAs($ceo)->post('/inventory/feed-items', ['name' => 'Wheat straw', 'category' => 'roughage', 'cost_per_kg' => 30])->assertSessionHasNoErrors();
         $this->assertTrue(\App\Models\FeedItem::where('code', 'WHEAT-STRAW')->exists());
         $this->actingAs($ceo)->post('/inventory/items', ['name' => 'Gloves', 'category' => 'bedding', 'unit' => 'kg'])->assertSessionHasNoErrors();
         $this->assertTrue(\App\Models\StoreItem::where('code', 'GLOVES')->exists());
-        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => 'actibol', 'name' => 'Other', 'category' => 'vitamin', 'unit' => 'CC'])->assertSessionHasErrors('code');
+        $this->actingAs($ceo)->post('/inventory/medicines', ['code' => 'actibol', 'name' => 'Other', 'category' => 'vitamin', 'unit' => 'ml'])->assertSessionHasErrors('code');
     }
 }

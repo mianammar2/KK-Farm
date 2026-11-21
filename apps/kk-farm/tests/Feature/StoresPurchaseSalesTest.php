@@ -64,7 +64,7 @@ class StoresPurchaseSalesTest extends TestCase
     {
         $manager = $this->user('manager');
         $feed = FeedItem::create(['code' => 'WND', 'name' => 'Wanda', 'category' => 'concentrate', 'cost_per_kg_minor' => 9000]);
-        $med = Medicine::create(['code' => 'OXY', 'name' => 'Oxytetracycline', 'category' => 'antibiotic', 'unit' => 'CC']);
+        $med = Medicine::create(['code' => 'OXY', 'name' => 'Oxytetracycline', 'category' => 'antibiotic', 'unit' => 'ml']);
         $store = StoreItem::create(['code' => 'DIS', 'name' => 'Disinfectant', 'category' => 'cleaning', 'unit' => 'litre']);
         $this->actingAs($manager)->post('/purchase/suppliers', ['name' => 'Al-Noor Feeds', 'city' => 'Bahawalpur', 'supplies' => 'Feed'])->assertSessionHasNoErrors();
         $supplier = Supplier::firstOrFail();
