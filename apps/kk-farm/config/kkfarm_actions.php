@@ -154,6 +154,7 @@ return [
     'POST /health/cases' => ['inline' => 'the action checks open_cases', 'module' => 'health'],
     'POST /health/cases/{case}' => ['inline' => 'the action checks clinical', 'module' => 'health'],
     'POST /health/cases/{case}/treatments' => ['inline' => 'the action checks clinical', 'module' => 'health'],
+    'POST /health/medications' => ['inline' => 'the action checks clinical', 'module' => 'health'], // D-368
     'POST /health/checkups' => ['inline' => 'the action checks health_checkup, open_cases', 'module' => 'health'],
     'POST /health/checkups/{checkup}' => ['inline' => 'the action checks health_checkup, correct_health_records', 'module' => 'health'],
     'POST /health/clinical' => ['inline' => 'the action checks clinical', 'module' => 'health'],

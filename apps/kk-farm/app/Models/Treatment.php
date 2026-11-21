@@ -9,7 +9,7 @@ class Treatment extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['given_on' => 'date', 'next_dose_on' => 'date', 'meat_clear_on' => 'date', 'milk_clear_on' => 'date', 'cost_minor' => 'integer'];
+    protected $casts = ['given_on' => 'date', 'given_at' => 'datetime', 'next_dose_on' => 'date', 'meat_clear_on' => 'date', 'milk_clear_on' => 'date', 'cost_minor' => 'integer'];
 
     public const ROUTES = ['oral' => 'Oral', 'injectable' => 'Injectable', 'topical' => 'Topical', 'other' => 'Other'];
 

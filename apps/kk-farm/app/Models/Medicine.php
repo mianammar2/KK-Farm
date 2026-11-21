@@ -9,7 +9,7 @@ class Medicine extends Model
 {
     protected $guarded = [];
 
-    protected $casts = ['active' => 'boolean', 'reorder_level' => 'float', 'cost_per_unit_minor' => 'integer', 'pack_size' => 'float'];
+    protected $casts = ['active' => 'boolean', 'reorder_level' => 'float', 'cost_per_unit_minor' => 'integer', 'pack_size' => 'float', 'dose_qty' => 'float'];
 
     public const CATEGORIES = [
         'antibiotic' => 'Antibiotic', 'dewormer' => 'Dewormer (anthelmintic)', 'vaccine' => 'Vaccine', 'anti_inflammatory' => 'Anti-inflammatory / pain',

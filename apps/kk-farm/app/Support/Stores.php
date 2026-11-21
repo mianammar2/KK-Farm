@@ -99,7 +99,9 @@ final class Stores
     public static function medicineDetails(Medicine $m): array
     {
         return ['spec' => $m->spec, 'useCase' => $m->use_case, 'source' => $m->source, 'packUnit' => $m->pack_unit, 'packSize' => $m->pack_size, 'check' => $m->check_status, 'checkNote' => $m->check_note,
-            'diseaseIds' => $m->diseases->pluck('id')->all()]; // D-333
+            'diseaseIds' => $m->diseases->pluck('id')->all(), // D-333
+            'dose' => ['qty' => $m->dose_qty !== null ? (float) $m->dose_qty : null, 'route' => $m->dose_route, 'frequency' => $m->dose_frequency, 'days' => $m->dose_days,
+                'meatDays' => $m->meat_withdrawal_days, 'milkDays' => $m->milk_withdrawal_days]]; // D-369: the standard dose
     }
 
     /** D-331: medicine batches that still hold stock and have an expiry date, earliest first, with days left. */

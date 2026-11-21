@@ -8,7 +8,8 @@ import type { Health as HealthState, Option, SharedProps } from '../types';
 import Checkups, { type CheckupData } from '../components/Checkups';
 import HealthEntry from '../components/HealthEntry';
 import Sheet from '../components/Sheet';
-import { MedicineAdd, MedicineEdit, MedicineMoveForm, MedicinePicker, type Suggest } from '../components/StockForms';
+import MedicationForm from '../components/MedicationForm';
+import { doseFill, hasDose, MedicineAdd, MedicineEdit, MedicineMoveForm, MedicinePicker, type StandardDose, type Suggest } from '../components/StockForms';
 import { titleCase } from '../lib/titleCase';
 import AddButton from '../components/AddButton';
 import { useTabParam } from '../lib/useTabParam';
@@ -24,7 +25,7 @@ type Case = {
     resolved: string | null; age: number; by: string; nextDose: string | null; doseAlert: 'overdue' | 'soon' | null; withdrawal: { meat: string | null; milk: string | null } | null; treatments: Dose[];
 };
 type Medicine = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; notes?: string | null;
-    spec: string | null; useCase: string | null; source: string | null; packUnit: string | null; packSize: number | null; check: string | null; checkNote: string | null; diseaseIds: number[]; qty: number; value: number; status: 'negative' | 'expired' | 'reorder' | 'expiring' | 'ok'; batches: Array<{ batch: string; expiry: string | null; expired: boolean; qty: number }> };
+    spec: string | null; useCase: string | null; source: string | null; packUnit: string | null; packSize: number | null; check: string | null; checkNote: string | null; diseaseIds: number[]; dose?: StandardDose; qty: number; value: number; status: 'negative' | 'expired' | 'reorder' | 'expiring' | 'ok'; batches: Array<{ batch: string; expiry: string | null; expired: boolean; qty: number }> };
 type MedMove = { id: number; on: string; medicine: string; unit: string; type: string; qty: number; batch: string | null; expiry: string | null; by: string; party: string | null };
 type WithdrawalRow = { goatId: string; number: string; name: string | null; coat: string; sex: 'male' | 'female'; meat: string | null; milk: string | null };
 type Props = {
@@ -60,7 +61,7 @@ export default function Health(props: Props) {
     const isVet = !!auth?.gates.includes('clinical');
     const canCase = !!auth?.gates.includes('open_cases'); // D-095: vet or administrator
     // D-097: forms open from + buttons (or a dashboard shortcut: /health?new=case|report|care), not always on the page.
-    const [sheet, setSheet] = useState<'entry' | 'case' | 'report' | 'care' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'entry' | 'case' | 'report' | 'care' | null));
+    const [sheet, setSheet] = useState<'entry' | 'case' | 'report' | 'care' | 'med' | null>(() => (new URLSearchParams(window.location.search).get('new') as 'entry' | 'case' | 'report' | 'care' | 'med' | null));
     const action = (label: string, icon: React.ReactNode, onClick: () => void, primary = false) => (
         <button type="button" onClick={onClick} className={cx('kk-pill inline-flex min-h-11 items-center justify-center gap-1.5 rounded-tile border px-2 text-sm font-semibold max-sm:flex-col max-sm:py-2 sm:rounded-full sm:px-4 sm:text-sm', primary ? 'border-cobalt-800 bg-cobalt-800 text-white hover:bg-cobalt-900' : 'border-rule bg-tile text-cobalt-900 hover:border-turq-600')}>
             <span className="flex items-center gap-1"><Plus size={14} aria-hidden className="max-sm:hidden" />{icon}</span>{titleCase(label)}
@@ -75,6 +76,7 @@ export default function Health(props: Props) {
             <PageHeader title="Veterinary & health" description={isVet ? 'Checkups, cases, treatments and withdrawal. Every record carries your name.' : canCase ? 'Checkups and cases. Treatments and withdrawal dates are set by a veterinarian.' : 'Report a concern. A veterinarian decides what it is.'} />
             <div className="mb-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                 {props.checkups.canCheck ? action('Checkup', <Stethoscope size={16} aria-hidden />, () => setTab('checkups'), true) : null}
+                {isVet ? action('Medication', <Pill size={16} aria-hidden />, () => setSheet('med'), true) : null}{/* D-368: scan, when, why, every medicine */}
                 {props.checkups.canEntry ? action('New health entry', <ClipboardPlus size={16} aria-hidden />, () => { setFromReport(null); setSheet('entry'); }) : null}
                 {auth?.gates.includes('report_concern') ? action('Report concern', <AlertTriangle size={16} aria-hidden />, () => setSheet('report')) : null}
                 {auth?.gates.includes('give_care') ? action('Preventive care', <Syringe size={16} aria-hidden />, () => setSheet('care')) : null}
@@ -176,7 +178,9 @@ export default function Health(props: Props) {
                 </div>
 
                 {sheet ? (
-                    <Sheet onClose={() => { setSheet(null); setFromReport(null); }}>
+                    <Sheet large={sheet === 'med'} onClose={() => { setSheet(null); setFromReport(null); }}>
+                        {sheet === 'med' && isVet ? <MedicationForm cases={props.cases} medicines={props.medicines} suggest={props.suggest} routes={props.routes} frequencies={props.frequencies ?? {}} severities={severities}
+                            diseases={props.diseases.filter((d) => d.active).map((d) => ({ id: d.id, name: d.name }))} onDone={() => setSheet(null)} /> : null}
                         {sheet === 'entry' ? <HealthEntry data={{ ...props.checkups, conditions: props.checkups.conditions ?? [] }} severities={severities} onDone={() => { setSheet(null); router.reload(); }}
                             goatId={new URLSearchParams(window.location.search).get('goat') ?? undefined} kind={new URLSearchParams(window.location.search).get('kind') ?? undefined} /> : null}{/* D-305: ?new=entry&goat=…&kind=… from an app's scan */}
                         {sheet === 'case' && canCase ? <CaseForm key={fromReport?.id ?? 'new'} goats={goats} severities={severities} report={fromReport} onDone={() => { setFromReport(null); setSheet(null); setTab('cases'); }} /> : null}
@@ -270,13 +274,17 @@ function CaseCard({ c, isVet, statuses, routes, medicines, suggest }: { c: Case;
 
 function DoseForm({ c, routes, medicines, suggest, onDone }: { c: Case; routes: Record<string, string>; medicines: Medicine[]; suggest: Suggest; onDone: () => void }) {
     const { frequencies = {} } = usePage<{ frequencies?: Record<string, string> }>().props; // D-304
-    const form = useForm({ medicine_id: '', qty_used: '', qty_per_dose: '', review_on: '', given_on: today(), product: '', dose: '', route: 'injectable', frequency: 'once', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, cost: '', notes: '' });
+    const form = useForm({ medicine_id: '', qty_used: '', qty_per_dose: '', review_on: '', given_on: today(), given_time: '', product: '', dose: '', route: 'injectable', frequency: 'once', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, notes: '' });
     const e = form.errors as Record<string, string>;
+    // D-369: choosing a medicine fills its standard dose (set by the vet on the medicine); every field stays editable
+    const chosen = medicines.find((m) => String(m.id) === form.data.medicine_id);
+    const pick = (id: string) => form.setData((d) => ({ ...d, medicine_id: id, ...doseFill(medicines.find((m) => String(m.id) === id), d.given_on) }));
     return (
         <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/health/cases/${c.id}/treatments`, { preserveScroll: true, onSuccess: onDone }); }} className="grid gap-3 rounded-tile border border-rule p-3 sm:grid-cols-2">
             <Field label="From the medicine store" error={e.medicine_id} hint="Issues it from stock, earliest expiry first">
-                <MedicinePicker medicines={medicines} suggest={suggest} diseaseId={c.diseaseId} value={form.data.medicine_id} onChange={(id) => form.setData('medicine_id', id)} />
+                <MedicinePicker medicines={medicines} suggest={suggest} diseaseId={c.diseaseId} value={form.data.medicine_id} onChange={pick} />
             </Field>
+            {chosen && hasDose(chosen) ? <p className="rounded-md bg-glaze px-2.5 py-1.5 text-xs text-ink-soft sm:col-span-2">Filled from the standard dose set for {chosen.name}. Check each field against the label.</p> : null}
             {form.data.medicine_id ? (
                 <Field label={`Quantity used (${medicines.find((m) => String(m.id) === form.data.medicine_id)?.unit ?? ''})`} error={e.qty_used}><input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={form.data.qty_used} onChange={(x) => form.setData('qty_used', x.target.value)} /></Field>
             ) : (
@@ -285,11 +293,11 @@ function DoseForm({ c, routes, medicines, suggest, onDone }: { c: Case; routes: 
             <Field label="Dose + unit" error={e.dose} hint="e.g. 5 ml, 2 tablets"><input className="field" value={form.data.dose} onChange={(x) => form.setData('dose', x.target.value)} /></Field>
             <Field label="Route" error={e.route}><select className="field" value={form.data.route} onChange={(x) => form.setData('route', x.target.value)}>{Object.entries(routes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Date given" error={e.given_on}><input type="date" className="field" max={today()} value={form.data.given_on} onChange={(x) => form.setData('given_on', x.target.value)} /></Field>
+            <Field label="Dose time" error={e.given_time} hint="When the dose was given"><input type="time" className="field" required value={form.data.given_time} onChange={(x) => form.setData('given_time', x.target.value)} /></Field>
             <Field label="How often" error={e.frequency} hint="Every dose is planned; the first is this one"><select className="field" value={form.data.frequency} onChange={(x) => form.setData('frequency', x.target.value)}>{Object.entries(frequencies).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             {form.data.frequency !== 'once' ? <Field label="For how many days" error={e.days_prescribed}><input type="number" min={1} className="field" value={form.data.days_prescribed} onChange={(x) => form.setData('days_prescribed', x.target.value)} required /></Field> : null}
             {form.data.medicine_id && form.data.frequency !== 'once' ? <Field label="Amount per later dose" error={e.qty_per_dose} hint="Taken from stock each time (blank = same as this one)"><input type="number" min={0} step="0.1" className="field" value={form.data.qty_per_dose} onChange={(x) => form.setData('qty_per_dose', x.target.value)} /></Field> : null}
             <Field label="Review date (optional)" error={e.review_on} hint="The vet re-checks the goat"><input type="date" className="field" min={form.data.given_on} value={form.data.review_on} onChange={(x) => form.setData('review_on', x.target.value)} /></Field>
-            <Field label="Cost PKR" error={e.cost}><input type="number" min={0} className="field" value={form.data.cost} onChange={(x) => form.setData('cost', x.target.value)} /></Field>
             <div className="rounded-tile bg-watch-100 p-3 sm:col-span-2">
                 <p className="mb-2 text-sm font-semibold text-watch-700">Withdrawal: from the product label, decided by you. The app never calculates it.</p>
                 <div className="grid gap-3 sm:grid-cols-2">

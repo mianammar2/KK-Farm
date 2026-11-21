@@ -348,6 +348,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/health/protocols/{protocol}', [HealthController::class, 'protocol']);
         Route::post('/health/cases/{case}', [HealthController::class, 'updateCase']);
         Route::post('/health/cases/{case}/treatments', [HealthController::class, 'addTreatment']);
+        Route::post('/health/medications', [HealthController::class, 'medication']); // D-368: scan, date and time, why, every medicine
         Route::post('/health/medicines', [\App\Http\Controllers\MedicineController::class, 'store']);
         Route::post('/health/medicines/{medicine}', [\App\Http\Controllers\MedicineController::class, 'update']);
         Route::post('/health/medicine-stock', [\App\Http\Controllers\MedicineController::class, 'movement']);

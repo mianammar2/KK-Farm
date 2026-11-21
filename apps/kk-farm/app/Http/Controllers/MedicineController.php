@@ -36,6 +36,9 @@ class MedicineController extends Controller
             'spec' => ['nullable', 'string', 'max:200'], 'use_case' => ['nullable', 'string', 'max:200'], 'source' => ['nullable', 'string', 'max:120'], // D-332
             'pack_unit' => ['nullable', Rule::in(array_keys(Medicine::PACKS))], 'pack_size' => ['nullable', 'required_with:pack_unit', 'numeric', 'gt:0', 'max:100000'],
             'check_status' => ['nullable', Rule::in(array_keys(Medicine::CHECKS))], 'check_note' => ['nullable', 'string', 'max:200'], 'notes' => ['nullable', 'string', 'max:200'],
+            'dose_qty' => ['nullable', 'numeric', 'gt:0', 'max:100000'], 'dose_route' => ['nullable', Rule::in(array_keys(\App\Models\Treatment::ROUTES))], // D-369: the standard dose
+            'dose_frequency' => ['nullable', Rule::in(array_keys(\App\Support\Doses::FREQUENCIES))], 'dose_days' => ['nullable', 'integer', 'between:1,365'],
+            'meat_withdrawal_days' => ['nullable', 'integer', 'between:0,1000'], 'milk_withdrawal_days' => ['nullable', 'integer', 'between:0,1000'],
             'disease_ids' => ['nullable', 'array'], 'disease_ids.*' => ['integer', 'distinct', 'exists:diseases,id'], // D-333
         ], [], self::ATTRIBUTES);
 
@@ -65,6 +68,9 @@ class MedicineController extends Controller
             'spec' => ['nullable', 'string', 'max:200'], 'use_case' => ['nullable', 'string', 'max:200'], 'source' => ['nullable', 'string', 'max:120'], // D-332
             'pack_unit' => ['nullable', Rule::in(array_keys(Medicine::PACKS))], 'pack_size' => ['nullable', 'required_with:pack_unit', 'numeric', 'gt:0', 'max:100000'],
             'check_status' => ['nullable', Rule::in(array_keys(Medicine::CHECKS))], 'check_note' => ['nullable', 'string', 'max:200'], 'notes' => ['nullable', 'string', 'max:200'],
+            'dose_qty' => ['nullable', 'numeric', 'gt:0', 'max:100000'], 'dose_route' => ['nullable', Rule::in(array_keys(\App\Models\Treatment::ROUTES))], // D-369: the standard dose
+            'dose_frequency' => ['nullable', Rule::in(array_keys(\App\Support\Doses::FREQUENCIES))], 'dose_days' => ['nullable', 'integer', 'between:1,365'],
+            'meat_withdrawal_days' => ['nullable', 'integer', 'between:0,1000'], 'milk_withdrawal_days' => ['nullable', 'integer', 'between:0,1000'],
             'disease_ids' => ['nullable', 'array'], 'disease_ids.*' => ['integer', 'distinct', 'exists:diseases,id'], // D-333
         ], [], self::ATTRIBUTES);
         // D-332: the stock unit can change only while nothing has moved, so past quantities keep their meaning
@@ -103,7 +109,9 @@ class MedicineController extends Controller
     private static function details(array $d): array
     {
         return ['spec' => $d['spec'] ?? null, 'use_case' => $d['use_case'] ?? null, 'source' => $d['source'] ?? null, 'pack_unit' => $d['pack_unit'] ?? null,
-            'pack_size' => ! empty($d['pack_unit']) ? ($d['pack_size'] ?? null) : null, 'check_status' => $d['check_status'] ?? 'confirmed', 'check_note' => $d['check_note'] ?? null, 'notes' => $d['notes'] ?? null];
+            'pack_size' => ! empty($d['pack_unit']) ? ($d['pack_size'] ?? null) : null, 'check_status' => $d['check_status'] ?? 'confirmed', 'check_note' => $d['check_note'] ?? null, 'notes' => $d['notes'] ?? null,
+            'dose_qty' => $d['dose_qty'] ?? null, 'dose_route' => $d['dose_route'] ?? null, 'dose_frequency' => $d['dose_frequency'] ?? null, 'dose_days' => $d['dose_days'] ?? null,
+            'meat_withdrawal_days' => $d['meat_withdrawal_days'] ?? null, 'milk_withdrawal_days' => $d['milk_withdrawal_days'] ?? null];
     }
 
     /** Receipts, disposals and adjustments. A purchase also records the Medicine expense. Patient issues come from treatments. */

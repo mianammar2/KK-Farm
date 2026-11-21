@@ -12,7 +12,29 @@ export type Via = 'app' | 'inventory';
 export type MoveTypes = Record<string, { label: string; direction: number }>;
 export type FeedItem = { id: number; code: string; name: string; category: string; costPerKg: number; cp: number | null; dm: number | null; reorder: number; supplier: string | null; notes: string | null; active: boolean; stock: number };
 export type MedicineItem = { id: number; code: string; name: string; category: string; unit: string; reorder: number; costPerUnit: number; storage: string | null; supplier: string | null; active: boolean; qty: number;
-    spec?: string | null; useCase?: string | null; source?: string | null; packUnit?: string | null; packSize?: number | null; check?: string | null; checkNote?: string | null; notes?: string | null; diseaseIds?: number[] };
+    spec?: string | null; useCase?: string | null; source?: string | null; packUnit?: string | null; packSize?: number | null; check?: string | null; checkNote?: string | null; notes?: string | null; diseaseIds?: number[]; dose?: StandardDose };
+/** D-369: a medicine's standard dose, set by the vet from the label; filled in when the medicine is given. */
+export type StandardDose = { qty: number | null; route: string | null; frequency: string | null; days: number | null; meatDays: number | null; milkDays: number | null };
+/** D-369: the fields a dose form fills from a medicine's standard dose ({} when none is set). Dates from `givenOn`. */
+export function doseFill(m: { unit: string; dose?: StandardDose } | undefined, givenOn: string): Record<string, string | boolean> {
+    const d = m?.dose;
+    if (!d) return {};
+    const add = (days: number) => { const x = new Date(`${givenOn}T00:00:00`); x.setDate(x.getDate() + days); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+    const out: Record<string, string | boolean> = {};
+    if (d.qty != null) { out.qty_used = String(d.qty); out.dose = `${d.qty} ${m!.unit}`; }
+    if (d.route) out.route = d.route;
+    if (d.frequency) { out.frequency = d.frequency; out.days_prescribed = d.frequency !== 'once' && d.days ? String(d.days) : ''; }
+    if (d.meatDays != null || d.milkDays != null) {
+        const none = (d.meatDays ?? 0) === 0 && (d.milkDays ?? 0) === 0;
+        out.no_withdrawal = none;
+        out.meat_clear_on = !none && d.meatDays ? add(d.meatDays) : '';
+        out.milk_clear_on = !none && d.milkDays ? add(d.milkDays) : '';
+    }
+    return out;
+}
+export const hasDose = (m?: { dose?: StandardDose }) => !!m?.dose && Object.values(m.dose).some((v) => v !== null && v !== undefined);
+export const ROUTES: Record<string, string> = { oral: 'Oral', injectable: 'Injectable', topical: 'Topical', other: 'Other' };
+export const FREQUENCIES: Record<string, string> = { once: 'Once (single dose)', sid: 'Once a day', bid: 'Twice a day', tid: 'Three times a day', q48h: 'Every 2 days', q72h: 'Every 3 days', weekly: 'Once a week' };
 
 const URLS: Record<Via, { feedItems: string; feedStock: string; medicines: string; medStock: string }> = {
     app: { feedItems: '/feeding/items', feedStock: '/feeding/stock', medicines: '/health/medicines', medStock: '/health/medicine-stock' },
@@ -25,7 +47,7 @@ export type Suggest = {
     byDisease: Record<string, string[]>; byCare: Record<string, string[]>; notGiven: string[];
     diseases: Array<{ id: number; name: string; category: string; set: number[]; used: Record<string, number> }>;
 };
-export type PickMedicine = { id: number; name: string; unit: string; qty: number; category: string; active: boolean; check?: string | null; checkNote?: string | null; spec?: string | null; useCase?: string | null };
+export type PickMedicine = { id: number; name: string; unit: string; qty: number; category: string; active: boolean; check?: string | null; checkNote?: string | null; spec?: string | null; useCase?: string | null ; dose?: StandardDose};
 
 /**
  * D-333: medicines that can be given, the ones that fit first, each with why: set by the vet for the disease, used
@@ -137,8 +159,8 @@ export function FeedStockForm({ items, movementTypes, onDone, via = 'app', itemI
 /** D-332: the purchase pack and the vet's check, defaults for apps that do not pass the lists. */
 const PACKS: Record<string, string> = { vial: 'Vial', ampoule: 'Ampoule', bottle: 'Bottle', can: 'Can', sachet: 'Sachet', box: 'Box', piece: 'Piece', tube: 'Tube', pack: 'Pack' };
 const CHECKS: Record<string, string> = { confirmed: 'Confirmed', to_confirm: 'To confirm', hold: 'On hold' };
-type MedFields = { disease_ids: number[]; spec: string; use_case: string; source: string; pack_unit: string; pack_size: string; check_status: string; check_note: string; notes: string; supplier: string; storage: string };
-const medFields = (m?: MedicineItem): MedFields => ({ disease_ids: m?.diseaseIds ?? [], spec: m?.spec ?? '', use_case: m?.useCase ?? '', source: m?.source ?? '', pack_unit: m?.packUnit ?? '', pack_size: m?.packSize != null ? String(m.packSize) : '', check_status: m?.check ?? 'confirmed', check_note: m?.checkNote ?? '', notes: m?.notes ?? '', supplier: m?.supplier ?? '', storage: m?.storage ?? '' });
+type MedFields = { disease_ids: number[]; dose_qty: string; dose_route: string; dose_frequency: string; dose_days: string; meat_withdrawal_days: string; milk_withdrawal_days: string; spec: string; use_case: string; source: string; pack_unit: string; pack_size: string; check_status: string; check_note: string; notes: string; supplier: string; storage: string };
+const medFields = (m?: MedicineItem): MedFields => ({ disease_ids: m?.diseaseIds ?? [], dose_qty: m?.dose?.qty != null ? String(m.dose.qty) : '', dose_route: m?.dose?.route ?? '', dose_frequency: m?.dose?.frequency ?? '', dose_days: m?.dose?.days != null ? String(m.dose.days) : '', meat_withdrawal_days: m?.dose?.meatDays != null ? String(m.dose.meatDays) : '', milk_withdrawal_days: m?.dose?.milkDays != null ? String(m.dose.milkDays) : '', spec: m?.spec ?? '', use_case: m?.useCase ?? '', source: m?.source ?? '', pack_unit: m?.packUnit ?? '', pack_size: m?.packSize != null ? String(m.packSize) : '', check_status: m?.check ?? 'confirmed', check_note: m?.checkNote ?? '', notes: m?.notes ?? '', supplier: m?.supplier ?? '', storage: m?.storage ?? '' });
 
 /** D-332: label details, purchase pack and the vet's check: the same fields when adding and when editing. */
 function MedicineDetails({ data, set, setDiseases, diseases, e, unit, packs = PACKS, checks = CHECKS }: { data: MedFields; set: (k: Exclude<keyof MedFields, 'disease_ids'>, v: string) => void; setDiseases: (ids: number[]) => void; diseases?: Array<{ id: number; name: string }>; e: Record<string, string>; unit: string; packs?: Record<string, string>; checks?: Record<string, string> }) {
@@ -153,6 +175,18 @@ function MedicineDetails({ data, set, setDiseases, diseases, e, unit, packs = PA
             <Field label="Storage" error={e.storage} hint="e.g. Fridge, Vet cabinet"><input className="field" value={data.storage} onChange={(x) => set('storage', x.target.value)} maxLength={80} /></Field>
             <Field label="Vet check" error={e.check_status} hint="On hold: cannot be given until a vet confirms it"><select className="field" value={data.check_status} onChange={(x) => set('check_status', x.target.value)}>{Object.entries(checks).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             {data.check_status !== 'confirmed' ? <div className="col-span-2"><Field label="What to confirm" error={e.check_note}><input className="field" value={data.check_note} onChange={(x) => set('check_note', x.target.value)} maxLength={200} /></Field></div> : null}
+            <div className="col-span-2 rounded-tile border border-rule p-3">{/* D-369 */}
+                <p className="mb-2 text-sm font-semibold text-cobalt-900">Standard dose (from the label, set by the vet)</p>
+                <p className="mb-2 text-xs text-ink-soft">Filled in when this medicine is given; the vet checks and can change each field.</p>
+                <div className="grid grid-cols-2 gap-3">
+                    <Field label={`Amount per goat (${unit})`} error={e.dose_qty}><input type="number" min={0} step="0.01" className="field" value={data.dose_qty} onChange={(x) => set('dose_qty', x.target.value)} /></Field>
+                    <Field label="Route" error={e.dose_route}><select className="field" value={data.dose_route} onChange={(x) => set('dose_route', x.target.value)}><option value="">—</option>{Object.entries(ROUTES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    <Field label="How often" error={e.dose_frequency}><select className="field" value={data.dose_frequency} onChange={(x) => set('dose_frequency', x.target.value)}><option value="">—</option>{Object.entries(FREQUENCIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+                    {data.dose_frequency && data.dose_frequency !== 'once' ? <Field label="For how many days" error={e.dose_days}><input type="number" min={1} className="field" value={data.dose_days} onChange={(x) => set('dose_days', x.target.value)} /></Field> : null}
+                    <Field label="Meat withdrawal (days, label)" error={e.meat_withdrawal_days}><input type="number" min={0} className="field" value={data.meat_withdrawal_days} onChange={(x) => set('meat_withdrawal_days', x.target.value)} /></Field>
+                    <Field label="Milk withdrawal (days, label)" error={e.milk_withdrawal_days}><input type="number" min={0} className="field" value={data.milk_withdrawal_days} onChange={(x) => set('milk_withdrawal_days', x.target.value)} /></Field>
+                </div>
+            </div>
             {diseases?.length ? (
                 <div className="col-span-2"><Field label="Used for (diseases)" error={e.disease_ids} hint="Offered first when a case of these diseases is treated">
                     <div className="flex max-h-44 flex-wrap gap-x-4 gap-y-1 overflow-y-auto rounded-md border border-rule p-2">

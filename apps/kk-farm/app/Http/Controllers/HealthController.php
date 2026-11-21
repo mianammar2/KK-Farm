@@ -476,7 +476,85 @@ class HealthController extends Controller
     {
         abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian records a treatment.');
         abort_unless(in_array($case->status, HealthCase::ACTIVE, true), 422, 'This case is closed. Open a new case for a new episode.');
+        $data = $request->validate(self::treatmentRules() + ['given_time' => ['nullable', 'date_format:H:i']], [], ['meat_clear_on' => 'meat clear date', 'milk_clear_on' => 'milk clear date', 'next_dose_on' => 'next dose date', 'given_on' => 'date given', 'given_time' => 'dose time']);
+        self::needWithdrawal($data, '');
+        if (! empty($data['given_time'])) { // D-369: the dose's own time
+            $at = Carbon::parse("{$data['given_on']} {$data['given_time']}", \App\Support\Feed::now()->getTimezone());
+            if ($at->isFuture()) {
+                throw ValidationException::withMessages(['given_time' => 'The dose time cannot be later than now.']);
+            }
+            $data['given_at'] = $at->utc();
+        }
+        unset($data['given_time']);
+
+        $result = DB::transaction(fn () => $this->recordTreatment($case, $data, $request->user()));
+        Farm::log($request->user(), "Treated {$case->animal->farm_number}: {$result['product']}", '/health');
+
+        return back()->with('success', 'Treatment saved.'.$result['warning'].(! empty($data['meat_clear_on']) ? ' Meat withdrawal until '.\Illuminate\Support\Carbon::parse($data['meat_clear_on'])->format('d/m/Y').'.' : ''));
+    }
+
+    /**
+     * D-368: Medication from the Veterinary app's button: scan the goat, the date and time given, why (one of its open
+     * cases, or a new reason that opens a case), then every medicine given at that time. All or nothing.
+     */
+    public function medication(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian records medication.');
+        $item = collect(self::treatmentRules())->except(['given_on'])->mapWithKeys(fn ($r, $k) => ["items.*.$k" => $r])->all();
+        $item['items.*.review_on'] = ['nullable', 'date'];
+        $item['items.*.next_dose_on'] = ['nullable', 'date'];
         $data = $request->validate([
+            'animal_id' => ['required', 'exists:animals,id'], 'given_on' => ['required', 'date', 'before_or_equal:today'], 'given_time' => ['required', 'date_format:H:i'],
+            'case_id' => ['nullable', 'integer', 'exists:health_cases,id'],
+            'reason' => ['nullable', 'required_without:case_id', 'string', 'max:120'], 'severity' => ['nullable', 'required_without:case_id', Rule::in(array_keys(HealthCase::SEVERITIES))],
+            'symptoms' => ['nullable', 'string', 'max:1000'], 'isolated' => ['boolean'],
+            'items' => ['required', 'array', 'min:1', 'max:10'],
+        ] + $item, [], ['given_on' => 'date given', 'given_time' => 'time given', 'reason' => 'reason (disease / condition)', 'items' => 'medicines']);
+        $animal = Animal::findOrFail($data['animal_id']);
+        if ($animal->status !== 'active') {
+            throw ValidationException::withMessages(['animal_id' => "{$animal->farm_number} has left the farm. Medication cannot be recorded for it."]);
+        }
+        $at = \Illuminate\Support\Carbon::parse("{$data['given_on']} {$data['given_time']}", \App\Support\Feed::now()->getTimezone());
+        if ($at->isFuture()) {
+            throw ValidationException::withMessages(['given_time' => 'The time given cannot be later than now.']);
+        }
+        foreach ($data['items'] as $i => $it) {
+            self::needWithdrawal($it, "items.$i.");
+            foreach (['next_dose_on', 'review_on', 'meat_clear_on', 'milk_clear_on'] as $d) {
+                if (! empty($it[$d]) && $it[$d] < $data['given_on']) {
+                    throw ValidationException::withMessages(["items.$i.$d" => 'This date cannot be before the date given.']);
+                }
+            }
+        }
+        $case = ! empty($data['case_id']) ? HealthCase::findOrFail($data['case_id']) : null;
+        if ($case && ($case->animal_id !== $animal->id || ! in_array($case->status, HealthCase::ACTIVE, true))) {
+            throw ValidationException::withMessages(['case_id' => 'Choose one of this goat\'s open cases, or a new reason.']);
+        }
+
+        $results = DB::transaction(function () use ($data, $animal, $case, $at, $request) {
+            if (! $case) { // a new reason: its own case, as Open a case does
+                DB::statement('LOCK TABLE health_cases IN SHARE ROW EXCLUSIVE MODE');
+                $case = HealthCase::create(['animal_id' => $animal->id, 'onset_on' => $data['given_on'], 'condition' => $data['reason'], 'symptoms' => $data['symptoms'] ?? null,
+                    'severity' => $data['severity'], 'isolated' => (bool) ($data['isolated'] ?? false), 'disease_id' => \App\Models\Disease::whereRaw('lower(name) = lower(?)', [$data['reason']])->value('id'),
+                    'case_no' => (int) HealthCase::max('case_no') + 1, 'vet' => $request->user()->name, 'recorded_by' => $request->user()->name])->fresh(); // with its default status
+                Farm::event($animal, 'health', "Health case {$case->label()} opened: {$case->condition} (".HealthCase::SEVERITIES[$case->severity].($case->isolated ? ', isolated' : '').')', $request->user()->name);
+            }
+
+            return collect($data['items'])->map(fn ($it) => $this->recordTreatment($case, $it + ['given_on' => $data['given_on'], 'given_at' => $at->copy()->utc()], $request->user()))->all() + ['case' => $case];
+        });
+        $case = $results['case'];
+        unset($results['case']);
+        $names = collect($results)->pluck('product')->implode(', ');
+        Farm::log($request->user(), "Medication for {$animal->farm_number} at {$at->format('d/m/Y H:i')}: {$names}", '/health');
+        $warn = collect($results)->pluck('warning')->filter()->implode('');
+
+        return back()->with('success', "Medication saved for {$animal->farm_number} ({$case->label()}): {$names}, given {$at->format('d/m/Y H:i')}.".$warn);
+    }
+
+    /** The fields of one dose (D-073, D-304). The meat and milk clear dates are the veterinarian's own (D-006). */
+    private static function treatmentRules(): array
+    {
+        return [
             'medicine_id' => ['nullable', 'integer', 'exists:medicines,id'], 'qty_used' => ['nullable', 'required_with:medicine_id', 'numeric', 'gt:0', 'max:100000'],
             'given_on' => ['required', 'date', 'before_or_equal:today'], 'product' => ['nullable', 'required_without:medicine_id', 'string', 'max:120'], 'dose' => ['required', 'string', 'max:40'],
             'route' => ['required', Rule::in(array_keys(Treatment::ROUTES))], 'frequency' => ['nullable', Rule::in(array_keys(\App\Support\Doses::FREQUENCIES))], // D-304
@@ -484,49 +562,54 @@ class HealthController extends Controller
             'days_prescribed' => ['nullable', 'integer', 'between:1,365'], 'next_dose_on' => ['nullable', 'date', 'after_or_equal:given_on'],
             'meat_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'], 'milk_clear_on' => ['nullable', 'date', 'after_or_equal:given_on'],
             'no_withdrawal' => ['boolean'], 'cost' => ['nullable', 'numeric', 'min:0', 'max:10000000'], 'notes' => ['nullable', 'string', 'max:500'],
-        ], [], ['meat_clear_on' => 'meat clear date', 'milk_clear_on' => 'milk clear date', 'next_dose_on' => 'next dose date', 'given_on' => 'date given']);
-        if (empty($data['meat_clear_on']) && empty($data['milk_clear_on']) && empty($data['no_withdrawal'])) {
-            throw ValidationException::withMessages(['meat_clear_on' => 'Enter the meat and milk clear dates from the product label, or tick "No withdrawal for this product".']);
-        }
+        ];
+    }
 
+    /** The vet must type the clear dates, or tick that the product has none, so a date is never left out by accident. */
+    private static function needWithdrawal(array $data, string $prefix): void
+    {
+        if (empty($data['meat_clear_on']) && empty($data['milk_clear_on']) && empty($data['no_withdrawal'])) {
+            throw ValidationException::withMessages([$prefix.'meat_clear_on' => 'Enter the meat and milk clear dates from the product label, or tick "No withdrawal for this product".']);
+        }
+    }
+
+    /** One dose under a case, inside the caller's transaction: stock, planned doses, review task, case status, history. */
+    private function recordTreatment(HealthCase $case, array $data, \App\Models\User $user): array
+    {
         // D-074: a stock medicine names the product, prices the dose and is issued from the store (earliest expiry first).
         $medicine = ! empty($data['medicine_id']) ? \App\Models\Medicine::findOrFail($data['medicine_id']) : null;
         if ($medicine) {
             $data['product'] = $medicine->name;
             $data['cost'] ??= $medicine->cost_per_unit_minor ? $data['qty_used'] * $medicine->cost_per_unit_minor / 100 : null;
         }
+        $treatment = Treatment::create(collect($data)->except(['no_withdrawal', 'cost'])->all() + [
+            'health_case_id' => $case->id, 'animal_id' => $case->animal_id, 'cost_minor' => isset($data['cost']) ? (int) round($data['cost'] * 100) : null, 'recorded_by' => $user->name,
+        ]);
         $short = 0.0;
-
-        DB::transaction(function () use ($case, $data, $request, $medicine, &$short) {
-            $treatment = Treatment::create(collect($data)->except(['no_withdrawal', 'cost'])->all() + [
-                'health_case_id' => $case->id, 'animal_id' => $case->animal_id, 'cost_minor' => isset($data['cost']) ? (int) round($data['cost'] * 100) : null, 'recorded_by' => $request->user()->name,
+        if ($medicine) {
+            $short = \App\Support\MedicineStock::issue($medicine, (float) $data['qty_used'], [
+                'moved_on' => $data['given_on'], 'treatment_id' => $treatment->id, 'reference' => $case->label(), 'recorded_by' => $user->name,
             ]);
-            if ($medicine) {
-                $short = \App\Support\MedicineStock::issue($medicine, (float) $data['qty_used'], [
-                    'moved_on' => $data['given_on'], 'treatment_id' => $treatment->id, 'reference' => $case->label(), 'recorded_by' => $request->user()->name,
-                ]);
-            }
-            \App\Support\Doses::plan($treatment, $request->user()); // D-304: every dose, the first one given now
-            if (! empty($data['review_on'])) { // workbook Vet_Orders: the vet's review date
-                \App\Models\Task::create(['title' => mb_substr("Treatment review: {$case->animal->farm_number} · {$data['product']}", 0, 190), 'type' => 'health', 'priority' => 'medium', 'status' => 'open',
-                    'due_on' => $data['review_on'], 'animal_id' => $case->animal_id, 'user_id' => $request->user()->id]);
-            }
-            if ($case->status === 'open') {
-                $case->update(['status' => 'under_treatment']);
-            }
-            $clear = array_filter(['meat clear '.($data['meat_clear_on'] ?? '') => ! empty($data['meat_clear_on']), 'milk clear '.($data['milk_clear_on'] ?? '') => ! empty($data['milk_clear_on'])]);
-            Farm::event($case->animal, 'health', "Treatment ({$case->label()}): {$data['product']} {$data['dose']}".($clear ? ' · '.implode(', ', array_keys($clear)) : ' · no withdrawal'), $request->user()->name);
-            $this->syncHealth($case->animal);
-        });
-        Farm::log($request->user(), "Treated {$case->animal->farm_number}: {$data['product']}", '/health');
+        }
+        \App\Support\Doses::plan($treatment, $user); // D-304: every dose, the first one given now
+        if (! empty($data['review_on'])) { // workbook Vet_Orders: the vet's review date
+            \App\Models\Task::create(['title' => mb_substr("Treatment review: {$case->animal->farm_number} · {$data['product']}", 0, 190), 'type' => 'health', 'priority' => 'medium', 'status' => 'open',
+                'due_on' => $data['review_on'], 'animal_id' => $case->animal_id, 'user_id' => $user->id]);
+        }
+        if ($case->status === 'open') {
+            $case->update(['status' => 'under_treatment']);
+        }
+        $clear = array_filter(['meat clear '.($data['meat_clear_on'] ?? '') => ! empty($data['meat_clear_on']), 'milk clear '.($data['milk_clear_on'] ?? '') => ! empty($data['milk_clear_on'])]);
+        $time = isset($data['given_at']) ? ' at '.\Illuminate\Support\Carbon::parse($data['given_at'])->setTimezone(\App\Support\Feed::now()->getTimezone())->format('H:i') : '';
+        Farm::event($case->animal, 'health', "Treatment ({$case->label()}){$time}: {$data['product']} {$data['dose']}".($clear ? ' · '.implode(', ', array_keys($clear)) : ' · no withdrawal'), $user->name);
+        $this->syncHealth($case->animal);
         // D-196 (journey G): a milk withdrawal, possibly entered late, holds her milk in lots made since the dose.
         if (! empty($data['milk_clear_on']) && $case->animal->sex === 'female') {
-            \App\Support\MilkTrace::doeFlagged($case->animal, "treated with {$data['product']}, no milk until ".\Illuminate\Support\Carbon::parse($data['milk_clear_on'])->format('d/m/Y'), $data['given_on'], $request->user());
+            \App\Support\MilkTrace::doeFlagged($case->animal, "treated with {$data['product']}, no milk until ".\Illuminate\Support\Carbon::parse($data['milk_clear_on'])->format('d/m/Y'), $data['given_on'], $user);
         }
-
         $warning = $short > 0 ? " Warning: not enough in-date {$medicine->name} in the store ({$short} {$medicine->unit} short), so stock shows below zero. Record the receipt or check for expired packs." : '';
 
-        return back()->with('success', 'Treatment saved.'.$warning.(! empty($data['meat_clear_on']) ? ' Meat withdrawal until '.\Illuminate\Support\Carbon::parse($data['meat_clear_on'])->format('d/m/Y').'.' : ''));
+        return ['product' => $data['product'], 'warning' => $warning];
     }
 
     public function observe(Request $request): RedirectResponse
