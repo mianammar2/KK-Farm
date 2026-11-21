@@ -518,8 +518,7 @@ class HealthController extends Controller
         if ($at->isFuture()) {
             throw ValidationException::withMessages(['given_time' => 'The time given cannot be later than now.']);
         }
-        foreach ($data['items'] as $i => $it) {
-            self::needWithdrawal($it, "items.$i.");
+        foreach ($data['items'] as $i => $it) { // D-373: the form asks only the medicine and quantity; withdrawal only when the medicine's label days are set
             foreach (['next_dose_on', 'review_on', 'meat_clear_on', 'milk_clear_on'] as $d) {
                 if (! empty($it[$d]) && $it[$d] < $data['given_on']) {
                     throw ValidationException::withMessages(["items.$i.$d" => 'This date cannot be before the date given.']);
@@ -603,7 +602,7 @@ class HealthController extends Controller
         }
         $clear = array_filter(['meat clear '.($data['meat_clear_on'] ?? '') => ! empty($data['meat_clear_on']), 'milk clear '.($data['milk_clear_on'] ?? '') => ! empty($data['milk_clear_on'])]);
         $time = isset($data['given_at']) ? ' at '.\Illuminate\Support\Carbon::parse($data['given_at'])->setTimezone(\App\Support\Feed::now()->getTimezone())->format('H:i') : '';
-        Farm::event($case->animal, 'health', "Treatment ({$case->label()}){$time}: {$data['product']} {$data['dose']}".($clear ? ' · '.implode(', ', array_keys($clear)) : ' · no withdrawal'), $user->name);
+        Farm::event($case->animal, 'health', "Treatment ({$case->label()}){$time}: {$data['product']} {$data['dose']}".($clear ? ' · '.implode(', ', array_keys($clear)) : (! empty($data['no_withdrawal']) ? ' · no withdrawal' : ' · withdrawal not entered')), $user->name);
         $this->syncHealth($case->animal);
         // D-196 (journey G): a milk withdrawal, possibly entered late, holds her milk in lots made since the dose.
         if (! empty($data['milk_clear_on']) && $case->animal->sex === 'female') {

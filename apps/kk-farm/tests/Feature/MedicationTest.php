@@ -74,9 +74,6 @@ class MedicationTest extends TestCase
 
         // another goat's case, a medicine without withdrawal dates, no medicine, a time later than now: refused, nothing saved
         $this->actingAs($vet)->post('/health/medications', $this->body(['animal_id' => $this->other->id, 'case_id' => $case->id]))->assertSessionHasErrors('case_id');
-        $missing = $this->body();
-        unset($missing['items'][0]['meat_clear_on'], $missing['items'][0]['milk_clear_on']);
-        $this->actingAs($vet)->post('/health/medications', $missing)->assertSessionHasErrors('items.0.meat_clear_on');
         $this->actingAs($vet)->post('/health/medications', $this->body(['items' => []]))->assertSessionHasErrors('items');
         $this->actingAs($vet)->post('/health/medications', $this->body(['given_on' => \App\Support\Feed::now()->addHours(2)->toDateString(), 'given_time' => \App\Support\Feed::now()->addHours(2)->format('H:i')]))->assertSessionHasErrors();
         $this->assertSame(4, Treatment::count());
@@ -95,6 +92,14 @@ class MedicationTest extends TestCase
         $at = \App\Support\Feed::now()->subMinutes(30);
         $this->actingAs($vet)->post("/health/cases/{$case->id}/treatments", ['given_on' => $at->toDateString(), 'given_time' => $at->format('H:i'), 'product' => 'Vitamin B', 'dose' => '2 ml', 'route' => 'injectable', 'no_withdrawal' => true])->assertSessionHasNoErrors();
         $this->assertSame($at->format('H:i'), Treatment::where('product', 'Vitamin B')->sole()->given_at->setTimezone($at->getTimezone())->format('H:i'));
+    }
+
+    public function test_only_the_medicine_and_quantity_are_needed(): void // D-373
+    {
+        $this->actingAs($this->user('vet'))->post('/health/medications', $this->body(['items' => [['product' => 'Loxin', 'dose' => '3 CC', 'route' => 'injectable']]]))->assertSessionHasNoErrors();
+        $t = Treatment::where('product', 'Loxin')->sole();
+        $this->assertNull($t->meat_clear_on);
+        $this->assertSame('3 CC', $t->dose);
     }
 
     public function test_without_a_reason_it_goes_under_a_case_named_after_the_medicines(): void // D-370

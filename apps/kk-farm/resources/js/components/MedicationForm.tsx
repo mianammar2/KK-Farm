@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { Check, Plus, ScanLine, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { type Profile } from './GoatProfileCard';
-import { doseFill, hasDose, MedicinePicker, rankMedicines, type PickMedicine, type Suggest } from './StockForms';
+import { doseFill, MedicinePicker, rankMedicines, type PickMedicine, type Suggest } from './StockForms';
 import { Button, cx, Field } from './ui';
 
 /*
@@ -82,13 +82,11 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const [filled, setFilled] = useState<Record<number, string>>({});
     /** D-369: choosing a medicine fills its standard dose (set by the vet on the medicine); every field stays editable. */
     const pick = (i: number, id: string) => {
         const m = medicines.find((x) => String(x.id) === id);
         const fill = doseFill(m, date) as Partial<Item>;
         set(i, { medicine_id: id, route: guessRoute(m?.name ?? '', m?.unit ?? '') ?? 'injectable', ...fill, ...(fill.qty_used ? { dose: `${fill.qty_used} ${m?.unit ?? ''}`.trim() } : {}) });
-        setFilled((f) => ({ ...f, [i]: hasDose(m) ? m!.name : '' }));
     };
     const suggested = rankMedicines(medicines, suggest, { diseaseId }).suggested.filter(({ m }) => m.qty > 0).slice(0, 4);
     const addSuggested = (id: number) => {
@@ -110,14 +108,12 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
             if (!time) out.push('The dose time: when the dose was given.');
             if (date && time && new Date(`${date}T${time}`) > new Date()) out.push('The date and time cannot be later than now.');
         }
-        if (s === 2) items.forEach((it, i) => {
+        if (s === 2) items.forEach((it, i) => { // D-373: only the medicine and the quantity are asked for now
             const n = `Medicine ${i + 1}`;
             if (!it.medicine_id && !it.product.trim()) out.push(`${n}: choose it from the store or type its name.`);
-            if (it.medicine_id && !(Number(it.qty_used) > 0)) out.push(`${n}: the amount given.`);
-            if (!it.medicine_id && !it.dose.trim()) out.push(`${n}: the dose (e.g. 5 CC).`);
-            if (!it.route) out.push(`${n}: the route.`);
-            if (it.frequency !== 'once' && !(Number(it.days_prescribed) > 0)) out.push(`${n}: for how many days.`);
-            if (!it.no_withdrawal && !it.meat_clear_on && !it.milk_clear_on) out.push(`${n}: the meat and milk clear dates from the label, or tick "No withdrawal".`);
+            if (it.medicine_id && !(Number(it.qty_used) > 0)) out.push(`${n}: the quantity.`);
+            if (!it.medicine_id && !it.dose.trim()) out.push(`${n}: the quantity (e.g. 5 CC).`);
+            if (it.frequency !== 'once' && !(Number(it.days_prescribed) > 0)) out.push(`${n}: set its standard dose days in the store, or it is given once.`);
         });
         return out;
     };
@@ -211,47 +207,21 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
                                     Medicine {i + 1}{nameOf(it) ? `: ${nameOf(it)}` : ''}
                                     {items.length > 1 ? <button type="button" onClick={() => setItems((l) => l.filter((_, k) => k !== i))} className="inline-flex items-center gap-1 text-xs font-normal text-crit-700"><Trash2 size={14} aria-hidden /> Remove</button> : null}
                                 </legend>
-                                {filled[i] && it.medicine_id ? <p className="rounded-md bg-glaze px-2.5 py-1.5 text-xs text-ink-soft">Filled from the standard dose set for {filled[i]}. Check each field against the label.</p> : null}
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <Field label="Medicine" error={e('medicine_id')}>
                                         <MedicinePicker medicines={medicines} suggest={suggest} diseaseId={diseaseId} value={it.medicine_id} onChange={(id) => pick(i, id)} />
                                     </Field>
                                     {it.medicine_id ? (
-                                        <Field label={`Amount given (${med?.unit ?? ''})`} error={e('qty_used') ?? e('dose')} hint="Taken from the store">
+                                        <Field label={`Quantity (${med?.unit ?? ''})`} error={e('qty_used') ?? e('dose')} hint="Taken from the store">
                                             <input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={it.qty_used} onChange={(x) => set(i, { qty_used: x.target.value, dose: x.target.value ? `${x.target.value} ${med?.unit ?? ''}`.trim() : '' })} />
                                         </Field>
                                     ) : (
                                         <>
                                             <Field label="Medicine name" error={e('product')}><input className="field" value={it.product} onChange={(x) => set(i, { product: x.target.value, route: guessRoute(x.target.value, '') ?? it.route })} /></Field>
-                                            <Field label="Dose" error={e('dose')} hint="e.g. 5 CC, 2 tablets"><input className="field" value={it.dose} onChange={(x) => set(i, { dose: x.target.value })} /></Field>
+                                            <Field label="Quantity" error={e('dose')} hint="e.g. 5 CC, 2 tablets"><input className="field" value={it.dose} onChange={(x) => set(i, { dose: x.target.value })} /></Field>
                                         </>
                                     )}
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Route">
-                                    {Object.entries(routes).filter(([k]) => k !== 'other' || it.route === 'other').map(([k, v]) => (
-                                        <button key={k} type="button" onClick={() => set(i, { route: k })} aria-pressed={it.route === k}
-                                            className={cx('min-h-10 rounded-full border px-3 text-sm', it.route === k ? 'border-cobalt-800 bg-cobalt-800 text-white' : 'border-rule text-cobalt-900')}>{v}</button>
-                                    ))}
-                                    <select className="field ms-auto w-auto" value={it.frequency} onChange={(x) => set(i, { frequency: x.target.value })} aria-label="How often">{Object.entries(frequencies).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-                                    {it.frequency !== 'once' ? <input type="number" min={1} className="field w-24" placeholder="days" aria-label="For how many days" value={it.days_prescribed} onChange={(x) => set(i, { days_prescribed: x.target.value })} /> : null}
-                                </div>
-                                {e('route') || e('frequency') || e('days_prescribed') ? <p className="text-sm text-crit-700">{e('route') ?? e('frequency') ?? e('days_prescribed')}</p> : null}
-                                <div className="rounded-tile bg-watch-100 p-3">
-                                    <p className="mb-2 text-xs font-semibold text-watch-700">Withdrawal from the label (you decide)</p>
-                                    <label className="mb-2 flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={it.no_withdrawal} onChange={(x) => set(i, { no_withdrawal: x.target.checked, meat_clear_on: '', milk_clear_on: '' })} /> No withdrawal</label>
-                                    {it.no_withdrawal ? null : <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Meat clear" error={e('meat_clear_on')}><input type="date" className="field" min={date} value={it.meat_clear_on} onChange={(x) => set(i, { meat_clear_on: x.target.value })} /></Field>
-                                        <Field label="Milk clear" error={e('milk_clear_on')}><input type="date" className="field" min={date} value={it.milk_clear_on} onChange={(x) => set(i, { milk_clear_on: x.target.value })} /></Field>
-                                    </div>}
-                                </div>
-                                <details className="text-sm" open={!!(it.review_on || it.notes || it.qty_per_dose)}>
-                                    <summary className="min-h-10 cursor-pointer py-2 text-cobalt-800">More (optional): review date, notes{it.medicine_id && it.frequency !== 'once' ? ', later amount' : ''}</summary>
-                                    <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                                        <Field label="Review date" error={e('review_on')}><input type="date" className="field" min={date} value={it.review_on} onChange={(x) => set(i, { review_on: x.target.value })} /></Field>
-                                        {it.medicine_id && it.frequency !== 'once' ? <Field label="Amount per later dose" error={e('qty_per_dose')} hint="Blank = same as this one"><input type="number" min={0} step="0.1" className="field" value={it.qty_per_dose} onChange={(x) => set(i, { qty_per_dose: x.target.value })} /></Field> : null}
-                                        <Field label="Notes" error={e('notes')}><input className="field" value={it.notes} onChange={(x) => set(i, { notes: x.target.value })} /></Field>
-                                    </div>
-                                </details>
                             </fieldset>
                         );
                     })}
@@ -270,7 +240,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
                         <div key={i} className="rounded-tile border border-rule p-3">
                             <p className="font-semibold text-cobalt-900">{i + 1}. {nameOf(it)}{it.medicine_id ? ` · ${it.qty_used} ${medOf(it)?.unit ?? ''} from the store` : ''}</p>
                             <p>{it.dose} · {routes[it.route] ?? it.route} · {frequencies[it.frequency] ?? it.frequency}{it.frequency !== 'once' ? ` for ${it.days_prescribed} days` : ''}</p>
-                            <p className={it.no_withdrawal ? 'text-ink-soft' : 'text-watch-700'}>{it.no_withdrawal ? 'No withdrawal' : `Meat clear ${dmy(it.meat_clear_on)} · milk clear ${dmy(it.milk_clear_on)}`}</p>
+                            {it.meat_clear_on || it.milk_clear_on ? <p className="text-watch-700">Meat clear {dmy(it.meat_clear_on)} · milk clear {dmy(it.milk_clear_on)} (from the label days set on the medicine)</p> : null}
                             {it.review_on || it.notes ? <p className="text-ink-soft">{[it.review_on ? `review ${dmy(it.review_on)}` : '', it.notes].filter(Boolean).join(' · ')}</p> : null}
                         </div>
                     ))}
