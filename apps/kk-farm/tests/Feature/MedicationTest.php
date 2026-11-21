@@ -96,4 +96,13 @@ class MedicationTest extends TestCase
         $this->actingAs($vet)->post("/health/cases/{$case->id}/treatments", ['given_on' => $at->toDateString(), 'given_time' => $at->format('H:i'), 'product' => 'Vitamin B', 'dose' => '2 ml', 'route' => 'injectable', 'no_withdrawal' => true])->assertSessionHasNoErrors();
         $this->assertSame($at->format('H:i'), Treatment::where('product', 'Vitamin B')->sole()->given_at->setTimezone($at->getTimezone())->format('H:i'));
     }
+
+    public function test_without_a_reason_it_goes_under_a_case_named_after_the_medicines(): void // D-370
+    {
+        $this->actingAs($this->user('vet'))->post('/health/medications', $this->body(['reason' => null, 'severity' => null]))->assertSessionHasNoErrors();
+        $case = HealthCase::where('animal_id', $this->goat->id)->sole();
+        $this->assertSame('Medication: Oxytetracycline, Meloxicam', $case->condition);
+        $this->assertSame('low', $case->severity);
+        $this->assertSame(2, Treatment::where('health_case_id', $case->id)->count());
+    }
 }

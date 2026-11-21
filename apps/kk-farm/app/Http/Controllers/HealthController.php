@@ -506,7 +506,7 @@ class HealthController extends Controller
         $data = $request->validate([
             'animal_id' => ['required', 'exists:animals,id'], 'given_on' => ['required', 'date', 'before_or_equal:today'], 'given_time' => ['required', 'date_format:H:i'],
             'case_id' => ['nullable', 'integer', 'exists:health_cases,id'],
-            'reason' => ['nullable', 'required_without:case_id', 'string', 'max:120'], 'severity' => ['nullable', 'required_without:case_id', Rule::in(array_keys(HealthCase::SEVERITIES))],
+            'reason' => ['nullable', 'string', 'max:120'], 'severity' => ['nullable', Rule::in(array_keys(HealthCase::SEVERITIES))], // D-370: optional
             'symptoms' => ['nullable', 'string', 'max:1000'], 'isolated' => ['boolean'],
             'items' => ['required', 'array', 'min:1', 'max:10'],
         ] + $item, [], ['given_on' => 'date given', 'given_time' => 'time given', 'reason' => 'reason (disease / condition)', 'items' => 'medicines']);
@@ -532,10 +532,12 @@ class HealthController extends Controller
         }
 
         $results = DB::transaction(function () use ($data, $animal, $case, $at, $request) {
-            if (! $case) { // a new reason: its own case, as Open a case does
+            if (! $case) { // D-370: no open case and no reason given: a case named after the medicines, so the doses, stock and withdrawal have a home
                 DB::statement('LOCK TABLE health_cases IN SHARE ROW EXCLUSIVE MODE');
+                $names = collect($data['items'])->map(fn ($it) => ! empty($it['medicine_id']) ? \App\Models\Medicine::whereKey($it['medicine_id'])->value('name') : $it['product'])->filter()->implode(', ');
+                $data['reason'] = trim((string) ($data['reason'] ?? '')) ?: mb_substr("Medication: {$names}", 0, 120);
                 $case = HealthCase::create(['animal_id' => $animal->id, 'onset_on' => $data['given_on'], 'condition' => $data['reason'], 'symptoms' => $data['symptoms'] ?? null,
-                    'severity' => $data['severity'], 'isolated' => (bool) ($data['isolated'] ?? false), 'disease_id' => \App\Models\Disease::whereRaw('lower(name) = lower(?)', [$data['reason']])->value('id'),
+                    'severity' => $data['severity'] ?? 'low', 'isolated' => (bool) ($data['isolated'] ?? false), 'disease_id' => \App\Models\Disease::whereRaw('lower(name) = lower(?)', [$data['reason']])->value('id'),
                     'case_no' => (int) HealthCase::max('case_no') + 1, 'vet' => $request->user()->name, 'recorded_by' => $request->user()->name])->fresh(); // with its default status
                 Farm::event($animal, 'health', "Health case {$case->label()} opened: {$case->condition} (".HealthCase::SEVERITIES[$case->severity].($case->isolated ? ', isolated' : '').')', $request->user()->name);
             }

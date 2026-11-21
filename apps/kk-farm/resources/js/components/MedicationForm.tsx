@@ -23,7 +23,7 @@ const nowDate = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d
 const nowTime = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const dmy = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '—');
 const blank = (): Item => ({ medicine_id: '', qty_used: '', product: '', dose: '', route: 'injectable', frequency: 'once', days_prescribed: '', qty_per_dose: '', review_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, cost: '', notes: '' });
-const STEPS = ['Scan', 'When', 'Why', 'Medicines', 'Check'];
+const STEPS = ['Scan', 'When', 'Medicines', 'Check']; // D-370: no Why step: the goat's open case, or one named after the medicines
 
 export default function MedicationForm({ cases, medicines, suggest, routes, frequencies, severities, diseases, onDone }: {
     cases: MedCase[]; medicines: Med[]; suggest: Suggest; routes: Record<string, string>; frequencies: Record<string, string>; severities: Record<string, string>; diseases: Array<{ id: number; name: string }>; onDone: () => void;
@@ -36,10 +36,6 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
     const [date, setDate] = useState(nowDate());
     const [time, setTime] = useState(''); // D-369: the dose's own time, typed by the vet (not when it is entered)
     const [caseId, setCaseId] = useState<string>('new');
-    const [reason, setReason] = useState('');
-    const [severity, setSeverity] = useState('moderate');
-    const [symptoms, setSymptoms] = useState('');
-    const [isolated, setIsolated] = useState(false);
     const [items, setItems] = useState<Item[]>([blank()]);
     const [problems, setProblems] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,7 +45,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
 
     const open = goat ? cases.filter((c) => c.goatId === goat.id && c.active) : [];
     const chosen = open.find((c) => String(c.id) === caseId) ?? null;
-    const diseaseId = chosen?.diseaseId ?? diseases.find((d) => d.name.toLowerCase() === reason.trim().toLowerCase())?.id ?? null;
+    const diseaseId = chosen?.diseaseId ?? null;
 
     const find = (raw: string) => {
         const c = raw.trim();
@@ -104,11 +100,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
             if (!time) out.push('The dose time: when the dose was given.');
             if (date && time && new Date(`${date}T${time}`) > new Date()) out.push('The date and time cannot be later than now.');
         }
-        if (s === 2 && caseId === 'new') {
-            if (!reason.trim()) out.push('Why: the disease or condition.');
-            if (!severity) out.push('How serious it is.');
-        }
-        if (s === 3) items.forEach((it, i) => {
+        if (s === 2) items.forEach((it, i) => {
             const n = `Medicine ${i + 1}`;
             if (!it.medicine_id && !it.product.trim()) out.push(`${n}: choose it from the store or type its name.`);
             if (it.medicine_id && !(Number(it.qty_used) > 0)) out.push(`${n}: the quantity taken from the store.`);
@@ -122,13 +114,12 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
     const next = () => { const m = missing(step); setProblems(m); if (!m.length) setStep(step + 1); };
 
     const save = () => {
-        const all = [0, 1, 2, 3].flatMap(missing);
+        const all = [0, 1, 2].flatMap(missing);
         if (all.length) { setProblems(all); return; }
         setSaving(true); setErrors({});
         router.post('/health/medications', {
             animal_id: goat!.id, given_on: date, given_time: time,
-            case_id: caseId === 'new' ? null : Number(caseId), reason: caseId === 'new' ? reason.trim() : null, severity: caseId === 'new' ? severity : null,
-            symptoms: caseId === 'new' ? symptoms : null, isolated: caseId === 'new' ? isolated : false,
+            case_id: caseId === 'new' ? null : Number(caseId), reason: null, severity: null, symptoms: null, isolated: false,
             items: items.map((it) => ({ ...it, medicine_id: it.medicine_id || null, qty_used: it.qty_used || null, product: it.medicine_id ? null : it.product, frequency: it.frequency || null,
                 days_prescribed: it.frequency === 'once' ? null : it.days_prescribed || null, qty_per_dose: it.qty_per_dose || null, review_on: it.review_on || null,
                 meat_clear_on: it.no_withdrawal ? null : it.meat_clear_on || null, milk_clear_on: it.no_withdrawal ? null : it.milk_clear_on || null, notes: it.notes || null })),
@@ -188,35 +179,9 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
 
             {step === 2 ? (
                 <div className="space-y-3">
-                    <p className="text-sm font-semibold text-cobalt-900">Why is it given?</p>
-                    {open.map((c) => (
-                        <label key={c.id} className={cx('flex cursor-pointer items-start gap-3 rounded-tile border p-3', caseId === String(c.id) ? 'border-cobalt-800 bg-glaze' : 'border-rule')}>
-                            <input type="radio" name="why" className="mt-1 size-4" checked={caseId === String(c.id)} onChange={() => setCaseId(String(c.id))} />
-                            <span><span className="font-medium">{c.condition}</span> <span className="text-sm text-ink-soft">· {c.label} · {severities[c.severity] ?? c.severity} · since {c.onset}</span></span>
-                        </label>
-                    ))}
-                    <label className={cx('flex cursor-pointer items-start gap-3 rounded-tile border p-3', caseId === 'new' ? 'border-cobalt-800 bg-glaze' : 'border-rule')}>
-                        <input type="radio" name="why" className="mt-1 size-4" checked={caseId === 'new'} onChange={() => setCaseId('new')} />
-                        <span className="font-medium">{open.length ? 'Something new' : 'The reason'}</span>
-                    </label>
-                    {caseId === 'new' ? (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <Field label="Disease / condition"><input className="field" list="med-diseases" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Pneumonia" /></Field>
-                            <datalist id="med-diseases">{diseases.map((d) => <option key={d.id} value={d.name} />)}</datalist>
-                            <Field label="How serious"><select className="field" value={severity} onChange={(e) => setSeverity(e.target.value)}>{Object.entries(severities).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-                            <Field label="Symptoms (optional)"><textarea rows={2} className="field" value={symptoms} onChange={(e) => setSymptoms(e.target.value)} /></Field>
-                            <label className="flex items-center gap-2 text-sm sm:pt-6"><input type="checkbox" className="size-4" checked={isolated} onChange={(e) => setIsolated(e.target.checked)} /> Isolated from the herd</label>
-                            <p className="text-xs text-ink-soft sm:col-span-2">A case is opened for it, as from Open a case.</p>
-                        </div>
-                    ) : null}
-                </div>
-            ) : null}
-
-            {step === 3 ? (
-                <div className="space-y-3">
                     {suggested.length ? (
                         <div className="rounded-tile border border-ok-700/30 bg-ok-100/50 p-3">
-                            <p className="mb-2 text-sm font-semibold text-ok-700">Suggested from your medicine store{chosen ? ` for ${chosen.condition}` : reason ? ` for ${reason}` : ''}. Tap to add it with its standard dose; you decide.</p>
+                            <p className="mb-2 text-sm font-semibold text-ok-700">Suggested from your medicine store{chosen ? ` for ${chosen.condition}` : ''}. Tap to add it with its standard dose; you decide.</p>
                             <div className="flex flex-wrap gap-2">
                                 {suggested.map(({ m, why }) => (
                                     <button key={m.id} type="button" onClick={() => addSuggested(m.id)} disabled={items.some((x) => x.medicine_id === String(m.id))}
@@ -270,12 +235,12 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
                 </div>
             ) : null}
 
-            {step === 4 && goat ? (
+            {step === 3 && goat ? (
                 <div className="space-y-3 text-sm">
                     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-tile border border-rule p-3">
                         <dt className="text-ink-soft">Goat</dt><dd className="font-mono font-semibold">{goat.number}</dd>
                         <dt className="text-ink-soft">Given</dt><dd>{dmy(date)} at {time}</dd>
-                        <dt className="text-ink-soft">Why</dt><dd>{chosen ? `${chosen.condition} (${chosen.label})` : `${reason} · ${severities[severity] ?? severity} · new case`}</dd>
+                        <dt className="text-ink-soft">Case</dt><dd>{chosen ? `${chosen.condition} (${chosen.label})` : 'A new case named after these medicines'}</dd>
                     </dl>
                     {items.map((it, i) => (
                         <div key={i} className="rounded-tile border border-rule p-3">
@@ -294,7 +259,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
             {step > 0 ? (
                 <div className="sticky bottom-0 flex gap-2 bg-glaze pt-2">
                     <Button type="button" variant="secondary" onClick={() => { setProblems([]); setStep(step - 1); }}>Back</Button>
-                    {step < 4 ? <Button type="button" className="flex-1" onClick={next}>Next</Button> : <Button type="button" className="flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : `Save ${items.length === 1 ? 'medication' : `${items.length} medicines`}`}</Button>}
+                    {step < 3 ? <Button type="button" className="flex-1" onClick={next}>Next</Button> : <Button type="button" className="flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : `Save ${items.length === 1 ? 'medication' : `${items.length} medicines`}`}</Button>}
                 </div>
             ) : null}
         </div>
