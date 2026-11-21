@@ -2,7 +2,7 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import { ScanLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { native } from '../lib/native';
-import { Button, Chip, Field, Panel } from './ui';
+import { Button, Chip, Panel } from './ui';
 
 /**
  * D-336: link an RFID tag to a goat on its own page. Click in the box and pull the gun's trigger (or type the chip code):
@@ -87,7 +87,7 @@ export default function RfidLink({ goatId, number, current, canAssign, className
     return (
         <Panel title="RFID Tag" description="The chip in the ear tag. Once linked, scanning it anywhere in the apps opens this goat." className={className}>
             <div className="flex flex-wrap items-center gap-3">
-                {current ? <Chip className="bg-turq-100 font-mono text-turq-800">{current}</Chip> : <Chip className="bg-watch-100 text-watch-800">No RFID tag linked</Chip>}
+                {current ? <span className="inline-flex min-h-11 items-center rounded-tile border border-rule bg-turq-100 px-3 font-mono text-sm font-semibold text-turq-800">{current}</span> : <Chip className="bg-watch-100 text-watch-800">No RFID tag linked</Chip>}
                 {canAssign && current && !open ? <Button type="button" variant="secondary" onClick={() => { setOpen(true); setTimeout(() => box.current?.focus(), 30); }}><ScanLine size={16} aria-hidden /> Replace tag</Button> : null}
                 {canAssign && current ? (
                     <span className="flex items-center gap-2">
@@ -121,12 +121,15 @@ export default function RfidLink({ goatId, number, current, canAssign, className
                 </div>
             ) : null}
             {canAssign && open ? (
-                <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                    <Field label={current ? 'New tag' : 'Link a tag'} error={form.errors.tag} hint="Click here, then pull the RFID gun's trigger near the ear tag. Or type the code printed on the tag.">
-                        <input ref={box} className="field font-mono uppercase" value={form.data.tag} onChange={(e) => form.setData('tag', e.target.value.toUpperCase())}
+                <div className="mt-3">{/* D-382: the box and the button on one line, the hint under both */}
+                    <label htmlFor="rfid-new" className="mb-1 block text-sm font-semibold text-ink">{current ? 'New Tag' : 'Link a Tag'}</label>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                        <input id="rfid-new" ref={box} className="field flex-1 font-mono uppercase" value={form.data.tag} onChange={(e) => form.setData('tag', e.target.value.toUpperCase())}
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); link(); } }} placeholder="Scan the tag, or type the code" autoComplete="off" spellCheck={false} />
-                    </Field>
-                    <Button type="button" onClick={link} disabled={form.processing || !form.data.tag.trim()}><ScanLine size={16} aria-hidden /> Link tag</Button>
+                        <Button type="button" className="shrink-0" onClick={link} disabled={form.processing || !form.data.tag.trim()}><ScanLine size={16} aria-hidden /> Link tag</Button>
+                        {current ? <Button type="button" variant="secondary" className="shrink-0" onClick={() => { form.reset(); setOpen(false); }}>Cancel</Button> : null}
+                    </div>
+                    {form.errors.tag ? <p className="mt-1 text-sm font-medium text-crit-700">{form.errors.tag}</p> : <p className="mt-1 text-sm text-ink-faint">Click the box, then pull the RFID gun's trigger near the ear tag. Or type the code printed on the tag.</p>}
                 </div>
             ) : null}
             {!canAssign ? <p className="mt-2 text-sm text-ink-soft">Your role cannot link RFID tags. Ask the administrator to tick "Assign tags" for you.</p> : null}
