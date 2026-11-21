@@ -35,6 +35,7 @@ type Props = {
         | { state: 'recovered'; on: string; why: string } | null; // D-251
     timeline: Array<{ id: number; type: string; summary: string; by: string; on: string }>;
     cases: Array<{ id: number; label: string; condition: string; status: string; active: boolean; severity: string; onset: string; resolved: string | null; diagnosis: string | null; treatments: Array<{ id: number; on: string; text: string; meat: string | null; milk: string | null; by: string }> }>;
+    checkups?: Array<{ id: number; on: string; time: string | null; temp: number | null; tempState: 'high' | 'low' | 'normal' | null; heart: number | null; breaths: number | null; bcs: number | null; weight: number | null; pregnant: number | null; findings: string | null; result: string; by: string }>; // D-381
     health: Array<{ id: number; kind: string; title: string; notes: string | null; severity: string | null; by: string; role: string; on: string; next: string | null; status: string }>;
     pedigree: PedigreeNode;
     offspring: GoatCard[];
@@ -65,7 +66,7 @@ type Pregnancy = { ended?: { on: string; how: string } | null;
 const TYPE_COLOR: Record<string, string> = { edit: 'bg-cobalt-600', origin: 'bg-cobalt-700', tag: 'bg-turq-600', health: 'bg-treat-400', breeding: 'bg-manganese-600', exit: 'bg-crit-500', weight: 'bg-cobalt-200', move: 'bg-watch-400', photo: 'bg-turq-400' };
 
 export default function GoatShow(props: Props) {
-    const { death, recovery, records, goat, photos, tags, weights, timeline, health, cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
+    const { death, recovery, records, goat, photos, tags, weights, timeline, health, checkups = [], cases, pedigree, offspring, matings, kiddings, cost, pens, can, pregnancy, healthEntry, milking, outcomeOptions, scanMating, ultrasoundOptions, dentalOptions, roleLabels, castration, eligibility, statuses, statusHistory } = props;
     const [outcome, setOutcome] = useState(false); // D-161
     const [scan, setScan] = useState(false); // D-166
     const [ask, removeBox] = useConfirm(); // D-133
@@ -306,6 +307,36 @@ export default function GoatShow(props: Props) {
             ) : null}
 
             {/* D-380: the health tab in the same tables as the overview */}
+            {tab === 'health' && checkups.length ? ( // D-381: every reading of every checkup
+                <Panel flush title="Checkups" description="Every checkup with its readings. Temperature normal 101.3–103.5 °F." className="mb-4">
+                    <div className="overflow-x-auto px-4 pb-1">
+                        <table className="w-full min-w-[820px] border-collapse text-sm">
+                            <thead className="border-b border-rule bg-glaze/60">
+                                <tr>
+                                    <th className={`${TH} text-start`}>Date</th><th className={`${TH} text-end`}>Temp °F</th><th className={`${TH} text-end`}>Heart /min</th><th className={`${TH} text-end`}>Breaths /min</th>
+                                    <th className={`${TH} text-end`}>Body score</th><th className={`${TH} text-end`}>Weight</th><th className={`${TH} text-end`}>Pregnant</th><th className={`${TH} text-start`}>Findings</th><th className={`${TH} text-start`}>Result</th><th className={`${TH} text-start`}>By</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-rule">
+                                {checkups.map((c) => (
+                                    <tr key={c.id}>
+                                        <td className={`${TD} whitespace-nowrap text-cobalt-900`}>{c.on}{c.time ? <span className="block text-xs text-ink-soft">{c.time}</span> : null}</td>
+                                        <td className={`${TD} text-end tabular-nums whitespace-nowrap`}>{c.temp !== null ? <span className={c.tempState === 'high' || c.tempState === 'low' ? 'font-semibold text-crit-700' : ''}>{c.temp}{c.tempState === 'high' ? ' High' : c.tempState === 'low' ? ' Low' : ''}</span> : dash}</td>
+                                        <td className={`${TD} text-end tabular-nums`}>{c.heart ?? dash}</td>
+                                        <td className={`${TD} text-end tabular-nums`}>{c.breaths ?? dash}</td>
+                                        <td className={`${TD} text-end tabular-nums`}>{c.bcs ?? dash}</td>
+                                        <td className={`${TD} text-end tabular-nums whitespace-nowrap`}>{c.weight !== null ? `${c.weight} KG` : dash}</td>
+                                        <td className={`${TD} text-end tabular-nums whitespace-nowrap`}>{c.pregnant !== null ? `day ${c.pregnant}` : dash}</td>
+                                        <td className={`${TD} min-w-[10rem]`}>{c.findings ?? dash}</td>
+                                        <td className={TD}><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${c.result === 'Sick' ? 'bg-crit-100 text-crit-700' : c.result === 'Watch' ? 'bg-watch-100 text-watch-700' : 'bg-ok-100 text-ok-700'}`}>{c.result}</span></td>
+                                        <td className={`${TD} whitespace-nowrap`}>{c.by}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Panel>
+            ) : null}
             {tab === 'health' && cases.length ? (
                 <Panel flush title="Health cases" description="Episodes and the treatments given, with the veterinarian's clear dates" className="mb-4">
                     <div className="overflow-x-auto px-4 pb-1">

@@ -812,6 +812,12 @@ class GoatController extends Controller
                 'severity' => \App\Models\HealthCase::SEVERITIES[$c->severity], 'onset' => $c->onset_on->format('d/m/Y'), 'resolved' => $c->resolved_on?->format('d/m/Y'), 'diagnosis' => $c->diagnosis,
                 'treatments' => $c->treatments->map(fn ($t) => ['id' => $t->id, 'on' => $t->given_on->format('d/m'), 'text' => "{$t->product} {$t->dose}", 'meat' => $t->meat_clear_on?->format('d/m/Y'), 'milk' => $t->milk_clear_on?->format('d/m/Y'), 'by' => $t->recorded_by])->values(),
             ]),
+            // D-381: every checkup with its readings, for the Health tab's table
+            'checkups' => ! $seeHealth ? [] : \App\Models\HealthCheckup::where('animal_id', $animal->id)->orderByDesc('checked_on')->orderByDesc('checked_time')->orderByDesc('id')->limit(60)->get()
+                ->map(fn ($c) => ['id' => $c->id, 'on' => $c->checked_on->format('d/m/Y'), 'time' => $c->checked_time ? substr((string) $c->checked_time, 0, 5) : null,
+                    'temp' => $c->temperature_f !== null ? (float) $c->temperature_f : null, 'tempState' => $c->temperature_f === null ? null : ((float) $c->temperature_f > \App\Models\HealthCheckup::NORMAL['temperature_f'][1] ? 'high' : ((float) $c->temperature_f < \App\Models\HealthCheckup::NORMAL['temperature_f'][0] ? 'low' : 'normal')),
+                    'heart' => $c->heart_rate, 'breaths' => $c->respiration_rate, 'bcs' => $c->body_score, 'weight' => $c->weight_kg !== null ? (float) $c->weight_kg : null,
+                    'pregnant' => $c->days_pregnant, 'findings' => $c->findings, 'result' => \App\Models\HealthCheckup::OUTCOMES[$c->outcome] ?? $c->outcome, 'by' => $c->examiner]),
             'health' => ! $seeHealth ? [] : $animal->healthRecords()->limit(40)->get()->map(fn ($h) => ['id' => $h->id, 'kind' => $h->kind, 'title' => $h->title, 'notes' => $h->notes, 'severity' => $h->severity, 'by' => $h->recorded_by, 'role' => $h->recorded_role, 'on' => $h->occurred_on->format('d/m/Y'), 'next' => $h->next_due_on?->format('d/m/Y'), 'status' => $h->status]),
             'pedigree' => Farm::pedigree($animal),
             'offspring' => ! $pedigree ? [] : $offspring->map(fn (Animal $a) => $a->card()),
