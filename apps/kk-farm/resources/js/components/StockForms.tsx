@@ -71,18 +71,49 @@ export function rankMedicines<M extends PickMedicine>(medicines: M[], suggest: S
 
 const flag = (m: PickMedicine) => (m.check === 'hold' ? ' · on hold' : m.check === 'to_confirm' ? ' · to confirm' : '');
 
-/** D-333: the medicine select used by treatments and preventive care: suggested first, then every other medicine. */
+/**
+ * D-333: the medicine chooser used by treatments, medication and preventive care: suggested first, then every other
+ * medicine. D-375: type to find it (name, ingredient or use); the list narrows as you type; Enter takes the first.
+ */
 export function MedicinePicker<M extends PickMedicine>({ medicines, suggest, diseaseId, care, value, onChange, empty = 'Not from the store (type below)' }: { medicines: M[]; suggest?: Suggest; diseaseId?: number | null; care?: string | null; value: string; onChange: (id: string) => void; empty?: string }) {
     const { disease, suggested, others } = rankMedicines(medicines, suggest, { diseaseId, care });
-    const opt = (m: M, reason?: string) => <option key={m.id} value={m.id} disabled={m.check === 'hold'}>{m.name} · {m.qty} {m.unit} in stock{reason ? ` · ${reason}` : ''}{flag(m)}</option>;
     const chosen = medicines.find((m) => String(m.id) === value);
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState('');
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const fits = (m: M) => !words.length || words.every((w) => `${m.name} ${m.spec ?? ''} ${m.useCase ?? ''}`.toLowerCase().includes(w));
+    const list = [...suggested.map(({ m, why: w }) => ({ m, why: w as string | undefined })), ...others.map((m) => ({ m, why: undefined as string | undefined }))].filter(({ m }) => fits(m));
+    const take = (id: string) => { onChange(id); setOpen(false); setQ(''); };
     return (
         <>
-            <select className="field" value={value} onChange={(x) => onChange(x.target.value)}>
-                <option value="">{empty}</option>
-                {suggested.length ? <optgroup label={disease ? `Suggested for ${disease.name}` : 'Suggested'}>{suggested.map(({ m, why: w }) => opt(m, w))}</optgroup> : null}
-                {others.length ? <optgroup label={suggested.length ? 'Other medicines' : 'Medicines'}>{others.map((m) => opt(m))}</optgroup> : null}
-            </select>
+            <div className="relative">
+                <input className="field" role="combobox" aria-expanded={open} aria-label="Medicine" autoComplete="off"
+                    placeholder={chosen ? chosen.name : 'Type to find a medicine…'}
+                    value={open ? q : chosen ? `${chosen.name} · ${chosen.qty} ${chosen.unit} in stock` : ''}
+                    onFocus={() => { setOpen(true); setQ(''); }}
+                    onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+                    onChange={(x) => { setQ(x.target.value); setOpen(true); }}
+                    onKeyDown={(x) => {
+                        if (x.key === 'Enter') { x.preventDefault(); const first = list.find(({ m }) => m.check !== 'hold'); if (first) take(String(first.m.id)); }
+                        if (x.key === 'Escape') setOpen(false);
+                    }} />
+                {open ? (
+                    <ul className="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-tile border border-rule bg-tile shadow-tile" role="listbox">
+                        {value ? <li><button type="button" onMouseDown={(x) => x.preventDefault()} onClick={() => take('')} className="block w-full px-3 py-2 text-left text-sm text-ink-soft hover:bg-glaze">{empty}</button></li> : null}
+                        {list.length ? list.map(({ m, why: w }, i) => (
+                            <li key={m.id}>
+                                {i === 0 && w ? <p className="px-3 pt-2 text-xs font-semibold text-ok-700">{disease ? `Suggested for ${disease.name}` : 'Suggested'}</p> : null}
+                                {i > 0 && !w && list[i - 1].why ? <p className="border-t border-rule px-3 pt-2 text-xs font-semibold text-ink-soft">Other medicines</p> : null}
+                                <button type="button" disabled={m.check === 'hold'} onMouseDown={(x) => x.preventDefault()} onClick={() => take(String(m.id))}
+                                    className={cx('block w-full px-3 py-2 text-left text-sm hover:bg-glaze disabled:opacity-50', String(m.id) === value && 'bg-glaze font-semibold')}>
+                                    <span className="text-cobalt-900">{m.name}</span>
+                                    <span className={cx('ms-1 text-xs', m.qty > 0 ? 'text-ink-soft' : 'text-crit-700')}>· {m.qty} {m.unit} in stock{w ? ` · ${w}` : ''}{flag(m)}</span>
+                                </button>
+                            </li>
+                        )) : <li className="px-3 py-2 text-sm text-ink-soft">No medicine matches “{q}”.</li>}
+                    </ul>
+                ) : null}
+            </div>
             {chosen && (chosen.spec || chosen.useCase || chosen.checkNote) ? <span className="mt-1 block text-sm text-ink-soft">{[chosen.spec, chosen.useCase, chosen.check !== 'confirmed' ? chosen.checkNote : null].filter(Boolean).join(' · ')}</span> : null}
             {suggested.length ? <span className="mt-1 block text-sm text-ink-faint">Suggestions only: the vet decides.</span> : null}
         </>
