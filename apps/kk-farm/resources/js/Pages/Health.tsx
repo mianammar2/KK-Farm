@@ -274,7 +274,7 @@ function CaseCard({ c, isVet, statuses, routes, medicines, suggest }: { c: Case;
 
 function DoseForm({ c, routes, medicines, suggest, onDone }: { c: Case; routes: Record<string, string>; medicines: Medicine[]; suggest: Suggest; onDone: () => void }) {
     const { frequencies = {} } = usePage<{ frequencies?: Record<string, string> }>().props; // D-304
-    const form = useForm({ medicine_id: '', qty_used: '', qty_per_dose: '', review_on: '', given_on: today(), given_time: '', product: '', dose: '', route: 'injectable', frequency: 'once', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, notes: '' });
+    const form = useForm({ medicine_id: '', qty_used: '', qty_per_dose: '', review_on: '', given_on: today(), given_time: new Date().toTimeString().slice(0, 5), product: '', dose: '', route: 'injectable', frequency: 'once', days_prescribed: '', next_dose_on: '', meat_clear_on: '', milk_clear_on: '', no_withdrawal: false, notes: '' });
     const e = form.errors as Record<string, string>;
     // D-369: choosing a medicine fills its standard dose (set by the vet on the medicine); every field stays editable
     const chosen = medicines.find((m) => String(m.id) === form.data.medicine_id);
@@ -293,7 +293,7 @@ function DoseForm({ c, routes, medicines, suggest, onDone }: { c: Case; routes: 
             <Field label="Dose + unit" error={e.dose} hint="e.g. 5 ml, 2 tablets"><input className="field" value={form.data.dose} onChange={(x) => form.setData('dose', x.target.value)} /></Field>
             <Field label="Route" error={e.route}><select className="field" value={form.data.route} onChange={(x) => form.setData('route', x.target.value)}>{Object.entries(routes).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Date given" error={e.given_on}><input type="date" className="field" max={today()} value={form.data.given_on} onChange={(x) => form.setData('given_on', x.target.value)} /></Field>
-            <Field label="Dose time" error={e.given_time} hint="When the dose was given"><input type="time" className="field" required value={form.data.given_time} onChange={(x) => form.setData('given_time', x.target.value)} /></Field>
+            <Field label="Dose time" error={e.given_time} hint="Now; change it if given earlier"><input type="time" className="field" required value={form.data.given_time} onChange={(x) => form.setData('given_time', x.target.value)} /></Field>
             <Field label="How often" error={e.frequency} hint="Every dose is planned; the first is this one"><select className="field" value={form.data.frequency} onChange={(x) => form.setData('frequency', x.target.value)}>{Object.entries(frequencies).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             {form.data.frequency !== 'once' ? <Field label="For how many days" error={e.days_prescribed}><input type="number" min={1} className="field" value={form.data.days_prescribed} onChange={(x) => form.setData('days_prescribed', x.target.value)} required /></Field> : null}
             {form.data.medicine_id && form.data.frequency !== 'once' ? <Field label="Amount per later dose" error={e.qty_per_dose} hint="Taken from stock each time (blank = same as this one)"><input type="number" min={0} step="0.1" className="field" value={form.data.qty_per_dose} onChange={(x) => form.setData('qty_per_dose', x.target.value)} /></Field> : null}

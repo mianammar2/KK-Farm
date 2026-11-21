@@ -43,7 +43,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
     const [finding, setFinding] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
     const [date, setDate] = useState(nowDate());
-    const [time, setTime] = useState(''); // D-369: the dose's own time, typed by the vet (not when it is entered)
+    const [time, setTime] = useState(nowTime()); // D-376: now, changed when the dose was given earlier
     const [caseId, setCaseId] = useState<string>('new');
     const [items, setItems] = useState<Item[]>([blank()]);
     const [problems, setProblems] = useState<string[]>([]);
@@ -95,7 +95,7 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
         setItems((l) => [...l, blank()]);
         setTimeout(() => pick(items.length, String(id)), 0);
     };
-    const set = (i: number, patch: Partial<Item>) => setItems((list) => list.map((x, k) => (k === i ? { ...x, ...patch } : x)));
+    const set = (i: number, patch: Partial<Item>) => { setProblems([]); setItems((list) => list.map((x, k) => (k === i ? { ...x, ...patch } : x))); };
     const medOf = (it: Item) => medicines.find((m) => String(m.id) === it.medicine_id);
     const nameOf = (it: Item) => medOf(it)?.name ?? it.product;
 
@@ -175,10 +175,9 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
             {step === 1 && goat ? (
                 <div className="space-y-3">{/* D-372: only the date and dose time */}
                     <div className="grid grid-cols-2 gap-3">
-                        <Field label="Date given"><input type="date" className="field" max={nowDate()} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-                        <Field label="Dose time" hint="When the dose was given"><input type="time" className="field" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
+                        <Field label="Date given"><input type="date" className="field" max={nowDate()} value={date} onChange={(e) => { setDate(e.target.value); setProblems([]); }} /></Field>
+                        <Field label="Dose time" hint="Now; change it if the dose was given earlier"><input type="time" className="field" value={time} onChange={(e) => { setTime(e.target.value); setProblems([]); }} /></Field>
                     </div>
-                    <button type="button" className="text-sm text-cobalt-800 underline" onClick={() => { setDate(nowDate()); setTime(nowTime()); }}>Given just now</button>
                 </div>
             ) : null}
 
