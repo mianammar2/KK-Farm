@@ -21,7 +21,8 @@ class Medicine extends Model
         'other' => 'Other',
     ];
 
-    public const UNITS = ['ml' => 'ml', 'tablet' => 'tablet', 'bolus' => 'bolus', 'dose' => 'dose', 'vial' => 'vial', 'g' => 'g', 'sachet' => 'sachet', 'piece' => 'piece', 'tube' => 'tube'];
+    public const UNITS = ['CC' => 'CC', // D-371: millilitres, as the vets say them
+         'tablet' => 'tablet', 'bolus' => 'bolus', 'dose' => 'dose', 'vial' => 'vial', 'g' => 'g', 'sachet' => 'sachet', 'piece' => 'piece', 'tube' => 'tube'];
 
     /** D-332: how the product is bought; one pack holds pack_size stock units (a vial of 100 ml). */
     public const PACKS = ['vial' => 'Vial', 'ampoule' => 'Ampoule', 'bottle' => 'Bottle', 'can' => 'Can', 'sachet' => 'Sachet', 'box' => 'Box', 'piece' => 'Piece', 'tube' => 'Tube', 'pack' => 'Pack'];

@@ -43,7 +43,7 @@ class MedicineStockTest extends TestCase
 
     private function medicine(float $opening = 0, ?string $batch = null, ?string $expiry = null): Medicine
     {
-        $this->actingAs($this->user('vet'))->post('/health/medicines', array_filter(['code' => 'oxy', 'name' => 'Oxytetracycline LA', 'category' => 'antibiotic', 'unit' => 'ml', 'reorder_level' => 50, 'cost_per_unit' => 12, 'opening_qty' => $opening, 'batch' => $batch, 'expiry_on' => $expiry]))->assertSessionHasNoErrors();
+        $this->actingAs($this->user('vet'))->post('/health/medicines', array_filter(['code' => 'oxy', 'name' => 'Oxytetracycline LA', 'category' => 'antibiotic', 'unit' => 'CC', 'reorder_level' => 50, 'cost_per_unit' => 12, 'opening_qty' => $opening, 'batch' => $batch, 'expiry_on' => $expiry]))->assertSessionHasNoErrors();
 
         return Medicine::where('code', 'OXY')->firstOrFail();
     }
@@ -88,7 +88,7 @@ class MedicineStockTest extends TestCase
     public function test_a_shortfall_is_recorded_and_shown_as_stock_below_zero(): void
     {
         $m = $this->medicine(3, 'B1', now()->addYear()->toDateString());
-        $this->treat($m, 5)->assertSessionHas('success', fn ($msg) => str_contains($msg, '2 ml short'));
+        $this->treat($m, 5)->assertSessionHas('success', fn ($msg) => str_contains($msg, '2 CC short'));
         $this->assertEqualsWithDelta(-2, MedicineStock::quantities()[$m->id], 0.001);
         $this->assertSame('negative', MedicineStock::status(-2, 50, collect()));
     }
@@ -111,10 +111,10 @@ class MedicineStockTest extends TestCase
     public function test_only_the_owner_manager_and_vet_change_the_store(): void
     {
         $m = $this->medicine();
-        $this->actingAs($this->user('caretaker'))->post('/health/medicines', ['code' => 'X', 'name' => 'X', 'category' => 'other', 'unit' => 'ml'])->assertForbidden();
+        $this->actingAs($this->user('caretaker'))->post('/health/medicines', ['code' => 'X', 'name' => 'X', 'category' => 'other', 'unit' => 'CC'])->assertForbidden();
         $this->actingAs($this->user('caretaker'))->post('/health/medicine-stock', ['medicine_id' => $m->id, 'type' => 'disposal', 'qty' => 1, 'moved_on' => now()->toDateString()])->assertForbidden();
         $this->actingAs($this->user('vet'))->post('/health/medicine-stock', ['medicine_id' => $m->id, 'type' => 'adjustment', 'qty' => 1, 'moved_on' => now()->toDateString()])->assertSessionHasErrors('direction');
-        $this->actingAs($this->user('manager'))->post('/health/medicines', ['code' => 'Y', 'name' => 'Y', 'category' => 'other', 'unit' => 'ml'])->assertForbidden(); // D-241: medicine store is ADM + VET
+        $this->actingAs($this->user('manager'))->post('/health/medicines', ['code' => 'Y', 'name' => 'Y', 'category' => 'other', 'unit' => 'CC'])->assertForbidden(); // D-241: medicine store is ADM + VET
         $this->actingAs($this->user('ceo'))->get('/health')->assertOk();
     }
 }

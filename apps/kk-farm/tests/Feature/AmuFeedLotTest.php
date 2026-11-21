@@ -42,8 +42,8 @@ class AmuFeedLotTest extends TestCase
     public function test_antibiotic_use_is_reported_with_untraced_doses_and_critically_important_drugs(): void
     {
         $g = Animal::create(['farm_number' => 'A-1', 'sex' => 'female', 'breed_id' => Breed::create(['name' => 'Beetal'])->id, 'birth_date' => now()->subYear(), 'origin' => 'purchased', 'status' => 'active']);
-        $oxy = Medicine::create(['code' => 'OXY', 'name' => 'Oxytetracycline', 'category' => 'antibiotic', 'unit' => 'ml']);
-        $vit = Medicine::create(['code' => 'VIT', 'name' => 'Vitamin AD3E', 'category' => 'vitamin', 'unit' => 'ml']);
+        $oxy = Medicine::create(['code' => 'OXY', 'name' => 'Oxytetracycline', 'category' => 'antibiotic', 'unit' => 'CC']);
+        $vit = Medicine::create(['code' => 'VIT', 'name' => 'Vitamin AD3E', 'category' => 'vitamin', 'unit' => 'CC']);
         $case = HealthCase::create(['case_no' => 1, 'animal_id' => $g->id, 'onset_on' => now(), 'condition' => 'Pneumonia', 'severity' => 'moderate', 'status' => 'under_treatment', 'recorded_by' => 'x']);
         $treat = fn (Medicine $m, ?string $batch) => tap(Treatment::create(['health_case_id' => $case->id, 'animal_id' => $g->id, 'given_on' => now(), 'product' => $m->name, 'dose' => '5 ml', 'route' => 'injectable', 'medicine_id' => $m->id, 'qty_used' => 5, 'recorded_by' => 'Vet']),
             fn ($t) => MedicineMovement::create(['medicine_id' => $m->id, 'moved_on' => now(), 'type' => 'issue', 'qty' => -5, 'batch' => $batch, 'treatment_id' => $t->id, 'recorded_by' => 'Vet']));

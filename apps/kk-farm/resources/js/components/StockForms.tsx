@@ -200,7 +200,7 @@ function MedicineDetails({ data, set, setDiseases, diseases, e, unit, packs = PA
 }
 
 export function MedicineAdd({ categories, units, packs, checks, diseases, onDone, via = 'app' }: { categories: Record<string, string>; units: Record<string, string>; packs?: Record<string, string>; checks?: Record<string, string>; diseases?: Array<{ id: number; name: string }>; onDone?: () => void; via?: Via }) {
-    const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'ml', reorder_level: '', cost_per_unit: '', opening_qty: '', batch: '', expiry_on: '', ...medFields() });
+    const form = useForm({ code: '', name: '', category: 'antibiotic', unit: 'CC', reorder_level: '', cost_per_unit: '', opening_qty: '', batch: '', expiry_on: '', ...medFields() });
     const e = form.errors as Record<string, string>;
     return (
         <Panel title="Add a medicine or vet supply">

@@ -103,7 +103,7 @@ class WorkbookFinishTest extends TestCase
     {
         $g1 = $this->goat('G-1');
         $g2 = $this->goat('G-2');
-        $med = Medicine::create(['code' => 'IVM', 'name' => 'Ivermectin', 'category' => 'dewormer', 'unit' => 'ml', 'reorder_level' => 0, 'cost_per_unit_minor' => 800]);
+        $med = Medicine::create(['code' => 'IVM', 'name' => 'Ivermectin', 'category' => 'dewormer', 'unit' => 'CC', 'reorder_level' => 0, 'cost_per_unit_minor' => 800]);
         MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now(), 'type' => 'purchase', 'qty' => 20, 'batch' => 'L1', 'expiry_on' => now()->addYear(), 'recorded_by' => 'x']);
         $vet = $this->user('vet');
 

@@ -120,7 +120,7 @@ class QualityTest extends TestCase
         $this->as('manager')->post('/quality/cases', ['source' => 'feed', 'title' => 'Mould', 'subject' => 'feed_item', 'feed_item_id' => $feed->id, 'severity' => 'high', 'immediate_risk' => true, 'containment' => 'hold'])->assertSessionHasNoErrors();
         $this->expectFeedBlocked($feed->id);
 
-        $med = Medicine::create(['code' => 'M1', 'name' => 'Oxytet', 'category' => 'antibiotic', 'unit' => 'ml']);
+        $med = Medicine::create(['code' => 'M1', 'name' => 'Oxytet', 'category' => 'antibiotic', 'unit' => 'CC']);
         MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now(), 'type' => 'opening', 'qty' => 50, 'batch' => 'BAD1', 'expiry_on' => now()->addYear(), 'recorded_by' => 'x']);
         MedicineMovement::create(['medicine_id' => $med->id, 'moved_on' => now(), 'type' => 'opening', 'qty' => 50, 'batch' => 'GOOD2', 'expiry_on' => now()->addYears(2), 'recorded_by' => 'x']);
         $this->as('vet')->post('/quality/cases', ['source' => 'medicine', 'title' => 'Cloudy vials', 'subject' => 'medicine', 'medicine_id' => $med->id, 'batch' => 'BAD1', 'severity' => 'high', 'immediate_risk' => true, 'containment' => 'hold'])->assertSessionHasNoErrors();
