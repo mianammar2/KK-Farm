@@ -500,7 +500,8 @@ class HealthController extends Controller
     public function medication(Request $request): RedirectResponse
     {
         abort_unless($request->user()->passes('clinical'), 403, 'Only a veterinarian records medication.');
-        $item = collect(self::treatmentRules())->except(['given_on'])->mapWithKeys(fn ($r, $k) => ["items.*.$k" => $r])->all();
+        // each medicine's rules point at that medicine's own fields (items.*.medicine_id), not the form's top level
+        $item = collect(self::treatmentRules())->except(['given_on'])->mapWithKeys(fn ($r, $k) => ["items.*.$k" => array_map(fn ($rule) => is_string($rule) ? preg_replace('/^(required_with|required_without):medicine_id$/', '$1:items.*.medicine_id', $rule) : $rule, $r)])->all();
         $item['items.*.review_on'] = ['nullable', 'date'];
         $item['items.*.next_dose_on'] = ['nullable', 'date'];
         $data = $request->validate([

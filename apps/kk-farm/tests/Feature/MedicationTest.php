@@ -110,4 +110,18 @@ class MedicationTest extends TestCase
         $this->assertSame('low', $case->severity);
         $this->assertSame(2, Treatment::where('health_case_id', $case->id)->count());
     }
+
+    public function test_a_medicine_from_the_store_is_given_by_its_quantity(): void
+    {
+        $vet = $this->user('vet');
+        $this->actingAs($vet)->post('/health/medicines', ['code' => 'LOX', 'name' => 'Loxin Injection 5%', 'category' => 'anti_inflammatory', 'unit' => 'ml', 'opening_qty' => 100])->assertSessionHasNoErrors();
+        $med = \App\Models\Medicine::where('code', 'LOX')->sole();
+        $this->actingAs($vet)->post('/health/medications', $this->body(['items' => [['medicine_id' => $med->id, 'qty_used' => 3, 'dose' => '3 CC', 'route' => 'injectable', 'frequency' => 'once']]]))->assertSessionHasNoErrors();
+        $t = Treatment::where('medicine_id', $med->id)->sole();
+        $this->assertSame('Loxin Injection 5%', $t->product);
+        $this->assertSame(97.0, \App\Support\MedicineStock::quantities()[$med->id]);
+        // a store medicine needs its quantity; a typed one needs its name
+        $this->actingAs($vet)->post('/health/medications', $this->body(['items' => [['medicine_id' => $med->id, 'dose' => '3 CC', 'route' => 'injectable']]]))->assertSessionHasErrors('items.0.qty_used');
+        $this->actingAs($vet)->post('/health/medications', $this->body(['items' => [['dose' => '3 CC', 'route' => 'injectable']]]))->assertSessionHasErrors('items.0.product');
+    }
 }
