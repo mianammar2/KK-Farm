@@ -305,47 +305,58 @@ export default function GoatShow(props: Props) {
                 </Panel>
             ) : null}
 
+            {/* D-380: the health tab in the same tables as the overview */}
             {tab === 'health' && cases.length ? (
                 <Panel flush title="Health cases" description="Episodes and the treatments given, with the veterinarian's clear dates" className="mb-4">
-                    <ul className="divide-y divide-rule">
-                        {cases.map((c) => (
-                            <li key={c.id} className="px-4 py-2.5">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="font-mono text-xs text-ink-soft">{c.label}</span>
-                                    <span className="font-semibold text-cobalt-900">{c.condition}</span>
-                                    <Chip className={c.active ? 'bg-treat-100 text-treat-700' : 'bg-glaze text-ink-soft'}>{c.status}</Chip>
-                                    <span className="text-sm text-ink-soft">{c.severity} · since {c.onset}{c.resolved ? ` · ended ${c.resolved}` : ''}</span>
-                                </div>
-                                {c.diagnosis ? <p className="text-sm">{c.diagnosis}</p> : null}
-                                {c.treatments.length ? (
-                                    <ul className="mt-1 space-y-0.5 text-sm text-ink-soft">
-                                        {c.treatments.map((t) => <li key={t.id}>{t.on} · <span className="text-ink">{t.text}</span>{t.meat ? ` · meat clear ${t.meat}` : ''}{t.milk ? ` · milk clear ${t.milk}` : ''} · {t.by}</li>)}
-                                    </ul>
-                                ) : null}
-                            </li>
-                        ))}
-                    </ul>
+                    <div className="overflow-x-auto px-4 pb-1">
+                        <table className="w-full min-w-[720px] border-collapse text-sm">
+                            <thead className="border-b border-rule bg-glaze/60">
+                                <tr>{['Case', 'Disease / condition', 'Status', 'Severity', 'Since', 'Ended', 'Treatments', 'Vet'].map((h) => <th key={h} className={`${TH} text-start`}>{h}</th>)}</tr>
+                            </thead>
+                            <tbody className="divide-y divide-rule">
+                                {cases.map((c) => (
+                                    <tr key={c.id} className="align-top">
+                                        <td className={`${TD} font-mono text-xs whitespace-nowrap text-ink-soft`}>{c.label}</td>
+                                        <td className={`${TD} font-semibold text-cobalt-900`}>{c.condition}{c.diagnosis ? <span className="block text-sm font-normal text-ink">{c.diagnosis}</span> : null}</td>
+                                        <td className={TD}><Chip className={c.active ? 'bg-treat-100 text-treat-700' : 'bg-glaze text-ink-soft'}>{c.status}</Chip></td>
+                                        <td className={`${TD} whitespace-nowrap`}>{c.severity}</td>
+                                        <td className={`${TD} whitespace-nowrap`}>{c.onset}</td>
+                                        <td className={`${TD} whitespace-nowrap`}>{c.resolved ?? dash}</td>
+                                        <td className={`${TD} min-w-[14rem]`}>{c.treatments.length ? (
+                                            <ul className="space-y-0.5">{c.treatments.map((t) => <li key={t.id}><span className="text-ink-soft">{t.on}</span> · {t.text}{t.meat ? <span className="text-watch-700"> · meat clear {t.meat}</span> : null}{t.milk ? <span className="text-watch-700"> · milk clear {t.milk}</span> : null}</li>)}</ul>
+                                        ) : dash}</td>
+                                        <td className={`${TD} whitespace-nowrap`}>{[...new Set(c.treatments.map((t) => t.by))].join(', ') || dash}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </Panel>
             ) : null}
 
             {tab === 'health' ? (
                 <Panel flush title="Medical history" description="Clinical records carry the name of the veterinarian who wrote them">
                     {health.length ? (
-                        <ul className="divide-y divide-rule">
-                            {health.map((h) => (
-                                <li key={h.id} className="flex flex-wrap items-start justify-between gap-2 px-4 py-2.5">
-                                    <div className="min-w-0">
-                                        <p className="font-semibold text-cobalt-900">{h.title}</p>
-                                        <p className="text-sm text-ink-soft first-letter:uppercase">{h.kind} · {h.on} · {h.by}</p>
-                                        {h.notes ? <p className="text-sm">{h.notes}</p> : null}
-                                    </div>
-                                    <div className="text-right text-sm text-ink-soft">
-                                        {h.status === 'open' ? <Chip className="bg-treat-100 text-treat-700">Open</Chip> : null}
-                                        {h.next ? <div>Next: {h.next}</div> : null}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+                        <div className="overflow-x-auto px-4 pb-1">
+                            <table className="w-full min-w-[680px] border-collapse text-sm">
+                                <thead className="border-b border-rule bg-glaze/60">
+                                    <tr>{['Date', 'Record', 'Type', 'Notes', 'By', 'Status', 'Next'].map((h) => <th key={h} className={`${TH} text-start`}>{h}</th>)}</tr>
+                                </thead>
+                                <tbody className="divide-y divide-rule">
+                                    {health.map((h) => (
+                                        <tr key={h.id} className="align-top">
+                                            <td className={`${TD} whitespace-nowrap text-cobalt-900`}>{h.on}</td>
+                                            <td className={`${TD} font-semibold text-cobalt-900`}>{h.title}</td>
+                                            <td className={`${TD} whitespace-nowrap first-letter:uppercase`}>{h.kind}</td>
+                                            <td className={`${TD} min-w-[10rem]`}>{h.notes ?? dash}</td>
+                                            <td className={`${TD} whitespace-nowrap`}>{h.by}</td>
+                                            <td className={TD}>{h.status === 'open' ? <Chip className="bg-treat-100 text-treat-700">Open</Chip> : <span className="text-ink-soft first-letter:uppercase">{h.status ?? ''}</span>}</td>
+                                            <td className={`${TD} whitespace-nowrap`}>{h.next ?? dash}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     ) : <Empty title="No medical records yet" />}
                 </Panel>
             ) : null}
@@ -685,6 +696,9 @@ function performed(r: GoatRecord): Done[] {
     return out;
 }
 const dash = <span className="text-ink-faint">—</span>;
+// D-380: the overview's table cells, used by every table on the goat page
+const TH = 'px-2.5 py-2.5 text-xs font-medium whitespace-nowrap text-ink-soft';
+const TD = 'px-2.5 py-3 align-middle';
 
 /** D-249/D-266: one row per day: what was done, the measurements, what was found and the checkup's result. */
 function RecordsTable({ rows, goatId }: { rows: GoatRecord[]; goatId: string }) {
