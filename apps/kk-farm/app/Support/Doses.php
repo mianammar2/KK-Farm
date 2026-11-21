@@ -52,7 +52,7 @@ final class Doses
     }
 
     /** Plan every dose of the prescription; the first one (the treatment) is recorded as given. */
-    public static function plan(Treatment $t, User $by): void
+    public static function plan(Treatment $t, User $by, ?\DateTimeInterface $doneAt = null): void
     {
         $key = self::key($t->frequency);
         $days = max(1, (int) ($t->days_prescribed ?: 1));
@@ -72,7 +72,7 @@ final class Doses
         foreach ($rows as [$on, $slot]) {
             $n++;
             TreatmentDose::create(['treatment_id' => $t->id, 'animal_id' => $t->animal_id, 'number' => $n, 'due_on' => $on->toDateString(), 'slot' => $slot] + ($n === 1 ? [
-                'status' => 'given', 'done_at' => now(), 'qty' => $t->qty_used, 'done_by' => $t->recorded_by,
+                'status' => 'given', 'done_at' => $doneAt ?? now(), 'qty' => $t->qty_used, 'done_by' => $t->recorded_by, // D-378: at the dose time given, not the entry time
             ] : []));
         }
         $next = TreatmentDose::where('treatment_id', $t->id)->where('status', 'due')->orderBy('number')->value('due_on');

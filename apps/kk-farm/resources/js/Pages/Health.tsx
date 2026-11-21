@@ -36,7 +36,7 @@ type Props = {
     medicineTypes: Record<string, { label: string; direction: number }>; medicineAlerts: number; canMedicine: boolean;
     calendar: CalendarRow[]; protocols: Protocol[]; applies: Record<string, string>; careTypes: Record<string, string>; // D-173
     symptomList?: SymptomRow[]; // D-292
-    dosesDue?: DoseRow[]; dosesDone?: DoseRow[]; canGiveDoses?: boolean; frequencies?: Record<string, string>; // D-304
+    dosesDue?: DoseRow[]; dosesDone?: DoseRow[]; canGiveDoses?: boolean; canCorrectDoses?: boolean; me?: string; frequencies?: Record<string, string>; // D-304
     diseases: DiseaseRow[]; diseaseCategories: Record<string, string>; mortality: MortalityData | null; // D-174; null when the tab is closed to this person (D-241)
 };
 
@@ -111,7 +111,7 @@ export default function Health(props: Props) {
                     {tab === 'store' ? <MedicineStore {...props} /> : null}
                     {tab === 'mortality' && props.mortality ? <Mortality data={props.mortality} causes={props.diseases.filter((d) => d.active).map((d) => d.name)} isVet={isVet} /> : null}
                     {tab === 'diseases' ? <DiseaseMaster diseases={props.diseases} categories={props.diseaseCategories} canEdit={isVet || auth?.role === 'ceo'} /> : null}
-                    {tab === 'doses' ? <DosesDue due={props.dosesDue ?? []} done={props.dosesDone ?? []} canGive={!!props.canGiveDoses} /> : null}
+                    {tab === 'doses' ? <DosesDue due={props.dosesDue ?? []} done={props.dosesDone ?? []} canGive={!!props.canGiveDoses} canCorrect={!!props.canCorrectDoses} me={props.me ?? ''} /> : null}
                     {tab === 'symptoms' ? <SymptomMaster symptoms={props.symptomList ?? []} diseases={props.diseases} canEdit={isVet || auth?.role === 'ceo'} /> : null}
                     {tab === 'calendar' ? <CareCalendar calendar={props.calendar} isVet={!!auth?.gates.includes('give_care')} /> : null}
                     {tab === 'protocols' ? <Protocols protocols={props.protocols} careTypes={props.careTypes} applies={props.applies} medicines={props.medicines} canEdit={isVet || auth?.role === 'ceo'} /> : null}

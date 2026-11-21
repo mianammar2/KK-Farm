@@ -231,8 +231,6 @@ export default function MedicationForm({ cases, medicines, suggest, routes, freq
             {step === 3 && goat ? (
                 <div className="space-y-3 text-sm">
                     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-tile border border-rule p-3">
-                        <dt className="text-ink-soft">Goat</dt><dd className="font-mono font-semibold">{goat.number}</dd>
-                        <dt className="text-ink-soft">Given</dt><dd>{dmy(date)} at {time}</dd>
                         <dt className="text-ink-soft">Case</dt><dd>{chosen ? `${chosen.condition} (${chosen.label})` : 'A new case named after these medicines'}</dd>
                     </dl>
                     {items.map((it, i) => (

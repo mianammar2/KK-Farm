@@ -105,11 +105,12 @@ class HealthController extends Controller
             'applies' => \App\Models\CareProtocol::applies(),
             // D-174: disease master and mortality register
             // D-304: doses due today or overdue, and the doses of the last 14 days
-            'dosesDue' => \App\Models\TreatmentDose::with(['treatment', 'animal.pen'])->where('status', 'due')->whereDate('due_on', '<=', now()->toDateString())
+            'dosesDue' => \App\Models\TreatmentDose::with(['treatment.medicine', 'animal.pen'])->where('status', 'due')->whereDate('due_on', '<=', now()->toDateString())
                 ->whereHas('animal', fn ($q) => $q->where('status', 'active'))->orderBy('due_on')->orderByRaw("case slot when 'morning' then 0 when 'midday' then 1 else 2 end")->get()->map(fn ($d) => self::doseRow($d))->values(),
-            'dosesDone' => \App\Models\TreatmentDose::with(['treatment', 'animal.pen'])->where('status', '<>', 'due')->where('done_at', '>=', now()->subDays(14))->orderByDesc('done_at')->limit(500)->get()->map(fn ($d) => self::doseRow($d))->values(),
+            'dosesDone' => \App\Models\TreatmentDose::with(['treatment.medicine', 'animal.pen'])->where('status', '<>', 'due')->where('done_at', '>=', now()->subDays(14))->orderByDesc('done_at')->limit(500)->get()->map(fn ($d) => self::doseRow($d))->values(),
             'frequencies' => collect(\App\Support\Doses::FREQUENCIES)->map(fn ($f) => $f[0]),
             'canGiveDoses' => $request->user()->passes('give_doses'),
+            'canCorrectDoses' => $request->user()->passes('correct_health_records'), 'me' => $request->user()->name, // D-378
             'diseases' => \App\Models\Disease::orderByDesc('active')->orderByRaw('code is null')->orderBy('code')->orderBy('name')->get(['id', 'code', 'name', 'local_name', 'priority', 'category', 'zoonotic', 'notifiable', 'contagious', 'notes', 'active']),
             'symptomList' => \App\Models\Symptom::with('diseases:id,name')->orderByDesc('active')->orderBy('system')->orderBy('code')->get()->map(fn ($s) => [ // D-292
                 'id' => $s->id, 'code' => $s->code, 'system' => $s->system, 'name' => $s->name, 'local' => $s->local_name, 'urgency' => $s->urgency, 'active' => $s->active,
@@ -302,8 +303,68 @@ class HealthController extends Controller
         return ['id' => $d->id, 'goatId' => $d->animal_id, 'goat' => $d->animal?->farm_number, 'pen' => $d->animal?->pen?->name, 'dueIso' => $d->due_on->toDateString(), 'due' => $d->due_on->format('d/m/Y'),
             'slot' => $d->slot ? ucfirst($d->slot) : null, 'number' => $d->number, 'of' => \App\Models\TreatmentDose::where('treatment_id', $d->treatment_id)->count(),
             'product' => $t->product, 'dose' => $t->dose, 'route' => Treatment::ROUTES[$t->route] ?? $t->route, 'qty' => $t->qty_per_dose ?? $t->qty_used, 'stock' => (bool) $t->medicine_id,
-            'status' => $d->status, 'doneAt' => $d->done_at?->setTimezone('Asia/Karachi')->format('d/m/Y g:i A'), 'by' => $d->done_by, 'batch' => $d->batch, 'adverse' => $d->adverse, 'notes' => $d->notes,
+            'status' => $d->status, 'doneAt' => $d->done_at?->setTimezone('Asia/Karachi')->format('d/m/Y g:i A'), 'doneOn' => $d->done_at?->setTimezone('Asia/Karachi')->format('Y-m-d'), 'doneTime' => $d->done_at?->setTimezone('Asia/Karachi')->format('H:i'), 'unit' => $t->medicine?->unit, 'by' => $d->done_by, 'batch' => $d->batch, 'adverse' => $d->adverse, 'notes' => $d->notes,
             'vet' => $t->recorded_by, 'overdue' => $d->status === 'due' && $d->due_on->lt(today())];
+    }
+
+    /**
+     * D-378: correct a dose already recorded (given, missed or held): the amount, the date and time, the notes. The old
+     * values stay in the record's history (D-313). A changed amount of a store medicine moves the store by the
+     * difference with a new entry (more taken, or returned); the first entry is not altered.
+     */
+    public function editDose(Request $request, \App\Models\TreatmentDose $dose): RedirectResponse
+    {
+        abort_if($dose->status === 'due', 422, 'This dose is not recorded yet.');
+        abort_unless(\App\Support\Revisions::canCorrect($request->user(), $dose->done_by), 403, 'Only the person who recorded this dose, or the administrator, can correct it.');
+        $data = $request->validate([
+            'qty' => ['nullable', 'numeric', 'gt:0', 'max:100000'], 'done_on' => ['required', 'date', 'before_or_equal:today'], 'done_time' => ['required', 'date_format:H:i'],
+            'notes' => ['nullable', 'string', 'max:300'], 'reason' => ['nullable', 'string', 'max:300'],
+        ], [], ['done_on' => 'date', 'done_time' => 'time', 'qty' => 'amount']);
+        $zone = \App\Support\Feed::now()->getTimezone();
+        $at = Carbon::parse("{$data['done_on']} {$data['done_time']}", $zone);
+        if ($at->isFuture()) {
+            throw ValidationException::withMessages(['done_time' => 'The time cannot be later than now.']);
+        }
+        $t = $dose->treatment;
+        $changes = [];
+        $update = [];
+        $oldAt = $dose->done_at?->copy()->setTimezone($zone);
+        if (! $oldAt || $oldAt->format('Y-m-d H:i') !== $at->format('Y-m-d H:i')) {
+            $changes['When'] = [$oldAt?->format('d/m/Y H:i'), $at->format('d/m/Y H:i')];
+            $update['done_at'] = $at->copy()->setTimezone(config('app.timezone')); // treatment_doses.done_at is in the app's zone
+        }
+        $newQty = $dose->status === 'given' && isset($data['qty']) ? round((float) $data['qty'], 2) : null;
+        $diff = $newQty !== null ? round($newQty - (float) ($dose->qty ?? 0), 2) : 0.0;
+        if ($newQty !== null && abs($diff) >= 0.01) {
+            $changes['Amount'] = [$dose->qty !== null ? (float) $dose->qty : null, $newQty];
+            $update['qty'] = $newQty;
+        }
+        if (($data['notes'] ?? null) !== $dose->notes && ! (empty($data['notes']) && empty($dose->notes))) {
+            $changes['Notes'] = [$dose->notes, $data['notes'] ?? null];
+            $update['notes'] = $data['notes'] ?? null;
+        }
+        if (! $changes) {
+            return back()->with('success', 'Nothing changed.');
+        }
+        DB::transaction(function () use ($dose, $t, $update, $diff, $changes, $data, $request, $at) {
+            $dose->update($update);
+            if ($dose->number === 1) { // the first dose is the treatment itself
+                $t->update(array_filter(['qty_used' => $update['qty'] ?? null, 'given_at' => isset($update['done_at']) ? $at->copy()->utc() : null, 'given_on' => isset($update['done_at']) ? $at->toDateString() : null], fn ($v) => $v !== null));
+            }
+            if (abs($diff) >= 0.01 && $t->medicine_id) {
+                $medicine = \App\Models\Medicine::find($t->medicine_id);
+                $ref = ['moved_on' => now()->toDateString(), 'treatment_id' => $t->id, 'reference' => mb_substr("Correction: dose {$dose->number} of {$t->product}", 0, 60), 'recorded_by' => $request->user()->name];
+                if ($diff > 0) {
+                    \App\Support\MedicineStock::issue($medicine, $diff, $ref);
+                } else {
+                    \App\Models\MedicineMovement::create($ref + ['medicine_id' => $medicine->id, 'type' => 'return', 'qty' => -$diff, 'batch' => $dose->batch]);
+                }
+            }
+            \App\Support\Revisions::log('dose', (int) $dose->id, $dose->animal, $changes, $request->user(), $data['reason'] ?? null);
+        });
+        Farm::log($request->user(), "Corrected dose {$dose->number} of {$t->product} for {$dose->animal?->farm_number}: ".implode(', ', array_keys($changes)), '/health?tab=doses');
+
+        return back()->with('success', 'Dose corrected: '.implode(', ', array_keys($changes)).'. The old values stay in the history.');
     }
 
     /** D-304: a dose given (from stock), missed or held, by whoever gives medicine (the right "Give medicine doses"). */
@@ -593,7 +654,7 @@ class HealthController extends Controller
                 'moved_on' => $data['given_on'], 'treatment_id' => $treatment->id, 'reference' => $case->label(), 'recorded_by' => $user->name,
             ]);
         }
-        \App\Support\Doses::plan($treatment, $user); // D-304: every dose, the first one given now
+        \App\Support\Doses::plan($treatment, $user, isset($data['given_at']) ? Carbon::parse($data['given_at'])->setTimezone(config('app.timezone')) : null); // D-304: every dose, the first one given now (D-378: at its dose time)
         if (! empty($data['review_on'])) { // workbook Vet_Orders: the vet's review date
             \App\Models\Task::create(['title' => mb_substr("Treatment review: {$case->animal->farm_number} · {$data['product']}", 0, 190), 'type' => 'health', 'priority' => 'medium', 'status' => 'open',
                 'due_on' => $data['review_on'], 'animal_id' => $case->animal_id, 'user_id' => $user->id]);

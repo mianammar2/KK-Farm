@@ -124,4 +124,24 @@ class MedicationTest extends TestCase
         $this->actingAs($vet)->post('/health/medications', $this->body(['items' => [['medicine_id' => $med->id, 'dose' => '3 CC', 'route' => 'injectable']]]))->assertSessionHasErrors('items.0.qty_used');
         $this->actingAs($vet)->post('/health/medications', $this->body(['items' => [['dose' => '3 CC', 'route' => 'injectable']]]))->assertSessionHasErrors('items.0.product');
     }
+
+    public function test_a_recorded_dose_is_corrected_and_the_store_follows(): void // D-378
+    {
+        $vet = $this->user('vet');
+        $this->actingAs($vet)->post('/health/medicines', ['code' => 'LOX', 'name' => 'Loxin Injection 5%', 'category' => 'anti_inflammatory', 'unit' => 'ml', 'opening_qty' => 100])->assertSessionHasNoErrors();
+        $med = \App\Models\Medicine::where('code', 'LOX')->sole();
+        $at = \App\Support\Feed::now()->subHour();
+        $this->actingAs($vet)->post('/health/medications', $this->body(['given_on' => $at->toDateString(), 'given_time' => $at->format('H:i'), 'items' => [['medicine_id' => $med->id, 'qty_used' => 3, 'dose' => '3 CC', 'route' => 'injectable', 'frequency' => 'once']]]))->assertSessionHasNoErrors();
+        $dose = \App\Models\TreatmentDose::sole();
+        $this->assertSame($at->format('H:i'), $dose->done_at->setTimezone($at->getTimezone())->format('H:i')); // the dose time, not the entry time
+
+        $this->actingAs($this->user('caretaker'))->post("/health/doses/{$dose->id}/edit", ['qty' => 5, 'done_on' => $at->toDateString(), 'done_time' => $at->format('H:i')])->assertForbidden();
+        $this->actingAs($vet)->post("/health/doses/{$dose->id}/edit", ['qty' => 5, 'done_on' => $at->toDateString(), 'done_time' => $at->format('H:i'), 'reason' => 'typed 3 by mistake'])->assertSessionHasNoErrors();
+        $this->assertSame(95.0, \App\Support\MedicineStock::quantities()[$med->id]);
+        $this->actingAs($vet)->post("/health/doses/{$dose->id}/edit", ['qty' => 2, 'done_on' => $at->toDateString(), 'done_time' => $at->copy()->subMinutes(10)->format('H:i')])->assertSessionHasNoErrors();
+        $this->assertSame(98.0, \App\Support\MedicineStock::quantities()[$med->id]);
+        $this->assertSame(2.0, (float) $dose->fresh()->qty);
+        $this->assertSame(2.0, (float) $dose->treatment->fresh()->qty_used);
+        $this->assertSame(2, \App\Models\RecordRevision::where('record_type', 'dose')->where('record_id', $dose->id)->count());
+    }
 }

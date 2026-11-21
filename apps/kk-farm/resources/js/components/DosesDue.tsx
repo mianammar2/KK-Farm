@@ -1,4 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
+import { Pencil } from 'lucide-react';
+import Sheet from './Sheet';
 import { useState } from 'react';
 import DataGrid, { type Col } from './DataGrid';
 import { Button, cx, Empty, Field, Panel } from './ui';
@@ -9,10 +11,11 @@ import { Button, cx, Empty, Field, Panel } from './ui';
  */
 export type DoseRow = {
     id: number; goatId: string; goat: string | null; pen: string | null; dueIso: string; due: string; slot: string | null; number: number; of: number; product: string; dose: string; route: string;
-    qty: number | null; stock: boolean; status: string; doneAt: string | null; by: string | null; batch: string | null; adverse: boolean; notes: string | null; vet: string; overdue: boolean;
+    qty: number | null; stock: boolean; status: string; doneAt: string | null; doneOn?: string | null; doneTime?: string | null; unit?: string | null; by: string | null; batch: string | null; adverse: boolean; notes: string | null; vet: string; overdue: boolean;
 };
 
-export default function DosesDue({ due, done, canGive }: { due: DoseRow[]; done: DoseRow[]; canGive: boolean }) {
+export default function DosesDue({ due, done, canGive, canCorrect = false, me = '' }: { due: DoseRow[]; done: DoseRow[]; canGive: boolean; canCorrect?: boolean; me?: string }) {
+    const [editing, setEditing] = useState<DoseRow | null>(null); // D-378
     const goat = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('goat') : null; // from an app's scan
     const list = goat ? due.filter((d) => d.goatId === goat) : due;
     const cols: Col<DoseRow>[] = [
@@ -27,6 +30,7 @@ export default function DosesDue({ due, done, canGive }: { due: DoseRow[]; done:
         { key: 'by', label: 'By', type: 'enum' },
         { key: 'vet', label: 'Prescribed by', type: 'enum' },
         { key: 'notes', label: 'Notes', type: 'text', wrap: true },
+        { key: 'edit', label: '', value: () => '', render: (d) => (canCorrect || d.by === me ? <button type="button" onClick={() => setEditing(d)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-rule px-2.5 text-sm text-cobalt-800 hover:bg-glaze" aria-label={`Edit dose ${d.number} of ${d.product} for ${d.goat}`}><Pencil size={14} aria-hidden /> Edit</button> : null) },
     ];
     return (
         <div className="space-y-4">
@@ -36,6 +40,7 @@ export default function DosesDue({ due, done, canGive }: { due: DoseRow[]; done:
             <Panel title="Doses of the last 14 days" flush>
                 <DataGrid<DoseRow> id="doses-done" name="Doses given missed held" cols={cols} rows={done} rowKey={(d) => String(d.id)} empty="No doses recorded in the last 14 days" />
             </Panel>
+            {editing ? <Sheet title={`Edit dose ${editing.number} of ${editing.product} · ${editing.goat ?? ''}`} onClose={() => setEditing(null)}><EditDose d={editing} onDone={() => setEditing(null)} /></Sheet> : null}
         </div>
     );
 }
@@ -68,5 +73,25 @@ function DoseItem({ d, canGive }: { d: DoseRow; canGive: boolean }) {
                 </div>
             ) : null}
         </li>
+    );
+}
+
+/** D-378: correct a recorded dose: amount (a store medicine moves the store by the difference), date and time, notes. */
+function EditDose({ d, onDone }: { d: DoseRow; onDone: () => void }) {
+    const form = useForm({ qty: d.qty != null ? String(d.qty) : '', done_on: d.doneOn ?? '', done_time: d.doneTime ?? '', notes: d.notes ?? '', reason: '' });
+    const e = form.errors as Record<string, string>;
+    const unit = d.unit === 'ml' ? 'CC' : d.unit ?? '';
+    return (
+        <form onSubmit={(ev) => { ev.preventDefault(); form.post(`/health/doses/${d.id}/edit`, { preserveScroll: true, onSuccess: onDone }); }} className="space-y-3">
+            {d.status === 'given' ? <Field label={`Amount given${unit ? ` (${unit})` : ''}`} error={e.qty} hint={d.stock ? 'A change moves the store by the difference' : undefined}><input type="number" inputMode="decimal" min={0} step="0.1" className="field" value={form.data.qty} onChange={(x) => form.setData('qty', x.target.value)} /></Field> : null}
+            <div className="grid grid-cols-2 gap-3">
+                <Field label="Date" error={e.done_on}><input type="date" className="field" value={form.data.done_on} onChange={(x) => form.setData('done_on', x.target.value)} /></Field>
+                <Field label="Time" error={e.done_time}><input type="time" className="field" value={form.data.done_time} onChange={(x) => form.setData('done_time', x.target.value)} /></Field>
+            </div>
+            <Field label="Notes" error={e.notes}><input className="field" value={form.data.notes} onChange={(x) => form.setData('notes', x.target.value)} /></Field>
+            <Field label="Why the change (optional)" error={e.reason}><input className="field" value={form.data.reason} onChange={(x) => form.setData('reason', x.target.value)} /></Field>
+            <p className="text-xs text-ink-soft">The old values stay in the record's history.</p>
+            <div className="flex gap-2"><Button type="submit" disabled={form.processing}>Save</Button><Button type="button" variant="secondary" onClick={onDone}>Cancel</Button></div>
+        </form>
     );
 }
