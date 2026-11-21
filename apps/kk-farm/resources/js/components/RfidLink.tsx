@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { ScanLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { native } from '../lib/native';
@@ -10,6 +10,7 @@ import { Button, Chip, Field, Panel } from './ui';
  */
 export default function RfidLink({ goatId, number, current, canAssign, className }: { goatId: string; number: string; current: string | null | undefined; canAssign: boolean; className?: string }) {
     const form = useForm({ tag: '' });
+    const admin = (usePage().props as { auth?: { role?: string } }).auth?.role === 'ceo'; // D-382
     const box = useRef<HTMLInputElement>(null);
     const [open, setOpen] = useState(!current);
     const [reason, setReason] = useState('');
@@ -79,6 +80,7 @@ export default function RfidLink({ goatId, number, current, canAssign, className
     };
     const remove = () => {
         if (!reason) return;
+        if (reason === 'wrong' && !window.confirm(`Unlink ${current} from ${number}? Use this when the tag was linked to the wrong goat. The tag becomes free to link to the right goat.`)) return;
         router.post(`/goats/${goatId}/tag/remove`, { reason }, { preserveScroll: true, onSuccess: () => { setReason(''); setOpen(true); } });
     };
 
@@ -94,6 +96,7 @@ export default function RfidLink({ goatId, number, current, canAssign, className
                             <option value="lost">Lost</option>
                             <option value="damaged">Damaged</option>
                             <option value="removed">Taken off</option>
+                            {admin ? <option value="wrong">Linked by mistake (unlink)</option> : null}
                         </select>
                         {reason ? <Button type="button" variant="danger" onClick={remove}>Remove</Button> : null}
                     </span>

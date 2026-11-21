@@ -93,4 +93,28 @@ class GoatRfidLinkTest extends TestCase
         $this->assertSame('TD-141026P-25', \App\Support\GoatRegistration::normaliseCode('c6d74d901101002199902140'));
         $this->assertSame('C6D58C9001C1042199900041', \App\Support\GoatRegistration::normaliseCode('C6D58C9001C1042199900041')); // stray bits: not ours
     }
+
+    public function test_only_the_administrator_unlinks_a_tag_linked_to_the_wrong_goat(): void // D-382
+    {
+        $org = Organization::create(['name' => 'Wrong Farm', 'slug' => 'wrong-farm']);
+        Tenant::set($org->id);
+        $shed = Shed::create(['code' => 'S1', 'name' => 'S1']);
+        $pen = Pen::create(['shed_id' => $shed->id, 'name' => 'P01', 'purpose' => 'Does']);
+        $breed = Breed::create(['name' => 'Makhi Cheeni']);
+        $goat = Animal::create(['farm_number' => 'MC-071126P-01', 'sex' => 'male', 'breed_id' => $breed->id, 'birth_date' => now()->subYear(), 'origin' => 'purchased', 'pen_id' => $pen->id])->fresh();
+        $right = Animal::create(['farm_number' => 'MC-071126P-02', 'sex' => 'male', 'breed_id' => $breed->id, 'birth_date' => now()->subYear(), 'origin' => 'purchased', 'pen_id' => $pen->id])->fresh();
+        $ceo = User::create(['name' => 'Boss', 'email' => 'b@wrong.test', 'password' => 'x', 'role' => 'ceo', 'org_id' => $org->id, 'active' => true]);
+        $manager = User::create(['name' => 'Man', 'email' => 'm@wrong.test', 'password' => 'x', 'role' => 'manager', 'org_id' => $org->id, 'active' => true]);
+
+        $this->actingAs($ceo)->post("/goats/{$goat->id}/tag", ['tag' => 'E200CCC3'])->assertSessionHasNoErrors();
+        $this->actingAs($manager)->post("/goats/{$goat->id}/tag/remove", ['reason' => 'wrong'])->assertForbidden();
+        $this->assertSame(1, RfidAssignment::where('animal_id', $goat->id)->whereNull('valid_to')->count());
+
+        $this->actingAs($ceo)->post("/goats/{$goat->id}/tag/remove", ['reason' => 'wrong'])->assertSessionHasNoErrors();
+        $this->assertSame('wrong', RfidAssignment::where('animal_id', $goat->id)->value('reason_unassigned'));
+        $this->assertSame(0, RfidAssignment::where('animal_id', $goat->id)->whereNull('valid_to')->count());
+        // the tag is free: it links to the right goat with no move
+        $this->actingAs($ceo)->post("/goats/{$right->id}/tag", ['tag' => 'E200CCC3'])->assertSessionHasNoErrors();
+        $this->actingAs($ceo)->getJson('/lookup/goat?code=E200CCC3')->assertOk()->assertSee('MC-071126P-02');
+    }
 }

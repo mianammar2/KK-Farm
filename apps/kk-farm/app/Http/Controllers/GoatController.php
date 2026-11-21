@@ -232,11 +232,13 @@ class GoatController extends Controller
     public function untag(Request $request, Animal $animal): RedirectResponse
     {
         abort_unless($request->user()->passes('assign_tags'), 403);
-        $data = $request->validate(['reason' => ['required', Rule::in(['lost', 'damaged', 'removed'])]]);
+        $data = $request->validate(['reason' => ['required', Rule::in(['lost', 'damaged', 'removed', 'wrong'])]]);
+        // D-382: a tag linked to the wrong goat is unlinked by the administrator only; the tag is free to link again
+        abort_if($data['reason'] === 'wrong' && $request->user()->role !== 'ceo', 403, 'Only the administrator can unlink a tag linked by mistake.');
         Farm::closeOpenTag($animal, $data['reason'], $request->user());
         Farm::log($request->user(), "Removed the RFID tag from {$animal->farm_number} ({$data['reason']})", "/goats/{$animal->id}");
 
-        return back()->with('success', 'RFID tag removed. The goat keeps its Tag ID and full history.');
+        return back()->with('success', $data['reason'] === 'wrong' ? 'RFID unlinked. The tag is free to link to the right goat; this goat keeps its Tag ID and history.' : 'RFID tag removed. The goat keeps its Tag ID and full history.');
     }
 
     public function update(Request $request, Animal $animal): RedirectResponse

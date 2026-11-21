@@ -72,7 +72,7 @@ export default function GoatShow(props: Props) {
     const [ask, removeBox] = useConfirm(); // D-133
     const removed = goat.status === 'voided';
     const { auth } = usePage<SharedProps>().props;
-    const [tab, setTab] = useState('overview');
+    const [tab, setTab] = useState(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'overview'); // D-382: ?tab=tags opens a tab
     // D-102: opened from a scan with ?do=checkup|pregnancy|entry|weight|move|concern, the right form is already open.
     const todo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('do') : null;
     const [panel, setPanel] = useState<string | null>(['weight', 'move', 'concern', 'temp', 'height', 'cull', 'death', 'slaughter', 'exit', 'birth', 'photo'].includes(todo ?? '') ? todo : null); // D-301: every form an app's scan can open
@@ -437,7 +437,7 @@ export default function GoatShow(props: Props) {
                     <div className="overflow-x-auto">
                         <table className="data-table min-w-[560px]">
                             <thead><tr><th>Tag</th><th>From</th><th>To</th><th>Assigned</th><th>Closed</th></tr></thead>
-                            <tbody>{tags.map((t) => <tr key={t.code + t.from}><td className="font-semibold"><Link href={`/scan?tag=${t.code}`} className="text-cobalt-800 hover:underline">{t.code}</Link></td><td>{t.from}</td><td>{t.to ?? 'Current'}</td><td className="capitalize">{t.reason}</td><td className="capitalize">{t.closed ?? '—'}</td></tr>)}</tbody>
+                            <tbody>{tags.map((t) => <tr key={t.code + t.from}><td className="font-semibold"><Link href={`/scan?tag=${t.code}`} className="text-cobalt-800 hover:underline">{t.code}</Link></td><td>{t.from}</td><td>{t.to ?? 'Current'}</td><td className="capitalize">{t.reason}</td><td className="capitalize">{t.closed === 'wrong' ? 'Linked by mistake' : t.closed ?? '—'}</td></tr>)}</tbody>
                         </table>
                     </div>
                     {!tags.length ? <Empty title="No tag assigned yet">Link one above: click the box and scan the ear tag with the RFID gun.</Empty> : null}

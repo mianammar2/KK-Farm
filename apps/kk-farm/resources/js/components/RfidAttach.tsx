@@ -1,5 +1,5 @@
-import { router } from '@inertiajs/react';
-import { Radio, ScanLine } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { CheckCircle2, Radio, ScanLine, Unlink } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useConfirm } from './Confirm';
 import { EarTag } from './FarmScene';
@@ -14,6 +14,41 @@ export type TagGoat = { id: string; number: string; name: string | null; tag?: s
  * into the field. A tag already on another goat is moved only after the user confirms.
  */
 export function RfidAttachSheet({ goat, onClose }: { goat: TagGoat; onClose: () => void }) {
+    return goat.tag ? <LinkedSheet goat={goat} onClose={onClose} /> : <AttachSheet goat={goat} onClose={onClose} />;
+}
+
+/**
+ * D-382: a goat whose RFID is linked: the pop card only shows the link, nothing to scan or type. A tag linked to the
+ * wrong goat is unlinked by the administrator (kept in the history as "linked by mistake"); a lost or broken tag is
+ * replaced on the goat's own RFID Tag tab.
+ */
+function LinkedSheet({ goat, onClose }: { goat: TagGoat; onClose: () => void }) {
+    const admin = (usePage().props as { auth?: { role?: string } }).auth?.role === 'ceo';
+    const [busy, setBusy] = useState(false);
+    const [ask, confirmBox] = useConfirm();
+    const unlink = async () => {
+        if (!(await ask({ title: `Unlink this RFID from ${goat.number}?`, message: `Use this when ${goat.tag} was linked to the wrong goat. The RFID becomes free to link to the right goat; ${goat.number} keeps its Tag ID and history.`, confirm: 'Yes, unlink', danger: true }))) return;
+        setBusy(true);
+        router.post(`/goats/${goat.id}/tag/remove`, { reason: 'wrong' }, { preserveScroll: true, onSuccess: () => onClose(), onFinish: () => setBusy(false) });
+    };
+    return (
+        <Sheet onClose={onClose}>
+            {confirmBox}
+            <div className="space-y-4 rounded-tile bg-tile p-4 shadow-tile">
+                <div className="pr-10">
+                    <h2 className="text-lg font-semibold text-cobalt-900">RFID linked to {goat.number}</h2>
+                    <p className="mt-0.5 text-sm text-ink-soft">Scanning this RFID anywhere in the apps opens {goat.number}.</p>
+                </div>
+                <div className="flex items-center gap-3"><EarTag number={goat.number} />{goat.name ? <span className="font-semibold text-cobalt-900">{goat.name}</span> : null}</div>
+                <p className="flex items-center gap-2 rounded-tile bg-ok-100 px-3 py-2 text-sm text-ok-700"><CheckCircle2 size={16} aria-hidden /> RFID <span className="break-all font-mono font-semibold">{goat.tag}</span></p>
+                <p className="text-sm text-ink-soft">Lost or broken tag? Replace it on the goat's <Link href={`/goats/${goat.id}?tab=tags`} className="text-cobalt-800 underline">RFID Tag tab</Link>.</p>
+                {admin ? <Button type="button" variant="danger" className="w-full" onClick={unlink} disabled={busy}><Unlink size={16} className="mr-1 inline" aria-hidden />Unlink (linked by mistake)</Button> : null}
+            </div>
+        </Sheet>
+    );
+}
+
+function AttachSheet({ goat, onClose }: { goat: TagGoat; onClose: () => void }) {
     const [code, setCode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -56,7 +91,6 @@ export function RfidAttachSheet({ goat, onClose }: { goat: TagGoat; onClose: () 
                     <p className="mt-0.5 text-sm text-ink-soft">The tag ID <span className="font-mono font-semibold">{goat.number}</span> stays the same. The RFID is only linked to it: scanning the RFID opens this goat.</p>
                 </div>
                 <div className="flex items-center gap-3"><EarTag number={goat.number} />{goat.name ? <span className="font-semibold text-cobalt-900">{goat.name}</span> : null}</div>
-                {goat.tag ? <p className="rounded-tile bg-watch-100 px-3 py-2 text-sm text-watch-700">Linked RFID now: <span className="font-mono font-semibold">{goat.tag}</span>. Scanning a new RFID links that one instead (for a lost or broken RFID); the old one stays in this goat's history.</p> : null}
                 <div className="flex items-center gap-3 rounded-tile border-2 border-dashed border-turq-600 bg-turq-100 p-3">
                     <span className="relative grid size-12 shrink-0 place-items-center rounded-full bg-turq-700 text-white"><Radio size={22} aria-hidden /><span className="kk-ring absolute inset-0 rounded-full border-2 border-turq-600" aria-hidden /></span>
                     <p className="text-sm text-cobalt-900"><span className="font-semibold">Pull the trigger on the RFID gun now.</span> The scan opens a page that asks to link it to {goat.number}. This waits for 3 minutes.</p>
@@ -76,7 +110,7 @@ export function RfidAttachSheet({ goat, onClose }: { goat: TagGoat; onClose: () 
 export function RfidButton({ goat, onOpen }: { goat: TagGoat; onOpen: () => void }) {
     return (
         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
-            title={goat.tag ? `RFID ${goat.tag} is linked: tap to link a different one` : 'No RFID linked: tap to scan one'}
+            title={goat.tag ? `RFID ${goat.tag} is linked` : 'No RFID linked: tap to scan one'}
             className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold ${goat.tag ? 'border-ok-700/40 bg-ok-100 text-ok-700' : 'border-turq-600 bg-turq-100 text-turq-800 hover:bg-turq-400/40'}`}>
             <Radio size={12} aria-hidden />{goat.tag ? 'RFID Linked' : 'Link RFID'}
         </button>
